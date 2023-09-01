@@ -85,7 +85,7 @@ function AbstractMCMC.step(
     transition = map(states) do _state
         vi = setindex!!(vi, _state.params, spl)
         vi = DynamicPPL.invlink!!(vi, spl, model)
-        t = Transition(tonamedtuple(vi), _state.lp)
+        t = Transition(model, getparams(vi), _state.lp)
         vi = DynamicPPL.link!!(vi, spl, model)
         return t
     end

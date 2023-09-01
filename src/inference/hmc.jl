@@ -21,8 +21,8 @@ end
 # Hamiltonian Transition #
 ##########################
 
-function Transition(vi::AbstractVarInfo, t::AHMC.Transition)
-    theta = tonamedtuple(vi)
+function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t::AHMC.Transition)
+    theta = getparams(model, vi)
     lp = getlogp(vi)
     return Transition(theta, lp, t.stat)
 end
@@ -218,7 +218,7 @@ function DynamicPPL.initialstep(
         vi = setlogp!!(vi, log_density_old)
     end
 
-    transition = Transition(vi, t)
+    transition = Transition(model, vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
@@ -258,7 +258,7 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = Transition(vi, t)
+    transition = Transition(model, vi, t)
     newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate

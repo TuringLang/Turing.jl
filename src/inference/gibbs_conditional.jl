@@ -76,7 +76,7 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    condvals = conditioned(tonamedtuple(vi))
+    condvals = conditioned(getparams(model, vi))
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
     # Setindex allows only vectors in this case.
@@ -94,7 +94,7 @@ end
 Extract a `NamedTuple` of the values in `θ`; i.e., all names of `θ`, mapping to their respective
 values.
 
-`θ` is assumed to come from `tonamedtuple(vi)`, which returns a `NamedTuple` of the form
+`θ` is assumed to come from `getparams(model, vi)`, which returns a `NamedTuple` of the form
 
 ```julia
 t = (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
@@ -112,7 +112,7 @@ and this function implements the cleanup of indexing. `conditioned(t)` will ther
 end
 
 
-"""Takes care of removing the `tonamedtuple` indexing form."""
+"""Takes care of removing the `getparams` indexing form."""
 extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[1])
 function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
     values, strings = p

@@ -184,8 +184,8 @@ struct SGLDTransition{T,F<:Real}
     stepsize::F
 end
 
-function SGLDTransition(vi::AbstractVarInfo, stepsize)
-    theta = tonamedtuple(vi)
+function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
+    theta = getparams(vi)
     lp = getlogp(vi)
     return SGLDTransition(theta, lp, stepsize)
 end
@@ -214,7 +214,7 @@ function DynamicPPL.initialstep(
     end
 
     # Create first sample and state.
-    sample = SGLDTransition(vi, zero(spl.alg.stepsize(0)))
+    sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
     ℓ = LogDensityProblemsAD.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
     state = SGLDState(ℓ, vi, 1)
 
@@ -242,7 +242,7 @@ function AbstractMCMC.step(
     vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
 
     # Compute next sample and state.
-    sample = SGLDTransition(vi, stepsize)
+    sample = SGLDTransition(model, vi, stepsize)
     newstate = SGLDState(ℓ, vi, state.step + 1)
 
     return sample, newstate

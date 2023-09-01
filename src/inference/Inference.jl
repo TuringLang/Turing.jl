@@ -6,7 +6,7 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
     islinked, invlink!, link!,
     setindex!!, push!!,
     setlogp!!, getlogp,
-    tonamedtuple, VarName, getsym, vectorize,
+    VarName, getsym, vectorize,
     _getvns, getdist,
     Model, Sampler, SampleFromPrior, SampleFromUniform,
     DefaultContext, PriorContext,
@@ -153,8 +153,8 @@ end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
 
-function Transition(vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
-    θ = merge(tonamedtuple(vi), nt)
+function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t=nothing; nt::NamedTuple=NamedTuple())
+    θ = merge(getparams(model, vi), nt)
     lp = getlogp(vi)
     return Transition(θ, lp, getstats(t))
 end
@@ -295,14 +295,30 @@ end
 
 Return a named tuple of parameters.
 """
-getparams(t) = t.θ
-getparams(t::VarInfo) = tonamedtuple(TypedVarInfo(t))
+getparams(model, t) = t.θ
+function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
+    # Want the end-user to receive parameters in constrained space, so we `link`.
+    vi = DynamicPPL.invlink(vi, model)
 
-function _params_to_array(ts::Vector)
+    # Extract parameter values in a simple form from the `VarInfo`.
+    vals = DynamicPPL.values_as(vi, OrderedDict)
+
+    # Obtain an iterator over the flattened parameter names and values.
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+
+    # Materialize the iterators and concatenate.
+    return mapreduce(collect, vcat, iters)
+end
+
+
+function _params_to_array(model::DynamicPPL.Model, ts::Vector)
+    # TODO: Do we really need to use `Symbol` here?
     names_set = OrderedSet{Symbol}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
-        nms, vs = flatten_namedtuple(getparams(t))
+        nms_and_vs = getparams(model, t)
+        nms = map(Symbol ∘ first, nms_and_vs)
+        vs = map(last, nms_and_vs)
         for nm in nms
             push!(names_set, nm)
         end
@@ -313,21 +329,8 @@ function _params_to_array(ts::Vector)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
         (j, key) in enumerate(names)]
 
-    return names, vals
-end
 
-function flatten_namedtuple(nt::NamedTuple)
-    names_vals = mapreduce(vcat, keys(nt)) do k
-        v = nt[k]
-        if length(v) == 1
-            return [(Symbol(k), v)]
-        else
-            return mapreduce(vcat, zip(v[1], v[2])) do (vnval, vn)
-                return collect(FlattenIterator(vn, vnval))
-            end
-        end
-    end
-    return [vn[1] for vn in names_vals], [vn[2] for vn in names_vals]
+    return names, vals
 end
 
 function get_transition_extras(ts::AbstractVector{<:VarInfo})
@@ -384,7 +387,7 @@ function AbstractMCMC.bundle_samples(
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(ts)
+    nms, vals = _params_to_array(model, ts)
 
     # Get the values of the extra parameters in each transition.
     extra_params, extra_values = get_transition_extras(ts)
@@ -685,7 +688,7 @@ function transitions_from_chain(
         model(rng, vi, sampler)
 
         # Convert `VarInfo` into `NamedTuple` and save.
-        Transition(vi)
+        Transition(model, vi)
     end
 
     return transitions
