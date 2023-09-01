@@ -54,8 +54,8 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-include("optimisation/ModeEstimation.jl")
-using .ModeEstimation
+include("optimisation/Optimisation.jl")
+using .Optimisation
 
 ###########
 # Exports #
