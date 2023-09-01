@@ -9,7 +9,6 @@ using ..Turing: Turing
 using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
-import Bijectors: link, invlink
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
