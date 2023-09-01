@@ -1,7 +1,6 @@
 module Inference
 
 using ..Essential
-using ..Utilities
 using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
     islinked, invlink!, link!,
     setindex!!, push!!,
