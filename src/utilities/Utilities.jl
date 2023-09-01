@@ -13,8 +13,5 @@ export  vectorize,
         Chain,
         init,
         set_resume!,
-        FlattenIterator
-
-include("helper.jl")
 
 end # module
