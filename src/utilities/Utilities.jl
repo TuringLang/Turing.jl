@@ -6,14 +6,7 @@ using Distributions, Bijectors
 using StatsFuns, SpecialFunctions
 import Distributions: sample
 
-export  vectorize,
-        reconstruct,
-        reconstruct!,
-        Sample,
-        Chain,
-        init,
-        set_resume!,
-        FlattenIterator
+export FlattenIterator
 
 include("helper.jl")
 
