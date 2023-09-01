@@ -479,9 +479,9 @@ include("is.jl")
 include("particle_mcmc.jl")
 include("gibbs_conditional.jl")
 include("gibbs.jl")
+include("sghmc.jl")
 include("emcee.jl")
 include("abstractmcmc.jl")
-include("../contrib/inference/sghmc.jl")
 
 ################
 # Typing tools #

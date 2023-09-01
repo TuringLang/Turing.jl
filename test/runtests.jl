@@ -75,10 +75,10 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
                     @timeit_include("mcmc/gibbs_conditional.jl")
                     @timeit_include("mcmc/hmc.jl")
                     @timeit_include("mcmc/Inference.jl")
+                    @timeit_include("mcmc/sghmc.jl")
                     @timeit_include("mcmc/abstractmcmc.jl")
                     @timeit_include("mcmc/mh.jl")
                     @timeit_include("ext/dynamichmc.jl")
-                    @timeit_include("contrib/inference/sghmc.jl")
                 end
             end
 
@@ -87,8 +87,8 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
             end
 
             @testset "mode estimation : $adbackend" begin
-                @timeit_include("optimisation/Optimisation.jl")
                 @timeit_include("optimisation/OptimInterface.jl")
+                @timeit_include("ext/Optimisation.jl")
             end
 
         end
