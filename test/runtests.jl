@@ -75,9 +75,9 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
                     @timeit_include("inference/gibbs_conditional.jl")
                     @timeit_include("inference/hmc.jl")
                     @timeit_include("inference/Inference.jl")
-                    @timeit_include("contrib/inference/dynamichmc.jl")
-                    @timeit_include("contrib/inference/sghmc.jl")
-                    @timeit_include("contrib/inference/abstractmcmc.jl")
+                    @timeit_include("ext/dynamichmc.jl")
+                    @timeit_include("inference/sghmc.jl")
+                    @timeit_include("inference/abstractmcmc.jl")
                     @timeit_include("inference/mh.jl")
                 end
             end
@@ -87,7 +87,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
             end
 
             @testset "modes : $adbackend" begin
-                @timeit_include("modes/ModeEstimation.jl")
+                @timeit_include("ext/ModeEstimation.jl")
                 @timeit_include("modes/OptimInterface.jl")
             end
 
