@@ -185,7 +185,7 @@ struct SGLDTransition{T,F<:Real}
 end
 
 function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
-    theta = getparams(vi)
+    theta = getparams(model, vi)
     lp = getlogp(vi)
     return SGLDTransition(theta, lp, stepsize)
 end
