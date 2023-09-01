@@ -49,12 +49,12 @@ using .Utilities
 include("essential/Essential.jl")
 Base.@deprecate_binding Core Essential false
 using .Essential
-include("inference/Inference.jl")  # inference algorithms
+include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-include("modes/ModeEstimation.jl")
+include("optimisation/ModeEstimation.jl")
 using .ModeEstimation
 
 ###########
