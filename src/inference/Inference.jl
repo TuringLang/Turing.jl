@@ -437,9 +437,37 @@ function AbstractMCMC.bundle_samples(
     kwargs...
 )
     return map(ts) do t
-        params = map(first, getparams(model, t))
-        return merge(params, metadata(t))
+        # Construct a dictionary of pairs `vn => value`.
+        params = OrderedDict(getparams(model, t))
+        # Group the variable names by their symbol.
+        sym_to_vns = group_varnames_by_symbol(keys(params))
+        # Convert the values to a vector.
+        vals = map(values(sym_to_vns)) do vns
+            map(Base.Fix1(getindex, params), vns)
+        end
+        return merge(NamedTuple(zip(keys(sym_to_vns), vals)), metadata(t))
     end
+end
+
+"""
+    group_varnames_by_symbol(vns)
+
+Group the varnames by their symbol.
+
+# Arguments
+- `vns`: Iterable of `VarName`.
+
+# Returns
+- `OrderedDict{Symbol, Vector{VarName}}`: A dictionary mapping symbol to a vector of varnames.
+"""
+function group_varnames_by_symbol(vns)
+    d = OrderedDict{Symbol,Vector{VarName}}()
+    for vn in vns
+        sym = DynamicPPL.getsym(vn)
+        haskey(d, sym) || d[sym] = VarName[]
+        push!(d[sym], vn)
+    end
+    return d
 end
 
 function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
