@@ -290,7 +290,7 @@ end
 ##########################
 
 """
-    getparams(t)
+    getparams(model, t)
 
 Return a named tuple of parameters.
 """
@@ -437,7 +437,7 @@ function AbstractMCMC.bundle_samples(
     kwargs...
 )
     return map(ts) do t
-        params = map(first, getparams(t))
+        params = map(first, getparams(model, t))
         return merge(params, metadata(t))
     end
 end
