@@ -450,7 +450,7 @@ function DynamicPPL.initialstep(
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 function AbstractMCMC.step(
@@ -465,7 +465,7 @@ function AbstractMCMC.step(
     # 2. A bunch of NamedTuples that specify the proposal space
     vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 ####

@@ -51,7 +51,7 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = map(Transition, vis)
+    transition = map(Base.Fix1(Transition, model), vis)
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
@@ -84,9 +84,7 @@ function AbstractMCMC.step(
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = setindex!!(vi, _state.params, spl)
-        vi = DynamicPPL.invlink!!(vi, spl, model)
-        t = Transition(model, getparams(vi), _state.lp)
-        vi = DynamicPPL.link!!(vi, spl, model)
+        t = Transition(getparams(model, vi), _state.lp)
         return t
     end
     newstate = EmceeState(vi, states)
@@ -108,7 +106,7 @@ function AbstractMCMC.bundle_samples(
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    params_vec = map(_params_to_array, samples)
+    params_vec = map(Base.Fix1(_params_to_array, model), samples)
 
     # Extract names and values separately.
     nms = params_vec[1][1]

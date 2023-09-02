@@ -225,8 +225,8 @@ struct PGState
     rng::Random.AbstractRNG
 end
 
-function PGTransition(vi::AbstractVarInfo, logevidence)
-    theta = getparams(vi)
+function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
+    theta = getparams(model, vi)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
@@ -273,7 +273,7 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = PGTransition(_vi, logevidence)
+    transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, reference.rng)
 end
@@ -317,7 +317,7 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = PGTransition(_vi, logevidence)
+    transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, newreference.rng)
 end
