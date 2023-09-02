@@ -84,9 +84,7 @@ function AbstractMCMC.step(
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = setindex!!(vi, _state.params, spl)
-        vi = DynamicPPL.invlink!!(vi, spl, model)
-        t = Transition(model, vi, _state.lp)
-        vi = DynamicPPL.link!!(vi, spl, model)
+        t = Transition(getparams(model, vi), _state.lp)
         return t
     end
     newstate = EmceeState(vi, states)
