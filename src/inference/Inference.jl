@@ -464,7 +464,9 @@ function group_varnames_by_symbol(vns)
     d = OrderedDict{Symbol,Vector{VarName}}()
     for vn in vns
         sym = DynamicPPL.getsym(vn)
-        haskey(d, sym) || d[sym] = VarName[]
+        if !haskey(d, sym)
+            d[sym] = VarName[]
+        end
         push!(d[sym], vn)
     end
     return d
