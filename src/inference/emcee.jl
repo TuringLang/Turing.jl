@@ -108,7 +108,7 @@ function AbstractMCMC.bundle_samples(
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    params_vec = map(_params_to_array, samples)
+    params_vec = map(Base.Fix1(_params_to_array, model), samples)
 
     # Extract names and values separately.
     nms = params_vec[1][1]
