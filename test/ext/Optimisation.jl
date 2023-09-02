@@ -1,4 +1,4 @@
-@testset "Mode Estimation" begin
+@testset "ext/Optimisation.jl" begin
     @testset "gdemo" begin
         @testset "MLE" begin
             Random.seed!(222)
