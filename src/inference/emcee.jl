@@ -51,7 +51,7 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = map(Transition, vis)
+    transition = map(Base.Fix1(Transition, model), vis)
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
