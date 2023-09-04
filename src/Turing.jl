@@ -1,11 +1,10 @@
 module Turing
 
-using Requires, Reexport, ForwardDiff
+using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
-using Tracker: Tracker
 
 import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
@@ -44,18 +43,16 @@ ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(L
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("utilities/Utilities.jl")
-using .Utilities
 include("essential/Essential.jl")
 Base.@deprecate_binding Core Essential false
 using .Essential
-include("inference/Inference.jl")  # inference algorithms
+include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-include("modes/ModeEstimation.jl")
-using .ModeEstimation
+include("optimisation/Optimisation.jl")
+using .Optimisation
 
 ###########
 # Exports #
@@ -73,7 +70,6 @@ export  @model,                 # modelling
         Prior,                  # Sampling from the prior
 
         MH,                     # classic sampling
-        RWMH,
         Emcee,
         ESS,
         Gibbs,

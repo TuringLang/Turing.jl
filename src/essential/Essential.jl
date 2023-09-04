@@ -3,13 +3,11 @@ module Essential
 using DistributionsAD, Bijectors
 using Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
-using ..Utilities, Reexport
-using Tracker: Tracker
+using Reexport
 using ..Turing: Turing
 using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
 using Bijectors: PDMatDistribution
-import Bijectors: link, invlink
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL

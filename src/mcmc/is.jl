@@ -37,7 +37,7 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...
 )
-    return Transition(vi), nothing
+    return Transition(model, vi), nothing
 end
 
 function AbstractMCMC.step(
@@ -48,7 +48,7 @@ function AbstractMCMC.step(
     kwargs...
 )
     vi = VarInfo(rng, model, spl)
-    return Transition(vi), nothing
+    return Transition(model, vi), nothing
 end
 
 # Calculate evidence.

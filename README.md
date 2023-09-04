@@ -3,7 +3,6 @@
 [![Build Status](https://github.com/TuringLang/Turing.jl/workflows/Turing-CI/badge.svg)](https://github.com/TuringLang/Turing.jl/actions?query=workflow%3ATuring-CI+branch%3Amaster)
 [![Coverage Status](https://coveralls.io/repos/github/TuringLang/Turing.jl/badge.svg?branch=master)](https://coveralls.io/github/TuringLang/Turing.jl?branch=master)
 [![codecov](https://codecov.io/gh/TuringLang/Turing.jl/branch/master/graph/badge.svg?token=OiUBsnDQqf)](https://codecov.io/gh/TuringLang/Turing.jl)
-[![Documentation](https://img.shields.io/badge/doc-latest-blue.svg)](https://turinglang.org/dev/docs/using-turing/)
 [![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 
 
