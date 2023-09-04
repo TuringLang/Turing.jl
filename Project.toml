@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.28.3"
+version = "0.29"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -34,7 +34,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsAPI = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
@@ -57,7 +56,7 @@ Distributions = "0.23.3, 0.24, 0.25"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.23"
+DynamicPPL = "0.23.15"
 EllipticalSliceSampling = "0.5, 1"
 ForwardDiff = "0.10.3"
 Libtask = "0.7, 0.8"
@@ -74,7 +73,6 @@ SpecialFunctions = "0.7.2, 0.8, 0.9, 0.10, 1, 2"
 StatsAPI = "1.6"
 StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
-Tracker = "0.2.3"
 julia = "1.7"
 
 [extras]

@@ -76,50 +76,13 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...
 )
-    condvals = conditioned(tonamedtuple(vi))
+    condvals = DynamicPPL.values_as(DynamicPPL.invlink(vi, model), NamedTuple)
     conddist = spl.alg.conditional(condvals)
     updated = rand(rng, conddist)
     # Setindex allows only vectors in this case.
     vi = setindex!!(vi, [updated;], spl)
     # Update log joint probability.
-    vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
+    vi = last(DynamicPPL.evaluate!!(model, vi, DefaultContext()))
 
     return nothing, vi
-end
-
-
-"""
-    conditioned(θ::NamedTuple)
-
-Extract a `NamedTuple` of the values in `θ`; i.e., all names of `θ`, mapping to their respective
-values.
-
-`θ` is assumed to come from `tonamedtuple(vi)`, which returns a `NamedTuple` of the form
-
-```julia
-t = (m = ([0.234, -1.23], ["m[1]", "m[2]"]), λ = ([1.233], ["λ"])
-```
-
-and this function implements the cleanup of indexing. `conditioned(t)` will therefore return
-
-```julia
-(λ = 1.233, m = [0.234, -1.23])
-```
-"""
-@generated function conditioned(θ::NamedTuple{names}) where {names}
-    condvals = [:($n = extractparam(θ.$n)) for n in names]
-    return Expr(:tuple, condvals...)
-end
-
-
-"""Takes care of removing the `tonamedtuple` indexing form."""
-extractparam(p::Tuple{Vector{<:Array{<:Real}}, Vector{String}}) = foldl(vcat, p[1])
-function extractparam(p::Tuple{Vector{<:Real}, Vector{String}})
-    values, strings = p
-    if length(values) == length(strings) == 1 && !occursin(r".\[.+\]$", strings[1])
-        # if m ~ MVNormal([1], I), we could have have ([1], ["m[1]"])!
-        return values[1]
-    else
-        return values
-    end
 end

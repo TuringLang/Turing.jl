@@ -215,7 +215,7 @@ function DynamicPPL.initialstep(
     end
 
     # Compute initial transition and state.
-    transition = Transition(vi)
+    transition = Transition(model, vi)
     state = GibbsState(vi, samplers, states)
 
     return transition, state
@@ -253,5 +253,5 @@ function AbstractMCMC.step(
         return newstate
     end
 
-    return Transition(vi), GibbsState(vi, samplers, states)
+    return Transition(model, vi), GibbsState(vi, samplers, states)
 end

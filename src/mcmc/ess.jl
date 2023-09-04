@@ -43,7 +43,7 @@ function DynamicPPL.initialstep(
             error("[ESS] only supports Gaussian prior distributions")
     end
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 function AbstractMCMC.step(
@@ -74,7 +74,7 @@ function AbstractMCMC.step(
     vi = setindex!!(vi, sample, spl)
     vi = setlogp!!(vi, state.loglikelihood)
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 # Prior distribution of considered random variable
