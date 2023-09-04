@@ -44,8 +44,6 @@ ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(L
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("utilities/Utilities.jl")
-using .Utilities
 include("essential/Essential.jl")
 Base.@deprecate_binding Core Essential false
 using .Essential

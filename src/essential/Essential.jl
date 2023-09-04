@@ -3,7 +3,7 @@ module Essential
 using DistributionsAD, Bijectors
 using Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
-using ..Utilities, Reexport
+using Reexport
 using Tracker: Tracker
 using ..Turing: Turing
 using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
