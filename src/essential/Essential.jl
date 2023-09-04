@@ -4,7 +4,6 @@ using DistributionsAD, Bijectors
 using Libtask, ForwardDiff, Random
 using Distributions, LinearAlgebra
 using Reexport
-using Tracker: Tracker
 using ..Turing: Turing
 using DynamicPPL: Model, AbstractSampler, Sampler, SampleFromPrior
 using LinearAlgebra: copytri!
