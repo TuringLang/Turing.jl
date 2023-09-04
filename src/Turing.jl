@@ -1,6 +1,6 @@
 module Turing
 
-using Requires, Reexport, ForwardDiff
+using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
