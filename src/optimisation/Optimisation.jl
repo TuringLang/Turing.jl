@@ -1,4 +1,4 @@
-module ModeEstimation
+module Optimisation
 
 using ..Turing
 using Bijectors

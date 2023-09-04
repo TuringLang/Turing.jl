@@ -89,7 +89,7 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
-    sample = Turing.Inference.Transition(vi)
+    sample = Turing.Inference.Transition(model, vi)
     state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
@@ -119,7 +119,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
-    sample = Turing.Inference.Transition(vi)
+    sample = Turing.Inference.Transition(model, vi)
     newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
 
     return sample, newstate

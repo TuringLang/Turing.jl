@@ -52,8 +52,8 @@ struct SMCTransition{T,F<:AbstractFloat}
     weight::F
 end
 
-function SMCTransition(vi::AbstractVarInfo, weight)
-    theta = tonamedtuple(vi)
+function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
+    theta = getparams(model, vi)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
@@ -128,7 +128,7 @@ function DynamicPPL.initialstep(
     weight = AdvancedPS.getweight(particles, 1)
 
     # Compute the first transition and the first state.
-    transition = SMCTransition(particle.model.f.varinfo, weight)
+    transition = SMCTransition(model, particle.model.f.varinfo, weight)
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -150,7 +150,7 @@ function AbstractMCMC.step(
     weight = AdvancedPS.getweight(particles, index)
 
     # Compute the transition and the next state.
-    transition = SMCTransition(particle.model.f.varinfo, weight)
+    transition = SMCTransition(model, particle.model.f.varinfo, weight)
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -225,8 +225,8 @@ struct PGState
     rng::Random.AbstractRNG
 end
 
-function PGTransition(vi::AbstractVarInfo, logevidence)
-    theta = tonamedtuple(vi)
+function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
+    theta = getparams(model, vi)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
@@ -273,7 +273,7 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = PGTransition(_vi, logevidence)
+    transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, reference.rng)
 end
@@ -317,7 +317,7 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = PGTransition(_vi, logevidence)
+    transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, newreference.rng)
 end

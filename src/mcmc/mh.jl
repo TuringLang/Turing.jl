@@ -188,6 +188,20 @@ function MH(space...)
     return MH{tuple(syms...), typeof(proposals)}(proposals)
 end
 
+# Some of the proposals require working in unconstrained space.
+transform_maybe(proposal::AMH.Proposal) = proposal
+function transform_maybe(proposal::AMH.RandomWalkProposal)
+    return AMH.RandomWalkProposal(Bijectors.transformed(proposal.proposal))
+end
+
+function MH(model::Model; proposal_type=AMH.StaticProposal)
+    priors = DynamicPPL.extract_priors(model)
+    props = Tuple([proposal_type(prop) for prop in values(priors)])
+    vars = Tuple(map(Symbol, collect(keys(priors))))
+    priors = map(transform_maybe, NamedTuple{vars}(props))
+    return AMH.MetropolisHastings(priors)
+end
+
 #####################
 # Utility functions #
 #####################
@@ -346,6 +360,7 @@ end
 function should_link(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
     return true
 end
+# FIXME: This won't be hit unless `vals` are all the exactly same concrete type of `AdvancedMH.RandomWalkProposal`!
 function should_link(
     varinfo,
     sampler,
@@ -435,7 +450,7 @@ function DynamicPPL.initialstep(
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 function AbstractMCMC.step(
@@ -450,7 +465,7 @@ function AbstractMCMC.step(
     # 2. A bunch of NamedTuples that specify the proposal space
     vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
 
-    return Transition(vi), vi
+    return Transition(model, vi), vi
 end
 
 ####

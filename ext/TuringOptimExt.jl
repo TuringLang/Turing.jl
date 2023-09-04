@@ -250,10 +250,10 @@ function _optimize(
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(
-        DynamicPPL.tonamedtuple(f.varinfo),
+        Turing.Inference.getparams(model, f.varinfo),
         DynamicPPL.getlogp(f.varinfo)
     )]
-    varnames, _ = Turing.Inference._params_to_array(ts)
+    varnames, _ = Turing.Inference._params_to_array(model, ts)
 
     # Store the parameters and their names in an array.
     vmat = NamedArrays.NamedArray(vals, varnames)

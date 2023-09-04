@@ -141,19 +141,3 @@ function verifygrad(grad::AbstractVector{<:Real})
         return true
     end
 end
-
-# These still seem necessary
-for F in (:link, :invlink)
-    @eval begin
-        $F(dist::PDMatDistribution, x::Tracker.TrackedArray) = Tracker.track($F, dist, x)
-        Tracker.@grad function $F(dist::PDMatDistribution, x::Tracker.TrackedArray)
-            x_data = Tracker.data(x)
-            T = eltype(x_data)
-            y = $F(dist, x_data)
-            return  y, Δ -> begin
-                out = reshape((ForwardDiff.jacobian(x -> $F(dist, x), x_data)::Matrix{T})' * vec(Δ), size(Δ))
-                return (nothing, out)
-            end
-        end
-    end
-end
