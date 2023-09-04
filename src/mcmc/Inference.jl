@@ -507,12 +507,12 @@ include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
-include("AdvancedSMC.jl")
+include("particle_mcmc.jl")
 include("gibbs_conditional.jl")
 include("gibbs.jl")
-include("../contrib/inference/sghmc.jl")
+include("sghmc.jl")
 include("emcee.jl")
-include("../contrib/inference/abstractmcmc.jl")
+include("abstractmcmc.jl")
 
 ################
 # Typing tools #
