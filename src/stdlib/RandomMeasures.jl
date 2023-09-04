@@ -1,6 +1,5 @@
 module RandomMeasures
 
-#using ..Utilities
 using Distributions
 using LinearAlgebra
 using StatsFuns: logsumexp, softmax!

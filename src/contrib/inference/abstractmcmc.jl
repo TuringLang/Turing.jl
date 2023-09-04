@@ -5,11 +5,11 @@ end
 
 state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
+    # TODO: We should probably rename this `getparams` since it returns something
+    # very different from `Turing.Inference.getparams`.
     θ = getparams(transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
-    # TODO: `deepcopy` is overkill; make more efficient.
-    varinfo = DynamicPPL.invlink!!(deepcopy(varinfo), f.model)
-    return Transition(varinfo, transition)
+    return Transition(f.model, varinfo, transition)
 end
 
 # NOTE: Only thing that depends on the underlying sampler.
