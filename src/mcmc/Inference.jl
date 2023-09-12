@@ -378,6 +378,7 @@ function AbstractMCMC.bundle_samples(
     save_state = false,
     stats = missing,
     sort_chain = false,
+    include_varname_to_symbol = true,
     discard_initial = 0,
     thinning = 1,
     kwargs...
@@ -398,7 +399,12 @@ function AbstractMCMC.bundle_samples(
     le = getlogevidence(ts, spl, state)
 
     # Set up the info tuple.
-    info = (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),)
+    info = NamedTuple()
+
+    if include_varname_to_symbol
+        info = merge(info, (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),))
+    end
+
     if save_state
         info = merge(info, (model = model, sampler = spl, samplerstate = state))
     end
