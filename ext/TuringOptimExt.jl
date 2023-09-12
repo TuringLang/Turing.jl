@@ -253,7 +253,7 @@ function _optimize(
         Turing.Inference.getparams(model, f.varinfo),
         DynamicPPL.getlogp(f.varinfo)
     )]
-    varnames, _ = Turing.Inference._params_to_array(model, ts)
+    varnames = map(Symbol, first(Turing.Inference._params_to_array(model, ts)))
 
     # Store the parameters and their names in an array.
     vmat = NamedArrays.NamedArray(vals, varnames)

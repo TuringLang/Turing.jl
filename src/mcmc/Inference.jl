@@ -310,18 +310,17 @@ end
 
 
 function _params_to_array(model::DynamicPPL.Model, ts::Vector)
-    # TODO: Do we really need to use `Symbol` here?
-    names_set = OrderedSet{Symbol}()
+    names_set = OrderedSet{VarName}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
         nms_and_vs = getparams(model, t)
-        nms = map(Symbol ∘ first, nms_and_vs)
+        nms = map(first, nms_and_vs)
         vs = map(last, nms_and_vs)
         for nm in nms
             push!(names_set, nm)
         end
         # Convert the names and values to a single dictionary.
-        return Dict(nms[j] => vs[j] for j in 1:length(vs))
+        return OrderedDict(zip(nms, vs))
     end
     names = collect(names_set)
     vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
@@ -379,29 +378,35 @@ function AbstractMCMC.bundle_samples(
     save_state = false,
     stats = missing,
     sort_chain = false,
+    include_varname_to_symbol = true,
     discard_initial = 0,
     thinning = 1,
     kwargs...
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
-    nms, vals = _params_to_array(model, ts)
+    varnames, vals = _params_to_array(model, ts)
+    varnames_symbol = map(Symbol, varnames)
 
     # Get the values of the extra parameters in each transition.
     extra_params, extra_values = get_transition_extras(ts)
 
     # Extract names & construct param array.
-    nms = [nms; extra_params]
+    nms = [varnames_symbol; extra_params]
     parray = hcat(vals, extra_values)
 
     # Get the average or final log evidence, if it exists.
     le = getlogevidence(ts, spl, state)
 
     # Set up the info tuple.
+    info = NamedTuple()
+
+    if include_varname_to_symbol
+        info = merge(info, (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),))
+    end
+
     if save_state
-        info = (model = model, sampler = spl, samplerstate = state)
-    else
-        info = NamedTuple()
+        info = merge(info, (model = model, sampler = spl, samplerstate = state))
     end
 
     # Merge in the timing info, if available
