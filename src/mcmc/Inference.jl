@@ -293,6 +293,7 @@ end
 
 Return a named tuple of parameters.
 """
+getparams(t) = t.θ
 getparams(model, t) = t.θ
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # Want the end-user to receive parameters in constrained space, so we `link`.
