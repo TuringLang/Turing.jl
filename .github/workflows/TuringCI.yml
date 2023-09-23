@@ -13,7 +13,6 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.7'
           - '1'
         os:
           - ubuntu-latest
@@ -22,19 +21,6 @@ jobs:
         num_threads:
           - 1
           - 2
-        include:
-          - version: '1.7'
-            os: ubuntu-latest
-            arch: x86
-            num_threads: 2
-          - version: '1.7'
-            os: windows-latest
-            arch: x64
-            num_threads: 2
-          - version: '1.7'
-            os: macOS-latest
-            arch: x64
-            num_threads: 2
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1

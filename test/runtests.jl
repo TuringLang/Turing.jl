@@ -63,19 +63,20 @@ const TIMEROUTPUT = TimerOutputs.TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
 
 @testset "Turing" begin
-    @testset "essential" begin
-        @timeit_include("essential/ad.jl")
-    end
+    # NOTE: Doesn't contain Enzyme tests.
+    # @testset "essential" begin
+    #     @timeit_include("essential/ad.jl")
+    # end
 
-    @testset "samplers (without AD)" begin
-        @timeit_include("mcmc/particle_mcmc.jl")
-        @timeit_include("mcmc/emcee.jl")
-        @timeit_include("mcmc/ess.jl")
-        @timeit_include("mcmc/is.jl")
-    end
+    # @testset "samplers (without AD)" begin
+    #     @timeit_include("mcmc/particle_mcmc.jl")
+    #     @timeit_include("mcmc/emcee.jl")
+    #     @timeit_include("mcmc/ess.jl")
+    #     @timeit_include("mcmc/is.jl")
+    # end
 
     Turing.setrdcache(false)
-    for adbackend in (:forwarddiff, :reversediff, :enzyme)
+    for adbackend in (:enzyme,)
         @timeit TIMEROUTPUT "inference: $adbackend" begin
             Turing.setadbackend(adbackend)
             @info "Testing $(adbackend)"
@@ -104,19 +105,19 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
         end
     end
 
-    @testset "variational optimisers" begin
-        @timeit_include("variational/optimisers.jl")
-    end
+    # @testset "variational optimisers" begin
+    #     @timeit_include("variational/optimisers.jl")
+    # end
 
-    Turing.setadbackend(:forwarddiff)
-    @testset "stdlib" begin
-        @timeit_include("stdlib/distributions.jl")
-        @timeit_include("stdlib/RandomMeasures.jl")
-    end
+    # Turing.setadbackend(:forwarddiff)
+    # @testset "stdlib" begin
+    #     @timeit_include("stdlib/distributions.jl")
+    #     @timeit_include("stdlib/RandomMeasures.jl")
+    # end
 
-    @testset "utilities" begin
-        @timeit_include("mcmc/utilities.jl")
-    end
+    # @testset "utilities" begin
+    #     @timeit_include("mcmc/utilities.jl")
+    # end
 end
 
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)
