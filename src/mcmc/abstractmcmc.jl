@@ -15,10 +15,10 @@ end
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
-getparams(transition::AdvancedHMC.Transition) = transition.z.θ
+getparams(::DynamicPPL.Model, transition::AdvancedHMC.Transition) = transition.z.θ
 getstats(transition::AdvancedHMC.Transition) = transition.stat
 
-getparams(transition::AdvancedMH.Transition) = transition.params
+getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
 
 getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
 getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
