@@ -7,7 +7,7 @@ state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     # TODO: We should probably rename this `getparams` since it returns something
     # very different from `Turing.Inference.getparams`.
-    θ = getparams(transition)
+    θ = getparams(f.model, transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
     return Transition(f.model, varinfo, transition)
 end
