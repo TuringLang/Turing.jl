@@ -132,13 +132,13 @@ function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
-    vi::AbstractVarInfo;
+    vi_original::AbstractVarInfo;
     init_params=nothing,
     nadapts=0,
     kwargs...
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = link!!(vi, spl, model)
+    vi = DynamicPPL.link(vi_original, spl, model)
 
     # Extract parameters.
     theta = vi[spl]
