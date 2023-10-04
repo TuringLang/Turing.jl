@@ -159,7 +159,6 @@ function AbstractMCMC.step(
 
     # 1. Run the model once to get the varnames present + initial values to condition on.
     vi_base = DynamicPPL.VarInfo(model)
-    @info "" varnames map(Base.Fix1(map, DynamicPPL.getsym), varnames)
     varinfos = map(Base.Fix1(subset, vi_base), varnames)
 
     # 2. Construct a varinfo for every vn + sampler combo.
@@ -168,13 +167,12 @@ function AbstractMCMC.step(
         model_local = make_conditional(model, varinfo_local, varinfos)
 
         # Take initial step.
-        new_state_local =
-            last(AbstractMCMC.step(rng, model_local, sampler_local; kwargs...))
+        new_state_local = last(AbstractMCMC.step(rng, model_local, sampler_local; kwargs...))
 
         # Return the new state and the invlinked `varinfo`.
         vi_local_state = varinfo(new_state_local)
         vi_local_state_linked = if DynamicPPL.istrans(vi_local_state)
-            DynamicPPL.invlink!!(deepcopy(vi_local_state), sampler_local, model_local)
+            DynamicPPL.invlink(vi_local_state, sampler_local, model_local)
         else
             vi_local_state
         end
@@ -192,7 +190,66 @@ function AbstractMCMC.step(
         DynamicPPL.getlogp(last(varinfos)),
     )
 
-    return Transition(vi), GibbsV2State(vi, states)
+    return Transition(model, vi), GibbsV2State(vi, states)
+end
+
+function gibbs_step_inner(
+    rng::Random.AbstractRNG,
+    model::Model,
+    samplers,
+    states,
+    varinfos,
+    index;
+    kwargs...,
+)
+    # Needs to do a a few things.
+    sampler_local = samplers[index]
+    state_local = states[index]
+    varinfo_local = varinfos[index]
+
+    # 1. Create conditional model.
+    # Construct the conditional model.
+    # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
+    # otherwise we're conditioning on values which are not in the support of the
+    # distributions.
+    model_local = make_conditional(model, varinfo_local, varinfos)
+
+    # TODO: Might need to re-run the model.
+    # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
+    # the resulting varinfo might be in un-transformed space even if `varinfo_local`
+    # is in transformed space. This can occur if we hit `maybe_invlink_before_eval!!`.
+    varinfo_local = DynamicPPL.setlogp!!(
+        varinfo_local,
+        DynamicPPL.logjoint(model_local, varinfo_local),
+    )
+
+    # 2. Take step with local sampler.
+    # Update the state we're about to use if need be.
+    # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
+    current_state_local = gibbs_state(model_local, sampler_local, state_local, varinfo_local)
+
+    # Take a step.
+    new_state_local = last(
+        AbstractMCMC.step(
+            rng,
+            model_local,
+            sampler_local,
+            current_state_local;
+            kwargs...,
+        ),
+    )
+
+    # 3. Extract the new varinfo.
+    # Return the resulting state and invlinked `varinfo`.
+    varinfo_local_state = varinfo(new_state_local)
+    varinfo_local_state_invlinked = if DynamicPPL.istrans(varinfo_local_state)
+        DynamicPPL.invlink(varinfo_local_state, sampler_local, model_local)
+    else
+        varinfo_local_state
+    end
+
+    # TODO: alternatively, we can return `states_new, varinfos_new, index_new`
+    return (new_state_local, varinfo_local_state_invlinked)
 end
 
 function AbstractMCMC.step(
@@ -204,59 +261,27 @@ function AbstractMCMC.step(
 )
     alg = spl.alg
     samplers = alg.samplers
-
+    states = state.states
     varinfos = map(varinfo, state.states)
     @assert length(samplers) == length(state.states)
 
+    # TODO: move this into a recursive function so we can unroll when reasonable?
+    for index = 1:length(samplers)
+        # Take the inner step.
+        new_state_local, new_varinfo_local = gibbs_step_inner(
+            rng,
+            model,
+            samplers,
+            states,
+            varinfos,
+            index;
+            kwargs...,
+        )
 
-    states_and_varinfos =
-        map(samplers, state.states, varinfos) do sampler_local, state_local, varinfo_local
-            # Construct the conditional model.
-            # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
-            # otherwise we're conditioning on values which are not in the support of the
-            # distributions.
-            model_local = make_conditional(model, varinfo_local, varinfos)
-
-            # TODO: Might need to re-run the model.
-            # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
-            # the resulting varinfo might be in un-transformed space even if `varinfo_local`
-            # is in transformed space. This can occur if we hit `maybe_invlink_before_eval!!`.
-            varinfo_local = DynamicPPL.setlogp!!(
-                varinfo_local,
-                DynamicPPL.logjoint(model_local, varinfo_local),
-            )
-
-            # Update the state we're about to use if need be.
-            # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
-            current_state_local =
-                gibbs_state(model_local, sampler_local, state_local, varinfo_local)
-
-            # Take a step.
-            new_state_local = last(
-                AbstractMCMC.step(
-                    rng,
-                    model_local,
-                    sampler_local,
-                    current_state_local;
-                    kwargs...,
-                ),
-            )
-
-            # Return the resulting state and invlinked `varinfo`.
-            # NOTE: We have to `deepcopy` to avoid potentially changing
-            # the varinfo in the `new_state_local`.
-            varinfo_local_state = deepcopy(varinfo(new_state_local))
-            varinfo_local_state_invlinked = if DynamicPPL.istrans(varinfo_local_state)
-                DynamicPPL.invlink!!(varinfo_local_state, sampler_local, model_local)
-            else
-                varinfo_local_state
-            end
-            return (new_state_local, varinfo_local_state_invlinked)
-        end
-
-    states_and_varinfos = tuple(states_and_varinfos...)
-    states = map(first, states_and_varinfos)
-    varinfos = map(last, states_and_varinfos)
+        # Update the `states` and `varinfos`.
+        states = Setfield.setindex(states, new_state_local, index)
+        varinfos = Setfield.setindex(varinfos, new_varinfo_local, index)
+    end
 
     # Combine the resulting varinfo objects.
     # The last varinfo holds the correctly computed logp.
@@ -274,5 +299,5 @@ function AbstractMCMC.step(
         DynamicPPL.getlogp(last(varinfos)),
     )
 
-    return Transition(vi), GibbsV2State(vi, states)
+    return Transition(model, vi), GibbsV2State(vi, states)
 end
