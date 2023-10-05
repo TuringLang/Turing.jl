@@ -118,7 +118,7 @@ end
 for cache in (:true, :false)
     @eval begin
         function LogDensityProblemsAD.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
-            return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache))
+            return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache), x=DynamicPPL.getparams(ℓ))
         end
     end
 end
