@@ -23,7 +23,7 @@ function subset(vi::DynamicPPL.SimpleVarInfo, vns::VarName...)
     return DynamicPPL.BangBang.@set!! vi.values = vals
 end
 
-function Base.merge(md::DynamicPPL.Metadata, md_subset::DynamicPPL.Metadata)
+function merge_metadata(md::DynamicPPL.Metadata, md_subset::DynamicPPL.Metadata)
     @assert md.vns == md_subset.vns "Cannot merge metadata with different vns."
     @assert length(md.vals) == length(md_subset.vals) "Cannot merge metadata with different length vals."
 
@@ -40,7 +40,7 @@ function Base.merge(md::DynamicPPL.Metadata, md_subset::DynamicPPL.Metadata)
     )
 end
 
-function Base.merge(
+function merge_varinfo(
     vi::DynamicPPL.VarInfo{<:NamedTuple{names}},
     vi_subset::TypedVarInfo,
 ) where {names}
@@ -48,7 +48,7 @@ function Base.merge(
     metadata_vals = map(names) do vn_sym
         # TODO: Make generated.
         return if haskey(vi_subset, VarName{vn_sym}())
-            merge(vi.metadata[vn_sym], vi_subset.metadata[vn_sym])
+            merge_metadata(vi.metadata[vn_sym], vi_subset.metadata[vn_sym])
         else
             vi.metadata[vn_sym]
         end
@@ -58,16 +58,16 @@ function Base.merge(
     return DynamicPPL.VarInfo(NamedTuple{names}(metadata_vals), vi.logp, vi.num_produce)
 end
 
-function Base.merge(vi_left::SimpleVarInfo, vi_right::SimpleVarInfo)
+function merge_varinfo(vi_left::SimpleVarInfo, vi_right::SimpleVarInfo)
     return SimpleVarInfo(
         merge(vi_left.values, vi_right.values),
         vi_left.logp + vi_right.logp,
     )
 end
 
-function Base.merge(vi_left::TypedVarInfo, vi_right::TypedVarInfo)
+function merge_varinfo(vi_left::TypedVarInfo, vi_right::TypedVarInfo)
     return TypedVarInfo(
-        merge(vi_left.metadata, vi_right.metadata),
+        merge_metadata(vi_left.metadata, vi_right.metadata),
         vi_left.logp + vi_right.logp,
     )
 end
@@ -101,21 +101,29 @@ Construct a conditional model from `model` conditioned `varinfos`, excluding `va
 julia> model = DynamicPPL.TestUtils.demo_assume_dot_observe();
 
 julia> # A separate varinfo for each variable in `model`.
-       varinfos = (SimpleVarInfo(s=1.0), SimpleVarInfo(m=10.0));
+       varinfos = (DynamicPPL.SimpleVarInfo(s=1.0), DynamicPPL.SimpleVarInfo(m=10.0));
 
 julia> # The varinfo we want to NOT condition on.
        target_varinfo = first(varinfos);
 
 julia> # Results in a model with only `m` conditioned.
-       conditional_model = make_conditional(model, target_varinfo, varinfos);
+       conditioned_model = Turing.Inference.make_conditional(model, target_varinfo, varinfos);
 
-julia> rand(conditioned_model)
+julia> result = conditioned_model();
+
+julia> result.m == 10.0  # we conditioned on varinfo with `m = 10.0`
+true
+
+julia> result.s != 1.0  # we did NOT want to condition on varinfo with `s = 1.0`
+true
 ```
-
 """
 function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfos)
     # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
-    return DynamicPPL.condition(model, filter(Base.Fix1(!==, target_varinfo), varinfos)...)
+    return DynamicPPL.condition(
+        model,
+        filter(Base.Fix1(!==, target_varinfo), varinfos)...
+    )
 end
 
 wrap_algorithm_maybe(x) = x
@@ -136,7 +144,9 @@ function GibbsV2(algs::NamedTuple)
 end
 
 # AbstractDict
-GibbsV2(algs::AbstractDict) = GibbsV2(keys(algs), map(wrap_algorithm_maybe, values(algs)))
+function GibbsV2(algs::AbstractDict)
+    return GibbsV2(keys(algs), map(wrap_algorithm_maybe, values(algs)))
+end
 function GibbsV2(algs::Pair...)
     return GibbsV2(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
@@ -186,7 +196,7 @@ function AbstractMCMC.step(
     varinfos_new = DynamicPPL.setindex!!(varinfos, vi_base, 1)
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
-        reduce(merge, varinfos_new),
+        reduce(merge_varinfo, varinfos_new),
         DynamicPPL.getlogp(last(varinfos)),
     )
 
@@ -226,7 +236,9 @@ function gibbs_step_inner(
     # 2. Take step with local sampler.
     # Update the state we're about to use if need be.
     # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
-    current_state_local = gibbs_state(model_local, sampler_local, state_local, varinfo_local)
+    current_state_local = gibbs_state(
+        model_local, sampler_local, state_local, varinfo_local
+    )
 
     # Take a step.
     new_state_local = last(
@@ -290,12 +302,12 @@ function AbstractMCMC.step(
     # Update the base varinfo from the first varinfo and replace it.
     varinfos_new = DynamicPPL.setindex!!(
         varinfos,
-        merge(vi_base, first(varinfos)),
+        merge_varinfo(vi_base, first(varinfos)),
         firstindex(varinfos),
     )
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
-        reduce(merge, varinfos_new),
+        reduce(merge_varinfo, varinfos_new),
         DynamicPPL.getlogp(last(varinfos)),
     )
 
