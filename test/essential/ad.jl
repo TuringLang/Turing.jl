@@ -198,4 +198,18 @@
             end
         end
     end
+
+    @testset "ReverseDiff compiled without linking" begin
+        f = DynamicPPL.LogDensityFunction(gdemo_default)
+        θ = DynamicPPL.getparams(f)
+
+        f_rd = LogDensityProblemsAD.ADgradient(Turing.Essential.ReverseDiffAD{false}(), f)
+        f_rd_compiled = LogDensityProblemsAD.ADgradient(Turing.Essential.ReverseDiffAD{true}(), f)
+
+        ℓ, ℓ_grad = LogDensityProblems.logdensity_and_gradient(f_rd, θ)
+        ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(f_rd_compiled, θ)
+
+        @test ℓ == ℓ_compiled
+        @test ℓ_grad == ℓ_grad_compiled
+    end
 end
