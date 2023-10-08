@@ -12,6 +12,8 @@ function subset(vi::DynamicPPL.TypedVarInfo, vns::VarName...)
     # TODO: peform proper check of the meatdatas corresponding to different symbols.
     # F. ex. we might have vns `(@varname(x[1]), @varname(x[2]))`, in which case they
     # have the same `metadata`. If they don't, we should error.
+
+    # TODO: Handle mixing of symbols, e.g. `(@varname(x[1]), @varname(y[1]))`.
     vns_unique_syms = unique_tuple(map(DynamicPPL.getsym, vns))
     mds = map(Base.Fix1(DynamicPPL.getfield, vi.metadata), vns_unique_syms)
     return DynamicPPL.VarInfo(NamedTuple{vns_unique_syms}(mds), vi.logp, vi.num_produce)
