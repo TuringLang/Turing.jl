@@ -99,7 +99,7 @@ Wrap a sampler so it can be used as an inference algorithm.
 externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
 function LogDensityProblems.logdensity(
-    f::Turing.LogDensityFunction{<:AbstractVarInfo,M<:Model,<:DynamicPPL.DefaultContext},
+    f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
     x::NamedTuple
 )
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
