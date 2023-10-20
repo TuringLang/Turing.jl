@@ -7,7 +7,7 @@ state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
 function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     # TODO: We should probably rename this `getparams` since it returns something
     # very different from `Turing.Inference.getparams`.
-    θ = getparams(transition)
+    θ = getparams(f.model, transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
     return Transition(f.model, varinfo, transition)
 end
@@ -15,10 +15,10 @@ end
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
-getparams(transition::AdvancedHMC.Transition) = transition.z.θ
+getparams(::DynamicPPL.Model, transition::AdvancedHMC.Transition) = transition.z.θ
 getstats(transition::AdvancedHMC.Transition) = transition.stat
 
-getparams(transition::AdvancedMH.Transition) = transition.params
+getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
 
 getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
 getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
