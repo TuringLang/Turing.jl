@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.29.3"
+version = "0.29.4"
 
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -70,6 +70,7 @@ Requires = "0.5, 1.0"
 SciMLBase = "1.37.1, 2"
 Setfield = "0.8, 1"
 SpecialFunctions = "0.7.2, 0.8, 0.9, 0.10, 1, 2"
+Statistics = "1"
 StatsAPI = "1.6"
 StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
