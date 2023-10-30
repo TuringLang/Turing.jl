@@ -389,9 +389,6 @@ function AdvancedPS.Trace(
     DynamicPPL.reset_num_produce!(newvarinfo)
 
     tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
-    ttask = Libtask.TapedTask(tmodel, rng; deepcopy_types=Union{typeof(rng), typeof(model)})
-    wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
-
-    newtrace = AdvancedPS.Trace(wrapedmodel, rng)
+    newtrace = AdvancedPS.Trace(tmodel, rng)
     return newtrace
 end
