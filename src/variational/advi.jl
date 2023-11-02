@@ -100,7 +100,7 @@ end
 """
     meanfield([rng, ]model::Model)
 
-Creates a mean-field approximation with multivariate normal as underlying distribution.
+Creates a mean-field approximation with a unit normal as underlying distribution.
 """
 meanfield(model::DynamicPPL.Model) = meanfield(Random.default_rng(), model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
@@ -123,44 +123,31 @@ function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     return Bijectors.transformed(d, Bijectors.inverse(b))
 end
 
-# Overloading stuff from `AdvancedVI` to specialize for Turing
-function AdvancedVI.update(d::DistributionsAD.TuringDiagMvNormal, μ, σ)
-    return DistributionsAD.TuringDiagMvNormal(μ, σ)
-end
-function AdvancedVI.update(td::Bijectors.TransformedDistribution, θ...)
-    return Bijectors.transformed(AdvancedVI.update(td.dist, θ...), td.transform)
-end
-function AdvancedVI.update(
-    td::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal},
-    θ::AbstractArray,
-)
-    μ, ω = θ[1:length(td)], θ[length(td) + 1:end]
-    return AdvancedVI.update(td, μ, StatsFuns.softplus.(ω))
-end
+ADVI() = AdvancedVI.ADVI(1)
 
-function AdvancedVI.vi(
+function vi(
     model::DynamicPPL.Model,
-    alg::AdvancedVI.ADVI;
-    optimizer = AdvancedVI.TruncatedADAGrad(),
+    obj::ADVI,
+    max_iters::Int;
+    kwargs...
 )
-    q = meanfield(model)
-    return AdvancedVI.vi(model, alg, q; optimizer = optimizer)
+    q_trans = meanfield(model)
+    return vi(model, obj, q_trans, max_iters; kwargs...)
 end
 
-
-function AdvancedVI.vi(
+function vi(
     model::DynamicPPL.Model,
-    alg::AdvancedVI.ADVI,
-    q::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal};
-    optimizer = AdvancedVI.TruncatedADAGrad(),
+    obj::ADVI,
+    q,
+    max_iters::Int;
+    kwargs...
 )
-    # Initial parameters for mean-field approx
-    μ, σs = StatsBase.params(q)
-    θ = vcat(μ, StatsFuns.invsoftplus.(σs))
+    varinfo = DynamicPPL.VarInfo(model)
+    b = Bijectors.bijector(model)
+    prob = DynamicPPL.LogDensityFunction(model, varinfo)
 
-    # Optimize
-    AdvancedVI.optimize!(elbo, alg, q, make_logjoint(model), θ; optimizer = optimizer)
-
-    # Return updated `Distribution`
-    return AdvancedVI.update(q, θ)
+    q, _, _ = optimize(
+        prob, obj, q, max_iters; adbackend=ADBackend(), kwargs...
+    )
+    return q
 end

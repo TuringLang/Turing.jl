@@ -9,6 +9,7 @@ using ForwardDiff
 using MCMCChains
 using NamedArrays
 using Optim
+using Optimisers
 using Optimization
 using OptimizationOptimJL
 using PDMats
@@ -92,10 +93,6 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
             end
 
         end
-    end
-
-    @testset "variational optimisers" begin
-        @timeit_include("variational/optimisers.jl")
     end
 
     Turing.setadbackend(:forwarddiff)
