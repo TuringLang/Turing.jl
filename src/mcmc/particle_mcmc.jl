@@ -390,5 +390,6 @@ function AdvancedPS.Trace(
 
     tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
+    AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
     return newtrace
 end

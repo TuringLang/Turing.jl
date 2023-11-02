@@ -1,4 +1,4 @@
-struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel{M}
+struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
 	model::M
 	sampler::S
 	varinfo::V
@@ -24,26 +24,22 @@ function TracedModel(
 	)
 end
 
-function Base.copy(model::AdvancedPS.AbstractGenericModel)
+function Base.copy(model::AdvancedPS.LibtaskModel{<:TracedModel})
 	newtask = copy(model.ctask)
-	newmodel = TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(deepcopy(model.f.model), deepcopy(model.f.sampler), deepcopy(model.f.varinfo), deepcopy(model.f.evaluator))
-	gen_model = AdvancedPS.AbstractGenericModel(newmodel, newtask)
+	newmodel = TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
+		deepcopy(model.f.model), 
+		deepcopy(model.f.sampler), 
+		deepcopy(model.f.varinfo), 
+		deepcopy(model.f.evaluator)
+	)
+	gen_model = AdvancedPS.LibtaskModel(newmodel, newtask)
 	return gen_model
 end
 
-function AdvancedPS.advance!(trace::AdvancedPS.Trace{TracedModel}, isref::Bool=false)
-	# Make sure we load/reset the rng in the new replaying mechanism
-	DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
-	isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
-	score = consume(trace.model.ctask)
-	if score === nothing
-		return
-	else
-		return score + DynamicPPL.getlogp(trace.model.f.varinfo)
-	end
-end
-
-function AdvancedPS.advance!(trace::AdvancedPS.Trace{<:AdvancedPS.AbstractLibtaskModel{TracedModel{M,S,V,E},T}, R}, isref::Bool=false) where {M,S,V,E,T,R}
+function AdvancedPS.advance!(
+	trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}},
+	isref::Bool=false
+) 
 	# Make sure we load/reset the rng in the new replaying mechanism
 	DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
 	isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
@@ -70,7 +66,7 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
 	return trace
 end
 
-function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{<:AdvancedPS.AbstractLibtaskModel{TracedModel{M,S,V,E},T}, R}) where {M,S,V,E,T,R}
+function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}})
 	# Extract the `args`.
 	args = trace.model.ctask.args
 	# From `args`, extract the `SamplingContext`, which contains the RNG.
@@ -80,7 +76,6 @@ function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{<:AdvancedPS.AbstractLib
 	return trace
 end
 
-function Libtask.TapedTask(model::TracedModel; kwargs...)
-	println("Here")
+function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG, args...; kwargs...) # RNG ?
 	return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...; kwargs...)
 end
