@@ -121,7 +121,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
 
     # Extract the first particle and its weight.
     particle = particles.vals[1]
@@ -264,7 +264,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
@@ -308,7 +308,7 @@ function AbstractMCMC.step(
     particles = AdvancedPS.ParticleContainer(x, AdvancedPS.TracedRNG(), rng)
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, reference)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl, reference)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
