@@ -14,7 +14,7 @@
       vi = DynamicPPL.VarInfo()
       sampler = Sampler(PG(10))
       model = test()
-      trace = Trace(model, sampler, vi, TracedRNG())
+      trace = AdvancedPS.Trace(model, sampler, vi, AdvancedPS.TracedRNG())
 
     @test haskey(trace.model.ctask.task.storage, :__trace)
 
