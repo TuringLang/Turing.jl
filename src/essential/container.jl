@@ -24,18 +24,6 @@ function TracedModel(
     )
 end
 
-function Base.copy(model::AdvancedPS.LibtaskModel{<:TracedModel})
-    newtask = copy(model.ctask)
-    newmodel = TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
-        deepcopy(model.f.model),
-        deepcopy(model.f.sampler),
-        deepcopy(model.f.varinfo),
-        deepcopy(model.f.evaluator)
-    )
-    gen_model = AdvancedPS.LibtaskModel(newmodel, newtask)
-    return gen_model
-end
-
 function AdvancedPS.advance!(
     trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}},
     isref::Bool=false
