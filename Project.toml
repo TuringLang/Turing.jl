@@ -45,7 +45,7 @@ TuringOptimExt = "Optim"
 
 [compat]
 AbstractMCMC = "4, 5"
-AdvancedHMC = "0.3.0, 0.4.0, 0.5.2"
+AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6"
 AdvancedMH = "0.8"
 AdvancedPS = "0.5.4"
 AdvancedVI = "0.2"
