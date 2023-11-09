@@ -1,5 +1,6 @@
 using AbstractMCMC
 using AdvancedMH
+using AdvancedPS
 using Clustering
 using Distributions
 using Distributions.FillArrays
