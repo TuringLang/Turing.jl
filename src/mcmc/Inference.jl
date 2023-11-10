@@ -236,12 +236,12 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    chain_type=MCMCChains.Chains,
+    chain_type=DynamicPPL.default_chain_type(alg),
     progress=PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
-                               chain_type=chain_type, progress=progress, kwargs...)
+                                    chain_type, progress, kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -249,14 +249,14 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::Prior,
     N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
+    chain_type=DynamicPPL.default_chain_type(alg),
     resume_from=nothing,
     initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
-                chain_type=chain_type, initial_state=initial_state, progress=progress, kwargs...)
+                                    chain_type, initial_state, progress, kwargs...)
 end
 
 ##########################
