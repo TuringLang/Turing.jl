@@ -64,7 +64,6 @@ export  InferenceAlgorithm,
         dot_assume,
         observe,
         dot_observe,
-        resume,
         predict,
         isgibbscomponent,
         externalsampler
