@@ -82,7 +82,7 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::Sampler{<:SMC},
     N::Integer;
-    chain_type=MCMCChains.Chains,
+    chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
     initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
