@@ -243,6 +243,22 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
                                chain_type=chain_type, progress=progress, kwargs...)
 end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::Prior,
+    N::Integer;
+    chain_type=DynamicPPL.default_chain_type(sampler),
+    resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
+    progress=PROGRESS[],
+    kwargs...
+)
+    return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
+                chain_type=chain_type, initial_state=initial_state, progress=progress, kwargs...)
+end
+
 ##########################
 # Chain making utilities #
 ##########################
