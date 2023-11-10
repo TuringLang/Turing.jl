@@ -191,42 +191,6 @@ function AbstractMCMC.sample(
 end
 
 function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
-    end
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
-    end
-end
-
-function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
@@ -283,6 +247,9 @@ end
 ##########################
 # Chain making utilities #
 ##########################
+
+DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
+DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
 
 """
     getparams(model, t)
@@ -491,14 +458,12 @@ function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
         chain.info[:model],
         chain.info[:sampler],
         args...;
-        resume_from = chain,
         chain_type = MCMCChains.Chains,
+        initial_state=DynamicPPL.loadstate(chain), 
         progress = progress,
         kwargs...
     )
 end
-
-DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
 
 #######################################
 # Concrete algorithm implementations. #
