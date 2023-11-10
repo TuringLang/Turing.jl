@@ -444,27 +444,6 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     return setinfo(c, merge(nt, c.info))
 end
 
-function resume(chain::MCMCChains.Chains, args...; kwargs...)
-    return resume(Random.default_rng(), chain, args...; kwargs...)
-end
-
-function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
-                progress=PROGRESS[], kwargs...)
-    isempty(chain.info) && error("[Turing] cannot resume from a chain without state info")
-
-    # Sample a new chain.
-    return AbstractMCMC.mcmcsample(
-        rng,
-        chain.info[:model],
-        chain.info[:sampler],
-        args...;
-        chain_type = MCMCChains.Chains,
-        initial_state=DynamicPPL.loadstate(chain), 
-        progress = progress,
-        kwargs...
-    )
-end
-
 #######################################
 # Concrete algorithm implementations. #
 #######################################

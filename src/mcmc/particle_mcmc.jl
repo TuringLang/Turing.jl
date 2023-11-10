@@ -79,11 +79,12 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::Sampler{<:SMC},
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     kwargs...
 )
@@ -94,8 +95,10 @@ function AbstractMCMC.sample(
                                        nparticles=N,
                                        kwargs...)
     else
-        return resume(resume_from, N;
-                      chain_type=chain_type, progress=progress, nparticles=N, kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng, model, sampler, N; chain_type, initial_state, progress=progress, 
+            nparticles=N, kwargs...
+        )
     end
 end
 

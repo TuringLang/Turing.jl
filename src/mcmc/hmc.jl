@@ -90,11 +90,12 @@ DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
     chain_type=MCMCChains.Chains,
     resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
@@ -123,8 +124,11 @@ function AbstractMCMC.sample(
                                        nadapts=_nadapts, discard_initial=_discard_initial,
                                        kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress,
-                      nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng, model, sampler, N;
+            chain_type=chain_type, initial_state=initial_state, progress=progress,
+            nadapts=0, discard_adapt=false, discard_initial=0, kwargs...
+        )
     end
 end
 
