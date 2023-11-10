@@ -71,9 +71,6 @@
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_resumed = Turing.Inference.resume(chn1, 2000)
-        check_gdemo(chn1_resumed)
-
         chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
         check_gdemo(chn1_contd)
 

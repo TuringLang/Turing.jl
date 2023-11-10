@@ -64,7 +64,6 @@ export  InferenceAlgorithm,
         dot_assume,
         observe,
         dot_observe,
-        resume,
         predict,
         isgibbscomponent,
         externalsampler
@@ -191,42 +190,6 @@ function AbstractMCMC.sample(
 end
 
 function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
-    end
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    N::Integer;
-    chain_type=MCMCChains.Chains,
-    resume_from=nothing,
-    progress=PROGRESS[],
-    kwargs...
-)
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
-                                       chain_type=chain_type, progress=progress, kwargs...)
-    else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress, kwargs...)
-    end
-end
-
-function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
@@ -273,16 +236,35 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    chain_type=MCMCChains.Chains,
+    chain_type=DynamicPPL.default_chain_type(alg),
     progress=PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
-                               chain_type=chain_type, progress=progress, kwargs...)
+                                    chain_type, progress, kwargs...)
 end
+
+function AbstractMCMC.sample(
+    rng::AbstractRNG,
+    model::AbstractModel,
+    alg::Prior,
+    N::Integer;
+    chain_type=DynamicPPL.default_chain_type(alg),
+    resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
+    progress=PROGRESS[],
+    kwargs...
+)
+    return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
+                                    chain_type, initial_state, progress, kwargs...)
+end
+
 ##########################
 # Chain making utilities #
 ##########################
+
+DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
+DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
 
 """
     getparams(model, t)
@@ -476,29 +458,6 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     nt = NamedTuple{(:sampler, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
-
-function resume(chain::MCMCChains.Chains, args...; kwargs...)
-    return resume(Random.default_rng(), chain, args...; kwargs...)
-end
-
-function resume(rng::Random.AbstractRNG, chain::MCMCChains.Chains, args...;
-                progress=PROGRESS[], kwargs...)
-    isempty(chain.info) && error("[Turing] cannot resume from a chain without state info")
-
-    # Sample a new chain.
-    return AbstractMCMC.mcmcsample(
-        rng,
-        chain.info[:model],
-        chain.info[:sampler],
-        args...;
-        resume_from = chain,
-        chain_type = MCMCChains.Chains,
-        progress = progress,
-        kwargs...
-    )
-end
-
-DynamicPPL.loadstate(chain::MCMCChains.Chains) = chain.info[:samplerstate]
 
 #######################################
 # Concrete algorithm implementations. #
