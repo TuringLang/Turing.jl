@@ -174,9 +174,10 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
+    return AbstractMCMC.sample(Random.default_rng(), model, alg, N; progress=progress, kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -184,9 +185,10 @@ function AbstractMCMC.sample(
     model::AbstractModel,
     alg::InferenceAlgorithm,
     N::Integer;
+    progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; progress=progress, kwargs...)
 end
 
 function AbstractMCMC.sample(
