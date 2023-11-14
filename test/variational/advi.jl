@@ -47,4 +47,22 @@
         xs = rand(target, 10)
         @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.05
     end
+
+    # regression test for:
+    # https://github.com/TuringLang/Turing.jl/issues/2065
+    @turing_testset "simplex bijector" begin
+        @model function dirichlet()
+            x ~ Dirichlet([1.0,1.0])
+            return x
+        end
+        
+        m = dirichlet()
+        b = bijector(m)
+        x0 = m()
+        z0 = b(x0)
+        @test size(z0) == (1,)
+        x0_inv = inverse(b)(z0)
+        @test size(x0_inv) == size(x0)
+        @test all(x0 .≈ x0_inv)
+    end
 end

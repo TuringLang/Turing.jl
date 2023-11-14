@@ -1,16 +1,21 @@
 module Turing
 
-using Requires, Reexport, ForwardDiff
+using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
-using Tracker: Tracker
 
 import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
+import NamedArrays
+import Setfield
+import StatsAPI
+import StatsBase
+
+import Printf
 import Random
 
 const PROGRESS = Ref(true)
@@ -38,35 +43,16 @@ ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(L
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("utilities/Utilities.jl")
-using .Utilities
 include("essential/Essential.jl")
 Base.@deprecate_binding Core Essential false
 using .Essential
-include("inference/Inference.jl")  # inference algorithms
+include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-@init @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" begin
-    @eval Inference begin
-        import ..DynamicHMC
-
-        if isdefined(DynamicHMC, :mcmc_with_warmup)
-            include("contrib/inference/dynamichmc.jl")
-        else
-            error("Please update DynamicHMC, v1.x is no longer supported")
-        end
-    end
-end
-
-include("modes/ModeEstimation.jl")
-using .ModeEstimation
-
-@init @require Optim="429524aa-4258-5aef-a3af-852621145aeb" @eval begin
-    include("modes/OptimInterface.jl")
-    export optimize
-end
+include("optimisation/Optimisation.jl")
+using .Optimisation
 
 ###########
 # Exports #
@@ -84,7 +70,6 @@ export  @model,                 # modelling
         Prior,                  # Sampling from the prior
 
         MH,                     # classic sampling
-        RWMH,
         Emcee,
         ESS,
         Gibbs,
@@ -109,7 +94,6 @@ export  @model,                 # modelling
         ADVI,
 
         sample,                 # inference
-        resume,
         @logprob_str,
         @prob_str,
         externalsampler,
@@ -145,4 +129,16 @@ export  @model,                 # modelling
         optim_objective,
         optim_function,
         optim_problem
+
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+function __init__()
+    @static if !isdefined(Base, :get_extension)
+        @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
+        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
+  end
+end
+
 end

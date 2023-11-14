@@ -84,8 +84,6 @@
         @model function dir()
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(dir(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
         sample(dir(), HMC(0.01, 1), 1000)
         Turing.setadbackend(:reversediff)
@@ -99,8 +97,6 @@
         @model function wishart()
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:reversediff)
         sample(wishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
@@ -109,8 +105,6 @@
         @model function invwishart()
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:tracker)
-        sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:reversediff)
         sample(invwishart(), HMC(0.01, 1), 1000);
         Turing.setadbackend(:zygote)
@@ -204,5 +198,19 @@
                 @test !Turing.Essential.standardtag(T{chunksize,standardtag}())
             end
         end
+    end
+
+    @testset "ReverseDiff compiled without linking" begin
+        f = DynamicPPL.LogDensityFunction(gdemo_default)
+        θ = DynamicPPL.getparams(f)
+
+        f_rd = LogDensityProblemsAD.ADgradient(Turing.Essential.ReverseDiffAD{false}(), f)
+        f_rd_compiled = LogDensityProblemsAD.ADgradient(Turing.Essential.ReverseDiffAD{true}(), f)
+
+        ℓ, ℓ_grad = LogDensityProblems.logdensity_and_gradient(f_rd, θ)
+        ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(f_rd_compiled, θ)
+
+        @test ℓ == ℓ_compiled
+        @test ℓ_grad == ℓ_grad_compiled
     end
 end
