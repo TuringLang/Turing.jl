@@ -36,15 +36,9 @@ function setchunksize(chunk_size::Int)
     AdvancedVI.setchunksize(chunk_size)
 end
 
-# TODO: Upstream support for tags to ADTypes?
-struct AutoForwardDiff{chunk,standardtag} <: ADTypes.AbstractADType end
-
-# Use standard tag if not specified otherwise
-AutoForwardDiff{N}() where {N} = AutoForwardDiff{N,true}()
-
 getchunksize(::AutoForwardDiff{chunk}) where chunk = chunk
 
-standardtag(::AutoForwardDiff{<:Any,true}) = true
+standardtag(::AutoForwardDiff{<:Any,nothing}) = true
 standardtag(::AutoForwardDiff) = false
 
 const RDCache = Ref(false)
