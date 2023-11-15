@@ -290,7 +290,7 @@
         end
 
         sample(
-            newinterface(obs), HMC{Turing.ForwardDiffAD{2}}(0.75, 3, :p, :x), 100
+            newinterface(obs), HMC{Turing.AutoForwardDiff()}(0.75, 3, :p, :x), 100
         )
         sample(
             newinterface(obs), HMC{Turing.AutoForwardDiff{2}}(0.75, 3, :p, :x), 100

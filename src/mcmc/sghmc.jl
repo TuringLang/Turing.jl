@@ -12,17 +12,18 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian{AD}
+struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian
     learning_rate::T
     momentum_decay::T
+    adtype::AD
 end
 
 """
-    SGHMC{AD}(space::Symbol...; learning_rate, momentum_decay)
+    SGHMC(space::Symbol...; learning_rate, momentum_decay, adtype = Turing.ADBackend())
 
 Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
-If the automatic differentiation backend `AD` is not provided, the currently activated
+If the automatic differentiation backend `adtype` is not provided, the currently activated
 AD backend in Turing is used.
 
 # Reference
@@ -31,14 +32,14 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-SGHMC(args...; kwargs...) = SGHMC{ADBackend()}(args...; kwargs...)
-function SGHMC{AD}(
+function SGHMC(
     space::Symbol...;
     learning_rate::Real,
     momentum_decay::Real,
-) where {AD}
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
-    return SGHMC{AD,space,typeof(_learning_rate)}(_learning_rate, _momentum_decay)
+    return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(_learning_rate, _momentum_decay, adtype)
 end
 
 struct SGHMCState{L,V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
@@ -114,9 +115,10 @@ Max Welling & Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Lan
 Dynamics. In: Proceedings of the 28th International Conference on Machine Learning
 (pp. 681–688).
 """
-struct SGLD{AD,space,S} <: StaticHamiltonian{AD}
+struct SGLD{AD,space,S} <: StaticHamiltonian
     "Step size function."
     stepsize::S
+    adtype::AD
 end
 
 struct PolynomialStepsize{T<:Real}
@@ -167,12 +169,12 @@ Dynamics. In: Proceedings of the 28th International Conference on Machine Learni
 
 See also: [`PolynomialStepsize`](@ref)
 """
-SGLD(args...; kwargs...) = SGLD{ADBackend()}(args...; kwargs...)
-function SGLD{AD}(
+function SGLD(
     space::Symbol...;
     stepsize = PolynomialStepsize(0.01),
+    adtype::ADTypes.AbstractADType = ADBackend(),
 ) where {AD}
-    return SGLD{AD,space,typeof(stepsize)}(stepsize)
+    return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
 
 struct SGLDTransition{T,F<:Real}
