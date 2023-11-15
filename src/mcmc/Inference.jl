@@ -77,7 +77,7 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian{AD} <: InferenceAlgorithm end
 abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
 abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
-getADbackend(::Hamiltonian{AD}) where AD = AD()
+getADbackend(::Hamiltonian{AD}) where AD = AD
 
 """
     ExternalSampler{S<:AbstractSampler}
