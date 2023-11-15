@@ -32,24 +32,26 @@ end
 ###
 
 """
-    HMC(ϵ::Float64, n_leapfrog::Int)
+    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = Turing.ADBackend())
 
 Hamiltonian Monte Carlo sampler with static trajectory.
 
-Arguments:
+# Arguments
 
-- `ϵ::Float64` : The leapfrog step size to use.
-- `n_leapfrog::Int` : The number of leapfrog steps to use.
+- `ϵ`: The leapfrog step size to use.
+- `n_leapfrog`: The number of leapfrog steps to use.
+- `adtype`: The automatic differentiation (AD) backend.
+  If it is not provided, the currently activated AD backend in Turing is used.
 
-Usage:
+# Usage
 
 ```julia
 HMC(0.05, 10)
 ```
 
-Tips:
+# Tips
 
-- If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step size `ϵ`, e.g.
+If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step size `ϵ`, e.g.
 
 ```julia
 # Original step size
@@ -276,28 +278,35 @@ function get_hamiltonian(model, spl, vi, state, n)
 end
 
 """
-    HMCDA(n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64=0.0)
+    HMCDA(
+        n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
+        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+    )
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
-Usage:
+# Usage
 
 ```julia
 HMCDA(200, 0.65, 0.3)
 ```
 
-Arguments:
+# Arguments
 
-- `n_adapts::Int` : Numbers of samples to use for adaptation.
-- `δ::Float64` : Target acceptance rate. 65% is often recommended.
-- `λ::Float64` : Target leapfrog length.
-- `ϵ::Float64=0.0` : Initial step size; 0 means automatically search by Turing.
+- `n_adapts`: Numbers of samples to use for adaptation.
+- `δ`: Target acceptance rate. 65% is often recommended.
+- `λ`: Target leapfrog length.
+- `ϵ`: Initial step size; 0 means automatically search by Turing.
+- `adtype`: The automatic differentiation (AD) backend.
+  If it is not provided, the currently activated AD backend in Turing is used.
+
+# Reference
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
-- Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
-  setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
-  Research 15, no. 1 (2014): 1593-1623.
+Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
+setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
+Research 15, no. 1 (2014): 1593-1623.
 """
 struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
     n_adapts    ::  Int         # number of samples with adaption for ϵ

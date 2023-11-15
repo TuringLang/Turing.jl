@@ -23,6 +23,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Setfield: Setfield
 
+import ADTypes
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH

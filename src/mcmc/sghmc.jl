@@ -19,11 +19,16 @@ struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian
 end
 
 """
-    SGHMC(space::Symbol...; learning_rate, momentum_decay, adtype = Turing.ADBackend())
+    SGHMC(
+        space::Symbol...;
+        learning_rate::Real,
+        momentum_decay::Real,
+        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+    )
 
 Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
-If the automatic differentiation backend `adtype` is not provided, the currently activated
+If the automatic differentiation (AD) backend `adtype` is not provided, the currently activated
 AD backend in Turing is used.
 
 # Reference
@@ -155,11 +160,18 @@ end
 (f::PolynomialStepsize)(t::Int) = f.a / (t + f.b)^f.γ
 
 """
-    SGLD{AD}(space::Symbol...; stepsize = PolynomialStepsize(0.01))
+    SGLD(
+        space::Symbol...;
+        stepsize = PolynomialStepsize(0.01),
+        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+    )
 
 Stochastic gradient Langevin dynamics (SGLD) sampler.
 
 By default, a polynomially decaying stepsize is used.
+
+If the automatic differentiation (AD) backend `adtype` is not provided, the currently activated
+AD backend in Turing is used.
 
 # Reference
 

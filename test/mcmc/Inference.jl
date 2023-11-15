@@ -290,10 +290,7 @@
         end
 
         sample(
-            newinterface(obs), HMC{Turing.AutoForwardDiff()}(0.75, 3, :p, :x), 100
-        )
-        sample(
-            newinterface(obs), HMC{Turing.AutoForwardDiff{2}}(0.75, 3, :p, :x), 100
+            newinterface(obs), HMC(0.75, 3, :p, :x; adtype = Turing.AutoForwardDiff(; chunksize=2)), 100
         )
     end
     @testset "no return" begin
@@ -341,7 +338,7 @@
     end
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
-        if Turing.Essential.ADBackend() !== Turing.AutoTracker
+        if !(Turing.ADBackend() isa Turing.AutoTracker)
             @model function vdemo1(x)
                 s ~ InverseGamma(2, 3)
                 m ~ Normal(0, sqrt(s))
