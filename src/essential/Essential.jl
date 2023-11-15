@@ -20,11 +20,6 @@ import LogDensityProblemsAD
 include("container.jl")
 include("ad.jl")
 
-Base.@deprecate_binding ForwardDiffAD AutoForwardDiff
-Base.@deprecate_binding TrackerAD AutoTracker
-Base.@deprecate_binding ReverseDiffAD AutoReverseDiff
-Base.@deprecate_binding ZygoteAD AutoZygote
-
 export  @model,
         @varname,
         generate_observe,

@@ -188,14 +188,13 @@
     end
 
     @testset "tag" begin
-        @test Turing.ADBackend(Val(:forwarddiff)) === Turing.ForwardDiffAD(; chunksize=Turing.CHUNKSIZE[])
         @test Turing.ADBackend(Val(:forwarddiff)) === Turing.AutoForwardDiff(; chunksize=Turing.CHUNKSIZE[])
-        for chunksize in (0, 1, 10), T in (Turing.ForwardDiffAD, Turing.AutoForwardDiff)
-            ad = T(; chunksize=chunksize)
-            @test ad === T(; chunksize=chunksize)
+        for chunksize in (0, 1, 10)
+            ad = Turing.AutoForwardDiff(; chunksize=chunksize)
+            @test ad === Turing.AutoForwardDiff(; chunksize=chunksize)
             @test Turing.Essential.standardtag(ad)
             for standardtag in (false, 0, 1)
-                @test !Turing.Essential.standardtag(T(; chunksize=chunksize, tag=standardtag))
+                @test !Turing.Essential.standardtag(Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag))
             end
         end
     end
@@ -204,8 +203,8 @@
         f = DynamicPPL.LogDensityFunction(gdemo_default)
         θ = DynamicPPL.getparams(f)
 
-        f_rd = LogDensityProblemsAD.ADgradient(Turing.Essential.ReverseDiffAD(false), f)
-        f_rd_compiled = LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), f; compile=Val(true), x=θ) # need to compile with non-zero inputs
+        f_rd = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=false), f)
+        f_rd_compiled = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=true), f)
 
         ℓ, ℓ_grad = LogDensityProblems.logdensity_and_gradient(f_rd, θ)
         ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(f_rd_compiled, θ)

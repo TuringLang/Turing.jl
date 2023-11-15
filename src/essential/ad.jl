@@ -76,6 +76,30 @@ function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
+function LogDensityProblemsAD.ADgradient(ad::AutoForwardDiff, ℓ::Turing.LogDensityFunction)
+    θ = DynamicPPL.getparams(ℓ)
+    f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
+
+    # Define configuration for ForwardDiff.
+    tag = if standardtag(ad)
+        ForwardDiff.Tag(Turing.TuringTag(), eltype(θ))
+    else
+        ForwardDiff.Tag(f, eltype(θ))
+    end
+    chunk_size = getchunksize(ad)
+    chunk = if chunk_size == 0
+        ForwardDiff.Chunk(θ)
+    else
+        ForwardDiff.Chunk(length(θ), chunk_size)
+    end
+
+    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
+end
+
+function LogDensityProblemsAD.ADgradient(ad::AutoReverseDiff, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val(ad.compile), x=DynamicPPL.getparams(ℓ))
+end
+
 function verifygrad(grad::AbstractVector{<:Real})
     if any(isnan, grad) || any(isinf, grad)
         @warn("Numerical error in gradients. Rejecting current proposal...")
