@@ -52,7 +52,7 @@ getrdcache() = RDCache[]
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
-ADBackend(::Val{:forwarddiff}) = AutoForwardDiff{CHUNKSIZE[]}
+ADBackend(::Val{:forwarddiff}) = AutoForwardDiff(;chunksize=CHUNKSIZE[])
 ADBackend(::Val{:tracker}) = AutoTracker()
 ADBackend(::Val{:zygote}) = AutoZygote()
 ADBackend(::Val{:reversediff}) = AutoReverseDiff(; compile = getrdcache())
@@ -65,36 +65,15 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
-getADbackend(::SampleFromPrior) = ADBackend()()
+getADbackend(::SampleFromPrior) = ADBackend()
 getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
 getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
 
-getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()()
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()
 getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
 
 function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
-end
-
-# TODO: Remove once `ADTypes.AutoForwardDiff` supports tags and to LogDensityProblemsAD?
-function LogDensityProblemsAD.ADgradient(ad::AutoForwardDiff, ℓ::Turing.LogDensityFunction)
-    θ = DynamicPPL.getparams(ℓ)
-    f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
-
-    # Define configuration for ForwardDiff.
-    tag = if standardtag(ad)
-        ForwardDiff.Tag(Turing.TuringTag(), eltype(θ))
-    else
-        ForwardDiff.Tag(f, eltype(θ))
-    end
-    chunk_size = getchunksize(ad)
-    chunk = if chunk_size == 0
-        ForwardDiff.Chunk(θ)
-    else
-        ForwardDiff.Chunk(length(θ), chunk_size)
-    end
-
-    return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
 function verifygrad(grad::AbstractVector{<:Real})
