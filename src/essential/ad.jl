@@ -36,7 +36,7 @@ function setchunksize(chunk_size::Int)
     AdvancedVI.setchunksize(chunk_size)
 end
 
-getchunksize(::AutoForwardDiff{chunk}) where chunk = chunk
+getchunksize(::AutoForwardDiff{chunk}) where {chunk} = chunk
 
 standardtag(::AutoForwardDiff{<:Any,nothing}) = true
 standardtag(::AutoForwardDiff) = false
@@ -52,10 +52,10 @@ getrdcache() = RDCache[]
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
-ADBackend(::Val{:forwarddiff}) = AutoForwardDiff(;chunksize=CHUNKSIZE[])
+ADBackend(::Val{:forwarddiff}) = AutoForwardDiff(; chunksize=CHUNKSIZE[])
 ADBackend(::Val{:tracker}) = AutoTracker()
 ADBackend(::Val{:zygote}) = AutoZygote()
-ADBackend(::Val{:reversediff}) = AutoReverseDiff(; compile = getrdcache())
+ADBackend(::Val{:reversediff}) = AutoReverseDiff(; compile=getrdcache())
 
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
