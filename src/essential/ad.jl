@@ -38,7 +38,7 @@ end
 
 getchunksize(::AutoForwardDiff{chunk}) where {chunk} = chunk
 
-standardtag(::AutoForwardDiff{<:Any,nothing}) = true
+standardtag(::AutoForwardDiff{<:Any,Nothing}) = true
 standardtag(::AutoForwardDiff) = false
 
 const RDCache = Ref(false)
