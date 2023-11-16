@@ -405,7 +405,7 @@ function NUTS(
     NUTS(n_adapts, δ; kwargs...)
 end
 
-function NUTS{AD}(
+function NUTS(
     n_adapts::Int,
     δ::Float64,
     space::Symbol...;
