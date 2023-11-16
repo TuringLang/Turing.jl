@@ -76,7 +76,6 @@ end
 function GibbsV2(algs::Pair...)
     return GibbsV2(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
-GibbsV2(algs::Tuple) = GibbsV2(Dict(algs))
 
 struct GibbsV2State{V<:AbstractVarInfo,S}
     vi::V
@@ -204,7 +203,6 @@ function gibbs_step_inner(
     # distributions.
     model_local = make_conditional(model, varinfo_local, varinfos)
 
-    # TODO: Might need to re-run the model.
     # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
     # the resulting varinfo might be in un-transformed space even if `varinfo_local`
     # is in transformed space. This can occur if we hit `maybe_invlink_before_eval!!`.
