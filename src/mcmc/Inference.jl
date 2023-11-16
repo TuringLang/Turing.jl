@@ -23,6 +23,7 @@ using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Setfield: Setfield
 
+import ADTypes
 import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
@@ -74,10 +75,10 @@ export  InferenceAlgorithm,
 abstract type AbstractAdapter end
 abstract type InferenceAlgorithm end
 abstract type ParticleInference <: InferenceAlgorithm end
-abstract type Hamiltonian{AD} <: InferenceAlgorithm end
-abstract type StaticHamiltonian{AD} <: Hamiltonian{AD} end
-abstract type AdaptiveHamiltonian{AD} <: Hamiltonian{AD} end
-getADbackend(::Hamiltonian{AD}) where AD = AD()
+abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type StaticHamiltonian <: Hamiltonian end
+abstract type AdaptiveHamiltonian <: Hamiltonian end
+getADbackend(alg::Hamiltonian) = alg.adtype
 
 """
     ExternalSampler{S<:AbstractSampler}

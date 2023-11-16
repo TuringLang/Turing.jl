@@ -4,7 +4,7 @@
 Check that the reverse-mode sensitivities produced by an AD library are correct for `f`
 at `x...`, given sensitivity `ȳ` w.r.t. `y = f(x...)` up to `rtol` and `atol`.
 """
-function test_reverse_mode_ad( f, ȳ, x...; rtol=1e-6, atol=1e-6)
+function test_reverse_mode_ad(f, ȳ, x...; rtol=1e-6, atol=1e-6)
     # Perform a regular forwards-pass.
     y = f(x...)
 
@@ -94,13 +94,13 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     z = vi[SampleFromPrior()]
     for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
         ℓ = LogDensityProblemsAD.ADgradient(
-            ForwardDiffAD{chunksize, standardtag}(),
+            Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag),
             Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()),
         )
         l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
         # Compare result
         @test l ≈ logp
-        @test sort(∇E) ≈ grad_FWAD atol=1e-9
+        @test sort(∇E) ≈ grad_FWAD atol = 1e-9
     end
 end

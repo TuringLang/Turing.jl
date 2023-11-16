@@ -1,8 +1,9 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.29.4"
+version = "0.30.0"
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
 AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
@@ -44,6 +45,7 @@ TuringDynamicHMCExt = "DynamicHMC"
 TuringOptimExt = "Optim"
 
 [compat]
+ADTypes = "0.2"
 AbstractMCMC = "4, 5"
 AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6"
 AdvancedMH = "0.8"
@@ -61,7 +63,7 @@ EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3"
 Libtask = "0.7, 0.8"
 LogDensityProblems = "2"
-LogDensityProblemsAD = "1.4"
+LogDensityProblemsAD = "1.7.0"
 MCMCChains = "5, 6"
 NamedArrays = "0.9, 0.10"
 Optim = "1"
