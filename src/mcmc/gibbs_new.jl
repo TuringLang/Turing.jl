@@ -1,79 +1,3 @@
-function unique_tuple(xs::Tuple, acc::Tuple = ())
-    return if Base.first(xs) ∈ acc
-        unique_tuple(Base.tail(xs), acc)
-    else
-        unique_tuple(Base.tail(xs), (acc..., Base.first(xs)))
-    end
-end
-unique_tuple(::Tuple{}, acc::Tuple = ()) = acc
-
-subset(vi::DynamicPPL.TypedVarInfo, vns::Union{Tuple,AbstractArray}) = subset(vi, vns...)
-function subset(vi::DynamicPPL.TypedVarInfo, vns::VarName...)
-    # TODO: peform proper check of the meatdatas corresponding to different symbols.
-    # F. ex. we might have vns `(@varname(x[1]), @varname(x[2]))`, in which case they
-    # have the same `metadata`. If they don't, we should error.
-
-    # TODO: Handle mixing of symbols, e.g. `(@varname(x[1]), @varname(y[1]))`.
-    vns_unique_syms = unique_tuple(map(DynamicPPL.getsym, vns))
-    mds = map(Base.Fix1(DynamicPPL.getfield, vi.metadata), vns_unique_syms)
-    return DynamicPPL.VarInfo(NamedTuple{vns_unique_syms}(mds), vi.logp, vi.num_produce)
-end
-
-subset(vi::DynamicPPL.SimpleVarInfo, vns::Union{Tuple,AbstractArray}) = subset(vi, vns...)
-function subset(vi::DynamicPPL.SimpleVarInfo, vns::VarName...)
-    vals = map(Base.Fix1(getindex, vi), vns)
-    return DynamicPPL.BangBang.@set!! vi.values = vals
-end
-
-function merge_metadata(md::DynamicPPL.Metadata, md_subset::DynamicPPL.Metadata)
-    @assert md.vns == md_subset.vns "Cannot merge metadata with different vns."
-    @assert length(md.vals) == length(md_subset.vals) "Cannot merge metadata with different length vals."
-
-    # TODO: Re-adjust `ranges`, etc. so we can support things like changing support, etc.
-    return DynamicPPL.Metadata(
-        md_subset.idcs,
-        md_subset.vns,
-        md_subset.ranges,
-        md_subset.vals,
-        md_subset.dists,
-        md_subset.gids,
-        md_subset.orders,
-        md_subset.flags,
-    )
-end
-
-function merge_varinfo(
-    vi::DynamicPPL.VarInfo{<:NamedTuple{names}},
-    vi_subset::TypedVarInfo,
-) where {names}
-    # Assumes `vi` is a superset of `vi_subset`.
-    metadata_vals = map(names) do vn_sym
-        # TODO: Make generated.
-        return if haskey(vi_subset, VarName{vn_sym}())
-            merge_metadata(vi.metadata[vn_sym], vi_subset.metadata[vn_sym])
-        else
-            vi.metadata[vn_sym]
-        end
-    end
-
-    # TODO: Is this the right way to do this?
-    return DynamicPPL.VarInfo(NamedTuple{names}(metadata_vals), vi.logp, vi.num_produce)
-end
-
-function merge_varinfo(vi_left::SimpleVarInfo, vi_right::SimpleVarInfo)
-    return SimpleVarInfo(
-        merge(vi_left.values, vi_right.values),
-        vi_left.logp + vi_right.logp,
-    )
-end
-
-function merge_varinfo(vi_left::TypedVarInfo, vi_right::TypedVarInfo)
-    return TypedVarInfo(
-        merge_metadata(vi_left.metadata, vi_right.metadata),
-        vi_left.logp + vi_right.logp,
-    )
-end
-
 # TODO: Move to DynamicPPL.
 DynamicPPL.condition(model::Model, varinfo::SimpleVarInfo) =
     DynamicPPL.condition(model, DynamicPPL.values_as(varinfo))
@@ -159,6 +83,10 @@ struct GibbsV2State{V<:AbstractVarInfo,S}
     states::S
 end
 
+_maybevec(x) = vec(x)  # assume it's iterable
+_maybevec(x::Tuple) = [x...]
+_maybevec(x::VarName) = [x]
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
@@ -171,7 +99,7 @@ function AbstractMCMC.step(
 
     # 1. Run the model once to get the varnames present + initial values to condition on.
     vi_base = DynamicPPL.VarInfo(model)
-    varinfos = map(Base.Fix1(subset, vi_base), varnames)
+    varinfos = map(Base.Fix1(DynamicPPL.subset, vi_base) ∘ _maybevec, varnames)
 
     # 2. Construct a varinfo for every vn + sampler combo.
     states_and_varinfos = map(samplers, varinfos) do sampler_local, varinfo_local
@@ -198,7 +126,7 @@ function AbstractMCMC.step(
     varinfos_new = DynamicPPL.setindex!!(varinfos, vi_base, 1)
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
-        reduce(merge_varinfo, varinfos_new),
+        reduce(merge, varinfos_new),
         DynamicPPL.getlogp(last(varinfos)),
     )
 
@@ -304,12 +232,12 @@ function AbstractMCMC.step(
     # Update the base varinfo from the first varinfo and replace it.
     varinfos_new = DynamicPPL.setindex!!(
         varinfos,
-        merge_varinfo(vi_base, first(varinfos)),
+        merge(vi_base, first(varinfos)),
         firstindex(varinfos),
     )
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
-        reduce(merge_varinfo, varinfos_new),
+        reduce(merge, varinfos_new),
         DynamicPPL.getlogp(last(varinfos)),
     )
 

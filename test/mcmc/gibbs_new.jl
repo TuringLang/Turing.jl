@@ -1,4 +1,4 @@
-using Turing, DynamicPPL
+using Test, Random, Turing, DynamicPPL
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
@@ -30,7 +30,6 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::Model) = true
 
-# FIXME: Currently failing for `demo_assume_index_observe`.
 # Likely an issue with not linking correctly.
 @testset "Demo models" begin
     @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
@@ -55,7 +54,7 @@ has_dot_assume(::Model) = true
         ]
 
         if !has_dot_assume(model)
-            # Add in some MH samplers
+            # Add in some MH samplers, which are not compatible with `.~`.
             append!(
                 samplers,
                 [
@@ -76,10 +75,8 @@ has_dot_assume(::Model) = true
             rng = Random.default_rng()
             transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
             check_transition_varnames(transition, vns)
-
-            for _ = 1:10
+            for _ = 1:5
                 transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
-                transition_varnames = mapreduce(first, vcat, transition.θ)
                 check_transition_varnames(transition, vns)
             end
         end
@@ -89,42 +86,36 @@ end
 @testset "Gibbs using `condition`" begin
     @testset "demo_assume_dot_observe" begin
         model = DynamicPPL.TestUtils.demo_assume_dot_observe()
-        # Construct the different varinfos to be used.
-        varinfos = (SimpleVarInfo(s = 1.0), SimpleVarInfo(m = 10.0))
-        # Construct the varinfo for the particular variable we want to sample.
-        target_varinfo = first(varinfos)
-
-        # Create the conditional model.
-        conditional_model = Turing.Inference.make_conditional(model, target_varinfo, varinfos)
 
         # Sample!
-        sampler = GibbsV2(@varname(s) => MH(), @varname(m) => MH())
         rng = Random.default_rng()
-
         vns = [@varname(s), @varname(m)]
+        sampler = GibbsV2(map(Base.Fix2(Pair, MH()), vns)...)
 
         @testset "step" begin
             transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
             check_transition_varnames(transition, vns)
-
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
-            check_transition_varnames(transition, vns)
-
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
-            check_transition_varnames(transition, vns)
+            for _ = 1:5
+                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
+                check_transition_varnames(transition, vns)
+            end
         end
 
         @testset "sample" begin
-            chain = sample(model, sampler, 1000)
+            chain = sample(model, sampler, 1000; progress=false)
             @test size(chain, 1) == 1000
             display(mean(chain))
         end
     end
 
-    @testset "gdemo" begin
+    @testset "gdemo with CSMC & ESS" begin
+        # `GibbsV2` does not work with SMC samplers, e.g. `CSMC`.
+        # FIXME: Oooor it is (see tests below). Uncertain.
         Random.seed!(100)
         alg = GibbsV2(@varname(s) => CSMC(15), @varname(m) => ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        @test_broken mean(chain[:s]) ≈ 49 / 24
+        @test_broken mean(chain[:m]) ≈ 7 / 6
     end
 
     @testset "multiple varnames" begin
@@ -135,33 +126,30 @@ end
         vns = (@varname(s), @varname(m))
         alg = GibbsV2(vns => MH())
 
+        # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
         check_transition_varnames(transition, vns)
+        for _ = 1:5
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+            check_transition_varnames(transition, vns)
+        end
 
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
-
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
-
-        # Sample.
-        chain = sample(model, alg, 10_000)
+        # `sample`
+        chain = sample(model, alg, 10_000; progress=false)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.1)
-
 
         # Without `m` as random.
         model = gdemo(1.5, 2.0) | (m = 7 / 6,)
         vns = (@varname(s),)
         alg = GibbsV2(vns => MH())
 
+        # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
         check_transition_varnames(transition, vns)
-
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
-
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
+        for _ = 1:5
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+            check_transition_varnames(transition, vns)
+        end
     end
 
     @testset "CSMS + ESS" begin
@@ -173,17 +161,16 @@ end
             @varname(mu2) => ESS(),
         )
         vns = (@varname(z1), @varname(z2), @varname(z3), @varname(z4), @varname(mu1), @varname(mu2))
+        # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
         check_transition_varnames(transition, vns)
-
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
-
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
-        check_transition_varnames(transition, vns)
+        for _ = 1:5
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+            check_transition_varnames(transition, vns)
+        end
 
         # Sample!
-        chain = sample(MoGtest_default, alg, 1000)
+        chain = sample(MoGtest_default, alg, 1000; progress=true)
         check_MoGtest_default(chain, atol = 0.2)
     end
 end
