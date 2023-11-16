@@ -185,7 +185,7 @@ function SGLD(
     space::Symbol...;
     stepsize = PolynomialStepsize(0.01),
     adtype::ADTypes.AbstractADType = ADBackend(),
-) where {AD}
+)
     return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
 

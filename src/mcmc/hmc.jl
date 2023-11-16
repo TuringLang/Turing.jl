@@ -76,7 +76,7 @@ function HMC(
     space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType = ADBackend(),
-) where AD
+)
     return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
 end
 
@@ -349,7 +349,7 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType = ADBackend(),
 )
-    return HMCDA{AD}(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
 end
 
 

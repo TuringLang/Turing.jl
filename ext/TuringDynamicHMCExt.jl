@@ -7,13 +7,13 @@ module TuringDynamicHMCExt
 if isdefined(Base, :get_extension)
     import DynamicHMC
     using Turing
-    using Turing: ADTypes, AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+    using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
+    using Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 else
     import ..DynamicHMC
     using ..Turing
-    using ..Turing: ADTypes, AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using ..Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+    using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
+    using ..Turing.Inference:  ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 end
 
 """
@@ -26,7 +26,7 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """ 
-struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{AD} 
+struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
     sampler::T
     adtype::AD
 end
