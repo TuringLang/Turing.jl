@@ -133,6 +133,56 @@ function AbstractMCMC.step(
     return Transition(model, vi), GibbsV2State(vi, states)
 end
 
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Sampler{<:GibbsV2},
+    state::GibbsV2State;
+    kwargs...,
+)
+    alg = spl.alg
+    samplers = alg.samplers
+    states = state.states
+    varinfos = map(varinfo, state.states)
+    @assert length(samplers) == length(state.states)
+
+    # TODO: move this into a recursive function so we can unroll when reasonable?
+    for index = 1:length(samplers)
+        # Take the inner step.
+        new_state_local, new_varinfo_local = gibbs_step_inner(
+            rng,
+            model,
+            samplers,
+            states,
+            varinfos,
+            index;
+            kwargs...,
+        )
+
+        # Update the `states` and `varinfos`.
+        states = Setfield.setindex(states, new_state_local, index)
+        varinfos = Setfield.setindex(varinfos, new_varinfo_local, index)
+    end
+
+    # Combine the resulting varinfo objects.
+    # The last varinfo holds the correctly computed logp.
+    vi_base = state.vi
+
+    # Update the base varinfo from the first varinfo and replace it.
+    varinfos_new = DynamicPPL.setindex!!(
+        varinfos,
+        merge(vi_base, first(varinfos)),
+        firstindex(varinfos),
+    )
+    # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
+    vi = DynamicPPL.setlogp!!(
+        reduce(merge, varinfos_new),
+        DynamicPPL.getlogp(last(varinfos)),
+    )
+
+    return Transition(model, vi), GibbsV2State(vi, states)
+end
+
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::Model,
@@ -192,54 +242,4 @@ function gibbs_step_inner(
 
     # TODO: alternatively, we can return `states_new, varinfos_new, index_new`
     return (new_state_local, varinfo_local_state_invlinked)
-end
-
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:GibbsV2},
-    state::GibbsV2State;
-    kwargs...,
-)
-    alg = spl.alg
-    samplers = alg.samplers
-    states = state.states
-    varinfos = map(varinfo, state.states)
-    @assert length(samplers) == length(state.states)
-
-    # TODO: move this into a recursive function so we can unroll when reasonable?
-    for index = 1:length(samplers)
-        # Take the inner step.
-        new_state_local, new_varinfo_local = gibbs_step_inner(
-            rng,
-            model,
-            samplers,
-            states,
-            varinfos,
-            index;
-            kwargs...,
-        )
-
-        # Update the `states` and `varinfos`.
-        states = Setfield.setindex(states, new_state_local, index)
-        varinfos = Setfield.setindex(varinfos, new_varinfo_local, index)
-    end
-
-    # Combine the resulting varinfo objects.
-    # The last varinfo holds the correctly computed logp.
-    vi_base = state.vi
-
-    # Update the base varinfo from the first varinfo and replace it.
-    varinfos_new = DynamicPPL.setindex!!(
-        varinfos,
-        merge(vi_base, first(varinfos)),
-        firstindex(varinfos),
-    )
-    # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
-    vi = DynamicPPL.setlogp!!(
-        reduce(merge, varinfos_new),
-        DynamicPPL.getlogp(last(varinfos)),
-    )
-
-    return Transition(model, vi), GibbsV2State(vi, states)
 end
