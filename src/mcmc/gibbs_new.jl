@@ -1,20 +1,110 @@
-# TODO: Move to DynamicPPL.
-DynamicPPL.condition(model::Model, varinfo::SimpleVarInfo) =
-    DynamicPPL.condition(model, DynamicPPL.values_as(varinfo))
-function DynamicPPL.condition(model::Model, varinfo::VarInfo)
-    # Use `OrderedDict` as default for `VarInfo`.
-    # TODO: Do better!
-    return DynamicPPL.condition(model, DynamicPPL.values_as(varinfo, OrderedDict))
+# Basically like a `DynamicPPL.FixedContext` but
+# 1. Hijacks the tilde pipeline to fix variables.
+# 2. Computes the log-probability of the fixed variables.
+struct GibbsContext{Values,Ctx<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
+    values::Values
+    context::Ctx
 end
 
-# Recursive definition.
-function DynamicPPL.condition(model::Model, varinfos::AbstractVarInfo...)
-    return DynamicPPL.condition(
-        DynamicPPL.condition(model, first(varinfos)),
-        Base.tail(varinfos)...,
+Gibbscontext(values) = GibbsContext(values, DynamicPPL.DefaultContext())
+
+DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
+DynamicPPL.childcontext(context::GibbsContext) = context.context
+DynamicPPL.setchildcontext(context::GibbsContext, childcontext) = GibbsContext(context.values, childcontext)
+
+# has and get
+has_conditioned_gibbs(context::GibbsContext, vn::VarName) = DynamicPPL.hasvalue(context.values, vn)
+function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
+    return all(Base.Fix1(has_conditioned_gibbs, context), vns)
+end
+
+get_conditioned_gibbs(context::GibbsContext, vn::VarName) = DynamicPPL.getvalue(context.values, vn)
+function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
+    return map(Base.Fix1(get_conditioned_gibbs, context), vns)
+end
+
+# Tilde pipeline
+function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
+    # Short-circuits the tilde assume if `vn` is present in `context`.
+    if has_conditioned_gibbs(context, vn)
+        value = get_conditioned_gibbs(context, vn)
+        return value, logpdf(right, value), vi
+    end
+
+    # Otherwise, falls back to the default behavior.
+    return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
+end
+
+function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi)
+    # Short-circuits the tilde assume if `vn` is present in `context`.
+    if has_conditioned_gibbs(context, vn)
+        value = get_conditioned_gibbs(context, vn)
+        return value, logpdf(right, value), vi
+    end
+
+    # Otherwise, falls back to the default behavior.
+    return DynamicPPL.tilde_assume(rng, DynamicPPL.childcontext(context), sampler, right, vn, vi)
+end
+
+function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
+    # Short-circuits the tilde assume if `vn` is present in `context`.
+    # FIXME: This probably won't work as is.
+    @info "dot_tilde_assume" vns value
+    if has_conditioned_gibbs(context, vns)
+        value = get_conditioned_gibbs(context, vns)
+        return value, sum(logpdf.(right, value)), vi
+    end
+
+    # Otherwise, falls back to the default behavior.
+    return DynamicPPL.dot_tilde_assume(DynamicPPL.childcontext(context), right, left, vns, vi)
+end
+
+function DynamicPPL.dot_tilde_assume(
+    rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
+)
+    # Short-circuits the tilde assume if `vn` is present in `context`.
+    if has_conditioned_gibbs(context, vns)
+        values = get_conditioned_gibbs(context, vns)
+        return values, sum(logpdf.(right, values)), vi
+    end
+
+    # Otherwise, falls back to the default behavior.
+    return DynamicPPL.dot_tilde_assume(rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi)
+end
+
+
+preferred_value_type(::AbstractVarInfo) = OrderedDict
+preferred_value_type(::SimpleVarInfo{<:NamedTuple}) = NamedTuple
+function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
+    # We can only do this in the scenario where all the varnames are `Setfield.IdentityLens`.
+    namedtuple_compatible = all(varinfo.metadata) do md
+        eltype(md.vns) <: VarName{<:Any,DynamicPPL.Setfield.IdentityLens}
+    end
+    return namedtuple_compatible ? NamedTuple : OrderedDict
+end
+
+# No-op if no values are provided.
+condition_gibbs(context::DynamicPPL.AbstractContext) = context
+# For `NamedTuple` and `AbstractDict` we just construct the context.
+function condition_gibbs(context::DynamicPPL.AbstractContext, values::Union{NamedTuple,AbstractDict})
+    return GibbsContext(values, context)
+end
+# If we get more than one argument, we just recurse.
+function condition_gibbs(context::DynamicPPL.AbstractContext, value, values...)
+    return condition_gibbs(
+        condition_gibbs(context, value),
+        values...
     )
 end
-DynamicPPL.condition(model::Model, ::Tuple{}) = model
+# For `AbstractVarInfo` we just extract the values.
+function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::AbstractVarInfo)
+    # TODO: Determine when it's okay to use `NamedTuple` and use that instead.
+    return condition_gibbs(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+end
+# Allow calling this on a `Model` directly.
+function condition_gibbs(model::Model, values...)
+    return DynamicPPL.contextualize(model, condition_gibbs(model.context, values...))
+end
 
 
 """
@@ -46,7 +136,7 @@ true
 """
 function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfos)
     # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
-    return DynamicPPL.condition(
+    return condition_gibbs(
         model,
         filter(Base.Fix1(!==, target_varinfo), varinfos)...
     )
