@@ -46,13 +46,15 @@ function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, context::GibbsContext,
     return DynamicPPL.tilde_assume(rng, DynamicPPL.childcontext(context), sampler, right, vn, vi)
 end
 
+make_broadcastable(x) = x
+make_broadcastable(dist::Distribution) = tuple(dist)
+
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
     # Short-circuits the tilde assume if `vn` is present in `context`.
     # FIXME: This probably won't work as is.
-    @info "dot_tilde_assume" vns value
     if has_conditioned_gibbs(context, vns)
         value = get_conditioned_gibbs(context, vns)
-        return value, sum(logpdf.(right, value)), vi
+        return value, sum(logpdf.(make_broadcastable(right), value)), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -65,7 +67,7 @@ function DynamicPPL.dot_tilde_assume(
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
         values = get_conditioned_gibbs(context, vns)
-        return values, sum(logpdf.(right, values)), vi
+        return values, sum(logpdf.(make_broadcastable(right), values)), vi
     end
 
     # Otherwise, falls back to the default behavior.
