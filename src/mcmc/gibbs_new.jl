@@ -46,15 +46,29 @@ function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, context::GibbsContext,
     return DynamicPPL.tilde_assume(rng, DynamicPPL.childcontext(context), sampler, right, vn, vi)
 end
 
+# Some utility methods for handling the `logpdf` computations in dot-tilde the pipeline.
 make_broadcastable(x) = x
 make_broadcastable(dist::Distribution) = tuple(dist)
 
+# Need the following two methods to properly support broadcasting over columns.
+broadcast_logpdf(dist, x) = sum(logpdf.(make_broadcastable(dist), x))
+function broadcast_logpdf(dist::MultivariateDistribution, x::AbstractMatrix)
+    return loglikelihood(dist, x)
+end
+
+reconstruct_getvalue(dist, x) = x
+function reconstruct_getvalue(
+    dist::MultivariateDistribution,
+    x::AbstractVector{<:AbstractVector{<:Real}}
+)
+    return reduce(hcat, x[2:end]; init=x[1])
+end
+
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
     # Short-circuits the tilde assume if `vn` is present in `context`.
-    # FIXME: This probably won't work as is.
     if has_conditioned_gibbs(context, vns)
-        value = get_conditioned_gibbs(context, vns)
-        return value, sum(logpdf.(make_broadcastable(right), value)), vi
+        value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        return value, broadcast_logpdf(right, values), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -66,8 +80,8 @@ function DynamicPPL.dot_tilde_assume(
 )
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
-        values = get_conditioned_gibbs(context, vns)
-        return values, sum(logpdf.(make_broadcastable(right), values)), vi
+        values = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        return values, broadcast_logpdf(right, values), vi
     end
 
     # Otherwise, falls back to the default behavior.
