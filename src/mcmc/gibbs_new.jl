@@ -176,10 +176,11 @@ _maybevec(x) = vec(x)  # assume it's iterable
 _maybevec(x::Tuple) = [x...]
 _maybevec(x::VarName) = [x]
 
-function AbstractMCMC.step(
+function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::Model,
-    spl::Sampler{<:GibbsV2};
+    spl::Sampler{<:GibbsV2},
+    vi_base::AbstractVarInfo;
     kwargs...,
 )
     alg = spl.alg
@@ -272,6 +273,14 @@ function AbstractMCMC.step(
     return Transition(model, vi), GibbsV2State(vi, states)
 end
 
+function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler, sampler_previous::DynamicPPL.Sampler)
+    selector = DynamicPPL.Selector(
+        Symbol(typeof(sampler.alg)),
+        gibbs_rerun(sampler_previous.alg, sampler.alg)
+    )
+    return DynamicPPL.Sampler(sampler.alg, model, selector)
+end
+
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::Model,
@@ -286,6 +295,8 @@ function gibbs_step_inner(
     state_local = states[index]
     varinfo_local = varinfos[index]
 
+    # We need the previous sampler to determine whether we'll need to rerun.
+    sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
     # 1. Create conditional model.
     # Construct the conditional model.
     # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
@@ -296,11 +307,20 @@ function gibbs_step_inner(
     # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
     # the resulting varinfo might be in un-transformed space even if `varinfo_local`
     # is in transformed space. This can occur if we hit `maybe_invlink_before_eval!!`.
-    varinfo_local = DynamicPPL.setlogp!!(
-        varinfo_local,
-        DynamicPPL.logjoint(model_local, varinfo_local),
-    )
 
+    # Re-run the sampler if needed.
+    if gibbs_rerun(sampler_local, sampler_previous)
+        # Make the re-run sampler.
+        # NOTE: Need to do this because some samplers might need some other quantity than the log-joint,
+        # e.g. log-likelihood in the scenario of `ESS`.
+        # TODO: Check if `sampler_rerun` should be replacing `sampler_local` or not.
+        sampler_rerun = make_rerun_sampler(model_local, sampler_local, sampler_previous)
+        varinfo_local = last(DynamicPPL.evaluate!!(
+            model_local,
+            varinfo_local,
+            DynamicPPL.SamplingContext(rng, sampler_rerun)
+        ))
+    end
     # 2. Take step with local sampler.
     # Update the state we're about to use if need be.
     # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
