@@ -1,6 +1,15 @@
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
 # 2. Computes the log-probability of the fixed variables.
+#
+# Purpose: avoid triggering resampling of variables we're conditioning on.
+# - Using standard `DynamicPPL.condition` results in conditioned variables being treated
+#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe`.
+# - But `observe` is overloaded by some samplers, e.g. `CSMC`, which can lead to
+#   undesirable behavior, e.g. `CSMC` triggering a resampling for every conditioned variable
+#   rather than only for the "true" observations.
+# - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
+#   rather than the `observe` pipeline for the conditioned variables.
 struct GibbsContext{Values,Ctx<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
     values::Values
     context::Ctx
