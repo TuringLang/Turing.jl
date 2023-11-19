@@ -9,7 +9,7 @@ function test_grad(turing_model, grad_f; trans=Dict())
     d = length(vi.vals)
     @testset "Gradient using random inputs" begin
         ℓ = LogDensityProblemsAD.ADgradient(
-            TrackerAD(),
+            Turing.AutoTracker(),
             Turing.LogDensityFunction(vi, model_f, SampleFromPrior(), DynamicPPL.DefaultContext()),
         )
         for _ = 1:10000
