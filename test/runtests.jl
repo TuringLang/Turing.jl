@@ -74,6 +74,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
                 @testset "samplers" begin
                     @timeit_include("mcmc/gibbs.jl")
                     @timeit_include("mcmc/gibbs_conditional.jl")
+                    @timeit_include("mcmc/gibbs_new.jl")
                     @timeit_include("mcmc/hmc.jl")
                     @timeit_include("mcmc/Inference.jl")
                     @timeit_include("mcmc/sghmc.jl")
