@@ -43,7 +43,8 @@ true
 """
 function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfos)
     # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
-    return condition_gibbs(
+    # FIXME: Revert commit 53bd7072 and use `gibbs_condition` as soon as
+    # https://github.com/TuringLang/DynamicPPL.jl/pull/563 is merged.
     return condition(
         model,
         filter(Base.Fix1(!==, target_varinfo), varinfos)...
