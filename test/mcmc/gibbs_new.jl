@@ -114,8 +114,7 @@ end
         Random.seed!(100)
         alg = GibbsV2(@varname(s) => CSMC(15), @varname(m) => ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        @test_broken mean(chain[:s]) ≈ 49 / 24
-        @test_broken mean(chain[:m]) ≈ 7 / 6
+        check_gdemo(chain)
     end
 
     @testset "multiple varnames" begin
