@@ -8,16 +8,16 @@ function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
     return namedtuple_compatible ? NamedTuple : OrderedDict
 end
 
-function DynamicPPL.condition(context::DynamicPPL.AbstractContext, varinfo::AbstractVarInfo)
+function DynamicPPL.fix(context::DynamicPPL.AbstractContext, varinfo::AbstractVarInfo)
     # TODO: Determine when it's okay to use `NamedTuple` and use that instead.
-    return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+    return DynamicPPL.fix(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
 end
-function DynamicPPL.condition(
+function DynamicPPL.fix(
     context::DynamicPPL.AbstractContext,
     varinfo::AbstractVarInfo,
     varinfos::AbstractVarInfo...
 )
-    return DynamicPPL.condition(DynamicPPL.condition(context, varinfo), varinfos...)
+    return DynamicPPL.fix(DynamicPPL.fix(context, varinfo), varinfos...)
 end
 
 
@@ -52,7 +52,7 @@ function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfo
     # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
     # FIXME: Revert commit 53bd7072 and use `gibbs_condition` as soon as
     # https://github.com/TuringLang/DynamicPPL.jl/pull/563 is merged.
-    return condition(
+    return fix(
         model,
         filter(Base.Fix1(!==, target_varinfo), varinfos)...
     )
