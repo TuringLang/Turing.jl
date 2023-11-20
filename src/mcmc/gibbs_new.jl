@@ -10,7 +10,14 @@ end
 
 function DynamicPPL.condition(context::DynamicPPL.AbstractContext, varinfo::AbstractVarInfo)
     # TODO: Determine when it's okay to use `NamedTuple` and use that instead.
-    return condition_gibbs(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+    return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+end
+function DynamicPPL.condition(
+    context::DynamicPPL.AbstractContext,
+    varinfo::AbstractVarInfo,
+    varinfos::AbstractVarInfo...
+)
+    return DynamicPPL.condition(DynamicPPL.condition(context, varinfo), varinfos...)
 end
 
 
