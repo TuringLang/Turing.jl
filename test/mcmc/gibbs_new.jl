@@ -151,7 +151,7 @@ end
         end
     end
 
-    @testset "CSMS + ESS" begin
+    @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
         alg = GibbsV2(
