@@ -112,7 +112,7 @@ end
         # `GibbsV2` does not work with SMC samplers, e.g. `CSMC`.
         # FIXME: Oooor it is (see tests below). Uncertain.
         Random.seed!(100)
-        alg = GibbsV2(@varname(s) => CSMC(15), @varname(m) => ESS())
+        alg = GibbsV2(@varname(s) => CSMC(15), @varname(m) => ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
         check_gdemo(chain)
     end
