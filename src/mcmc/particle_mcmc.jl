@@ -363,6 +363,8 @@ function DynamicPPL.assume(
             DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
             r = vi[vn]
         end
+        # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
+        lp = 0
     else # vn belongs to other sampler <=> conditioning on vn
         if haskey(vi, vn)
             r = vi[vn]
@@ -371,9 +373,8 @@ function DynamicPPL.assume(
             push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
-        acclogp!!(vi, lp)
     end
-    return r, 0, vi
+    return r, lp, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
