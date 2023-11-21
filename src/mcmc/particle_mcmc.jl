@@ -327,27 +327,43 @@ end
 
 DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
 
+function trace_local_varinfo_maybe(varinfo)
+    try 
+        trace = AdvancedPS.current_trace()
+        return trace.model.f.varinfo
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            return varinfo
+        else
+            rethrow(e)
+        end
+    end
+end
+
+function trace_local_rng_maybe(rng::Random.AbstractRNG)
+    try
+        trace = AdvancedPS.current_trace()
+        return trace.rng
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            return rng
+        else
+            rethrow(e)
+        end
+    end
+end
+
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    __vi__::AbstractVarInfo
+    _vi::AbstractVarInfo
 )
-    local vi, trng
-    try 
-        trace = AdvancedPS.current_trace()
-        trng = trace.rng
-        vi = trace.model.f.varinfo
-    catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
-            vi = __vi__
-            trng = rng
-        else
-            rethrow(e)
-        end
-    end
+    vi = trace_local_varinfo_maybe(_vi)
+    trng = trace_local_rng_maybe(rng)
 
     if inspace(vn, spl)
         if ~haskey(vi, vn)
@@ -380,6 +396,15 @@ end
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
     Libtask.produce(logpdf(dist, value))
     return 0, vi
+end
+
+function DynamicPPL.acclogp!!(
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp
+)
+    varinfo_trace = trace_local_varinfo_maybe(varinfo)
+    DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
 end
 
 # Convenient constructor
