@@ -54,6 +54,8 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+include("experimental/Experimental.jl")
+
 ###########
 # Exports #
 ###########

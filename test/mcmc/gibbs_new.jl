@@ -43,11 +43,11 @@ has_dot_assume(::Model) = true
         end
 
         samplers = [
-            GibbsV2(
+            Turing.Experimental.Gibbs(
                 vns_s => NUTS(),
                 vns_m => NUTS(),
             ),
-            GibbsV2(
+            Turing.Experimental.Gibbs(
                 vns_s => NUTS(),
                 vns_m => HMC(0.01, 4),
             )
@@ -58,11 +58,11 @@ has_dot_assume(::Model) = true
             append!(
                 samplers,
                 [
-                    GibbsV2(
+                    Turing.Experimental.Gibbs(
                         vns_s => HMC(0.01, 4),
                         vns_m => MH(),
                     ),
-                    GibbsV2(
+                    Turing.Experimental.Gibbs(
                         vns_s => MH(),
                         vns_m => HMC(0.01, 4),
                     )
@@ -90,7 +90,7 @@ end
         # Sample!
         rng = Random.default_rng()
         vns = [@varname(s), @varname(m)]
-        sampler = GibbsV2(map(Base.Fix2(Pair, MH()), vns)...)
+        sampler = Turing.Experimental.Gibbs(map(Base.Fix2(Pair, MH()), vns)...)
 
         @testset "step" begin
             transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
@@ -109,10 +109,10 @@ end
     end
 
     @testset "gdemo with CSMC & ESS" begin
-        # `GibbsV2` does not work with SMC samplers, e.g. `CSMC`.
+        # `Turing.Experimental.Gibbs` does not work with SMC samplers, e.g. `CSMC`.
         # FIXME: Oooor it is (see tests below). Uncertain.
         Random.seed!(100)
-        alg = GibbsV2(@varname(s) => CSMC(15), @varname(m) => ESS())
+        alg = Turing.Experimental.Gibbs(@varname(s) => CSMC(15), @varname(m) => ESS())
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
         check_gdemo(chain)
     end
@@ -123,7 +123,7 @@ end
         # With both `s` and `m` as random.
         model = gdemo(1.5, 2.0)
         vns = (@varname(s), @varname(m))
-        alg = GibbsV2(vns => MH())
+        alg = Turing.Experimental.Gibbs(vns => MH())
 
         # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
@@ -140,7 +140,7 @@ end
         # Without `m` as random.
         model = gdemo(1.5, 2.0) | (m = 7 / 6,)
         vns = (@varname(s),)
-        alg = GibbsV2(vns => MH())
+        alg = Turing.Experimental.Gibbs(vns => MH())
 
         # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
@@ -154,7 +154,7 @@ end
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
-        alg = GibbsV2(
+        alg = Turing.Experimental.Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
             @varname(mu1) => ESS(),
             @varname(mu2) => ESS(),

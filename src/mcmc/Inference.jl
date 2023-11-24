@@ -475,7 +475,6 @@ include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
 include("abstractmcmc.jl")
-include("gibbs_new.jl")
 
 ################
 # Typing tools #
