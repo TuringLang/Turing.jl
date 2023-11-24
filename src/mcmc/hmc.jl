@@ -32,7 +32,7 @@ end
 ###
 
 """
-    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = Turing.ADBackend())
+    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0))
 
 Hamiltonian Monte Carlo sampler with static trajectory.
 
@@ -41,7 +41,7 @@ Hamiltonian Monte Carlo sampler with static trajectory.
 - `ϵ`: The leapfrog step size to use.
 - `n_leapfrog`: The number of leapfrog steps to use.
 - `adtype`: The automatic differentiation (AD) backend.
-  If it is not provided, the currently activated AD backend in Turing is used.
+    If not specified, ForwardDiff is used with an automatically determined chunksize.
 
 # Usage
 
@@ -61,23 +61,23 @@ sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
-struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian
+struct HMC{AD,space,metricT<:AHMC.AbstractMetric} <: StaticHamiltonian
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
     adtype::AD
 end
 
-function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType = ADBackend()) where {metricT <: AHMC.AbstractMetric}
-    return HMC{typeof(adtype), space, metricT}(ϵ, n_leapfrog, adtype)
+function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
+    return HMC{typeof(adtype),space,metricT}(ϵ, n_leapfrog, adtype)
 end
 function HMC(
     ϵ::Float64,
     n_leapfrog::Int,
     space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
+    return HMC(ϵ, n_leapfrog, metricT, space; adtype=adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -115,9 +115,9 @@ function AbstractMCMC.sample(
         end
 
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type, progress=progress,
-                                       nadapts=_nadapts, discard_initial=_discard_initial,
-                                       kwargs...)
+            chain_type=chain_type, progress=progress,
+            nadapts=_nadapts, discard_initial=_discard_initial,
+            kwargs...)
     else
         return AbstractMCMC.mcmcsample(
             rng, model, sampler, N;
@@ -205,7 +205,7 @@ function DynamicPPL.initialstep(
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, kernel, _ =
             AHMC.adapt!(hamiltonian, kernel, adaptor,
-                        1, nadapts, t.z.θ, t.stat.acceptance_rate)
+                1, nadapts, t.z.θ, t.stat.acceptance_rate)
     end
 
     # Update `vi` based on acceptance
@@ -244,7 +244,7 @@ function AbstractMCMC.step(
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, kernel, _ =
             AHMC.adapt!(hamiltonian, state.kernel, state.adaptor,
-                        i, nadapts, t.z.θ, t.stat.acceptance_rate)
+                i, nadapts, t.z.θ, t.stat.acceptance_rate)
     else
         kernel = state.kernel
     end
@@ -280,7 +280,7 @@ end
 """
     HMCDA(
         n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
-        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
     )
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
@@ -298,7 +298,7 @@ HMCDA(200, 0.65, 0.3)
 - `λ`: Target leapfrog length.
 - `ϵ`: Initial step size; 0 means automatically search by Turing.
 - `adtype`: The automatic differentiation (AD) backend.
-  If it is not provided, the currently activated AD backend in Turing is used.
+    If not specified, ForwardDiff is used with an automatically determined chunksize.
 
 # Reference
 
@@ -308,16 +308,16 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
 setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts    ::  Int         # number of samples with adaption for ϵ
-    δ           ::  Float64     # target accept rate
-    λ           ::  Float64     # target leapfrog length
-    ϵ           ::  Float64     # (initial) step size
+struct HMCDA{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+    n_adapts::Int         # number of samples with adaption for ϵ
+    δ::Float64     # target accept rate
+    λ::Float64     # target leapfrog length
+    ϵ::Float64     # (initial) step size
     adtype::AD
 end
 
-function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType = ADBackend()) where {metricT <: AHMC.AbstractMetric}
-    return HMCDA{typeof(adtype), space, metricT}(n_adapts, δ, λ, ϵ, adtype)
+function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
+    return HMCDA{typeof(adtype),space,metricT}(n_adapts, δ, λ, ϵ, adtype)
 end
 
 function HMCDA(
@@ -325,9 +325,9 @@ function HMCDA(
     λ::Float64;
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype = adtype)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype=adtype)
 end
 
 function HMCDA(
@@ -347,14 +347,14 @@ function HMCDA(
     space::Symbol...;
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype=adtype)
 end
 
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0)
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)
 
 No-U-Turn Sampler (NUTS) sampler.
 
@@ -372,6 +372,8 @@ Arguments:
 - `max_depth::Int` : Maximum doubling tree depth.
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
 - `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
+- `adtype::ADTypes.AbstractADType` : The automatic differentiation (AD) backend.
+    If not specified, ForwardDiff is used with an automatically determined chunksize.
 
 """
 struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
@@ -391,9 +393,9 @@ function NUTS(
     ϵ::Float64,
     ::Type{metricT},
     space::Tuple;
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 ) where {metricT}
-    return NUTS{typeof(adtype), space, metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
+    return NUTS{typeof(adtype),space,metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
 
 function NUTS(
@@ -413,9 +415,9 @@ function NUTS(
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype = adtype)
+    NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype=adtype)
 end
 
 function NUTS(
@@ -424,9 +426,9 @@ function NUTS(
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype = adtype)
+    NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
 end
 
 function NUTS(; kwargs...)
@@ -434,7 +436,7 @@ function NUTS(; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
+    @eval getmetricT(::$alg{<:Any,<:Any,metricT}) where {metricT} = metricT
 end
 
 #####
@@ -486,7 +488,7 @@ end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:Hamiltonian},
-    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    dists::Union{Distribution,AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},
     var::AbstractArray,
     vi,
@@ -506,7 +508,7 @@ end
 
 function DynamicPPL.dot_observe(
     spl::Sampler{<:Hamiltonian},
-    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    ds::Union{Distribution,AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi,
 )

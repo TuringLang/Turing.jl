@@ -13,7 +13,7 @@ else
     import ..DynamicHMC
     using ..Turing
     using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using ..Turing.Inference:  ADTypes, LogDensityProblemsAD, TYPEDFIELDS
+    using ..Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 end
 
 """
@@ -25,22 +25,22 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 ```julia
 using DynamicHMC
 ```
-""" 
+"""
 struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
     sampler::T
     adtype::AD
 end
 
 function DynamicNUTS(
-    spl::DynamicHMC.NUTS = DynamicHMC.NUTS(),
-    space::Tuple = ();
-    adtype::ADTypes.AbstractADType = Turing.ADBackend()
+    spl::DynamicHMC.NUTS=DynamicHMC.NUTS(),
+    space::Tuple=();
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)
 )
     return DynamicNUTS{typeof(adtype),space,typeof(spl)}(spl, adtype)
 end
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
-DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
+DynamicPPL.getspace(::DynamicNUTS{<:Any,space}) where {space} = space
 
 """
     DynamicNUTSState
@@ -82,8 +82,8 @@ function DynamicPPL.initialstep(
         rng,
         ℓ,
         0;
-        initialization = (q = vi[spl],),
-        reporter = DynamicHMC.NoProgressReport(),
+        initialization=(q=vi[spl],),
+        reporter=DynamicHMC.NoProgressReport(),
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)

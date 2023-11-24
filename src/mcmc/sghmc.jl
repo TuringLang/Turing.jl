@@ -23,13 +23,13 @@ end
         space::Symbol...;
         learning_rate::Real,
         momentum_decay::Real,
-        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
     )
 
 Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
-If the automatic differentiation (AD) backend `adtype` is not provided, the currently activated
-AD backend in Turing is used.
+If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff is used
+with automatically determined chunk size.
 
 # Reference
 
@@ -41,13 +41,13 @@ function SGHMC(
     space::Symbol...;
     learning_rate::Real,
     momentum_decay::Real,
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
     return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(_learning_rate, _momentum_decay, adtype)
 end
 
-struct SGHMCState{L,V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
+struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
     logdensity::L
     vi::V
     velocity::T
@@ -134,7 +134,7 @@ struct PolynomialStepsize{T<:Real}
     "Decay rate of step size in (0.5, 1]."
     γ::T
 
-    function PolynomialStepsize{T}(a::T, b::T, γ::T) where T
+    function PolynomialStepsize{T}(a::T, b::T, γ::T) where {T}
         0.5 < γ ≤ 1 || error("the decay rate `γ` has to be in (0.5, 1]")
         return new{T}(a, b, γ)
     end
@@ -153,7 +153,7 @@ a (b + t)^{-γ}.
 function PolynomialStepsize(a::T, b::T, γ::T) where {T<:Real}
     return PolynomialStepsize{T}(a, b, γ)
 end
-function PolynomialStepsize(a::Real, b::Real = 0, γ::Real = 0.55)
+function PolynomialStepsize(a::Real, b::Real=0, γ::Real=0.55)
     return PolynomialStepsize(promote(a, b, γ)...)
 end
 
@@ -163,15 +163,15 @@ end
     SGLD(
         space::Symbol...;
         stepsize = PolynomialStepsize(0.01),
-        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
     )
 
 Stochastic gradient Langevin dynamics (SGLD) sampler.
 
 By default, a polynomially decaying stepsize is used.
 
-If the automatic differentiation (AD) backend `adtype` is not provided, the currently activated
-AD backend in Turing is used.
+If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff is used
+with automatically determined chunk size.
 
 # Reference
 
@@ -183,8 +183,8 @@ See also: [`PolynomialStepsize`](@ref)
 """
 function SGLD(
     space::Symbol...;
-    stepsize = PolynomialStepsize(0.01),
-    adtype::ADTypes.AbstractADType = ADBackend(),
+    stepsize=PolynomialStepsize(0.01),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
     return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
@@ -204,7 +204,7 @@ function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
     return SGLDTransition(theta, lp, stepsize)
 end
 
-metadata(t::SGLDTransition) = (lp = t.lp, SGLD_stepsize = t.stepsize)
+metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
 
 DynamicPPL.getlogp(t::SGLDTransition) = t.lp
 
