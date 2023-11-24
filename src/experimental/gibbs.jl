@@ -98,14 +98,14 @@ function DynamicPPL.dot_tilde_assume(
 end
 
 
-preferred_value_type(::AbstractVarInfo) = OrderedDict
-preferred_value_type(::SimpleVarInfo{<:NamedTuple}) = NamedTuple
+preferred_value_type(::DynamicPPL.AbstractVarInfo) = DynamicPPL.OrderedDict
+preferred_value_type(::DynamicPPL.SimpleVarInfo{<:NamedTuple}) = NamedTuple
 function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
     # We can only do this in the scenario where all the varnames are `Setfield.IdentityLens`.
     namedtuple_compatible = all(varinfo.metadata) do md
-        eltype(md.vns) <: VarName{<:Any,DynamicPPL.Setfield.IdentityLens}
+        eltype(md.vns) <: VarName{<:Any,Setfield.IdentityLens}
     end
-    return namedtuple_compatible ? NamedTuple : OrderedDict
+    return namedtuple_compatible ? NamedTuple : DynamicPPL.OrderedDict
 end
 
 # No-op if no values are provided.
@@ -121,20 +121,20 @@ function condition_gibbs(context::DynamicPPL.AbstractContext, value, values...)
         values...
     )
 end
-# For `AbstractVarInfo` we just extract the values.
-function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::AbstractVarInfo)
+# For `DynamicPPL.AbstractVarInfo` we just extract the values.
+function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
     # TODO: Determine when it's okay to use `NamedTuple` and use that instead.
     return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
 end
 function DynamicPPL.condition(
     context::DynamicPPL.AbstractContext,
-    varinfo::AbstractVarInfo,
-    varinfos::AbstractVarInfo...
+    varinfo::DynamicPPL.AbstractVarInfo,
+    varinfos::DynamicPPL.AbstractVarInfo...
 )
     return DynamicPPL.condition(DynamicPPL.condition(context, varinfo), varinfos...)
 end
-# Allow calling this on a `Model` directly.
-function condition_gibbs(model::Model, values...)
+# Allow calling this on a `DynamicPPL.Model` directly.
+function condition_gibbs(model::DynamicPPL.Model, values...)
     return DynamicPPL.contextualize(model, condition_gibbs(model.context, values...))
 end
 
@@ -166,7 +166,7 @@ julia> result.s != 1.0  # we did NOT want to condition on varinfo with `s = 1.0`
 true
 ```
 """
-function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfos)
+function make_conditional(model::DynamicPPL.Model, target_varinfo::DynamicPPL.AbstractVarInfo, varinfos)
     # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
     return condition_gibbs(
         model,
@@ -175,31 +175,31 @@ function make_conditional(model::Model, target_varinfo::AbstractVarInfo, varinfo
 end
 
 wrap_algorithm_maybe(x) = x
-wrap_algorithm_maybe(x::InferenceAlgorithm) = Sampler(x)
+wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
-struct GibbsV2{V,A} <: InferenceAlgorithm
+struct Gibbs{V,A} <: InferenceAlgorithm
     varnames::V
     samplers::A
 end
 
 # NamedTuple
-GibbsV2(; algs...) = GibbsV2(NamedTuple(algs))
-function GibbsV2(algs::NamedTuple)
-    return GibbsV2(
+Gibbs(; algs...) = Gibbs(NamedTuple(algs))
+function Gibbs(algs::NamedTuple)
+    return Gibbs(
         map(s -> VarName{s}(), keys(algs)),
         map(wrap_algorithm_maybe, values(algs)),
     )
 end
 
 # AbstractDict
-function GibbsV2(algs::AbstractDict)
-    return GibbsV2(keys(algs), map(wrap_algorithm_maybe, values(algs)))
+function Gibbs(algs::AbstractDict)
+    return Gibbs(keys(algs), map(wrap_algorithm_maybe, values(algs)))
 end
-function GibbsV2(algs::Pair...)
-    return GibbsV2(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
+function Gibbs(algs::Pair...)
+    return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
 
-struct GibbsV2State{V<:AbstractVarInfo,S}
+struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     vi::V
     states::S
 end
@@ -210,9 +210,9 @@ _maybevec(x::VarName) = [x]
 
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:GibbsV2},
-    vi_base::AbstractVarInfo;
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs},
+    vi_base::DynamicPPL.AbstractVarInfo;
     kwargs...,
 )
     alg = spl.alg
@@ -232,7 +232,7 @@ function DynamicPPL.initialstep(
         new_state_local = last(AbstractMCMC.step(rng, model_local, sampler_local; kwargs...))
 
         # Return the new state and the invlinked `varinfo`.
-        vi_local_state = varinfo(new_state_local)
+        vi_local_state = Turing.Inference.varinfo(new_state_local)
         vi_local_state_linked = if DynamicPPL.istrans(vi_local_state)
             DynamicPPL.invlink(vi_local_state, sampler_local, model_local)
         else
@@ -252,20 +252,20 @@ function DynamicPPL.initialstep(
         DynamicPPL.getlogp(last(varinfos)),
     )
 
-    return Transition(model, vi), GibbsV2State(vi, states)
+    return Turing.Inference.Transition(model, vi), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:GibbsV2},
-    state::GibbsV2State;
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs},
+    state::GibbsState;
     kwargs...,
 )
     alg = spl.alg
     samplers = alg.samplers
     states = state.states
-    varinfos = map(varinfo, state.states)
+    varinfos = map(Turing.Inference.varinfo, state.states)
     @assert length(samplers) == length(state.states)
 
     # TODO: move this into a recursive function so we can unroll when reasonable?
@@ -302,14 +302,14 @@ function AbstractMCMC.step(
         DynamicPPL.getlogp(last(varinfos)),
     )
 
-    return Transition(model, vi), GibbsV2State(vi, states)
+    return Turing.Inference.Transition(model, vi), GibbsState(vi, states)
 end
 
 function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler, sampler_previous::DynamicPPL.Sampler)
     # NOTE: This is different from the implementation used in the old `Gibbs` sampler, where we specifically provide
     # a `gid`. Here, because `model` only contains random variables to be sampled by `sampler`, we just use the exact
     # same `selector` as before but now with `rerun` set to `true` if needed.
-    return DynamicPPL.Setfield.@set sampler.selector.rerun = gibbs_rerun(sampler_previous.alg, sampler.alg)
+    return Setfield.@set sampler.selector.rerun = gibbs_rerun(sampler_previous.alg, sampler.alg)
 end
 
 function gibbs_rerun_maybe(
@@ -317,7 +317,7 @@ function gibbs_rerun_maybe(
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler,
     sampler_previous::DynamicPPL.Sampler,
-    varinfo::AbstractVarInfo,
+    varinfo::DynamicPPL.AbstractVarInfo,
 )
     # Return early if we don't need it.
     gibbs_rerun(sampler, sampler_previous) || return varinfo
@@ -337,7 +337,7 @@ function gibbs_rerun_maybe(
 end
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
-    model::Model,
+    model::DynamicPPL.Model,
     samplers,
     states,
     varinfos,
@@ -367,7 +367,7 @@ function gibbs_step_inner(
     # 2. Take step with local sampler.
     # Update the state we're about to use if need be.
     # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
-    current_state_local = gibbs_state(
+    current_state_local = Turing.Inference.gibbs_state(
         model_local, sampler_local, state_local, varinfo_local
     )
 
@@ -384,7 +384,7 @@ function gibbs_step_inner(
 
     # 3. Extract the new varinfo.
     # Return the resulting state and invlinked `varinfo`.
-    varinfo_local_state = varinfo(new_state_local)
+    varinfo_local_state = Turing.Inference.varinfo(new_state_local)
     varinfo_local_state_invlinked = if DynamicPPL.istrans(varinfo_local_state)
         DynamicPPL.invlink(varinfo_local_state, sampler_local, model_local)
     else
