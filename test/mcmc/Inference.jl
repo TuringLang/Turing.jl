@@ -1,4 +1,4 @@
-@testset "inference.jl" begin
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -10,19 +10,19 @@
                 # https://github.com/TuringLang/Turing.jl/issues/1571
                 samplers = @static if VERSION <= v"1.5.3" || VERSION >= v"1.6.0"
                     (
-                        HMC(0.1, 7),
+                        HMC(0.1, 7; adtype=adbackend),
                         PG(10),
                         IS(),
                         MH(),
-                        Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
-                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                        Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend)),
+                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
                     )
                 else
                     (
-                        HMC(0.1, 7),
+                        HMC(0.1, 7; adtype=adbackend),
                         IS(),
                         MH(),
-                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
                     )
                 end
                 for sampler in samplers
@@ -51,12 +51,12 @@
 
             # Smoke test for default sample call.
             Random.seed!(100)
-            chain = sample(gdemo_default, HMC(0.1, 7), MCMCThreads(), 1000, 4)
+            chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4)
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7), gdemo_default)
+            sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
             chains = sample(gdemo_default, sampler, MCMCThreads(), 1000, 4)
             @test chains isa MCMCChains.Chains
         end
@@ -64,9 +64,9 @@
     @testset "chain save/resume" begin
         Random.seed!(1234)
 
-        alg1 = HMCDA(1000, 0.65, 0.15)
+        alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m))
+        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
@@ -122,24 +122,24 @@
         chains = sample(gdemo_d(), Prior(), N)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 1)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
         chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N; chain_type = Vector{NamedTuple})
+        chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
         @test chains isa Vector{<:NamedTuple}
         @test length(chains) == N
         @test all(length(x) == 3 for x in chains)
         @test all(haskey(x, :lp) for x in chains)
-        @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
-        @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+        @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
+        @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
     end
 
     @testset "chain ordering" begin
@@ -200,7 +200,7 @@
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
+        gibbs = Gibbs(HMC(0.2, 3, :p; adtype=adbackend), PG(10, :x))
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
@@ -227,7 +227,7 @@
             return s, m
         end
 
-        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m))
+        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m; adtype=adbackend))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
     @testset "new grammar" begin
@@ -290,7 +290,7 @@
         end
 
         sample(
-            newinterface(obs), HMC(0.75, 3, :p, :x; adtype = Turing.AutoForwardDiff(; chunksize=2)), 100
+            newinterface(obs), HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)), 100
         )
     end
     @testset "no return" begin
@@ -303,7 +303,7 @@
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10), 4000)
+        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
     @testset "observe" begin
@@ -333,7 +333,7 @@
         @test all(isone, res_pg[:x])
     end
     @testset "sample" begin
-        alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
+        alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
@@ -346,7 +346,7 @@
                 return s, m
             end
 
-            alg = HMC(0.01, 5)
+            alg = HMC(0.01, 5; adtype=adbackend)
             x = randn(100)
             res = sample(vdemo1(x), alg, 250)
 
@@ -365,12 +365,12 @@
             end
 
             D = 2
-            alg = HMC(0.01, 5)
+            alg = HMC(0.01, 5; adtype=adbackend)
             res = sample(vdemo2(randn(D, 100)), alg, 250)
 
             # Vector assumptions
             N = 10
-            alg = HMC(0.2, 4)
+            alg = HMC(0.2, 4; adtype=adbackend)
 
             @model function vdemo3()
                 x = Vector{Real}(undef, N)
@@ -423,7 +423,7 @@
             return s, m
         end
 
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(100)
         res = sample(vdemo1(x), alg, 250)
 
@@ -433,12 +433,12 @@
         end
 
         D = 2
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4)
+        alg = HMC(0.2, 4; adtype=adbackend)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -483,7 +483,7 @@
     end
     @testset "Type parameters" begin
         N = 10
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(1000)
         @model function vdemo1(::Type{T}=Float64) where {T}
             x = Vector{T}(undef, N)
