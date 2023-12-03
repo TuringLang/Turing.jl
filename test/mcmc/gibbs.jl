@@ -77,7 +77,7 @@
 
         function AbstractMCMC.bundle_samples(
             samples::Vector,
-            ::typeof((@__MODULE__).model),
+            ::typeof(Main.model),
             ::Turing.Sampler{<:Gibbs},
             state,
             ::Type{MCMCChains.Chains};
