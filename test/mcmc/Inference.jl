@@ -338,82 +338,80 @@
     end
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
-        if !(Turing.ADBackend() isa Turing.AutoTracker)
-            @model function vdemo1(x)
-                s ~ InverseGamma(2, 3)
-                m ~ Normal(0, sqrt(s))
-                @. x ~ Normal(m, sqrt(s))
-                return s, m
-            end
-
-            alg = HMC(0.01, 5; adtype=adbackend)
-            x = randn(100)
-            res = sample(vdemo1(x), alg, 250)
-
-            @model function vdemo1b(x)
-                s ~ InverseGamma(2, 3)
-                m ~ Normal(0, sqrt(s))
-                @. x ~ Normal(m, $(sqrt(s)))
-                return s, m
-            end
-
-            res = sample(vdemo1b(x), alg, 250)
-
-            @model function vdemo2(x)
-                μ ~ MvNormal(zeros(size(x, 1)), I)
-                @. x ~ $(MvNormal(μ, I))
-            end
-
-            D = 2
-            alg = HMC(0.01, 5; adtype=adbackend)
-            res = sample(vdemo2(randn(D, 100)), alg, 250)
-
-            # Vector assumptions
-            N = 10
-            alg = HMC(0.2, 4; adtype=adbackend)
-
-            @model function vdemo3()
-                x = Vector{Real}(undef, N)
-                for i in 1:N
-                    x[i] ~ Normal(0, sqrt(4))
-                end
-            end
-
-            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
-
-            # Test for vectorize UnivariateDistribution
-            @model function vdemo4()
-                x = Vector{Real}(undef, N)
-                @. x ~ Normal(0, 2)
-            end
-
-            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
-
-            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
-
-            println("Time for")
-            println("  Loop : ", t_loop)
-            println("  Vec  : ", t_vec)
-            println("  Mv   : ", t_mv)
-
-            # Transformed test
-            @model function vdemo6()
-                x = Vector{Real}(undef, N)
-                @. x ~ InverseGamma(2, 3)
-            end
-
-            sample(vdemo6(), alg, 1000)
-
-            N = 3
-            @model function vdemo7()
-                x = Array{Real}(undef, N, N)
-                @. x ~ [InverseGamma(2, 3) for i in 1:N]
-            end
-
-            sample(vdemo7(), alg, 1000)
+        @model function vdemo1(x)
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            @. x ~ Normal(m, sqrt(s))
+            return s, m
         end
+
+        alg = HMC(0.01, 5; adtype=adbackend)
+        x = randn(100)
+        res = sample(vdemo1(x), alg, 250)
+
+        @model function vdemo1b(x)
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            @. x ~ Normal(m, $(sqrt(s)))
+            return s, m
+        end
+
+        res = sample(vdemo1b(x), alg, 250)
+
+        @model function vdemo2(x)
+            μ ~ MvNormal(zeros(size(x, 1)), I)
+            @. x ~ $(MvNormal(μ, I))
+        end
+
+        D = 2
+        alg = HMC(0.01, 5; adtype=adbackend)
+        res = sample(vdemo2(randn(D, 100)), alg, 250)
+
+        # Vector assumptions
+        N = 10
+        alg = HMC(0.2, 4; adtype=adbackend)
+
+        @model function vdemo3()
+            x = Vector{Real}(undef, N)
+            for i in 1:N
+                x[i] ~ Normal(0, sqrt(4))
+            end
+        end
+
+        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+
+        # Test for vectorize UnivariateDistribution
+        @model function vdemo4()
+            x = Vector{Real}(undef, N)
+            @. x ~ Normal(0, 2)
+        end
+
+        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+
+        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+
+        println("Time for")
+        println("  Loop : ", t_loop)
+        println("  Vec  : ", t_vec)
+        println("  Mv   : ", t_mv)
+
+        # Transformed test
+        @model function vdemo6()
+            x = Vector{Real}(undef, N)
+            @. x ~ InverseGamma(2, 3)
+        end
+
+        sample(vdemo6(), alg, 1000)
+
+        N = 3
+        @model function vdemo7()
+            x = Array{Real}(undef, N, N)
+            @. x ~ [InverseGamma(2, 3) for i in 1:N]
+        end
+
+        sample(vdemo7(), alg, 1000)
     end
     @testset "vectorization .~" begin
         @model function vdemo1(x)
