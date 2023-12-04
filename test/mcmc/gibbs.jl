@@ -75,9 +75,9 @@
         end
         model = gdemo_copy()
 
-        function AbstractMCMC.bundle_samples(
+        @nospecialize function AbstractMCMC.bundle_samples(
             samples::Vector,
-            ::DynamicPPL.Model,
+            ::typeof(model),
             ::Turing.Sampler{<:Gibbs},
             state,
             ::Type{MCMCChains.Chains};
