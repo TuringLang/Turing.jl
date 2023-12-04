@@ -24,7 +24,7 @@
     end
 end
 
-@testset "sgld.jl" begin
+@testset "Testing sgld.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     @turing_testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD
