@@ -1,4 +1,4 @@
-@turing_testset "gibbs conditionals.jl" begin
+@turing_testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     Random.seed!(1000); rng = StableRNG(123)
 
     @turing_testset "gdemo" begin
