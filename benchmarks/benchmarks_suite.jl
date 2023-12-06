@@ -18,7 +18,7 @@ data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
 
 @model function constrained_test(obs)
-    p ~ Beta(2, 2)
+    p ~ Beta(2,2)
     for i = 1:length(obs)
         obs[i] ~ Bernoulli(p)
     end
@@ -52,8 +52,8 @@ BenchmarkSuite["mnormal"] = BenchmarkGroup(["mnormal"])
 # Define the target distribution and its gradient
 
 @model function target(dim)
-    Θ = Vector{Real}(undef, dim)
-    θ ~ MvNormal(zeros(dim), I)
+   Θ = Vector{Real}(undef, dim)
+   θ ~ MvNormal(zeros(dim), I)
 end
 
 # Sampling parameter settings
@@ -67,14 +67,14 @@ BenchmarkSuite["mnormal"]["hmc"] = @benchmarkable sample($(target(dim)), $(HMC(0
 
 @model function mdemo(d, N)
     Θ = Vector(undef, N)
-    for n = 1:N
-        Θ[n] ~ d
-    end
+   for n=1:N
+      Θ[n] ~ d
+   end
 end
 
 dim2 = 250
-A = rand(Wishart(dim2, Matrix{Float64}(I, dim2, dim2)));
-d = MvNormal(zeros(dim2), A)
+A    = rand(Wishart(dim2, Matrix{Float64}(I, dim2, dim2)));
+d    = MvNormal(zeros(dim2), A)
 
 # ForwardDiff
 BenchmarkSuite["mnormal"]["forwarddiff"] = @benchmarkable sample($(mdemo(d, 1)), $(HMC(0.1, 5; adtype=AutoForwardDiff(; chunksize=0))), 5000)

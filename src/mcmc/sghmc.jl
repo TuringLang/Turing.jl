@@ -47,7 +47,7 @@ function SGHMC(
     return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(_learning_rate, _momentum_decay, adtype)
 end
 
-struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
+struct SGHMCState{L,V<:AbstractVarInfo, T<:AbstractVector{<:Real}}
     logdensity::L
     vi::V
     velocity::T
@@ -134,7 +134,7 @@ struct PolynomialStepsize{T<:Real}
     "Decay rate of step size in (0.5, 1]."
     γ::T
 
-    function PolynomialStepsize{T}(a::T, b::T, γ::T) where {T}
+    function PolynomialStepsize{T}(a::T, b::T, γ::T) where T
         0.5 < γ ≤ 1 || error("the decay rate `γ` has to be in (0.5, 1]")
         return new{T}(a, b, γ)
     end
@@ -153,7 +153,7 @@ a (b + t)^{-γ}.
 function PolynomialStepsize(a::T, b::T, γ::T) where {T<:Real}
     return PolynomialStepsize{T}(a, b, γ)
 end
-function PolynomialStepsize(a::Real, b::Real=0, γ::Real=0.55)
+function PolynomialStepsize(a::Real, b::Real = 0, γ::Real = 0.55)
     return PolynomialStepsize(promote(a, b, γ)...)
 end
 
@@ -183,8 +183,8 @@ See also: [`PolynomialStepsize`](@ref)
 """
 function SGLD(
     space::Symbol...;
-    stepsize=PolynomialStepsize(0.01),
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    stepsize = PolynomialStepsize(0.01),
+    adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
 )
     return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
@@ -204,7 +204,7 @@ function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
     return SGLDTransition(theta, lp, stepsize)
 end
 
-metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
+metadata(t::SGLDTransition) = (lp = t.lp, SGLD_stepsize = t.stepsize)
 
 DynamicPPL.getlogp(t::SGLDTransition) = t.lp
 

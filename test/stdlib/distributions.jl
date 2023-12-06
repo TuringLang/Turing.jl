@@ -112,7 +112,7 @@
 
                         @model m() = x ~ dist
 
-                        chn = sample(rng, m(), HMC(0.05, 20; ), n_samples)
+                        chn = sample(rng, m(), HMC(0.05, 20), n_samples)
 
                         # Numerical tests.
                         check_dist_numerical(dist,

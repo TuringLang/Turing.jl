@@ -61,7 +61,7 @@ sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
-struct HMC{AD,space,metricT<:AHMC.AbstractMetric} <: StaticHamiltonian
+struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
     adtype::AD
@@ -77,7 +77,7 @@ function HMC(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMC(ϵ, n_leapfrog, metricT, space; adtype=adtype)
+    return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -115,9 +115,9 @@ function AbstractMCMC.sample(
         end
 
         return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-            chain_type=chain_type, progress=progress,
-            nadapts=_nadapts, discard_initial=_discard_initial,
-            kwargs...)
+                                       chain_type=chain_type, progress=progress,
+                                       nadapts=_nadapts, discard_initial=_discard_initial,
+                                       kwargs...)
     else
         return AbstractMCMC.mcmcsample(
             rng, model, sampler, N;
@@ -205,7 +205,7 @@ function DynamicPPL.initialstep(
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, kernel, _ =
             AHMC.adapt!(hamiltonian, kernel, adaptor,
-                1, nadapts, t.z.θ, t.stat.acceptance_rate)
+                        1, nadapts, t.z.θ, t.stat.acceptance_rate)
     end
 
     # Update `vi` based on acceptance
@@ -244,7 +244,7 @@ function AbstractMCMC.step(
     if spl.alg isa AdaptiveHamiltonian
         hamiltonian, kernel, _ =
             AHMC.adapt!(hamiltonian, state.kernel, state.adaptor,
-                i, nadapts, t.z.θ, t.stat.acceptance_rate)
+                        i, nadapts, t.z.θ, t.stat.acceptance_rate)
     else
         kernel = state.kernel
     end
@@ -308,11 +308,11 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
 setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
-    δ::Float64     # target accept rate
-    λ::Float64     # target leapfrog length
-    ϵ::Float64     # (initial) step size
+struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
+    n_adapts    ::  Int         # number of samples with adaption for ϵ
+    δ           ::  Float64     # target accept rate
+    λ           ::  Float64     # target leapfrog length
+    ϵ           ::  Float64     # (initial) step size
     adtype::AD
 end
 
@@ -327,7 +327,7 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype=adtype)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype = adtype)
 end
 
 function HMCDA(
@@ -349,7 +349,7 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
 )
-    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype=adtype)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
 end
 
 
@@ -436,7 +436,7 @@ function NUTS(; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any,<:Any,metricT}) where {metricT} = metricT
+    @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
 end
 
 #####
@@ -488,7 +488,7 @@ end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:Hamiltonian},
-    dists::Union{Distribution,AbstractArray{<:Distribution}},
+    dists::Union{Distribution, AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},
     var::AbstractArray,
     vi,
@@ -508,7 +508,7 @@ end
 
 function DynamicPPL.dot_observe(
     spl::Sampler{<:Hamiltonian},
-    ds::Union{Distribution,AbstractArray{<:Distribution}},
+    ds::Union{Distribution, AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi,
 )

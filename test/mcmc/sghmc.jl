@@ -44,14 +44,14 @@ end
     @numerical_testset "sgld inference" begin
         rng = StableRNG(1)
 
-        chain = sample(rng, gdemo_default, SGLD(; stepsize=PolynomialStepsize(0.5)), 20_000)
-        check_gdemo(chain, atol=0.2)
+        chain = sample(rng, gdemo_default, SGLD(; stepsize = PolynomialStepsize(0.5)), 20_000)
+        check_gdemo(chain, atol = 0.2)
 
         # Weight samples by step sizes (cf section 4.2 in the paper by Welling and Teh)
         v = get(chain, [:SGLD_stepsize, :s, :m])
         s_weighted = dot(v.SGLD_stepsize, v.s) / sum(v.SGLD_stepsize)
         m_weighted = dot(v.SGLD_stepsize, v.m) / sum(v.SGLD_stepsize)
-        @test s_weighted ≈ 49 / 24 atol = 0.2
-        @test m_weighted ≈ 7 / 6 atol = 0.2
+        @test s_weighted ≈ 49/24 atol=0.2
+        @test m_weighted ≈ 7/6 atol=0.2
     end
 end

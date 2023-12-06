@@ -122,24 +122,24 @@
         chains = sample(gdemo_d(), Prior(), N)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 1)
-        @test mean(chains, :s) ≈ 3 atol = 0.1
-        @test mean(chains, :m) ≈ 0 atol = 0.1
+        @test mean(chains, :s) ≈ 3 atol=0.1
+        @test mean(chains, :m) ≈ 0 atol=0.1
 
         Random.seed!(100)
         chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol = 0.1
-        @test mean(chains, :m) ≈ 0 atol = 0.1
+        @test mean(chains, :s) ≈ 3 atol=0.1
+        @test mean(chains, :m) ≈ 0 atol=0.1
 
         Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
+        chains = sample(gdemo_d(), Prior(), N; chain_type = Vector{NamedTuple})
         @test chains isa Vector{<:NamedTuple}
         @test length(chains) == N
         @test all(length(x) == 3 for x in chains)
         @test all(haskey(x, :lp) for x in chains)
-        @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
-        @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
+        @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
+        @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
     end
 
     @testset "chain ordering" begin

@@ -2,10 +2,10 @@
     # Set a seed
     rng = StableRNG(123)
     @numerical_testset "constrained bounded" begin
-        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        obs = [0,1,0,1,1,1,1,1,1,1]
 
         @model function constrained_test(obs)
-            p ~ Beta(2, 2)
+            p ~ Beta(2,2)
             for i = 1:length(obs)
                 obs[i] ~ Bernoulli(p)
             end
@@ -18,10 +18,10 @@
             HMC(1.5, 3; adtype=adbackend),# using a large step size (1.5)
             1000)
 
-        check_numerical(chain, [:p], [10 / 14], atol=0.1)
+        check_numerical(chain, [:p], [10/14], atol=0.1)
     end
     @numerical_testset "constrained simplex" begin
-        obs12 = [1, 2, 1, 2, 2, 2, 2, 2, 2, 2]
+        obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model function constrained_simplex_test(obs12)
             ps ~ Dirichlet(2, 3)
@@ -38,7 +38,7 @@
             HMC(0.75, 2; adtype=adbackend),
             1000)
 
-        check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16], atol=0.015)
+        check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], atol=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
         alg = HMC(0.1, 10; adtype=adbackend)
@@ -55,7 +55,7 @@
         vs = map(1:3) do _
             chain = sample(rng, model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
-            reshape(mean(r; dims=1), 2, 2)
+            reshape(mean(r; dims = 1), 2, 2)
         end
 
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
@@ -86,15 +86,15 @@
         var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
         @model function bnn(ts)
-            b1 ~ MvNormal([0.0; 0.0; 0.0],
-                [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior])
-            w11 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w12 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w13 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
+            b1 ~ MvNormal([0. ;0.; 0.],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
+            w11 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w12 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
+            w13 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
             bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal([0.0; 0; 0],
-                [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior])
+            wo ~ MvNormal([0.; 0; 0],
+                [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
             for i = rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)
@@ -242,7 +242,7 @@
         @test_logs (
             :warn,
             "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
-        ) (:info,) match_mode = :any begin
+        ) (:info,) match_mode=:any begin
             sample(demo_warn_init_params(), NUTS(; adtype=adbackend), 5)
         end
     end
