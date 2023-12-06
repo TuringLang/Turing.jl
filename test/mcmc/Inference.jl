@@ -290,7 +290,7 @@
         end
 
         sample(
-            newinterface(obs), HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)), 100
+            newinterface(obs), HMC(0.75, 3, :p, :x; adtype = Turing.AutoForwardDiff(; chunksize=2)), 100
         )
     end
     @testset "no return" begin
