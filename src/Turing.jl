@@ -94,7 +94,6 @@ export  @model,                 # modelling
         ADVI,
 
         sample,                 # inference
-        resume,
         @logprob_str,
         @prob_str,
         externalsampler,

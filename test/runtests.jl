@@ -1,5 +1,6 @@
 using AbstractMCMC
 using AdvancedMH
+using AdvancedPS
 using Clustering
 using Distributions
 using Distributions.FillArrays
@@ -36,8 +37,8 @@ using ForwardDiff: Dual
 using MCMCChains: Chains
 using StatsFuns: binomlogpdf, logistic, logsumexp
 using TimerOutputs: TimerOutputs, @timeit
-using Turing: BinomialLogit, ForwardDiffAD, Sampler, SampleFromPrior, NUTS, TrackerAD,
-                Variational, ZygoteAD, getspace
+using Turing: BinomialLogit, Sampler, SampleFromPrior, NUTS,
+                Variational, getspace
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 

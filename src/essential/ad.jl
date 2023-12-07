@@ -36,21 +36,10 @@ function setchunksize(chunk_size::Int)
     AdvancedVI.setchunksize(chunk_size)
 end
 
-abstract type ADBackend end
-struct ForwardDiffAD{chunk,standardtag} <: ADBackend end
+getchunksize(::AutoForwardDiff{chunk}) where {chunk} = chunk
 
-# Use standard tag if not specified otherwise
-ForwardDiffAD{N}() where {N} = ForwardDiffAD{N,true}()
-
-getchunksize(::ForwardDiffAD{chunk}) where chunk = chunk
-
-standardtag(::ForwardDiffAD{<:Any,true}) = true
-standardtag(::ForwardDiffAD) = false
-
-struct TrackerAD <: ADBackend end
-struct ZygoteAD <: ADBackend end
-
-struct ReverseDiffAD{cache} <: ADBackend end
+standardtag(::AutoForwardDiff{<:Any,Nothing}) = true
+standardtag(::AutoForwardDiff) = false
 
 const RDCache = Ref(false)
 
@@ -63,10 +52,10 @@ getrdcache() = RDCache[]
 ADBackend() = ADBackend(ADBACKEND[])
 ADBackend(T::Symbol) = ADBackend(Val(T))
 
-ADBackend(::Val{:forwarddiff}) = ForwardDiffAD{CHUNKSIZE[]}
-ADBackend(::Val{:tracker}) = TrackerAD
-ADBackend(::Val{:zygote}) = ZygoteAD
-ADBackend(::Val{:reversediff}) = ReverseDiffAD{getrdcache()}
+ADBackend(::Val{:forwarddiff}) = AutoForwardDiff(; chunksize=CHUNKSIZE[])
+ADBackend(::Val{:tracker}) = AutoTracker()
+ADBackend(::Val{:zygote}) = AutoZygote()
+ADBackend(::Val{:reversediff}) = AutoReverseDiff(; compile=getrdcache())
 
 ADBackend(::Val) = error("The requested AD backend is not available. Make sure to load all required packages.")
 
@@ -76,18 +65,18 @@ ADBackend(::Val) = error("The requested AD backend is not available. Make sure t
 Find the autodifferentiation backend of the algorithm `alg`.
 """
 getADbackend(spl::Sampler) = getADbackend(spl.alg)
-getADbackend(::SampleFromPrior) = ADBackend()()
+getADbackend(::SampleFromPrior) = ADBackend()
 getADbackend(ctx::DynamicPPL.SamplingContext) = getADbackend(ctx.sampler)
 getADbackend(ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.NodeTrait(ctx), ctx)
 
-getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()()
+getADbackend(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = ADBackend()
 getADbackend(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADbackend(DynamicPPL.childcontext(ctx))
 
 function LogDensityProblemsAD.ADgradient(ℓ::Turing.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(getADbackend(ℓ.context), ℓ)
 end
 
-function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(ad::AutoForwardDiff, ℓ::Turing.LogDensityFunction)
     θ = DynamicPPL.getparams(ℓ)
     f = Base.Fix1(LogDensityProblems.logdensity, ℓ)
 
@@ -107,20 +96,8 @@ function LogDensityProblemsAD.ADgradient(ad::ForwardDiffAD, ℓ::Turing.LogDensi
     return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
-function LogDensityProblemsAD.ADgradient(::TrackerAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(Val(:Tracker), ℓ)
-end
-
-function LogDensityProblemsAD.ADgradient(::ZygoteAD, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(Val(:Zygote), ℓ)
-end
-
-for cache in (:true, :false)
-    @eval begin
-        function LogDensityProblemsAD.ADgradient(::ReverseDiffAD{$cache}, ℓ::Turing.LogDensityFunction)
-            return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val($cache), x=DynamicPPL.getparams(ℓ))
-        end
-    end
+function LogDensityProblemsAD.ADgradient(ad::AutoReverseDiff, ℓ::Turing.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val(ad.compile), x=DynamicPPL.getparams(ℓ))
 end
 
 function verifygrad(grad::AbstractVector{<:Real})

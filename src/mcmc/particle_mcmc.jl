@@ -79,11 +79,12 @@ end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::Sampler{<:SMC},
     N::Integer;
-    chain_type=MCMCChains.Chains,
+    chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     kwargs...
 )
@@ -94,8 +95,10 @@ function AbstractMCMC.sample(
                                        nparticles=N,
                                        kwargs...)
     else
-        return resume(resume_from, N;
-                      chain_type=chain_type, progress=progress, nparticles=N, kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng, model, sampler, N; chain_type, initial_state, progress=progress, 
+            nparticles=N, kwargs...
+        )
     end
 end
 
@@ -121,7 +124,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
 
     # Extract the first particle and its weight.
     particle = particles.vals[1]
@@ -264,7 +267,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
@@ -308,7 +311,7 @@ function AbstractMCMC.step(
     particles = AdvancedPS.ParticleContainer(x, AdvancedPS.TracedRNG(), rng)
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, reference)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl, reference)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
@@ -389,9 +392,7 @@ function AdvancedPS.Trace(
     DynamicPPL.reset_num_produce!(newvarinfo)
 
     tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
-    ttask = Libtask.TapedTask(tmodel, rng; deepcopy_types=Union{typeof(rng), typeof(model)})
-    wrapedmodel = AdvancedPS.GenericModel(tmodel, ttask)
-
-    newtrace = AdvancedPS.Trace(wrapedmodel, rng)
+    newtrace = AdvancedPS.Trace(tmodel, rng)
+    AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
     return newtrace
 end
