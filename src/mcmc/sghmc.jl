@@ -28,8 +28,8 @@ end
 
 Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
-If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff is used
-with automatically determined chunk size.
+If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff
+with automatically determined `chunksize` is used.
 
 # Reference
 
@@ -170,8 +170,8 @@ Stochastic gradient Langevin dynamics (SGLD) sampler.
 
 By default, a polynomially decaying stepsize is used.
 
-If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff is used
-with automatically determined chunk size.
+If the automatic differentiation (AD) backend `adtype` is not provided, ForwardDiff
+with automatically determined `chunksize` is used.
 
 # Reference
 

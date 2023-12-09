@@ -32,7 +32,7 @@ end
 ###
 
 """
-    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0))
+    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0))
 
 Hamiltonian Monte Carlo sampler with static trajectory.
 
@@ -41,7 +41,7 @@ Hamiltonian Monte Carlo sampler with static trajectory.
 - `ϵ`: The leapfrog step size to use.
 - `n_leapfrog`: The number of leapfrog steps to use.
 - `adtype`: The automatic differentiation (AD) backend.
-    If not specified, ForwardDiff is used with an automatically determined chunksize.
+    If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 # Usage
 
@@ -298,7 +298,7 @@ HMCDA(200, 0.65, 0.3)
 - `λ`: Target leapfrog length.
 - `ϵ`: Initial step size; 0 means automatically search by Turing.
 - `adtype`: The automatic differentiation (AD) backend.
-    If not specified, ForwardDiff is used with an automatically determined chunksize.
+    If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 # Reference
 
@@ -373,7 +373,7 @@ Arguments:
 - `Δ_max::Float64` : Maximum divergence during doubling tree.
 - `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
 - `adtype::ADTypes.AbstractADType` : The automatic differentiation (AD) backend.
-    If not specified, ForwardDiff is used with an automatically determined chunksize.
+    If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 """
 struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian

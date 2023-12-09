@@ -43,7 +43,6 @@ export  @model,
         AutoZygote,
         AutoReverseDiff,
         value,
-        verifygrad,
         @logprob_str,
         @prob_str
 
