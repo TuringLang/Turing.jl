@@ -8,12 +8,12 @@ if isdefined(Base, :get_extension)
     import DynamicHMC
     using Turing
     using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+    using Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 else
     import ..DynamicHMC
     using ..Turing
     using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using ..Turing.Inference: LogDensityProblemsAD, TYPEDFIELDS
+    using ..Turing.Inference:  ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 end
 
 """
@@ -26,14 +26,18 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """ 
-struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian{AD} 
+struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
     sampler::T
+    adtype::AD
 end
 
-DynamicNUTS(args...) = DynamicNUTS{Turing.ADBackend()}(args...)
-DynamicNUTS{AD}(spl::DynamicHMC.NUTS, space::Tuple) where AD = DynamicNUTS{AD, space, typeof(spl)}(spl)
-DynamicNUTS{AD}(spl::DynamicHMC.NUTS) where AD = DynamicNUTS{AD}(spl, ())
-DynamicNUTS{AD}() where AD = DynamicNUTS{AD}(DynamicHMC.NUTS())
+function DynamicNUTS(
+    spl::DynamicHMC.NUTS = DynamicHMC.NUTS(),
+    space::Tuple = ();
+    adtype::ADTypes.AbstractADType = Turing.ADBackend()
+)
+    return DynamicNUTS{typeof(adtype),space,typeof(spl)}(spl, adtype)
+end
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
 DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space

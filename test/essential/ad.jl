@@ -8,29 +8,29 @@
         _s = getval(vi, svn)[1]
         _m = getval(vi, mvn)[1]
 
-        dist_s = InverseGamma(2,3)
+        dist_s = InverseGamma(2, 3)
 
         # Hand-written logp
         function logp(x::Vector)
-          s = x[2]
-          # s = invlink(dist_s, s)
-          m = x[1]
-          lik_dist = Normal(m, sqrt(s))
-          lp = logpdf(dist_s, s) + logpdf(Normal(0,sqrt(s)), m)
-          lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
-          lp
+            s = x[2]
+            # s = invlink(dist_s, s)
+            m = x[1]
+            lik_dist = Normal(m, sqrt(s))
+            lp = logpdf(dist_s, s) + logpdf(Normal(0, sqrt(s)), m)
+            lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
+            lp
         end
 
         # Call ForwardDiff's AD
-        g = x -> ForwardDiff.gradient(logp, x);
+        g = x -> ForwardDiff.gradient(logp, x)
         # _s = link(dist_s, _s)
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
         ℓ = Turing.LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
-        x = map(x->Float64(x), vi[SampleFromPrior()])
+        x = map(x -> Float64(x), vi[SampleFromPrior()])
 
-        trackerℓ = LogDensityProblemsAD.ADgradient(TrackerAD(), ℓ)
+        trackerℓ = LogDensityProblemsAD.ADgradient(Turing.AutoTracker(), ℓ)
         if isdefined(Base, :get_extension)
             @test trackerℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADTrackerExt).TrackerGradientLogDensity
         else
@@ -38,9 +38,9 @@
         end
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
-        @test sort(∇E1) ≈ grad_FWAD atol=1e-9
+        @test sort(∇E1) ≈ grad_FWAD atol = 1e-9
 
-        zygoteℓ = LogDensityProblemsAD.ADgradient(ZygoteAD(), ℓ)
+        zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
         if isdefined(Base, :get_extension)
             @test zygoteℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADZygoteExt).ZygoteGradientLogDensity
         else
@@ -48,7 +48,7 @@
         end
         @test zygoteℓ.ℓ === ℓ
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
-        @test sort(∇E2) ≈ grad_FWAD atol=1e-9
+        @test sort(∇E2) ≈ grad_FWAD atol = 1e-9
     end
     @turing_testset "general AD tests" begin
         # Tests gdemo gradient.
@@ -57,7 +57,7 @@
             s = x[2]
             m = x[1]
             lik_dist = Normal(m, sqrt(s))
-            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0,sqrt(s)), m, false)
+            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0, sqrt(s)), m, false)
             lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
             return lp
         end
@@ -98,17 +98,17 @@
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reversediff)
-        sample(wishart(), HMC(0.01, 1), 1000);
+        sample(wishart(), HMC(0.01, 1), 1000)
         Turing.setadbackend(:zygote)
-        sample(wishart(), HMC(0.01, 1), 1000);
+        sample(wishart(), HMC(0.01, 1), 1000)
 
         @model function invwishart()
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
         Turing.setadbackend(:reversediff)
-        sample(invwishart(), HMC(0.01, 1), 1000);
+        sample(invwishart(), HMC(0.01, 1), 1000)
         Turing.setadbackend(:zygote)
-        sample(invwishart(), HMC(0.01, 1), 1000);
+        sample(invwishart(), HMC(0.01, 1), 1000)
     end
     @testset "Hessian test" begin
         @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
@@ -124,7 +124,7 @@
             spl = DynamicPPL.SampleFromPrior()
             varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
 
-            function logπ(z; unlinked = false)
+            function logπ(z; unlinked=false)
                 varinfo = DynamicPPL.unflatten(varinfo_init, spl, z)
 
                 # TODO(torfjelde): Pretty sure this is a mistake.
@@ -169,7 +169,7 @@
             d = Normal(0.0, i)
             data = rand(d, N)
             chn = sample(demo(data), NUTS(0.65), 1000)
-            @test mean(Array(chn[:sigma])) ≈ std(data) atol=0.5
+            @test mean(Array(chn[:sigma])) ≈ std(data) atol = 0.5
         end
 
         Turing.setrdcache(false)
@@ -188,14 +188,28 @@
     end
 
     @testset "tag" begin
-        @test Turing.ADBackend(Val(:forwarddiff))() === Turing.ForwardDiffAD{Turing.CHUNKSIZE[],true}()
+        @test Turing.ADBackend(Val(:forwarddiff)) === Turing.AutoForwardDiff(; chunksize=Turing.CHUNKSIZE[])
         for chunksize in (0, 1, 10)
-            ad = Turing.ForwardDiffAD{chunksize}()
-            @test ad === Turing.ForwardDiffAD{chunksize,true}()
+            ad = Turing.AutoForwardDiff(; chunksize=chunksize)
+            @test ad === Turing.AutoForwardDiff(; chunksize=chunksize)
             @test Turing.Essential.standardtag(ad)
             for standardtag in (false, 0, 1)
-                @test !Turing.Essential.standardtag(Turing.ForwardDiffAD{chunksize,standardtag}())
+                @test !Turing.Essential.standardtag(Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag))
             end
         end
+    end
+
+    @testset "ReverseDiff compiled without linking" begin
+        f = DynamicPPL.LogDensityFunction(gdemo_default)
+        θ = DynamicPPL.getparams(f)
+
+        f_rd = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=false), f)
+        f_rd_compiled = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=true), f)
+
+        ℓ, ℓ_grad = LogDensityProblems.logdensity_and_gradient(f_rd, θ)
+        ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(f_rd_compiled, θ)
+
+        @test ℓ == ℓ_compiled
+        @test ℓ_grad == ℓ_grad_compiled
     end
 end

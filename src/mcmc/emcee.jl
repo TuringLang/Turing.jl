@@ -109,7 +109,8 @@ function AbstractMCMC.bundle_samples(
     params_vec = map(Base.Fix1(_params_to_array, model), samples)
 
     # Extract names and values separately.
-    nms = params_vec[1][1]
+    varnames = params_vec[1][1]
+    varnames_symbol = map(Symbol, varnames)
     vals_vec = [p[2] for p in params_vec]
 
     # Get the values of the extra parameters in each transition.
@@ -120,7 +121,7 @@ function AbstractMCMC.bundle_samples(
     extra_values_vec = [e[2] for e in extra_vec]
 
     # Extract names & construct param array.
-    nms = [nms; extra_params]
+    nms = [varnames_symbol; extra_params]
     # `hcat` first to ensure we get the right `eltype`.
     x = hcat(first(vals_vec), first(extra_values_vec))
     # Pre-allocate to minimize memory usage.
@@ -133,10 +134,9 @@ function AbstractMCMC.bundle_samples(
     le = getlogevidence(samples, state, spl)
 
     # Set up the info tuple.
+    info = (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),)
     if save_state
-        info = (model = model, sampler = spl, samplerstate = state)
-    else
-        info = NamedTuple()
+        info = merge(info, (model = model, sampler = spl, samplerstate = state))
     end
 
     # Concretize the array before giving it to MCMCChains.

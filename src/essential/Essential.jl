@@ -11,6 +11,7 @@ using Bijectors: PDMatDistribution
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
+using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote
 
 import AdvancedPS
 import LogDensityProblems
@@ -40,11 +41,11 @@ export  @model,
         ADBackend,
         setadbackend,
         setadsafe,
-        ForwardDiffAD,
-        EnzymeAD,
-        TrackerAD,
-        ZygoteAD,
-        ReverseDiffAD,
+        AutoForwardDiff,
+        AutoEnzyme,
+        AutoTracker,
+        AutoZygote,
+        AutoReverseDiff,
         value,
         CHUNKSIZE,
         ADBACKEND,

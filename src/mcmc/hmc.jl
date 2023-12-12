@@ -32,24 +32,26 @@ end
 ###
 
 """
-    HMC(ϵ::Float64, n_leapfrog::Int)
+    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = Turing.ADBackend())
 
 Hamiltonian Monte Carlo sampler with static trajectory.
 
-Arguments:
+# Arguments
 
-- `ϵ::Float64` : The leapfrog step size to use.
-- `n_leapfrog::Int` : The number of leapfrog steps to use.
+- `ϵ`: The leapfrog step size to use.
+- `n_leapfrog`: The number of leapfrog steps to use.
+- `adtype`: The automatic differentiation (AD) backend.
+  If it is not provided, the currently activated AD backend in Turing is used.
 
-Usage:
+# Usage
 
 ```julia
 HMC(0.05, 10)
 ```
 
-Tips:
+# Tips
 
-- If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step size `ϵ`, e.g.
+If you are receiving gradient errors when using `HMC`, try reducing the leapfrog step size `ϵ`, e.g.
 
 ```julia
 # Original step size
@@ -59,30 +61,23 @@ sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
-struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian{AD}
+struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
+    adtype::AD
 end
 
-HMC(args...; kwargs...) = HMC{ADBackend()}(args...; kwargs...)
-function HMC{AD}(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
-    return HMC{AD, space, metricT}(ϵ, n_leapfrog)
+function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType = ADBackend()) where {metricT <: AHMC.AbstractMetric}
+    return HMC{typeof(adtype), space, metricT}(ϵ, n_leapfrog, adtype)
 end
-function HMC{AD}(
-    ϵ::Float64,
-    n_leapfrog::Int,
-    ::Tuple{};
-    kwargs...
-) where AD
-    return HMC{AD}(ϵ, n_leapfrog; kwargs...)
-end
-function HMC{AD}(
+function HMC(
     ϵ::Float64,
     n_leapfrog::Int,
     space::Symbol...;
-    metricT=AHMC.UnitEuclideanMetric
-) where AD
-    return HMC{AD}(ϵ, n_leapfrog, metricT, space)
+    metricT=AHMC.UnitEuclideanMetric,
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
+    return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -90,11 +85,12 @@ DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
     rng::AbstractRNG,
-    model::AbstractModel,
+    model::DynamicPPL.Model,
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
-    chain_type=MCMCChains.Chains,
+    chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
@@ -123,8 +119,11 @@ function AbstractMCMC.sample(
                                        nadapts=_nadapts, discard_initial=_discard_initial,
                                        kwargs...)
     else
-        return resume(resume_from, N; chain_type=chain_type, progress=progress,
-                      nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng, model, sampler, N;
+            chain_type=chain_type, initial_state=initial_state, progress=progress,
+            nadapts=0, discard_adapt=false, discard_initial=0, kwargs...
+        )
     end
 end
 
@@ -279,68 +278,78 @@ function get_hamiltonian(model, spl, vi, state, n)
 end
 
 """
-    HMCDA(n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64=0.0)
+    HMCDA(
+        n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
+        adtype::ADTypes.AbstractADType = Turing.ADBackend(),
+    )
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
-Usage:
+# Usage
 
 ```julia
 HMCDA(200, 0.65, 0.3)
 ```
 
-Arguments:
+# Arguments
 
-- `n_adapts::Int` : Numbers of samples to use for adaptation.
-- `δ::Float64` : Target acceptance rate. 65% is often recommended.
-- `λ::Float64` : Target leapfrog length.
-- `ϵ::Float64=0.0` : Initial step size; 0 means automatically search by Turing.
+- `n_adapts`: Numbers of samples to use for adaptation.
+- `δ`: Target acceptance rate. 65% is often recommended.
+- `λ`: Target leapfrog length.
+- `ϵ`: Initial step size; 0 means automatically search by Turing.
+- `adtype`: The automatic differentiation (AD) backend.
+  If it is not provided, the currently activated AD backend in Turing is used.
+
+# Reference
 
 For more information, please view the following paper ([arXiv link](https://arxiv.org/abs/1111.4246)):
 
-- Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
-  setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
-  Research 15, no. 1 (2014): 1593-1623.
+Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
+setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
+Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
+struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
     n_adapts    ::  Int         # number of samples with adaption for ϵ
     δ           ::  Float64     # target accept rate
     λ           ::  Float64     # target leapfrog length
     ϵ           ::  Float64     # (initial) step size
-end
-HMCDA(args...; kwargs...) = HMCDA{ADBackend()}(args...; kwargs...)
-function HMCDA{AD}(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple) where {AD, metricT <: AHMC.AbstractMetric}
-    return HMCDA{AD, space, metricT}(n_adapts, δ, λ, ϵ)
+    adtype::AD
 end
 
-function HMCDA{AD}(
+function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType = ADBackend()) where {metricT <: AHMC.AbstractMetric}
+    return HMCDA{typeof(adtype), space, metricT}(n_adapts, δ, λ, ϵ, adtype)
+end
+
+function HMCDA(
     δ::Float64,
     λ::Float64;
     init_ϵ::Float64=0.0,
-    metricT=AHMC.UnitEuclideanMetric
-) where AD
-    return HMCDA{AD}(-1, δ, λ, init_ϵ, metricT, ())
+    metricT=AHMC.UnitEuclideanMetric,
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype = adtype)
 end
 
-function HMCDA{AD}(
+function HMCDA(
     n_adapts::Int,
     δ::Float64,
     λ::Float64,
     ::Tuple{};
     kwargs...
-) where AD
-    return HMCDA{AD}(n_adapts, δ, λ; kwargs...)
+)
+    return HMCDA(n_adapts, δ, λ; kwargs...)
 end
 
-function HMCDA{AD}(
+function HMCDA(
     n_adapts::Int,
     δ::Float64,
     λ::Float64,
     space::Symbol...;
     init_ϵ::Float64=0.0,
-    metricT=AHMC.UnitEuclideanMetric
-) where AD
-    return HMCDA{AD}(n_adapts, δ, λ, init_ϵ, metricT, space)
+    metricT=AHMC.UnitEuclideanMetric,
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
 end
 
 
@@ -365,61 +374,63 @@ Arguments:
 - `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
 
 """
-struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian{AD}
+struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
     n_adapts::Int         # number of samples with adaption for ϵ
     δ::Float64        # target accept rate
     max_depth::Int         # maximum tree depth
     Δ_max::Float64
     ϵ::Float64     # (initial) step size
+    adtype::AD
 end
 
-NUTS(args...; kwargs...) = NUTS{ADBackend()}(args...; kwargs...)
-
-function NUTS{AD}(
+function NUTS(
     n_adapts::Int,
     δ::Float64,
     max_depth::Int,
     Δ_max::Float64,
     ϵ::Float64,
     ::Type{metricT},
-    space::Tuple
-) where {AD, metricT}
-    return NUTS{AD, space, metricT}(n_adapts, δ, max_depth, Δ_max, ϵ)
+    space::Tuple;
+    adtype::ADTypes.AbstractADType = ADBackend(),
+) where {metricT}
+    return NUTS{typeof(adtype), space, metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
 
-function NUTS{AD}(
+function NUTS(
     n_adapts::Int,
     δ::Float64,
     ::Tuple{};
     kwargs...
-) where AD
-    NUTS{AD}(n_adapts, δ; kwargs...)
+)
+    NUTS(n_adapts, δ; kwargs...)
 end
 
-function NUTS{AD}(
+function NUTS(
     n_adapts::Int,
     δ::Float64,
     space::Symbol...;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric
-) where AD
-    NUTS{AD}(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space)
+    metricT=AHMC.DiagEuclideanMetric,
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
+    NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype = adtype)
 end
 
-function NUTS{AD}(
+function NUTS(
     δ::Float64;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric
-) where AD
-    NUTS{AD}(-1, δ, max_depth, Δ_max, init_ϵ, metricT, ())
+    metricT=AHMC.DiagEuclideanMetric,
+    adtype::ADTypes.AbstractADType = ADBackend(),
+)
+    NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype = adtype)
 end
 
-function NUTS{AD}(kwargs...) where AD
-    NUTS{AD}(-1, 0.65; kwargs...)
+function NUTS(; kwargs...)
+    NUTS(-1, 0.65; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
