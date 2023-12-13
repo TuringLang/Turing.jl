@@ -179,7 +179,6 @@ map_est = optimize(model, MAP())
 map_est = optimize(model, MAP(), NelderMead())
 ```
 """
-
 function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, options::Optim.Options=Optim.Options(); kwargs...)
     ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
     f = Turing.OptimLogDensity(model, ctx)

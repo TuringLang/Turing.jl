@@ -34,7 +34,7 @@ end
 function DynamicNUTS(
     spl::DynamicHMC.NUTS = DynamicHMC.NUTS(),
     space::Tuple = ();
-    adtype::ADTypes.AbstractADType = Turing.ADBackend()
+    adtype::ADTypes.AbstractADType = ADTypes.AutoForwardDiff(; chunksize=0)
 )
     return DynamicNUTS{typeof(adtype),space,typeof(spl)}(spl, adtype)
 end

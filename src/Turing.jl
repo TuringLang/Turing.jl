@@ -98,10 +98,6 @@ export  @model,                 # modelling
         @prob_str,
         externalsampler,
 
-        setchunksize,           # helper
-        setadbackend,
-        setadsafe,
-
         setprogress!,           # debugging
 
         Flat,
