@@ -43,13 +43,3 @@ end
 function LogDensityProblemsAD.ADgradient(ad::AutoReverseDiff, ℓ::Turing.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val(ad.compile), x=DynamicPPL.getparams(ℓ))
 end
-
-function verifygrad(grad::AbstractVector{<:Real})
-    if any(isnan, grad) || any(isinf, grad)
-        @warn("Numerical error in gradients. Rejecting current proposal...")
-        @warn("grad = $(grad)")
-        return false
-    else
-        return true
-    end
-end
