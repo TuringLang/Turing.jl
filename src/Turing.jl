@@ -98,6 +98,11 @@ export  @model,                 # modelling
         @prob_str,
         externalsampler,
 
+        AutoForwardDiff,        # ADTypes
+        AutoReverseDiff,
+        AutoZygote,
+        AutoTracker,
+
         setprogress!,           # debugging
 
         Flat,
