@@ -1,4 +1,4 @@
-@turing_testset "gibbs conditionals.jl" begin
+@turing_testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     Random.seed!(1000); rng = StableRNG(123)
 
     @turing_testset "gdemo" begin
@@ -131,7 +131,7 @@
         # Compare three Gibbs samplers
         sampler1 = Gibbs(GibbsConditional(:z, cond_z), GibbsConditional(:μ, cond_μ))
         sampler2 = Gibbs(GibbsConditional(:z, cond_z), MH(:μ))
-        sampler3 = Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ))
+        sampler3 = Gibbs(GibbsConditional(:z, cond_z), HMC(0.01, 7, :μ; adtype=adbackend))
         for sampler in (sampler1, sampler2, sampler3)
             chain = sample(rng, model, sampler, 10_000)
 

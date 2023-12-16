@@ -1,4 +1,4 @@
-@testset "hmc.jl" begin
+@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Set a seed
     rng = StableRNG(123)
     @numerical_testset "constrained bounded" begin
@@ -15,7 +15,7 @@
         chain = sample(
             rng,
             constrained_test(obs),
-            HMC(1.5, 3),# using a large step size (1.5)
+            HMC(1.5, 3; adtype=adbackend),# using a large step size (1.5)
             1000)
 
         check_numerical(chain, [:p], [10/14], atol=0.1)
@@ -35,13 +35,13 @@
         chain = sample(
             rng,
             constrained_simplex_test(obs12),
-            HMC(0.75, 2),
+            HMC(0.75, 2; adtype=adbackend),
             1000)
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], atol=0.015)
     end
     @numerical_testset "hmc reverse diff" begin
-        alg = HMC(0.1, 10)
+        alg = HMC(0.1, 10; adtype=adbackend)
         res = sample(rng, gdemo_default, alg, 4000)
         check_gdemo(res, rtol=0.1)
     end
@@ -53,7 +53,7 @@
         model_f = hmcmatrixsup()
         n_samples = 1_000
         vs = map(1:3) do _
-            chain = sample(rng, model_f, HMC(0.15, 7), n_samples)
+            chain = sample(rng, model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
             reshape(mean(r; dims = 1), 2, 2)
         end
@@ -103,14 +103,14 @@
         end
 
         # Sampling
-        chain = sample(rng, bnn(ts), HMC(0.1, 5), 10)
+        chain = sample(rng, bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
     end
 
-    @numerical_testset "hmcda inference" begin 
-        alg1 = HMCDA(500, 0.8, 0.015)
-        # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m), HMC(0.25, 3, :s))
-        
-        # alg3 = Gibbs(HMC(0.25, 3, :m), PG(30, 3, :s))
+    @numerical_testset "hmcda inference" begin
+        alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
+        # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m; adtype=adbackend), HMC(0.25, 3, :s; adtype=adbackend))
+
+        # alg3 = Gibbs(HMC(0.25, 3, :m; adtype=adbackend), PG(30, 3, :s))
         # alg3 = PG(50, 2000)
 
         res1 = sample(rng, gdemo_default, alg1, 3000)
@@ -122,27 +122,27 @@
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
     end
 
-    @numerical_testset "hmcda+gibbs inference" begin 
+    @numerical_testset "hmcda+gibbs inference" begin
         rng = StableRNG(123)
         Random.seed!(12345) # particle samplers do not support user-provided `rng` yet
-        alg3 = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, init_ϵ = 0.05, :m))
+        alg3 = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, :m; init_ϵ=0.05, adtype=adbackend))
 
         res3 = sample(rng, gdemo_default, alg3, 3000, discard_initial=1000)
         check_gdemo(res3)
     end
 
     @turing_testset "hmcda constructor" begin
-        alg = HMCDA(0.8, 0.75)
+        alg = HMCDA(0.8, 0.75; adtype=adbackend)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
-        alg = HMCDA(200, 0.8, 0.75)
+        alg = HMCDA(200, 0.8, 0.75; adtype=adbackend)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
-        alg = HMCDA(200, 0.8, 0.75, :s)
+        alg = HMCDA(200, 0.8, 0.75, :s; adtype=adbackend)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
@@ -151,36 +151,36 @@
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
     @numerical_testset "nuts inference" begin
-        alg = NUTS(1000, 0.8)
+        alg = NUTS(1000, 0.8; adtype=adbackend)
         res = sample(rng, gdemo_default, alg, 6000)
         check_gdemo(res)
     end
     @turing_testset "nuts constructor" begin
-        alg = NUTS(200, 0.65)
+        alg = NUTS(200, 0.65; adtype=adbackend)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
-        alg = NUTS(0.65)
+        alg = NUTS(0.65; adtype=adbackend)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
-        alg = NUTS(200, 0.65, :m)
+        alg = NUTS(200, 0.65, :m; adtype=adbackend)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
     @turing_testset "check discard" begin
-        alg = NUTS(100, 0.8)
+        alg = NUTS(100, 0.8; adtype=adbackend)
 
-        c1 = sample(rng, gdemo_default, alg, 500, discard_adapt = true)
-        c2 = sample(rng, gdemo_default, alg, 500, discard_adapt = false)
+        c1 = sample(rng, gdemo_default, alg, 500, discard_adapt=true)
+        c2 = sample(rng, gdemo_default, alg, 500, discard_adapt=false)
 
         @test size(c1, 1) == 500
         @test size(c2, 1) == 500
     end
     @turing_testset "AHMC resize" begin
-        alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s))
-        alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s))
-        alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s))
+        alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s; adtype=adbackend))
+        alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s; adtype=adbackend))
+        alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s; adtype=adbackend))
         @test sample(rng, gdemo_default, alg1, 300) isa Chains
         @test sample(rng, gdemo_default, alg2, 300) isa Chains
         @test sample(rng, gdemo_default, alg3, 300) isa Chains
@@ -192,25 +192,25 @@
             m = Matrix{T}(undef, 2, 3)
             m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe1(), HMC(0.2, 4), 1_000) isa Chains
+        @test sample(rng, mwe1(), HMC(0.2, 4; adtype=adbackend), 1_000) isa Chains
 
-        @model function mwe2(::Type{T} = Matrix{Float64}) where T
+        @model function mwe2(::Type{T}=Matrix{Float64}) where {T}
             m = T(undef, 2, 3)
             m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe2(), HMC(0.2, 4), 1_000) isa Chains
+        @test sample(rng, mwe2(), HMC(0.2, 4; adtype=adbackend), 1_000) isa Chains
 
         # https://github.com/TuringLang/Turing.jl/issues/1308
-        @model function mwe3(::Type{T} = Array{Float64}) where T
+        @model function mwe3(::Type{T}=Array{Float64}) where {T}
             m = T(undef, 2, 3)
             m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe3(), HMC(0.2, 4), 1_000) isa Chains
+        @test sample(rng, mwe3(), HMC(0.2, 4; adtype=adbackend), 1_000) isa Chains
     end
 
     # issue #1923
     @turing_testset "reproducibility" begin
-        alg = NUTS(1000, 0.8)
+        alg = NUTS(1000, 0.8; adtype=adbackend)
         res1 = sample(StableRNG(123), gdemo_default, alg, 1000)
         res2 = sample(StableRNG(123), gdemo_default, alg, 1000)
         res3 = sample(StableRNG(123), gdemo_default, alg, 1000)
@@ -224,7 +224,7 @@
             s ~ truncated(Normal(3, 1), lower=0)
             m ~ Normal(0, sqrt(s))
         end
-        alg = NUTS(1000, 0.8)
+        alg = NUTS(1000, 0.8; adtype=adbackend)
         gdemo_default_prior = DynamicPPL.contextualize(demo_hmc_prior(), DynamicPPL.PriorContext())
         chain = sample(gdemo_default_prior, alg, 10_000)
         check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.1)
@@ -243,7 +243,7 @@
             :warn,
             "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
         ) (:info,) match_mode=:any begin
-            sample(demo_warn_init_params(), NUTS(), 5)
+            sample(demo_warn_init_params(), NUTS(; adtype=adbackend), 5)
         end
     end
 end

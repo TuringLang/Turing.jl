@@ -84,31 +84,24 @@
         @model function dir()
             theta ~ Dirichlet(1 ./ fill(4, 4))
         end
-        Turing.setadbackend(:zygote)
-        sample(dir(), HMC(0.01, 1), 1000)
-        Turing.setadbackend(:reversediff)
-        Turing.setrdcache(false)
-        sample(dir(), HMC(0.01, 1), 1000)
-        Turing.setrdcache(true)
-        sample(dir(), HMC(0.01, 1), 1000)
-        Turing.setrdcache(false)
+        sample(dir(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
+        sample(dir(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
+        sample(dir(), HMC(0.01, 1; adtype=AutoReverseDiff(true)), 1000)
     end
     @testset "PDMatDistribution AD" begin
         @model function wishart()
             theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reversediff)
-        sample(wishart(), HMC(0.01, 1), 1000)
-        Turing.setadbackend(:zygote)
-        sample(wishart(), HMC(0.01, 1), 1000)
+
+        sample(wishart(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
+        sample(wishart(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
 
         @model function invwishart()
             theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
-        Turing.setadbackend(:reversediff)
-        sample(invwishart(), HMC(0.01, 1), 1000)
-        Turing.setadbackend(:zygote)
-        sample(invwishart(), HMC(0.01, 1), 1000)
+
+        sample(invwishart(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
+        sample(invwishart(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
     end
     @testset "Hessian test" begin
         @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
@@ -156,8 +149,6 @@
     end
 
     @testset "memoization: issue #1393" begin
-        Turing.setadbackend(:reversediff)
-        Turing.setrdcache(true)
 
         @model function demo(data)
             sigma ~ Uniform(0.0, 20.0)
@@ -168,27 +159,13 @@
         for i in 1:5
             d = Normal(0.0, i)
             data = rand(d, N)
-            chn = sample(demo(data), NUTS(0.65), 1000)
+            chn = sample(demo(data), NUTS(0.65; adtype=AutoReverseDiff(true)), 1000)
             @test mean(Array(chn[:sigma])) ≈ std(data) atol = 0.5
         end
 
-        Turing.setrdcache(false)
-    end
-
-    @testset "chunksize" begin
-        # Default value is 0 (automatic choice by ForwardDiff)
-        @test Turing.CHUNKSIZE[] == 0
-
-        setchunksize(8)
-        @test Turing.CHUNKSIZE[] == 8
-        @test Turing.AdvancedVI.CHUNKSIZE[] == 8
-        setchunksize(0)
-        @test Turing.CHUNKSIZE[] == 0
-        @test Turing.AdvancedVI.CHUNKSIZE[] == 0
     end
 
     @testset "tag" begin
-        @test Turing.ADBackend(Val(:forwarddiff)) === Turing.AutoForwardDiff(; chunksize=Turing.CHUNKSIZE[])
         for chunksize in (0, 1, 10)
             ad = Turing.AutoForwardDiff(; chunksize=chunksize)
             @test ad === Turing.AutoForwardDiff(; chunksize=chunksize)

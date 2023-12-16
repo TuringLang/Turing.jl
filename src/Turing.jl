@@ -98,9 +98,10 @@ export  @model,                 # modelling
         @prob_str,
         externalsampler,
 
-        setchunksize,           # helper
-        setadbackend,
-        setadsafe,
+        AutoForwardDiff,        # ADTypes
+        AutoReverseDiff,
+        AutoZygote,
+        AutoTracker,
 
         setprogress!,           # debugging
 
