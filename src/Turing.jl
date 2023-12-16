@@ -54,6 +54,8 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+include("deprecated.jl") # to be removed in the next minor version release
+
 ###########
 # Exports #
 ###########
@@ -129,7 +131,11 @@ export  @model,                 # modelling
         get_parameter_bounds,
         optim_objective,
         optim_function,
-        optim_problem
+        optim_problem,
+
+        setbackend,           # deprecated
+        setchunksize,
+        setadsafe
 
 if !isdefined(Base, :get_extension)
     using Requires
