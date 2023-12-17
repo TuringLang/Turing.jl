@@ -1,3 +1,10 @@
+# Release 0.30.0
+
+- Replaced global variable-based AD backend mechanism with [`ADTypes.jl`](https://github.com/SciML/ADTypes.jl). Users should now specify the desired `ADType` directly in sampler constructors, e.g., `HMC(0.1, 10; adtype=AutoForwardDiff(; chunksize))`.
+- Interface functions such as `ADBackend`, `setadbackend`, `setadsafe`, `setchunksize`, and `setrdcache` are deprecated and will be removed in a future release.
+- Removed the outdated `verifygrad` function.
+- Updated to a newer version of `LogDensityProblemsAD` (v1.7).
+
 # Release 0.12.0
 
 - The interface for defining new distributions with a constrained support and making them compatible with `Turing` has changed. To make a custom distribution type `CustomDistribution` compatible with `Turing`, the user needs to define the method `bijector(d::CustomDistribution)` that returns an instance of type `Bijector` implementing the `Bijectors.Bijector` API.
