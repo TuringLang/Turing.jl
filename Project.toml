@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.30.0"
+version = "0.30.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -69,7 +69,7 @@ NamedArrays = "0.9, 0.10"
 Optim = "1"
 Reexport = "0.2, 1"
 Requires = "0.5, 1.0"
-SciMLBase = "1.37.1, < 2.11"
+SciMLBase = "1.37.1, < 2.11, 2"
 Setfield = "0.8, 1"
 SpecialFunctions = "0.7.2, 0.8, 0.9, 0.10, 1, 2"
 Statistics = "1.6"
