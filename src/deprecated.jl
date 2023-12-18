@@ -9,7 +9,7 @@ function setchunksize(::Int)
 end
 
 function setrdcache(::Bool)
-    Base.depwarn("`RDCACHE` and `setrdcache` are deprecated. Please specify the chunk size directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoReverseDiff(false))`.\n This function has no effects.", :setrdcache; force=true)
+    Base.depwarn("`RDCACHE` and `setrdcache` are deprecated. Please specify if you wish to use compiled tape for ReverseDiff directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoReverseDiff(false))`.\n This function has no effects.", :setrdcache; force=true)
     nothing
 end
 
