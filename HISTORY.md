@@ -1,6 +1,6 @@
 # Release 0.30.0
 
-- Replaced global variable-based AD backend mechanism with [`ADTypes.jl`](https://github.com/SciML/ADTypes.jl). Users should now specify the desired `ADType` directly in sampler constructors, e.g., `HMC(0.1, 10; adtype=AutoForwardDiff(; chunksize))`.
+- Replaced global variable-based AD backend mechanism with [`ADTypes.jl`](https://github.com/SciML/ADTypes.jl). Users should now specify the desired `ADType` directly in sampler constructors, e.g., `HMC(0.1, 10; adtype=AutoForwardDiff(; chunksize))`, or `HMC(0.1, 10; adtype=AutoReverseDiff(false))` (`false` indicates to not use compiled tape).
 - Interface functions such as `ADBackend`, `setadbackend`, `setadsafe`, `setchunksize`, and `setrdcache` are deprecated and will be removed in a future release.
 - Removed the outdated `verifygrad` function.
 - Updated to a newer version of `LogDensityProblemsAD` (v1.7).
