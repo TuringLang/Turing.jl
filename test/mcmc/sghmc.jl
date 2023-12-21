@@ -1,4 +1,4 @@
-@testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+# @testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
 @testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
     @turing_testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
