@@ -232,7 +232,7 @@
 
     @turing_testset "warning for difficult init params" begin
         attempt = 0
-        @model function demo_warn_init_params()
+        @model function demo_warn_initial_params()
             x ~ Normal()
             if (attempt += 1) < 30
                 Turing.@addlogprob! -Inf
@@ -241,9 +241,9 @@
 
         @test_logs (
             :warn,
-            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `init_params` keyword",
+            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `initial_params` keyword",
         ) (:info,) match_mode=:any begin
-            sample(demo_warn_init_params(), NUTS(; adtype=adbackend), 5)
+            sample(demo_warn_initial_params(), NUTS(; adtype=adbackend), 5)
         end
     end
 end

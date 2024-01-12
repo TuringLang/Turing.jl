@@ -132,7 +132,7 @@ function DynamicPPL.initialstep(
     model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
     vi::AbstractVarInfo;
-    init_params=nothing,
+    initial_params=nothing,
     nadapts=0,
     kwargs...
 )
@@ -164,11 +164,11 @@ function DynamicPPL.initialstep(
 
     # If no initial parameters are provided, resample until the log probability
     # and its gradient are finite.
-    if init_params === nothing
+    if initial_params === nothing
         init_attempt_count = 1
         while !isfinite(z)
             if init_attempt_count == 10
-                @warn "failed to find valid initial parameters in $(init_attempt_count) tries; consider providing explicit initial parameters using the `init_params` keyword"
+                @warn "failed to find valid initial parameters in $(init_attempt_count) tries; consider providing explicit initial parameters using the `initial_params` keyword"
             end
 
             # NOTE: This will sample in the unconstrained space.
