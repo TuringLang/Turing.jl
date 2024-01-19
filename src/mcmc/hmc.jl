@@ -67,7 +67,7 @@ struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian
     adtype::AD
 end
 
-function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
+function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
     return HMC{typeof(adtype),space,metricT}(ϵ, n_leapfrog, adtype)
 end
 function HMC(
@@ -75,7 +75,7 @@ function HMC(
     n_leapfrog::Int,
     space::Symbol...;
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
 end
@@ -316,7 +316,7 @@ struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
     adtype::AD
 end
 
-function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
+function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0)) where {metricT<:AHMC.AbstractMetric}
     return HMCDA{typeof(adtype),space,metricT}(n_adapts, δ, λ, ϵ, adtype)
 end
 
@@ -325,7 +325,7 @@ function HMCDA(
     λ::Float64;
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype = adtype)
 end
@@ -347,7 +347,7 @@ function HMCDA(
     space::Symbol...;
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
 end
@@ -393,7 +393,7 @@ function NUTS(
     ϵ::Float64,
     ::Type{metricT},
     space::Tuple;
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 ) where {metricT}
     return NUTS{typeof(adtype),space,metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
@@ -415,7 +415,7 @@ function NUTS(
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype=adtype)
 end
@@ -426,7 +426,7 @@ function NUTS(
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
 end

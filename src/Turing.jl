@@ -44,7 +44,6 @@ ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(L
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("essential/Essential.jl")
-Base.@deprecate_binding Core Essential false
 using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
@@ -131,11 +130,7 @@ export  @model,                 # modelling
         get_parameter_bounds,
         optim_objective,
         optim_function,
-        optim_problem,
-
-        setbackend,           # deprecated
-        setchunksize,
-        setadsafe
+        optim_problem
 
 if !isdefined(Base, :get_extension)
     using Requires
