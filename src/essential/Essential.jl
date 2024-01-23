@@ -18,7 +18,6 @@ import LogDensityProblems
 import LogDensityProblemsAD
 
 include("container.jl")
-include("ad.jl")
 
 export  @model,
         @varname,

@@ -29,7 +29,6 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
@@ -78,7 +77,6 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
-getADbackend(alg::Hamiltonian) = alg.adtype
 
 """
     ExternalSampler{S<:AbstractSampler}
