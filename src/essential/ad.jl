@@ -40,10 +40,6 @@ function LogDensityProblemsAD.ADgradient(ad::AutoForwardDiff, ℓ::Turing.LogDen
     return LogDensityProblemsAD.ADgradient(Val(:ForwardDiff), ℓ; chunk, tag, x = θ)
 end
 
-function LogDensityProblemsAD.ADgradient(::AutoEnzyme, ℓ::Turing.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(Val(:Enzyme), ℓ)
-end
-
 function LogDensityProblemsAD.ADgradient(ad::AutoReverseDiff, ℓ::Turing.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(Val(:ReverseDiff), ℓ; compile=Val(ad.compile), x=DynamicPPL.getparams(ℓ))
 end
