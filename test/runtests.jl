@@ -1,3 +1,6 @@
+import Pkg
+Pkg.add(Pkg.PackageSpec(; url="https://github.com/EnzymeAD/Enzyme.jl.git", rev="main"))
+
 using AbstractMCMC
 using AdvancedMH
 using AdvancedPS
