@@ -1,3 +1,4 @@
+# TODO: Move to Bijectors.jl if we find further use for this.
 """
     wrap_in_vec_reshape(f, in_size)
 
@@ -78,6 +79,7 @@ function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     # Setup.
     varinfo = DynamicPPL.VarInfo(model)
     # Use linked `varinfo` to determine the correct number of parameters.
+    # TODO: Replace with `length` once this is implemented for `VarInfo`.
     varinfo_linked = DynamicPPL.link(varinfo, model)
     num_params = length(varinfo_linked[:])
 
