@@ -109,6 +109,7 @@ function AdvancedVI.update(
 )
     # `length(td.dist) != length(td)` if `td.transform` changes the dimensionality,
     # so we need to use the length of the underlying distribution `td.dist` here.
+    # TODO: Check if we can get away with `view` instead of `getindex` for all AD backends.
     μ, ω = θ[begin:(begin + length(td.dist) - 1)], θ[(begin + length(td.dist)):end]
     return AdvancedVI.update(td, μ, StatsFuns.softplus.(ω))
 end
