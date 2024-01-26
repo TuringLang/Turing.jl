@@ -77,7 +77,9 @@ meanfield(model::DynamicPPL.Model) = meanfield(Random.default_rng(), model)
 function meanfield(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     # Setup.
     varinfo = DynamicPPL.VarInfo(model)
-    num_params = length(varinfo[DynamicPPL.SampleFromPrior()])
+    # Use linked `varinfo` to determine the correct number of parameters.
+    varinfo_linked = DynamicPPL.link(varinfo, model)
+    num_params = length(varinfo_linked[:])
 
     # initial params
     μ = randn(rng, num_params)
@@ -105,7 +107,9 @@ function AdvancedVI.update(
     td::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal},
     θ::AbstractArray,
 )
-    μ, ω = θ[1:length(td)], θ[length(td) + 1:end]
+    # `length(td.dist) != length(td)` if `td.transform` changes the dimensionality,
+    # so we need to use the length of the underlying distribution `td.dist` here.
+    μ, ω = θ[1:length(td.dist)], θ[length(td.dist) + 1:end]
     return AdvancedVI.update(td, μ, StatsFuns.softplus.(ω))
 end
 
