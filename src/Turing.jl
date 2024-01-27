@@ -44,7 +44,6 @@ ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(L
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("essential/Essential.jl")
-Base.@deprecate_binding Core Essential false
 using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
@@ -53,6 +52,8 @@ using .Variational
 
 include("optimisation/Optimisation.jl")
 using .Optimisation
+
+include("deprecated.jl") # to be removed in the next minor version release
 
 ###########
 # Exports #

@@ -41,7 +41,7 @@ function SGHMC(
     space::Symbol...;
     learning_rate::Real,
     momentum_decay::Real,
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff(; chunksize=0),
 )
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
     return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(_learning_rate, _momentum_decay, adtype)
@@ -184,7 +184,7 @@ See also: [`PolynomialStepsize`](@ref)
 function SGLD(
     space::Symbol...;
     stepsize = PolynomialStepsize(0.01),
-    adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
+    adtype::ADTypes.AbstractADType = ADTypes.AutoForwardDiff(; chunksize=0),
 )
     return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
