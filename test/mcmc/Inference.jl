@@ -1,4 +1,4 @@
-@testset "inference.jl" begin
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -10,19 +10,19 @@
                 # https://github.com/TuringLang/Turing.jl/issues/1571
                 samplers = @static if VERSION <= v"1.5.3" || VERSION >= v"1.6.0"
                     (
-                        HMC(0.1, 7),
+                        HMC(0.1, 7; adtype=adbackend),
                         PG(10),
                         IS(),
                         MH(),
-                        Gibbs(PG(3, :s), HMC(0.4, 8, :m)),
-                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                        Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend)),
+                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
                     )
                 else
                     (
-                        HMC(0.1, 7),
+                        HMC(0.1, 7; adtype=adbackend),
                         IS(),
                         MH(),
-                        Gibbs(HMC(0.1, 5, :s), ESS(:m)),
+                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
                     )
                 end
                 for sampler in samplers
@@ -51,12 +51,12 @@
 
             # Smoke test for default sample call.
             Random.seed!(100)
-            chain = sample(gdemo_default, HMC(0.1, 7), MCMCThreads(), 1000, 4)
+            chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4)
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7), gdemo_default)
+            sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
             chains = sample(gdemo_default, sampler, MCMCThreads(), 1000, 4)
             @test chains isa MCMCChains.Chains
         end
@@ -64,9 +64,9 @@
     @testset "chain save/resume" begin
         Random.seed!(1234)
 
-        alg1 = HMCDA(1000, 0.65, 0.15)
+        alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m))
+        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
@@ -74,16 +74,16 @@
         chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1, reuse_spl_n=1000)
+        chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(gdemo_default, alg2, 2000; save_state=true)
+        chn2 = sample(gdemo_default, alg2, 5000; discard_initial=2000, save_state=true)
         check_gdemo(chn2)
 
         chn2_contd = sample(gdemo_default, alg2, 2000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 5_000; save_state=true)
+        chn3 = sample(gdemo_default, alg3, 5_000; discard_initial=2000, save_state=true)
         check_gdemo(chn3)
 
         chn3_contd = sample(gdemo_default, alg3, 5_000; resume_from=chn3)
@@ -200,7 +200,7 @@
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
+        gibbs = Gibbs(HMC(0.2, 3, :p; adtype=adbackend), PG(10, :x))
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
@@ -227,7 +227,7 @@
             return s, m
         end
 
-        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m))
+        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m; adtype=adbackend))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
     @testset "new grammar" begin
@@ -303,7 +303,7 @@
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10), 4000)
+        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
     @testset "observe" begin
@@ -333,87 +333,85 @@
         @test all(isone, res_pg[:x])
     end
     @testset "sample" begin
-        alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
+        alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
-        if !(Turing.ADBackend() isa Turing.AutoTracker)
-            @model function vdemo1(x)
-                s ~ InverseGamma(2, 3)
-                m ~ Normal(0, sqrt(s))
-                @. x ~ Normal(m, sqrt(s))
-                return s, m
-            end
-
-            alg = HMC(0.01, 5)
-            x = randn(100)
-            res = sample(vdemo1(x), alg, 250)
-
-            @model function vdemo1b(x)
-                s ~ InverseGamma(2, 3)
-                m ~ Normal(0, sqrt(s))
-                @. x ~ Normal(m, $(sqrt(s)))
-                return s, m
-            end
-
-            res = sample(vdemo1b(x), alg, 250)
-
-            @model function vdemo2(x)
-                μ ~ MvNormal(zeros(size(x, 1)), I)
-                @. x ~ $(MvNormal(μ, I))
-            end
-
-            D = 2
-            alg = HMC(0.01, 5)
-            res = sample(vdemo2(randn(D, 100)), alg, 250)
-
-            # Vector assumptions
-            N = 10
-            alg = HMC(0.2, 4)
-
-            @model function vdemo3()
-                x = Vector{Real}(undef, N)
-                for i in 1:N
-                    x[i] ~ Normal(0, sqrt(4))
-                end
-            end
-
-            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
-
-            # Test for vectorize UnivariateDistribution
-            @model function vdemo4()
-                x = Vector{Real}(undef, N)
-                @. x ~ Normal(0, 2)
-            end
-
-            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
-
-            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
-
-            println("Time for")
-            println("  Loop : ", t_loop)
-            println("  Vec  : ", t_vec)
-            println("  Mv   : ", t_mv)
-
-            # Transformed test
-            @model function vdemo6()
-                x = Vector{Real}(undef, N)
-                @. x ~ InverseGamma(2, 3)
-            end
-
-            sample(vdemo6(), alg, 1000)
-
-            N = 3
-            @model function vdemo7()
-                x = Array{Real}(undef, N, N)
-                @. x ~ [InverseGamma(2, 3) for i in 1:N]
-            end
-
-            sample(vdemo7(), alg, 1000)
+        @model function vdemo1(x)
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            @. x ~ Normal(m, sqrt(s))
+            return s, m
         end
+
+        alg = HMC(0.01, 5; adtype=adbackend)
+        x = randn(100)
+        res = sample(vdemo1(x), alg, 250)
+
+        @model function vdemo1b(x)
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            @. x ~ Normal(m, $(sqrt(s)))
+            return s, m
+        end
+
+        res = sample(vdemo1b(x), alg, 250)
+
+        @model function vdemo2(x)
+            μ ~ MvNormal(zeros(size(x, 1)), I)
+            @. x ~ $(MvNormal(μ, I))
+        end
+
+        D = 2
+        alg = HMC(0.01, 5; adtype=adbackend)
+        res = sample(vdemo2(randn(D, 100)), alg, 250)
+
+        # Vector assumptions
+        N = 10
+        alg = HMC(0.2, 4; adtype=adbackend)
+
+        @model function vdemo3()
+            x = Vector{Real}(undef, N)
+            for i in 1:N
+                x[i] ~ Normal(0, sqrt(4))
+            end
+        end
+
+        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+
+        # Test for vectorize UnivariateDistribution
+        @model function vdemo4()
+            x = Vector{Real}(undef, N)
+            @. x ~ Normal(0, 2)
+        end
+
+        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+
+        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+
+        println("Time for")
+        println("  Loop : ", t_loop)
+        println("  Vec  : ", t_vec)
+        println("  Mv   : ", t_mv)
+
+        # Transformed test
+        @model function vdemo6()
+            x = Vector{Real}(undef, N)
+            @. x ~ InverseGamma(2, 3)
+        end
+
+        sample(vdemo6(), alg, 1000)
+
+        N = 3
+        @model function vdemo7()
+            x = Array{Real}(undef, N, N)
+            @. x ~ [InverseGamma(2, 3) for i in 1:N]
+        end
+
+        sample(vdemo7(), alg, 1000)
     end
     @testset "vectorization .~" begin
         @model function vdemo1(x)
@@ -423,7 +421,7 @@
             return s, m
         end
 
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(100)
         res = sample(vdemo1(x), alg, 250)
 
@@ -433,12 +431,12 @@
         end
 
         D = 2
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4)
+        alg = HMC(0.2, 4; adtype=adbackend)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -483,7 +481,7 @@
     end
     @testset "Type parameters" begin
         N = 10
-        alg = HMC(0.01, 5)
+        alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(1000)
         @model function vdemo1(::Type{T}=Float64) where {T}
             x = Vector{T}(undef, N)
