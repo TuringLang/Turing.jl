@@ -65,6 +65,7 @@ function broadcast_logpdf(dist::MultivariateDistribution, x::AbstractMatrix)
     return loglikelihood(dist, x)
 end
 
+# Needed to support broadcasting over columns for `MultivariateDistribution`s.
 reconstruct_getvalue(dist, x) = x
 function reconstruct_getvalue(
     dist::MultivariateDistribution,
