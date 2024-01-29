@@ -96,6 +96,19 @@ Wrap a sampler so it can be used as an inference algorithm.
 """
 externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
+function LogDensityProblemsAD.ADgradient(ℓ::LogDensityFunction)
+    adtype = if DynamicPPL.hassampler(ℓ)
+        alg = getsampler(ℓ).alg
+        @assert alg isa InferenceAlgorithm
+        if alg isa Hamiltonian
+            return alg.adtype
+        else
+            return AutoForwardDiff(; chunksize=0)
+        end
+    end
+    return LogDensityProblemsAD.ADgradient(adtype, ℓ)
+end
+
 function LogDensityProblems.logdensity(
     f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
     x::NamedTuple
