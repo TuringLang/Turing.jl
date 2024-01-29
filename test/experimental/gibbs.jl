@@ -17,8 +17,6 @@ end
 # 1. (✓) Needs to be compatible with most models.
 # 2. (???) Restricted to usage of pairs for now to make things simple.
 
-# TODO: Don't require usage of tuples due to potential of blowing up compilation times.
-
 const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
