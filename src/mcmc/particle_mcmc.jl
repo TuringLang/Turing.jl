@@ -394,8 +394,8 @@ function DynamicPPL.assume(
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    Libtask.produce(logpdf(dist, value))
-    return 0, vi
+    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
+    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
 end
 
 function DynamicPPL.acclogp!!(
@@ -405,6 +405,15 @@ function DynamicPPL.acclogp!!(
 )
     varinfo_trace = trace_local_varinfo_maybe(varinfo)
     DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
+end
+
+function DynamicPPL.acclogp_observe!!(
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp
+)
+    Libtask.produce(logp)
+    return trace_local_varinfo_maybe(varinfo)
 end
 
 # Convenient constructor
