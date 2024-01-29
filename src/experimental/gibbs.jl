@@ -305,6 +305,7 @@ function AbstractMCMC.step(
     return Turing.Inference.Transition(model, vi), GibbsState(vi, states)
 end
 
+# TODO: Remove this once we've done away with the selector functionality in DynamicPPL.
 function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler, sampler_previous::DynamicPPL.Sampler)
     # NOTE: This is different from the implementation used in the old `Gibbs` sampler, where we specifically provide
     # a `gid`. Here, because `model` only contains random variables to be sampled by `sampler`, we just use the exact
@@ -312,6 +313,8 @@ function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler
     return Setfield.@set sampler.selector.rerun = gibbs_rerun(sampler_previous.alg, sampler.alg)
 end
 
+# TODO: Once we have removed all the selector stuff in DynamicPPL, replace this with an improved mechanism
+# for determining whether we need to re-run the model.
 function gibbs_rerun_maybe(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
