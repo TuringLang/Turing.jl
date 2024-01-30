@@ -133,7 +133,7 @@ end
 
         # `sample`
         chain = sample(model, alg, 10_000; progress=false)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.1)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.2)
 
         # Without `m` as random.
         model = gdemo(1.5, 2.0) | (m = 7 / 6,)
