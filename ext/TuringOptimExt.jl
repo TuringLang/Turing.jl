@@ -86,7 +86,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     # Calculate the Hessian.
     varnames = StatsBase.coefnames(m)
     H = hessian_function(m.f, m.values.array[:, 1])
-    info = inv(H)
+    info = -H
 
     # Link it back if we invlinked it.
     if linked
@@ -99,7 +99,7 @@ end
 StatsBase.coef(m::ModeResult) = m.values
 StatsBase.coefnames(m::ModeResult) = names(m.values)[1]
 StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
-StatsBase.vcov(m::ModeResult) = StatsBase.informationmatrix(m)
+StatsBase.vcov(m::ModeResult) = inv(StatsBase.informationmatrix(m))
 StatsBase.loglikelihood(m::ModeResult) = m.lp
 
 ####################
