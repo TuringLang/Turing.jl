@@ -115,6 +115,18 @@ DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.l
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
 
+function make_prior_model(model::DynamicPPL.Model)
+    # Update the context of `model`.
+    return DynamicPPL.contextualize(
+        model,
+        # Update the leaf context to be a `PriorContext`.
+        DynamicPPL.setleafcontext(
+            model.context,
+            DynamicPPL.PriorContext()
+        )
+    )
+end
+
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
@@ -241,7 +253,8 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
+    prior_model = make_prior_model(model)
+    return AbstractMCMC.sample(rng, prior_model, SampleFromPrior(), ensemble, N, n_chains;
                                     chain_type, progress, kwargs...)
 end
 
@@ -256,7 +269,8 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...
 )
-    return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
+    prior_model = make_prior_model(model)
+    return AbstractMCMC.mcmcsample(rng, prior_model, SampleFromPrior(), N;
                                     chain_type, initial_state, progress, kwargs...)
 end
 
