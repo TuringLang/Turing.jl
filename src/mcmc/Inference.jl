@@ -127,6 +127,23 @@ function make_prior_model(model::DynamicPPL.Model)
     )
 end
 
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler{<:Prior},
+    state=nothing;
+    kwargs...,
+)
+    vi = last(DynamicPPL.evaluate!!(
+        model,
+        VarInfo(),
+        SamplingContext(
+            rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()
+        )
+    ))
+    return vi, nothing
+end
+
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
@@ -240,38 +257,6 @@ function AbstractMCMC.sample(
 )
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=DynamicPPL.default_chain_type(alg),
-    progress=PROGRESS[],
-    kwargs...
-)
-    prior_model = make_prior_model(model)
-    return AbstractMCMC.sample(rng, prior_model, SampleFromPrior(), ensemble, N, n_chains;
-                                    chain_type, progress, kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    N::Integer;
-    chain_type=DynamicPPL.default_chain_type(alg),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
-    kwargs...
-)
-    prior_model = make_prior_model(model)
-    return AbstractMCMC.mcmcsample(rng, prior_model, SampleFromPrior(), N;
-                                    chain_type, initial_state, progress, kwargs...)
 end
 
 ##########################
