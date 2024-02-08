@@ -115,18 +115,6 @@ DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.l
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
 
-function make_prior_model(model::DynamicPPL.Model)
-    # Update the context of `model`.
-    return DynamicPPL.contextualize(
-        model,
-        # Update the leaf context to be a `PriorContext`.
-        DynamicPPL.setleafcontext(
-            model.context,
-            DynamicPPL.PriorContext()
-        )
-    )
-end
-
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
