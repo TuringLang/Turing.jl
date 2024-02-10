@@ -141,6 +141,21 @@
         @test all(haskey(x, :lp) for x in chains)
         @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
         @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+
+        @testset "#2169" begin
+            # Not exactly the same as the issue, but similar.
+            @model function issue2169_model()
+                if DynamicPPL.leafcontext(__context__) isa DynamicPPL.PriorContext
+                    x ~ Normal(0, 1)
+                else
+                    x ~ Normal(1000, 1)
+                end
+            end
+
+            model = issue2169_model()
+            chain = sample(model, Prior(), 10)
+            @test all(mean(chain[:x]) .< 5)
+        end
     end
 
     @testset "chain ordering" begin
