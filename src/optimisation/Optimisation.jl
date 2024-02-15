@@ -283,17 +283,17 @@ function optim_function(
     model::Model,
     estimator::Union{MLE, MAP};
     constrained::Bool=true,
-    autoad::Union{Nothing, AbstractADType}=NoAD(),
+    adtype::Union{Nothing, AbstractADType}=NoAD(),
 )
-    if autoad === nothing
-        Base.depwarn("the use of `autoad=nothing` is deprecated, please use `autoad=SciMLBase.NoAD()`", :optim_function)
+    if adtype === nothing
+        Base.depwarn("the use of `adtype=nothing` is deprecated, please use `adtype=SciMLBase.NoAD()`", :optim_function)
     end
 
     obj, init, t = optim_objective(model, estimator; constrained=constrained)
     
     l(x, _) = obj(x)
-    f = if autoad isa AbstractADType && autoad !== NoAD()
-        OptimizationFunction(l, autoad)
+    f = if adtype isa AbstractADType && adtype !== NoAD()
+        OptimizationFunction(l, adtype)
     else
         OptimizationFunction(
             l;
@@ -310,10 +310,10 @@ function optim_problem(
     estimator::Union{MAP, MLE};
     constrained::Bool=true,
     init_theta=nothing,
-    autoad::Union{Nothing, AbstractADType}=NoAD(),
+    adtype::Union{Nothing, AbstractADType}=NoAD(),
     kwargs...,
 )
-    f, init, transform = optim_function(model, estimator; constrained=constrained, autoad=autoad)
+    f, init, transform = optim_function(model, estimator; constrained=constrained, adtype=adtype)
 
     u0 = init_theta === nothing ? init() : init(init_theta)
     prob = OptimizationProblem(f, u0; kwargs...)
