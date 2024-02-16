@@ -386,7 +386,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, getlogp(vi))
+    prev_trans = AMH.Transition(vt, getlogp(vi), false)
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(
@@ -421,7 +421,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, getlogp(vi))
+    prev_trans = AMH.Transition(vals, getlogp(vi), false)
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(
