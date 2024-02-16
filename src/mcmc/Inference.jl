@@ -106,7 +106,7 @@ getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(Dy
 
 getADType(alg::Hamiltonian) = alg.adtype
 
-function LogDensityProblemsAD.ADgradient(ℓ::LogDensityFunction)
+function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
     return LogDensityProblemsAD.ADgradient(getADType(ℓ.context), ℓ)
 end
 
