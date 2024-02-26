@@ -252,7 +252,7 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
-    progress=AbstractMCMC.PROGRESS[],
+    progress=PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;

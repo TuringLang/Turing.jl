@@ -85,7 +85,7 @@ function AbstractMCMC.sample(
     chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
     initial_state=DynamicPPL.loadstate(resume_from),
-    progress=AbstractMCMC.PROGRESS[],
+    progress=PROGRESS[],
     kwargs...
 )
     if resume_from === nothing

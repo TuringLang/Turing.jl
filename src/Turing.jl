@@ -19,16 +19,17 @@ import StatsBase
 import Printf
 import Random
 
-"""
-    setprogress!(progress::Bool; silent::Bool=true)
+const PROGRESS = Ref(true)
 
-Enable progress logging in Turing if `progress` is `true`, and disable it otherwise. If `silent` is `true`, 
-no logging info will be shown.
+# TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
 """
-function setprogress!(progress::Bool; silent::Bool=true)
-    if !silent
-        @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
-    end
+    setprogress!(progress::Bool)
+
+Enable progress logging in Turing if `progress` is `true`, and disable it otherwise.
+"""
+function setprogress!(progress::Bool)
+    @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
+    PROGRESS[] = progress
     AbstractMCMC.setprogress!(progress; silent=silent)
     # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
     AdvancedVI.turnprogress(progress)
