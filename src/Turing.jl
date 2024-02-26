@@ -33,7 +33,7 @@ function setprogress!(progress::Bool; verbose::Bool = false)
     end
     PROGRESS[] = progress
     AbstractMCMC.setprogress!(progress; verbose = verbose)
-    # TODO: adjust `AdvancedVI.turnprogress` for AdvancedVI v0.3
+    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
     AdvancedVI.turnprogress(progress)
     return progress
 end
