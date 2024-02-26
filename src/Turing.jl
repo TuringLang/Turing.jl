@@ -1,5 +1,6 @@
 module Turing
 
+using Logging
 using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
@@ -28,8 +29,10 @@ Enable progress logging in Turing if `progress` is `true`, and disable it otherw
 function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
+    Logging.with_logger(Logging.NullLogger()) do
+        AbstractMCMC.setprogress!(progress)
+    end
     AdvancedVI.turnprogress(progress)
-    AbstractMCMC.setprogress!(progress)
     return progress
 end
 
