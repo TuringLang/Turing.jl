@@ -25,7 +25,7 @@ function AbstractMCMC.step(
     model::Model,
     spl::Sampler{<:Emcee};
     resume_from = nothing,
-    init_params = nothing,
+    initial_params = nothing,
     kwargs...
 )
     if resume_from !== nothing
@@ -38,11 +38,11 @@ function AbstractMCMC.step(
     vis = [VarInfo(rng, model, SampleFromPrior()) for _ in 1:n]
 
     # Update the parameters if provided.
-    if init_params !== nothing
-        length(init_params) == n || throw(
+    if initial_params !== nothing
+        length(initial_params) == n || throw(
             ArgumentError("initial parameters have to be specified for each walker")
         )
-        vis = map(vis, init_params) do vi, init
+        vis = map(vis, initial_params) do vi, init
             vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
 
             # Update log joint probability.
@@ -58,7 +58,7 @@ function AbstractMCMC.step(
         vis[1],
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, spl, model)
-            AMH.Transition(vi[spl], getlogp(vi))
+            AMH.Transition(vi[spl], getlogp(vi), false)
         end
     )
 

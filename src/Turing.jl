@@ -20,6 +20,7 @@ import Random
 
 const PROGRESS = Ref(true)
 
+# TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
 """
     setprogress!(progress::Bool)
 
@@ -28,23 +29,16 @@ Enable progress logging in Turing if `progress` is `true`, and disable it otherw
 function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
+    AbstractMCMC.setprogress!(progress; silent=true)
+    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
     AdvancedVI.turnprogress(progress)
     return progress
 end
-
-# Standard tag: Improves stacktraces
-# Ref: https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/
-struct TuringTag end
-
-# Allow Turing tag in gradient etc. calls of the log density function
-ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::LogDensityFunction, ::AbstractArray{V}) where {V} = true
-ForwardDiff.checktag(::Type{ForwardDiff.Tag{TuringTag, V}}, ::Base.Fix1{typeof(LogDensityProblems.logdensity),<:LogDensityFunction}, ::AbstractArray{V}) where {V} = true
 
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("essential/Essential.jl")
-Base.@deprecate_binding Core Essential false
 using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
@@ -53,6 +47,8 @@ using .Variational
 
 include("optimisation/Optimisation.jl")
 using .Optimisation
+
+include("deprecated.jl") # to be removed in the next minor version release
 
 ###########
 # Exports #
@@ -98,9 +94,10 @@ export  @model,                 # modelling
         @prob_str,
         externalsampler,
 
-        setchunksize,           # helper
-        setadbackend,
-        setadsafe,
+        AutoForwardDiff,        # ADTypes
+        AutoReverseDiff,
+        AutoZygote,
+        AutoTracker,
 
         setprogress!,           # debugging
 

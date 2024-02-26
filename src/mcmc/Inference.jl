@@ -29,7 +29,6 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
@@ -78,7 +77,6 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
-getADbackend(alg::Hamiltonian) = alg.adtype
 
 """
     ExternalSampler{S<:AbstractSampler}
@@ -98,6 +96,20 @@ Wrap a sampler so it can be used as an inference algorithm.
 """
 externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
 
+getADType(spl::Sampler) = getADType(spl.alg)
+getADType(::SampleFromPrior) = AutoForwardDiff(; chunksize=0)
+
+getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
+getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
+getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = AutoForwardDiff(; chunksize=0)
+getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.childcontext(ctx))
+
+getADType(alg::Hamiltonian) = alg.adtype
+
+function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(getADType(ℓ.context), ℓ)
+end
+
 function LogDensityProblems.logdensity(
     f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
     x::NamedTuple
@@ -114,6 +126,23 @@ DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.l
 
 # Algorithm for sampling from the prior
 struct Prior <: InferenceAlgorithm end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler{<:Prior},
+    state=nothing;
+    kwargs...,
+)
+    vi = last(DynamicPPL.evaluate!!(
+        model,
+        VarInfo(),
+        SamplingContext(
+            rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()
+        )
+    ))
+    return vi, nothing
+end
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
@@ -228,36 +257,6 @@ function AbstractMCMC.sample(
 )
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=DynamicPPL.default_chain_type(alg),
-    progress=PROGRESS[],
-    kwargs...
-)
-    return AbstractMCMC.sample(rng, model, SampleFromPrior(), ensemble, N, n_chains;
-                                    chain_type, progress, kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::Prior,
-    N::Integer;
-    chain_type=DynamicPPL.default_chain_type(alg),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
-    kwargs...
-)
-    return AbstractMCMC.mcmcsample(rng, model, SampleFromPrior(), N;
-                                    chain_type, initial_state, progress, kwargs...)
 end
 
 ##########################

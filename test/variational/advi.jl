@@ -64,5 +64,10 @@
         x0_inv = inverse(b)(z0)
         @test size(x0_inv) == size(x0)
         @test all(x0 .≈ x0_inv)
+
+        # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
+        q = vi(m, ADVI(10, 1000))
+        x = rand(q, 1000)
+        @test mean(eachcol(x)) ≈ [0.5, 0.5] atol=0.1
     end
 end
