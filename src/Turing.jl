@@ -27,12 +27,12 @@ const PROGRESS = Ref(true)
 
 Enable progress logging in Turing if `progress` is `true`, and disable it otherwise.
 """
-function setprogress!(progress::Bool; verbose::Bool = false)
+function setprogress!(progress::Bool; verbose::Bool=false)
     if verbose
         @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     end
     PROGRESS[] = progress
-    AbstractMCMC.setprogress!(progress; verbose = verbose)
+    AbstractMCMC.setprogress!(progress; verbose=verbose)
     # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
     AdvancedVI.turnprogress(progress)
     return progress
@@ -61,74 +61,52 @@ using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logj
 using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
-export  @model,                 # modelling
-        @varname,
-        @submodel,
-        DynamicPPL,
-
-        Prior,                  # Sampling from the prior
-
-        MH,                     # classic sampling
-        Emcee,
-        ESS,
-        Gibbs,
-        GibbsConditional,
-
-        HMC,                    # Hamiltonian-like sampling
-        SGLD,
-        SGHMC,
-        HMCDA,
-        NUTS,
-        DynamicNUTS,
-        ANUTS,
-
-        PolynomialStepsize,
-
-        IS,                     # particle-based sampling
-        SMC,
-        CSMC,
-        PG,
-
-        vi,                     # variational inference
-        ADVI,
-
-        sample,                 # inference
-        @logprob_str,
-        @prob_str,
-        externalsampler,
-
-        AutoForwardDiff,        # ADTypes
-        AutoReverseDiff,
-        AutoZygote,
-        AutoTracker,
-
-        setprogress!,           # debugging
-
-        Flat,
-        FlatPos,
-        BinomialLogit,
-        BernoulliLogit,         # Part of Distributions >= 0.25.77
-        OrderedLogistic,
-        LogPoisson,
-        NamedDist,
-        filldist,
-        arraydist,
-
-        predict,
-        pointwise_loglikelihoods,
-        elementwise_loglikelihoods,
-        generated_quantities,
-        logprior,
-        logjoint,
-        LogDensityFunction,
-
-        constrained_space,            # optimisation interface
-        MAP,
-        MLE,
-        get_parameter_bounds,
-        optim_objective,
-        optim_function,
-        optim_problem
+export @model,                 # modelling
+    @varname,
+    @submodel,
+    DynamicPPL, Prior,                  # Sampling from the prior
+    MH,                     # classic sampling
+    Emcee,
+    ESS,
+    Gibbs,
+    GibbsConditional, HMC,                    # Hamiltonian-like sampling
+    SGLD,
+    SGHMC,
+    HMCDA,
+    NUTS,
+    DynamicNUTS,
+    ANUTS, PolynomialStepsize, IS,                     # particle-based sampling
+    SMC,
+    CSMC,
+    PG, vi,                     # variational inference
+    ADVI, sample,                 # inference
+    @logprob_str,
+    @prob_str,
+    externalsampler, AutoForwardDiff,        # ADTypes
+    AutoReverseDiff,
+    AutoZygote,
+    AutoTracker, setprogress!,           # debugging
+    Flat,
+    FlatPos,
+    BinomialLogit,
+    BernoulliLogit,         # Part of Distributions >= 0.25.77
+    OrderedLogistic,
+    LogPoisson,
+    NamedDist,
+    filldist,
+    arraydist, predict,
+    pointwise_loglikelihoods,
+    elementwise_loglikelihoods,
+    generated_quantities,
+    logprior,
+    logjoint,
+    LogDensityFunction, constrained_space,            # optimisation interface
+    MAP,
+    MLE,
+    get_parameter_bounds,
+    optim_objective,
+    optim_function,
+    optim_problem
 
 if !isdefined(Base, :get_extension)
     using Requires
@@ -136,9 +114,9 @@ end
 
 function __init__()
     @static if !isdefined(Base, :get_extension)
-        @require Optim="429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
-        @require DynamicHMC="bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
-  end
+        @require Optim = "429524aa-4258-5aef-a3af-852621145aeb" include("../ext/TuringOptimExt.jl")
+        @require DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb" include("../ext/TuringDynamicHMCExt.jl")
+    end
 end
 
 end
