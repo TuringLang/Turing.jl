@@ -91,7 +91,7 @@ function AbstractMCMC.sample(
     chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
     initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
+    progress=AbstractMCMC.PROGRESS[],
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
     discard_initial=-1,

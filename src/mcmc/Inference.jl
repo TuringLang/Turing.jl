@@ -14,11 +14,11 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
-using ..Turing: PROGRESS, Turing
+using ..Turing: Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
 using DynamicPPL
-using AbstractMCMC: AbstractModel, AbstractSampler
+using AbstractMCMC: AbstractMCMC, AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Setfield: Setfield
@@ -252,7 +252,7 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
+    progress=AbstractMCMC.PROGRESS[],
     kwargs...
 )
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
