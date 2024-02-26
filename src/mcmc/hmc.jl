@@ -131,7 +131,7 @@ function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
-    vi::AbstractVarInfo;
+    vi_original::AbstractVarInfo;
     initial_params=nothing,
     nadapts=0,
     kwargs...
