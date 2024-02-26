@@ -29,6 +29,7 @@ function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
     AdvancedVI.turnprogress(progress)
+    AbstractMCMC.setprogress!(progress)
     return progress
 end
 
