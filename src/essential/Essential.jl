@@ -14,11 +14,8 @@ using StatsFuns: logsumexp, softmax
 using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote
 
 import AdvancedPS
-import LogDensityProblems
-import LogDensityProblemsAD
 
 include("container.jl")
-include("ad.jl")
 
 export  @model,
         @varname,

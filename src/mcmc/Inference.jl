@@ -29,7 +29,6 @@ import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
 import BangBang
-import ..Essential: getADbackend
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
@@ -78,7 +77,6 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
-getADbackend(alg::Hamiltonian) = alg.adtype
 
 """
     ExternalSampler{S<:AbstractSampler}
@@ -97,6 +95,20 @@ end
 Wrap a sampler so it can be used as an inference algorithm.
 """
 externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
+
+getADType(spl::Sampler) = getADType(spl.alg)
+getADType(::SampleFromPrior) = AutoForwardDiff(; chunksize=0)
+
+getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
+getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
+getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = AutoForwardDiff(; chunksize=0)
+getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.childcontext(ctx))
+
+getADType(alg::Hamiltonian) = alg.adtype
+
+function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
+    return LogDensityProblemsAD.ADgradient(getADType(ℓ.context), ℓ)
+end
 
 function LogDensityProblems.logdensity(
     f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
