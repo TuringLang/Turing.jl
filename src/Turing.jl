@@ -20,6 +20,7 @@ import Random
 
 const PROGRESS = Ref(true)
 
+# TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
 """
     setprogress!(progress::Bool)
 
@@ -28,6 +29,8 @@ Enable progress logging in Turing if `progress` is `true`, and disable it otherw
 function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
+    AbstractMCMC.setprogress!(progress; silent=true)
+    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
     AdvancedVI.turnprogress(progress)
     return progress
 end
