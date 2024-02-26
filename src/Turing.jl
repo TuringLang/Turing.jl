@@ -1,6 +1,5 @@
 module Turing
 
-using Logging
 using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
