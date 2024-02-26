@@ -18,7 +18,7 @@ using ..Turing: Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
 using DynamicPPL
-using AbstractMCMC: AbstractMCMC, AbstractModel, AbstractSampler
+using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Setfield: Setfield
