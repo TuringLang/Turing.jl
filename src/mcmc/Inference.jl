@@ -14,7 +14,7 @@ using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
-using ..Turing: Turing
+using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
 using DynamicPPL
