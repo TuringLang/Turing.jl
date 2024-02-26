@@ -92,8 +92,8 @@ end
         model = regtest(x, y)
         mle = optimize(model, MLE())
         
-        vcmat = inv(x'x)
-        vcmat_mle = informationmatrix(mle).array
+        vcmat = x'x
+        vcmat_mle = vcov(mle).array
         
         @test isapprox(mle.values.array, true_beta)
         @test isapprox(vcmat, vcmat_mle)
