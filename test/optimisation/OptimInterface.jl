@@ -62,8 +62,8 @@ end
         diffs = coef(mle_est).array - [0.0625031; 1.75001]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-        infomat = [0.003907027690416608 4.157954948417027e-7; 4.157954948417027e-7 0.03125155528962335]
-        @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
+        vcovmat = [0.003907027690416608 4.157954948417027e-7; 4.157954948417027e-7 0.03125155528962335]
+        @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
         @test ctable isa StatsBase.CoefTable
@@ -72,7 +72,7 @@ end
         @test all(isapprox.(s - [0.06250415643292194, 0.17677963626053916], 0.0, atol=0.01))
 
         @test coefnames(mle_est) == Distributions.params(mle_est)
-        @test vcov(mle_est) == informationmatrix(mle_est)
+        @test vcov(mle_est) == inv(informationmatrix(mle_est))
 
         @test isapprox(loglikelihood(mle_est), -0.0652883561466624, atol=0.01)
     end
