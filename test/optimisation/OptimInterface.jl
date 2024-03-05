@@ -64,10 +64,10 @@ end
         diffs = coef(mle_est).array - [0.0625031; 1.75001]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-        infomat = [2/true_values[1] 0.0; 0.0 2/(2 * true_values[1]^2)]
+        infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
         @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
 
-        vcovmat = [true_values[1]/2 0.0; 0.0 2*true_values[1]^2 / 2]
+        vcovmat = [2*true_values[1]^2 / 2 0.0; 0.0 true_values[1]/2]
         @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
@@ -97,7 +97,7 @@ end
         model = regtest(x, y)
         mle = optimize(model, MLE())
         
-        vcmat = x'x
+        vcmat = inv(x'x)
         vcmat_mle = vcov(mle).array
         
         @test isapprox(mle.values.array, true_beta)
