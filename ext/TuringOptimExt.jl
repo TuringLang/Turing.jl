@@ -83,10 +83,9 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
         Setfield.@set! m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
 
-    # Calculate the Hessian.
+    # Calculate the Hessian, which is the information matrix because the negative of the log likelihood was optimized
     varnames = StatsBase.coefnames(m)
-    H = hessian_function(m.f, m.values.array[:, 1])
-    info = -H
+    info = hessian_function(m.f, m.values.array[:, 1])
 
     # Link it back if we invlinked it.
     if linked
