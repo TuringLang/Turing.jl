@@ -193,7 +193,7 @@ end
 
 # AbstractDict
 function Gibbs(algs::AbstractDict)
-    return Gibbs(keys(algs), map(wrap_algorithm_maybe, values(algs)))
+    return Gibbs(collect(keys(algs)), map(wrap_algorithm_maybe, values(algs)))
 end
 function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
