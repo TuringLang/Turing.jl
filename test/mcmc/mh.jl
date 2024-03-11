@@ -234,4 +234,14 @@
         chain = sample(rng, gdemo_default_prior, alg, n; discard_initial = burnin, thinning=10)
         check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
     end
+
+    @turing_testset "`filldist` proposal (issue #2180)" begin
+        @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
+        chain = sample(
+           demo(),
+           MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
+           1000
+        )
+        check_numerical(chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0], atol=0.1)
+    end
 end
