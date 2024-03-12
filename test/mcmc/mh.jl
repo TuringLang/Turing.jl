@@ -238,7 +238,7 @@
     @turing_testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(
-           demo(),
+           demo_filldist_issue2180(),
            MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
            1000
         )
