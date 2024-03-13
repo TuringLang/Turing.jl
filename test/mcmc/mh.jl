@@ -240,7 +240,7 @@
         chain = sample(
            demo_filldist_issue2180(),
            MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
-           1000
+           10_000
         )
         check_numerical(chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0], atol=0.1)
     end
