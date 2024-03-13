@@ -1,5 +1,5 @@
 import Pkg
-Pkg.add(Pkg.PackageSpec(; url="https://github.com/EnzymeAD/Enzyme.jl.git", rev="main"))
+Pkg.add(Pkg.PackageSpec(; url="https://github.com/simsurace/Enzyme.jl.git", rev="fix-cholesky"))
 
 using AbstractMCMC
 using AdvancedMH
