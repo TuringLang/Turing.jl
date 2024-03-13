@@ -156,8 +156,9 @@ end
         DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
+        DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
-        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix
+        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
