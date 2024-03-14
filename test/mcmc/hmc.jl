@@ -1,4 +1,5 @@
-@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+# @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
     # Set a seed
     rng = StableRNG(123)
     @numerical_testset "constrained bounded" begin

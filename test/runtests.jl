@@ -1,3 +1,6 @@
+import Pkg
+Pkg.add(Pkg.PackageSpec(; url="https://github.com/simsurace/Enzyme.jl.git", rev="fix-cholesky"))
+
 using AbstractMCMC
 using AdvancedMH
 using AdvancedPS
@@ -42,10 +45,17 @@ using Turing: BinomialLogit, Sampler, SampleFromPrior, NUTS,
 using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
 using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
+import Enzyme
 import LogDensityProblems
 import LogDensityProblemsAD
 
 setprogress!(false)
+
+# Disable Enzyme warnings
+Enzyme.API.typeWarning!(false)
+
+# Enable runtime activity (workaround)
+Enzyme.API.runtimeActivity!(true)
 
 include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
 

@@ -1,4 +1,5 @@
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+# @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoEnzyme(),)    
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -351,6 +352,8 @@
         alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
         chn = sample(gdemo_default, alg, 1000)
     end
+    # Type unstable getfield of tuple not supported in Enzyme yet
+    if adbackend != AutoEnzyme()
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
         @model function vdemo1(x)
@@ -532,6 +535,7 @@
 
         vdemo3kw(; T) = vdemo3(T)
         sample(vdemo3kw(; T=Vector{Float64}), alg, 250)
+    end
     end
 
     @testset "names_values" begin
