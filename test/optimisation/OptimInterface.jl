@@ -195,6 +195,18 @@ end
         x = 1.0
         w = [1.0]
 
+        @testset "Default, Likelihood, Prior Contexts" begin
+            m1 = model1(x)
+            defctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
+            llhctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
+            prictx = Turing.OptimizationContext(DynamicPPL.PriorContext())
+            a = [0.3]
+
+            @test Turing.OptimLogDensity(m1, defctx)(a) ==
+                Turing.OptimLogDensity(m1, llhctx)(a) +
+                Turing.OptimLogDensity(m1, prictx)(a)
+        end
+
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x = x,)
