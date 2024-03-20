@@ -327,27 +327,43 @@ end
 
 DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
 
+function trace_local_varinfo_maybe(varinfo)
+    try 
+        trace = AdvancedPS.current_trace()
+        return trace.model.f.varinfo
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            return varinfo
+        else
+            rethrow(e)
+        end
+    end
+end
+
+function trace_local_rng_maybe(rng::Random.AbstractRNG)
+    try
+        trace = AdvancedPS.current_trace()
+        return trace.rng
+    catch e
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
+        if e == KeyError(:__trace) || current_task().storage isa Nothing
+            return rng
+        else
+            rethrow(e)
+        end
+    end
+end
+
 function DynamicPPL.assume(
     rng,
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    __vi__::AbstractVarInfo
+    _vi::AbstractVarInfo
 )
-    local vi, trng
-    try 
-        trace = AdvancedPS.current_trace()
-        trng = trace.rng
-        vi = trace.model.f.varinfo
-    catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
-            vi = __vi__
-            trng = rng
-        else
-            rethrow(e)
-        end
-    end
+    vi = trace_local_varinfo_maybe(_vi)
+    trng = trace_local_rng_maybe(rng)
 
     if inspace(vn, spl)
         if ~haskey(vi, vn)
@@ -363,6 +379,8 @@ function DynamicPPL.assume(
             DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
             r = vi[vn]
         end
+        # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
+        lp = 0
     else # vn belongs to other sampler <=> conditioning on vn
         if haskey(vi, vn)
             r = vi[vn]
@@ -371,14 +389,31 @@ function DynamicPPL.assume(
             push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
         end
         lp = logpdf_with_trans(dist, r, istrans(vi, vn))
-        acclogp!!(vi, lp)
     end
-    return r, 0, vi
+    return r, lp, vi
 end
 
 function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    Libtask.produce(logpdf(dist, value))
-    return 0, vi
+    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
+    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
+end
+
+function DynamicPPL.acclogp!!(
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp
+)
+    varinfo_trace = trace_local_varinfo_maybe(varinfo)
+    DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
+end
+
+function DynamicPPL.acclogp_observe!!(
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp
+)
+    Libtask.produce(logp)
+    return trace_local_varinfo_maybe(varinfo)
 end
 
 # Convenient constructor
