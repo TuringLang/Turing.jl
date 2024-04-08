@@ -227,7 +227,7 @@
         end
         alg = NUTS(1000, 0.8; adtype=adbackend)
         gdemo_default_prior = DynamicPPL.contextualize(demo_hmc_prior(), DynamicPPL.PriorContext())
-        chain = sample(gdemo_default_prior, alg, 10_000)
+        chain = sample(gdemo_default_prior, alg, 10_000; initial_params=[3.0, 0.0])
         check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.1)
     end
 
