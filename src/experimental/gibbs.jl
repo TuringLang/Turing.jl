@@ -352,12 +352,20 @@ function gibbs_step_inner(
     state_local = states[index]
     varinfo_local = varinfos[index]
 
+    # Make sure that all `varinfos` are linked.
+    varinfos_invlinked = map(varinfos) do vi
+        # NOTE: This is immutable linking!
+        # TODO: Do we need the `istrans` check here or should we just always use `invlink`?
+        DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
+    end
+    varinfo_local_invlinked = varinfos_invlinked[index]
+
     # 1. Create conditional model.
     # Construct the conditional model.
     # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
     # otherwise we're conditioning on values which are not in the support of the
     # distributions.
-    model_local = make_conditional(model, varinfo_local, varinfos)
+    model_local = make_conditional(model, varinfo_local_invlinked, varinfos_invlinked)
 
     # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
     # the resulting varinfo might be in un-transformed space even if `varinfo_local`
