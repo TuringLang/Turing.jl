@@ -345,38 +345,75 @@ function AbstractMCMC.step(
 end
 
 # TODO: Remove this once we've done away with the selector functionality in DynamicPPL.
-function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler, sampler_previous::DynamicPPL.Sampler)
+function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler)
     # NOTE: This is different from the implementation used in the old `Gibbs` sampler, where we specifically provide
     # a `gid`. Here, because `model` only contains random variables to be sampled by `sampler`, we just use the exact
     # same `selector` as before but now with `rerun` set to `true` if needed.
-    return Setfield.@set sampler.selector.rerun = gibbs_rerun(sampler_previous.alg, sampler.alg)
+    return Setfield.@set sampler.selector.rerun = true
 end
 
-# TODO: Once we have removed all the selector stuff in DynamicPPL, replace this with an improved mechanism
-# for determining whether we need to re-run the model.
-function gibbs_rerun_maybe(
+# Interface we need a sampler to implement to work as a component in a Gibbs sampler.
+"""
+    gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, state_dst, state_src)
+
+Check if the log-probability of the destination model needs to be recomputed.
+
+Defaults to `true`
+"""
+function gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, state_dst, state_src)
+    return true
+end
+
+# TODO: Remove `rng`?
+"""
+    recompute_logprob!!(rng, model, sampler, state)
+
+Recompute the log-probability of the `model` based on the given `state` and return the resulting state.
+"""
+function recompute_logprob!!(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler,
-    sampler_previous::DynamicPPL.Sampler,
-    varinfo::DynamicPPL.AbstractVarInfo,
+    state
 )
-    # Return early if we don't need it.
-    gibbs_rerun(sampler, sampler_previous) || return varinfo
-
-    # Make the re-run sampler.
+    varinfo = Turing.Inference.varinfo(state)
     # NOTE: Need to do this because some samplers might need some other quantity than the log-joint,
     # e.g. log-likelihood in the scenario of `ESS`.
     # NOTE: Need to update `sampler` too because the `gid` might change in the re-run of the model.
-    sampler_rerun = make_rerun_sampler(model, sampler, sampler_previous)
+    sampler_rerun = make_rerun_sampler(model, sampler)
     # NOTE: If we hit `DynamicPPL.maybe_invlink_before_eval!!`, then this will result in a `invlink`ed
     # `varinfo`, even if `varinfo` was linked.
-    return last(DynamicPPL.evaluate!!(
+    varinfo_new = last(DynamicPPL.evaluate!!(
         model,
         varinfo,
+        # TODO: Check if it's safe to drop the `rng` argument, i.e. just use default RNG.
         DynamicPPL.SamplingContext(rng, sampler_rerun)
     ))
+    # Update the state we're about to use if need be.
+    # NOTE: If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
+    return Turing.Inference.gibbs_state(model, sampler, state, varinfo_new)
 end
+
+function gibbs_step_inner(
+    rng::Random.AbstractRNG,
+    model_dst,
+    sampler_dst,
+    sampler_src,
+    state_dst,
+    state_src;
+    kwargs...
+)
+    # `model_dst` might be different here, e.g. conditioned on new values, so we need to check if need to recompute the log-probability.
+    if gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, state_dst, state_src)
+        # Re-evaluate the log density of the destination model.
+        state_dst = recompute_logprob!!(model_dst, sampler_dst, state_dst, logprob_dst)
+    end
+
+    # Step!
+    return AbstractMCMC.step(rng, model_dst, sampler_dst, state_dst; kwargs...)
+end
+
+
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -406,22 +443,27 @@ function gibbs_step_inner(
     # distributions.
     model_local = make_conditional(model, varinfo_local_invlinked, varinfos_invlinked)
 
-    # NOTE: We use `logjoint` instead of `evaluate!!` and capturing the resulting varinfo because
-    # the resulting varinfo might be in un-transformed space even if `varinfo_local`
-    # is in transformed space. This can occur if we hit `maybe_invlink_before_eval!!`.
-
-    # Re-run the sampler if needed.
+    # Extract the previous sampler and state.
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
-    varinfo_local = gibbs_rerun_maybe(rng, model_local, sampler_local, sampler_previous, varinfo_local)
+    state_previous = states[index == 1 ? length(states) : index - 1]
+
+    # 1. Re-run the sampler if needed.
+    if gibbs_requires_recompute_logprob(
+        model_local,
+        sampler_local,
+        sampler_previous,
+        state_local,
+        state_previous
+    )
+        current_state_local = recompute_logprob!!(
+            rng,
+            model_local,
+            sampler_local,
+            state_local,
+        )
+    end
 
     # 2. Take step with local sampler.
-    # Update the state we're about to use if need be.
-    # If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
-    current_state_local = Turing.Inference.gibbs_state(
-        model_local, sampler_local, state_local, varinfo_local
-    )
-
-    # Take a step.
     new_state_local = last(
         AbstractMCMC.step(
             rng,
