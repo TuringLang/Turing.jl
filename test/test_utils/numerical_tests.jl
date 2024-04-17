@@ -64,3 +64,10 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
         [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
         atol=atol, rtol=rtol)
 end
+
+function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
+    check_numerical(chain,
+        [Symbol("z[1]"), Symbol("z[2]"), Symbol("z[3]"), Symbol("z[4]"), :mu1, :mu2],
+        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
+        atol=atol, rtol=rtol)
+end
