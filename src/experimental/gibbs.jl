@@ -396,26 +396,6 @@ end
 
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
-    model_dst,
-    sampler_dst,
-    sampler_src,
-    state_dst,
-    state_src;
-    kwargs...
-)
-    # `model_dst` might be different here, e.g. conditioned on new values, so we need to check if need to recompute the log-probability.
-    if gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, state_dst, state_src)
-        # Re-evaluate the log density of the destination model.
-        state_dst = recompute_logprob!!(model_dst, sampler_dst, state_dst, logprob_dst)
-    end
-
-    # Step!
-    return AbstractMCMC.step(rng, model_dst, sampler_dst, state_dst; kwargs...)
-end
-
-
-function gibbs_step_inner(
-    rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     samplers,
     states,
