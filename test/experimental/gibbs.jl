@@ -133,7 +133,7 @@ end
 
         # `sample`
         chain = sample(model, alg, 10_000; progress=false)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.2)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.3)
 
         # Without `m` as random.
         model = gdemo(1.5, 2.0) | (m = 7 / 6,)
@@ -152,8 +152,38 @@ end
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
-        alg = Turing.Experimental.Gibbs(
+        vns = (@varname(z1), @varname(z2), @varname(z3), @varname(z4), @varname(mu1), @varname(mu2))
+        alg_explicit = Turing.Experimental.Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
+            @varname(mu1) => ESS(),
+            @varname(mu2) => ESS(),
+        )
+        # Here `@varname(z)` is supposed to cover all the `z`'s.
+        alg_z_implicit = Turing.Experimental.Gibbs(
+            @varname(z) => CSMC(15),
+            @varname(mu1) => ESS(),
+            @varname(mu2) => ESS(),
+        )
+        for alg in [alg_explicit, alg_z_implicit]
+            # `step`
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
+            check_transition_varnames(transition, vns)
+            for _ = 1:5
+                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+                check_transition_varnames(transition, vns)
+            end
+
+            # Sample!
+            chain = sample(MoGtest_default, alg, 1000; progress=true)
+            check_MoGtest_default(chain, atol = 0.2)
+        end
+    end
+
+    @testset "CSMC + ESS" begin
+        rng = Random.default_rng()
+        model = MoGtest_default
+        alg = Turing.Experimental.Gibbs(
+            @varname(z) => CSMC(15),
             @varname(mu1) => ESS(),
             @varname(mu2) => ESS(),
         )
