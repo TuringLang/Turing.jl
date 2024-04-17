@@ -189,7 +189,7 @@ end
         end
 
         # Sample!
-        chain = sample(MoGtest_default, alg, 1000; progress=true)
-        check_MoGtest_default(chain, atol = 0.2)
+        chain = sample(model, alg, 1000; progress=true)
+        check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
 end
