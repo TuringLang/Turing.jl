@@ -53,7 +53,7 @@ MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
     mu1 ~ Normal(1, 1)
     mu2 ~ Normal(4, 1)
 
-    z ~ Vector{Int}(undef, 4)
+    z = Vector{Int}(undef, 4)
     z[1] ~ Categorical(2)
     if z[1] == 1
         D[1] ~ Normal(mu1, 1)
