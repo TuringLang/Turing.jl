@@ -5,6 +5,7 @@ using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL, VarName
 using Setfield: Setfield
 
+using DocStringExtensions: TYPEDFIELDS
 using Distributions
 
 using ..Turing: Turing
