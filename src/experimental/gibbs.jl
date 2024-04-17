@@ -99,6 +99,11 @@ function DynamicPPL.dot_tilde_assume(
 end
 
 
+"""
+    preferred_value_type(varinfo::DynamicPPL.AbstractVarInfo)
+
+Returns the preferred value type for a variable with the given `varinfo`.
+"""
 preferred_value_type(::DynamicPPL.AbstractVarInfo) = DynamicPPL.OrderedDict
 preferred_value_type(::DynamicPPL.SimpleVarInfo{<:NamedTuple}) = NamedTuple
 function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
@@ -109,7 +114,16 @@ function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
     return namedtuple_compatible ? NamedTuple : DynamicPPL.OrderedDict
 end
 
-# No-op if no values are provided.
+"""
+    condition_gibbs(context::DynamicPPL.AbstractContext, values::Union{NamedTuple,AbstractDict}...)
+
+Return a `GibbsContext` with the given values treated as conditioned.
+
+# Arguments
+- `context::DynamicPPL.AbstractContext`: The context to condition.
+- `values::Union{NamedTuple,AbstractDict}...`: The values to condition on.
+    If multiple values are provided, we recursively condition on each of them.
+"""
 condition_gibbs(context::DynamicPPL.AbstractContext) = context
 # For `NamedTuple` and `AbstractDict` we just construct the context.
 function condition_gibbs(context::DynamicPPL.AbstractContext, values::Union{NamedTuple,AbstractDict})
@@ -122,7 +136,13 @@ function condition_gibbs(context::DynamicPPL.AbstractContext, value, values...)
         values...
     )
 end
+
 # For `DynamicPPL.AbstractVarInfo` we just extract the values.
+"""
+    condition_gibbs(context::DynamicPPL.AbstractContext, varinfos::DynamicPPL.AbstractVarInfo...)
+
+Return a `GibbsContext` with the values extracted from the given `varinfos` treated as conditioned.
+"""
 function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
     return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
 end
@@ -173,12 +193,31 @@ function make_conditional(model::DynamicPPL.Model, target_varinfo::DynamicPPL.Ab
         filter(Base.Fix1(!==, target_varinfo), varinfos)...
     )
 end
+# Assumes the ones given are the ones to condition on.
+function make_conditional(model::DynamicPPL.Model, varinfos)
+    return condition_gibbs(
+        model,
+        varinfos...
+    )
+end
 
+# HACK: Allows us to support either passing in an implementation of `AbstractMCMC.AbstractSampler`
+# or an `AbstractInferenceAlgorithm`.
 wrap_algorithm_maybe(x) = x
 wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
+"""
+    Gibbs
+
+A type representing a Gibbs sampler.
+
+# Fields
+$(TYPEDFIELDS)
+"""
 struct Gibbs{V,A} <: InferenceAlgorithm
+    "varnames representing variables for each sampler"
     varnames::V
+    "samplers for each entry in `varnames`"
     samplers::A
 end
 
