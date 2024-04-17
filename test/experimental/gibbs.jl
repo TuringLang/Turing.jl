@@ -181,7 +181,7 @@ end
 
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
-        model = MoGtest_default
+        model = MoGtest_default_z_vector
         alg = Turing.Experimental.Gibbs(
             @varname(z) => CSMC(15),
             @varname(mu1) => ESS(),
