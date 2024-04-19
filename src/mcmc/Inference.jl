@@ -48,7 +48,6 @@ export  InferenceAlgorithm,
         Emcee,
         Gibbs,      # classic sampling
         GibbsConditional,
-        GibbsV2,
         HMC,
         SGLD,
         PolynomialStepsize,

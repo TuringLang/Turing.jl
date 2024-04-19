@@ -13,10 +13,6 @@ function check_transition_varnames(
     end
 end
 
-# Okay, so what do we actually need to test here.
-# 1. (✓) Needs to be compatible with most models.
-# 2. (???) Restricted to usage of pairs for now to make things simple.
-
 const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
@@ -107,8 +103,6 @@ end
     end
 
     @testset "gdemo with CSMC & ESS" begin
-        # `Turing.Experimental.Gibbs` does not work with SMC samplers, e.g. `CSMC`.
-        # FIXME: Oooor it is (see tests below). Uncertain.
         Random.seed!(100)
         alg = Turing.Experimental.Gibbs(@varname(s) => CSMC(15), @varname(m) => ESS())
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
