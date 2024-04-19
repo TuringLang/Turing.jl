@@ -21,7 +21,7 @@ using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
-using Setfield: Setfield
+using Accessors: Accessors
 
 import ADTypes
 import AbstractMCMC

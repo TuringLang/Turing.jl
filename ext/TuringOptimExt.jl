@@ -2,11 +2,11 @@ module TuringOptimExt
 
 if isdefined(Base, :get_extension)
     import Turing
-    import Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, Statistics, StatsAPI, StatsBase 
+    import Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Accessors, Statistics, StatsAPI, StatsBase 
     import Optim
 else
     import ..Turing
-    import ..Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Setfield, Statistics, StatsAPI, StatsBase
+    import ..Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Accessors, Statistics, StatsAPI, StatsBase
     import ..Optim
 end
 
@@ -80,7 +80,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
     # Hessian is computed with respect to the untransformed parameters.
     linked = DynamicPPL.istrans(m.f.varinfo)
     if linked
-        Setfield.@set! m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
+        m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
 
     # Calculate the Hessian, which is the information matrix because the negative of the log likelihood was optimized
@@ -89,7 +89,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Link it back if we invlinked it.
     if linked
-        Setfield.@set! m.f.varinfo = DynamicPPL.link!!(m.f.varinfo, m.f.model)
+        m = Accessors.@set m.f.varinfo = DynamicPPL.link!!(m.f.varinfo, m.f.model)
     end
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
@@ -227,8 +227,8 @@ function _optimize(
 )
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
-    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    f = Accessors.@set f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
+    f = Accessors.@set f.varinfo = DynamicPPL.link!!(f.varinfo, model)
     init_vals = DynamicPPL.getparams(f)
 
     # Optimize!
@@ -241,10 +241,10 @@ function _optimize(
 
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure
     # correct dimensionality.
-    Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
-    Setfield.@set! f.varinfo = DynamicPPL.invlink!!(f.varinfo, model)
+    f = Accessors.@set f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
+    f = Accessors.@set f.varinfo = DynamicPPL.invlink!!(f.varinfo, model)
     vals = DynamicPPL.getparams(f)
-    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    f = Accessors.@set f.varinfo = DynamicPPL.link!!(f.varinfo, model)
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(
