@@ -5,7 +5,7 @@ using Bijectors
 using Random
 using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
-using Setfield
+using Accessors
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield,  setorder!,
