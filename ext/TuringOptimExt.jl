@@ -228,7 +228,7 @@ function _optimize(
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
     Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
-    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.link(f.varinfo, model)
     init_vals = DynamicPPL.getparams(f)
 
     # Optimize!
@@ -242,9 +242,9 @@ function _optimize(
     # Get the VarInfo at the MLE/MAP point, and run the model to ensure
     # correct dimensionality.
     Setfield.@set! f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
-    Setfield.@set! f.varinfo = DynamicPPL.invlink!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.invlink(f.varinfo, model)
     vals = DynamicPPL.getparams(f)
-    Setfield.@set! f.varinfo = DynamicPPL.link!!(f.varinfo, model)
+    Setfield.@set! f.varinfo = DynamicPPL.link(f.varinfo, model)
 
     # Make one transition to get the parameter names.
     ts = [Turing.Inference.Transition(
