@@ -56,14 +56,19 @@ end
     @testset "StatsBase integration" begin
         Random.seed!(54321)
         mle_est = optimize(gdemo_default, MLE())
+        # Calculated based on the two data points in gdemo_default, [1.5, 2.0]
+        true_values = [0.0625, 1.75]
 
         @test coefnames(mle_est) == [:s, :m]
 
         diffs = coef(mle_est).array - [0.0625031; 1.75001]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-        infomat = [0.003907027690416608 4.157954948417027e-7; 4.157954948417027e-7 0.03125155528962335]
+        infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
         @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
+
+        vcovmat = [2*true_values[1]^2 / 2 0.0; 0.0 true_values[1]/2]
+        @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
         @test ctable isa StatsBase.CoefTable
@@ -72,7 +77,7 @@ end
         @test all(isapprox.(s - [0.06250415643292194, 0.17677963626053916], 0.0, atol=0.01))
 
         @test coefnames(mle_est) == Distributions.params(mle_est)
-        @test vcov(mle_est) == informationmatrix(mle_est)
+        @test vcov(mle_est) == inv(informationmatrix(mle_est))
 
         @test isapprox(loglikelihood(mle_est), -0.0652883561466624, atol=0.01)
     end
@@ -93,7 +98,7 @@ end
         mle = optimize(model, MLE())
         
         vcmat = inv(x'x)
-        vcmat_mle = informationmatrix(mle).array
+        vcmat_mle = vcov(mle).array
         
         @test isapprox(mle.values.array, true_beta)
         @test isapprox(vcmat, vcmat_mle)
@@ -151,8 +156,9 @@ end
         DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
+        DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
-        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix
+        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
@@ -218,5 +224,13 @@ end
             ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
             @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
         end
+    end
+
+    # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910
+    @testset "with different linked dimensionality" begin
+        @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
+        model = demo_dirichlet()
+        result = optimize(model, MAP())
+        @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
     end
 end

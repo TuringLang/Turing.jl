@@ -226,7 +226,7 @@
         end
         alg = NUTS(1000, 0.8; adtype=adbackend)
         gdemo_default_prior = DynamicPPL.contextualize(demo_hmc_prior(), DynamicPPL.PriorContext())
-        chain = sample(gdemo_default_prior, alg, 10_000)
+        chain = sample(gdemo_default_prior, alg, 10_000; initial_params=[3.0, 0.0])
         check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.1)
     end
 
@@ -245,5 +245,16 @@
         ) (:info,) match_mode=:any begin
             sample(demo_warn_initial_params(), NUTS(; adtype=adbackend), 5)
         end
+    end
+
+    @turing_testset "(partially) issue: #2095" begin
+        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+            xs = Vector{TV}(undef, 2)
+            xs[1] ~ Dirichlet(ones(5))
+            xs[2] ~ Dirichlet(ones(5))
+        end
+        model = vector_of_dirichlet()
+        chain = sample(model, NUTS(), 1000)
+        @test mean(Array(chain)) ≈ 0.2
     end
 end
