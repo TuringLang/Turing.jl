@@ -273,11 +273,14 @@ Return a named tuple of parameters.
 """
 getparams(model, t) = t.θ
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
-    # Want the end-user to receive parameters in constrained space, so we `link`.
-    vi = DynamicPPL.invlink(vi, model)
-
-    # Extract parameter values in a simple form from the `VarInfo`.
-    vals = DynamicPPL.values_as(vi, OrderedDict)
+    # NOTE: In the past, `invlink(vi, model)` + `values_as(vi, OrderedDict)` was used.
+    # Unfortunately, using `invlink` can cause issues in scenarios where the constraints 
+    # of the parameters change depending on the realizations. Hence we have to use
+    # `values_as_in_model`, which re-runs the model and extracts the parameters
+    # as they are seen in the model, i.e. in the constrained space. Moreover,
+    # this means that the code below will work both of linked and invlinked `vi`.
+    # Ref: https://github.com/TuringLang/Turing.jl/issues/2195
+    vals = DynamicPPL.values_as_in_model(model, vi)
 
     # Obtain an iterator over the flattened parameter names and values.
     iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
