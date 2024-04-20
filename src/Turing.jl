@@ -15,6 +15,8 @@ import Accessors
 import StatsAPI
 import StatsBase
 
+using BangBang: BangBang
+
 import Printf
 import Random
 
