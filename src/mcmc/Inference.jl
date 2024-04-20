@@ -28,7 +28,7 @@ import AbstractMCMC
 import AdvancedHMC; const AHMC = AdvancedHMC
 import AdvancedMH; const AMH = AdvancedMH
 import AdvancedPS
-import BangBang
+import Accessors
 import EllipticalSliceSampling
 import LogDensityProblems
 import LogDensityProblemsAD
