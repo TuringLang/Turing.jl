@@ -1,4 +1,5 @@
 using AbstractMCMC
+using ADTypes
 using AdvancedMH
 using AdvancedPS
 using Clustering

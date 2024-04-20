@@ -47,7 +47,7 @@ function AbstractMCMC.step(
 
     # Link the varinfo if needed.
     if requires_unconstrained_space(alg)
-        f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))
+        f = setvarinfo(f, DynamicPPL.link(getvarinfo(f), model))
     end
 
     # Then just call `AdvancedHMC.step` with the right arguments.
