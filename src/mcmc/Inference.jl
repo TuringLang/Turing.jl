@@ -129,11 +129,11 @@ end
 
 
 getADType(spl::Sampler) = getADType(spl.alg)
-getADType(::SampleFromPrior) = AutoForwardDiff(; chunksize=0)
+getADType(::SampleFromPrior) = Turing.default_adtype()
 
 getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
 getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
-getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = AutoForwardDiff(; chunksize=0)
+getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.default_adtype()
 getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.childcontext(ctx))
 
 getADType(alg::Hamiltonian) = alg.adtype
