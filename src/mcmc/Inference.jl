@@ -123,17 +123,17 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
 - `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
-function externalsampler(sampler::AbstractSampler; adtype=Turing.default_adtype(), unconstrained::Bool=true)
+function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true)
     return ExternalSampler(sampler, adtype, unconstrained)
 end
 
 
 getADType(spl::Sampler) = getADType(spl.alg)
-getADType(::SampleFromPrior) = Turing.default_adtype()
+getADType(::SampleFromPrior) = Turing.DEFAULT_ADTYPE
 
 getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
 getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
-getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.default_adtype()
+getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.DEFAULT_ADTYPE
 getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.childcontext(ctx))
 
 getADType(alg::Hamiltonian) = alg.adtype
