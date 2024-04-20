@@ -93,16 +93,23 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     sampler::S
     "the automatic differentiation (AD) backend to use"
     adtype::AD
-
-    @doc """
-        ExternalSampler(sampler::AbstractSampler, adtype::ADTypes.AbstractADType, unconstrained::Bool=true)
-
-    Wrap a sampler so it can be used as an inference algorithm.
-    """
-    function ExternalSampler(sampler::S, adtype::AD, unconstrained::Bool=true) where {S<:AbstractSampler,AD<:ADTypes.AbstractADType}
-        return new{S,AD,unconstrained}(sampler, adtype)
-    end
 end
+
+"""
+    ExternalSampler(sampler, adtype)
+    ExternalSampler{unconstrained}(sampler, adtype)
+
+Wrap a sampler so it can be used as an inference algorithm.
+
+# Arguments
+- `sampler::AbstractSampler`: The sampler to wrap.
+- `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
+- `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
+"""
+function ExternalSampler{unconstrained}(sampler, adtype) where {unconstrained}
+    return ExternalSampler{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
+end
+ExternalSampler(sampler, adtype) = ExternalSampler{true}(sampler, adtype)
 
 """
     requires_unconstrained_space(sampler::ExternalSampler)
@@ -124,7 +131,7 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
 function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true)
-    return ExternalSampler(sampler, adtype, unconstrained)
+    return ExternalSampler{unconstrained}(sampler, adtype)
 end
 
 
