@@ -257,4 +257,26 @@
         chain = sample(model, NUTS(), 1000)
         @test mean(Array(chain)) ≈ 0.2
     end
+
+    @turing_testset "issue: #2195" begin
+        @model function buggy_model()
+           lb ~ Uniform(0, 0.1)
+           ub ~ Uniform(0.11, 0.2)
+           x ~ transformed(Normal(0, 1), inverse(Bijectors.Logit(lb, ub)))
+        end
+
+        model = buggy_model();
+
+        chain = sample(model, NUTS(), 1000);
+        chain_prior = sample(model, Prior(), 1000);
+
+        # Extract the `x` like this because running `generated_quantities` was how
+        # the issue was discovered, hence we also want to make sure that it works.
+        results = generated_quantities(model, chain);
+        results_prior = generated_quantities(model, chain_prior);
+
+        # The discrepancies in the chains are in the tails, so we can't just compare the mean, etc.
+        # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
+        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.05
+    end
 end
