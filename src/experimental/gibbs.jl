@@ -412,6 +412,7 @@ function gibbs_step_inner(
     varinfos_invlinked = map(varinfos) do vi
         # NOTE: This is immutable linking!
         # TODO: Do we need the `istrans` check here or should we just always use `invlink`?
+        # FIXME: Suffers from https://github.com/TuringLang/Turing.jl/issues/2195
         DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
     end
     varinfo_local_invlinked = varinfos_invlinked[index]
