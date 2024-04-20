@@ -12,6 +12,11 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(f.model, varinfo, transition)
 end
 
+state_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, state) = state_to_turing(parent(f), state)
+function transition_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, transition)
+    return transition_to_turing(parent(f), transition)
+end
+
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
@@ -33,14 +38,15 @@ function AbstractMCMC.step(
     initial_state=nothing,
     kwargs...
 )
-    sampler = sampler_wrapper.alg.sampler
+    alg = sampler_wrapper.alg
+    sampler = alg.sampler
 
     # Create a log-density function with an implementation of the
     # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(sampler_wrapper.alg.adtype, DynamicPPL.LogDensityFunction(model))
+    f = LogDensityProblemsAD.ADgradient(alg.adtype, DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo if needed.
-    if requires_unconstrained_space(sampler.alg)
+    if requires_unconstrained_space(alg)
         f = setvarinfo(f, DynamicPPL.link!!(getvarinfo(f), model))
     end
 
