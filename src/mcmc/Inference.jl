@@ -88,7 +88,7 @@ The `Unconstrained` type-parameter is to indicate whether the sampler requires u
 # Fields
 $(TYPEDFIELDS)
 """
-struct ExternalSampler{S<:AbstractSampler,AD<:AbstractADType,Unconstrained} <: InferenceAlgorithm
+struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <: InferenceAlgorithm
     "the sampler to wrap"
     sampler::S
     "the automatic differentiation (AD) backend to use"
@@ -99,8 +99,8 @@ struct ExternalSampler{S<:AbstractSampler,AD<:AbstractADType,Unconstrained} <: I
 
     Wrap a sampler so it can be used as an inference algorithm.
     """
-    function ExternalSampler(sampler::S, adtype::AD, unconstrained::Bool=true) where {S<:AbstractSampler,AD<:AbstractADType}
-        return new{S,unconstrained}(sampler)
+    function ExternalSampler(sampler::S, adtype::AD, unconstrained::Bool=true) where {S<:AbstractSampler,AD<:ADTypes.AbstractADType}
+        return new{S,AD,unconstrained}(sampler, adtype)
     end
 end
 

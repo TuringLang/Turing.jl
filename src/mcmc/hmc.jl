@@ -32,7 +32,7 @@ end
 ###
 
 """
-    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0))
+    HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())
 
 Hamiltonian Monte Carlo sampler with static trajectory.
 
@@ -280,7 +280,7 @@ end
 """
     HMCDA(
         n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
-        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(),
     )
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
@@ -354,7 +354,7 @@ end
 
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff(; chunksize=0)
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()
 
 No-U-Turn Sampler (NUTS) sampler.
 

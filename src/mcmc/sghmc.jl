@@ -23,7 +23,7 @@ end
         space::Symbol...;
         learning_rate::Real,
         momentum_decay::Real,
-        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(),
     )
 
 Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
@@ -163,7 +163,7 @@ end
     SGLD(
         space::Symbol...;
         stepsize = PolynomialStepsize(0.01),
-        adtype::ADTypes.AbstractADType = AutoForwardDiff(; chunksize=0),
+        adtype::ADTypes.AbstractADType = AutoForwardDiff(),
     )
 
 Stochastic gradient Langevin dynamics (SGLD) sampler.

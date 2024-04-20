@@ -1,12 +1,12 @@
 export setadbackend, setchunksize, setadsafe
 
 function setadbackend(::Union{Symbol, Val})
-    Base.depwarn("`ADBACKEND` and `setbackend` are deprecated. Please specify the chunk size directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoForwardDiff(; chunksize=0))`.\n This function has no effects.", :setbackend; force=true)
+    Base.depwarn("`ADBACKEND` and `setbackend` are deprecated. Please specify the chunk size directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoForwardDiff())`.\n This function has no effects.", :setbackend; force=true)
     nothing
 end
 
 function setchunksize(::Int)
-    Base.depwarn("`CHUNKSIZE` and `setchunksize` are deprecated. Please specify the chunk size directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoForwardDiff(; chunksize=0))`.\n This function has no effects.", :setchunksize; force=true)
+    Base.depwarn("`CHUNKSIZE` and `setchunksize` are deprecated. Please specify the chunk size directly in the sampler constructor, e.g., `HMC(0.1, 5; adtype=AutoForwardDiff())`.\n This function has no effects.", :setchunksize; force=true)
     nothing
 end
 
