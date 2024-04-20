@@ -95,7 +95,7 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     adtype::AD
 
     @doc """
-        ExternalSampler(sampler::AbstractSampler, unconstrained::Bool=true)
+        ExternalSampler(sampler::AbstractSampler, adtype::ADTypes.AbstractADType, unconstrained::Bool=true)
 
     Wrap a sampler so it can be used as an inference algorithm.
     """
