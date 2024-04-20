@@ -79,22 +79,54 @@ abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
 """
-    ExternalSampler{S<:AbstractSampler}
+    ExternalSampler{S<:AbstractSampler,Unconstrained}
+
+Represents a sampler that is not an implementation of `InferenceAlgorithm`.
+
+The `Unconstrained` type-parameter is to indicate whether the sampler requires unconstrained space.
 
 # Fields
 $(TYPEDFIELDS)
 """
-struct ExternalSampler{S<:AbstractSampler} <: InferenceAlgorithm
+struct ExternalSampler{S<:AbstractSampler,AD<:AbstractADType,Unconstrained} <: InferenceAlgorithm
     "the sampler to wrap"
     sampler::S
+    "the automatic differentiation (AD) backend to use"
+    adtype::AD
+
+    @doc """
+        ExternalSampler(sampler::AbstractSampler, unconstrained::Bool=true)
+
+    Wrap a sampler so it can be used as an inference algorithm.
+    """
+    function ExternalSampler(sampler::S, adtype::AD, unconstrained::Bool=true) where {S<:AbstractSampler,AD<:AbstractADType}
+        return new{S,unconstrained}(sampler)
+    end
 end
 
 """
-    externalsampler(sampler::AbstractSampler)
+    requires_unconstrained_space(sampler::ExternalSampler)
+
+Return `true` if the sampler requires unconstrained space, and `false` otherwise.
+"""
+requires_unconstrained_space(::ExternalSampler{<:Any,<:Any,Unconstrained}) where {Unconstrained} = Unconstrained
+
+"""
+    externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
 
 Wrap a sampler so it can be used as an inference algorithm.
+
+# Arguments
+- `sampler::AbstractSampler`: The sampler to wrap.
+
+# Keyword Arguments
+- `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
+- `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
-externalsampler(sampler::AbstractSampler) = ExternalSampler(sampler)
+function externalsampler(sampler::AbstractSampler; adtype=Turing.default_adtype(), unconstrained::Bool=true)
+    return ExternalSampler(sampler, adtype, unconstrained)
+end
+
 
 getADType(spl::Sampler) = getADType(spl.alg)
 getADType(::SampleFromPrior) = AutoForwardDiff(; chunksize=0)

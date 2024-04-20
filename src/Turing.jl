@@ -18,6 +18,10 @@ import StatsBase
 import Printf
 import Random
 
+using ADTypes: ADTypes
+
+default_adtype() = ADTypes.AutoForwardDiff(; chunksize=0)
+
 const PROGRESS = Ref(true)
 
 # TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
