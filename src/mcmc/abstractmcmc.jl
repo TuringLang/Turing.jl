@@ -37,7 +37,7 @@ function AbstractMCMC.step(
 
     # Create a log-density function with an implementation of the
     # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(sampler_wrapper.adtype, DynamicPPL.LogDensityFunction(model))
+    f = LogDensityProblemsAD.ADgradient(sampler_wrapper.alg.adtype, DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo if needed.
     if requires_unconstrained_space(sampler.alg)
