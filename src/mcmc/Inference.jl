@@ -78,6 +78,9 @@ abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
+_bool_from_val(::Val{true}) = true
+_bool_from_val(::Val{false}) = false
+
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
 
@@ -93,23 +96,25 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     sampler::S
     "the automatic differentiation (AD) backend to use"
     adtype::AD
+
+    """
+        ExternalSampler(sampler::AbstractSampler, adtype::ADTypes.AbstractADType, ::Val{unconstrained})
+
+    Wrap a sampler so it can be used as an inference algorithm.
+
+    # Arguments
+    - `sampler::AbstractSampler`: The sampler to wrap.
+    - `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
+    - `unconstrained::Val=Val{true}()`: Value type containing a boolean indicating whether the sampler requires unconstrained space.
+    """
+    function ExternalSampler(
+        sampler::AbstractSampler,
+        adtype::ADTypes.AbstractADType,
+        unconstrained::Union{Val{false},Val{true}}=Val{true}()
+    )
+        return new{typeof(sampler),typeof(adtype),_bool_from_val(unconstrained)}(sampler, adtype)
+    end
 end
-
-"""
-    ExternalSampler(sampler, adtype)
-    ExternalSampler{unconstrained}(sampler, adtype)
-
-Wrap a sampler so it can be used as an inference algorithm.
-
-# Arguments
-- `sampler::AbstractSampler`: The sampler to wrap.
-- `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
-- `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
-"""
-function ExternalSampler{unconstrained}(sampler, adtype) where {unconstrained}
-    return ExternalSampler{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
-end
-ExternalSampler(sampler, adtype) = ExternalSampler{true}(sampler, adtype)
 
 """
     requires_unconstrained_space(sampler::ExternalSampler)
@@ -131,7 +136,7 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
 function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true)
-    return ExternalSampler{unconstrained}(sampler, adtype)
+    return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
 
