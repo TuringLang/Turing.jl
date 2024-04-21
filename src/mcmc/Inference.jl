@@ -79,7 +79,7 @@ abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
 """
-    ExternalSampler{S<:AbstractSampler,Unconstrained}
+    ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
 
 Represents a sampler that is not an implementation of `InferenceAlgorithm`.
 
