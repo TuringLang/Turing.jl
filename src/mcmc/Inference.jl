@@ -80,6 +80,7 @@ abstract type AdaptiveHamiltonian <: Hamiltonian end
 
 _bool_from_val(::Val{true}) = true
 _bool_from_val(::Val{false}) = false
+_bool_from_val(@nospecialize(x)) = throw(ArgumentError("Expected Val{true} or Val{false}, got $x"))
 
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
