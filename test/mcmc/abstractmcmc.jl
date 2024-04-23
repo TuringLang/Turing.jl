@@ -77,12 +77,26 @@ end
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_nuts(model);
+                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model)
                 DynamicPPL.TestUtils.test_sampler(
                     [model],
-                    DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model),
+                    sampler_ext,
                     5_000;
                     n_adapts=1_000,
                     discard_initial=1_000,
+                    rtol=0.2,
+                    sampler_name="AdvancedHMC"
+                )
+
+                # Check that setting initial parameters in constrained space works.
+                initial_params = DynamicPPL.VarInfo(model)[:]
+                DynamicPPL.TestUtils.test_sampler(
+                    [model],
+                    sampler_ext,
+                    5_000;
+                    n_adapts=1_000,
+                    discard_initial=1_000,
+                    initial_params=initial_params,
                     rtol=0.2,
                     sampler_name="AdvancedHMC"
                 )
@@ -96,14 +110,28 @@ end
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_mh_rw(model);
+                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=true), model)
                 DynamicPPL.TestUtils.test_sampler(
                     [model],
-                    DynamicPPL.Sampler(externalsampler(sampler; unconstrained=true), model),
+                    sampler_ext,
                     10_000;
                     discard_initial=1_000,
                     thinning=10,
                     rtol=0.2,
                     sampler_name="AdvancedMH"
+                )
+
+                # Check that setting initial parameters in constrained space works.
+                initial_params = DynamicPPL.VarInfo(model)[:]
+                DynamicPPL.TestUtils.test_sampler(
+                    [model],
+                    sampler_ext,
+                    5_000;
+                    n_adapts=1_000,
+                    discard_initial=1_000,
+                    initial_params=initial_params,
+                    rtol=0.2,
+                    sampler_name="AdvancedHMC"
                 )
             end
         end

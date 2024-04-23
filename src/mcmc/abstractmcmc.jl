@@ -36,6 +36,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::Sampler{<:ExternalSampler};
     initial_state=nothing,
+    initial_params=nothing,
     kwargs...
 )
     alg = sampler_wrapper.alg
@@ -46,18 +47,27 @@ function AbstractMCMC.step(
     f = LogDensityProblemsAD.ADgradient(alg.adtype, DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo if needed.
+    varinfo = getvarinfo(f)
     if requires_unconstrained_space(alg)
-        f = setvarinfo(f, DynamicPPL.link(getvarinfo(f), model))
+        if initial_params !== nothing
+            # If we have initial parameters, we need to set the varinfo before linking.
+            varinfo = DynamicPPL.unflatten(varinfo, initial_params)
+            # Extract initial parameters in unconstrained space.
+            initial_params = varinfo[:]
+        else
+            varinfo = DynamicPPL.link(varinfo, model)
+        end
     end
+    f = setvarinfo(f, varinfo)
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     if initial_state === nothing
         transition_inner, state_inner = AbstractMCMC.step(
-            rng, AbstractMCMC.LogDensityModel(f), sampler; kwargs...
+            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params, kwargs...
         )
     else
         transition_inner, state_inner = AbstractMCMC.step(
-            rng, AbstractMCMC.LogDensityModel(f), sampler, initial_state; kwargs...
+            rng, AbstractMCMC.LogDensityModel(f), sampler, initial_state; initial_params, kwargs...
         )
     end
     # Update the `state`
