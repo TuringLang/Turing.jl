@@ -3,7 +3,7 @@ module Experimental
 using Random: Random
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL, VarName
-using Setfield: Setfield
+using Accessors: Accessors
 
 using DocStringExtensions: TYPEDFIELDS
 using Distributions
