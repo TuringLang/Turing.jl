@@ -5,7 +5,7 @@ using Bijectors
 using Random
 using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD
 
-using Setfield
+using Accessors: Accessors
 using DynamicPPL
 using DynamicPPL: Model, AbstractContext, VarInfo, VarName,
     _getindex, getsym, getfield,  setorder!,
@@ -150,7 +150,7 @@ function transform!!(f::OptimLogDensity)
     linked = DynamicPPL.istrans(f.varinfo)
 
     ## transform into constrained or unconstrained space depending on current state of vi
-    @set! f.varinfo = if !linked
+    f = Accessors.@set f.varinfo = if !linked
         DynamicPPL.link!!(f.varinfo, f.model)
     else
         DynamicPPL.invlink!!(f.varinfo, f.model)

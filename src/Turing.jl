@@ -11,9 +11,11 @@ using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
 import NamedArrays
-import Setfield
+import Accessors
 import StatsAPI
 import StatsBase
+
+using Accessors: Accessors
 
 import Printf
 import Random
