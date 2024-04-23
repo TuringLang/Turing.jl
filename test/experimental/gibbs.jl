@@ -24,60 +24,59 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::Model) = true
 
-# Likely an issue with not linking correctly.
-@testset "Demo models" begin
-    @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-        vns = DynamicPPL.TestUtils.varnames(model)
-        # Run one sampler on variables starting with `s` and another on variables starting with `m`.
-        vns_s = filter(vns) do vn
-            DynamicPPL.getsym(vn) == :s
-        end
-        vns_m = filter(vns) do vn
-            DynamicPPL.getsym(vn) == :m
-        end
+@testset "Gibbs using `condition`" begin
+    @testset "Demo models" begin
+        @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+            vns = DynamicPPL.TestUtils.varnames(model)
+            # Run one sampler on variables starting with `s` and another on variables starting with `m`.
+            vns_s = filter(vns) do vn
+                DynamicPPL.getsym(vn) == :s
+            end
+            vns_m = filter(vns) do vn
+                DynamicPPL.getsym(vn) == :m
+            end
 
-        samplers = [
-            Turing.Experimental.Gibbs(
-                vns_s => NUTS(),
-                vns_m => NUTS(),
-            ),
-            Turing.Experimental.Gibbs(
-                vns_s => NUTS(),
-                vns_m => HMC(0.01, 4),
-            )
-        ]
+            samplers = [
+                Turing.Experimental.Gibbs(
+                    vns_s => NUTS(),
+                    vns_m => NUTS(),
+                ),
+                Turing.Experimental.Gibbs(
+                    vns_s => NUTS(),
+                    vns_m => HMC(0.01, 4),
+                )
+            ]
 
-        if !has_dot_assume(model)
-            # Add in some MH samplers, which are not compatible with `.~`.
-            append!(
-                samplers,
-                [
-                    Turing.Experimental.Gibbs(
-                        vns_s => HMC(0.01, 4),
-                        vns_m => MH(),
-                    ),
-                    Turing.Experimental.Gibbs(
-                        vns_s => MH(),
-                        vns_m => HMC(0.01, 4),
-                    )
-                ]
-            )
-        end
+            if !has_dot_assume(model)
+                # Add in some MH samplers, which are not compatible with `.~`.
+                append!(
+                    samplers,
+                    [
+                        Turing.Experimental.Gibbs(
+                            vns_s => HMC(0.01, 4),
+                            vns_m => MH(),
+                        ),
+                        Turing.Experimental.Gibbs(
+                            vns_s => MH(),
+                            vns_m => HMC(0.01, 4),
+                        )
+                    ]
+                )
+            end
 
-        @testset "$sampler" for sampler in samplers
-            # Check that taking steps performs as expected.
-            rng = Random.default_rng()
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
-            check_transition_varnames(transition, vns)
-            for _ = 1:5
-                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
+            @testset "$sampler" for sampler in samplers
+                # Check that taking steps performs as expected.
+                rng = Random.default_rng()
+                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
                 check_transition_varnames(transition, vns)
+                for _ = 1:5
+                    transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
+                    check_transition_varnames(transition, vns)
+                end
             end
         end
     end
-end
 
-@testset "Gibbs using `condition`" begin
     @testset "demo_assume_dot_observe" begin
         model = DynamicPPL.TestUtils.demo_assume_dot_observe()
 
