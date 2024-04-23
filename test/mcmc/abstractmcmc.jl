@@ -69,6 +69,24 @@ function initialize_mh_with_prior_proposal(model)
     return AdvancedMH.MetropolisHastings(AdvancedMH.StaticProposal(ModelDistribution(model)))
 end
 
+function check_initial_params(model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...)
+    # Some samplers performs sampling in the initial step, and so we can't just compare
+    # the initial value to the value in the initial transition. Instead, we take two different
+    # initial steps with the the same random seed and initial parameters, and check that the
+    # the resulting parameters are the same.
+    # Ref: https://github.com/TuringLang/AdvancedHMC.jl/pull/366
+    rng1 = Random.default_rng()
+    rng2 = Random.default_rng()
+
+    transition1, _ = AbstractMCMC.step(rng1, model, sampler; initial_params, kwargs...)
+    transition2, _ = AbstractMCMC.step(rng2, model, sampler; initial_params, kwargs...)
+    vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
+    vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
+    for vn in union(keys(vn_to_val1), keys(vn_to_val2))
+        @test vn_to_val1[vn] ≈ vn_to_val2[vn]
+    end
+end
+
 @testset "External samplers" begin
     @turing_testset "AdvancedHMC.jl" begin
         # Try a few different AD backends.
@@ -78,28 +96,20 @@ end
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_nuts(model);
                 sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model)
-                DynamicPPL.TestUtils.test_sampler(
-                    [model],
-                    sampler_ext,
-                    5_000;
-                    n_adapts=1_000,
-                    discard_initial=1_000,
-                    rtol=0.2,
-                    sampler_name="AdvancedHMC"
-                )
-
-                # Check that setting initial parameters in constrained space works.
-                initial_params = DynamicPPL.VarInfo(model)[:]
-                DynamicPPL.TestUtils.test_sampler(
-                    [model],
-                    sampler_ext,
-                    5_000;
-                    n_adapts=1_000,
-                    discard_initial=1_000,
-                    initial_params=initial_params,
-                    rtol=0.2,
-                    sampler_name="AdvancedHMC"
-                )
+                @testset "initial_params" begin
+                    check_initial_params(model, sampler_ext; n_adapt=0)
+                end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        5_000;
+                        n_adapts=1_000,
+                        discard_initial=1_000,
+                        rtol=0.2,
+                        sampler_name="AdvancedHMC"
+                    )
+                end
             end
         end
     end
@@ -111,41 +121,38 @@ end
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_mh_rw(model);
                 sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=true), model)
-                DynamicPPL.TestUtils.test_sampler(
-                    [model],
-                    sampler_ext,
-                    10_000;
-                    discard_initial=1_000,
-                    thinning=10,
-                    rtol=0.2,
-                    sampler_name="AdvancedMH"
-                )
-
-                # Check that setting initial parameters in constrained space works.
-                initial_params = DynamicPPL.VarInfo(model)[:]
-                DynamicPPL.TestUtils.test_sampler(
-                    [model],
-                    sampler_ext,
-                    5_000;
-                    n_adapts=1_000,
-                    discard_initial=1_000,
-                    initial_params=initial_params,
-                    rtol=0.2,
-                    sampler_name="AdvancedHMC"
-                )
+                @testset "initial_params" begin
+                    check_initial_params(model, sampler_ext)
+                end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        10_000;
+                        discard_initial=1_000,
+                        thinning=10,
+                        rtol=0.2,
+                        sampler_name="AdvancedMH"
+                    )
+                end
             end
         end
         @testset "MH with prior proposal" begin
             for model in DynamicPPL.TestUtils.DEMO_MODELS
                 sampler = initialize_mh_with_prior_proposal(model);
-                DynamicPPL.TestUtils.test_sampler(
-                    [model],
-                    DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false), model),
-                    10_000;
-                    discard_initial=1_000,
-                    rtol=0.2,
-                    sampler_name="AdvancedMH"
-                )
+                @testset "initial_params" begin
+                    check_initial_params(model, sampler)
+                end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false), model),
+                        10_000;
+                        discard_initial=1_000,
+                        rtol=0.2,
+                        sampler_name="AdvancedMH"
+                    )
+                end
             end
         end
     end
