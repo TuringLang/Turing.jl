@@ -51,7 +51,7 @@ function AbstractMCMC.step(
     if requires_unconstrained_space(alg)
         if initial_params !== nothing
             # If we have initial parameters, we need to set the varinfo before linking.
-            varinfo = DynamicPPL.unflatten(varinfo, initial_params)
+            varinfo = DynamicPPL.link(DynamicPPL.unflatten(varinfo, initial_params), model)
             # Extract initial parameters in unconstrained space.
             initial_params = varinfo[:]
         else
