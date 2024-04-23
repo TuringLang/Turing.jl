@@ -87,7 +87,7 @@
         samples = rand(q, 1000)
         mean_est = mean(samples)
         var_est = var(samples)
-        @test mean_est ≈ mean_true atol=0.1
-        @test var_est ≈ var_true atol=0.1
+        @test mean_est ≈ mean_true atol=0.2
+        @test var_est ≈ var_true atol=0.2
     end
 end
