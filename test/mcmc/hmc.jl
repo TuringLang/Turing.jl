@@ -247,14 +247,18 @@
         end
     end
 
-    @turing_testset "(partially) issue: #2095" begin
-        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
-            xs = Vector{TV}(undef, 2)
-            xs[1] ~ Dirichlet(ones(5))
-            xs[2] ~ Dirichlet(ones(5))
+    # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
+    # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
+    if VERSION ≥ v"1.8"
+        @turing_testset "(partially) issue: #2095" begin
+            @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+                xs = Vector{TV}(undef, 2)
+                xs[1] ~ Dirichlet(ones(5))
+                xs[2] ~ Dirichlet(ones(5))
+            end
+            model = vector_of_dirichlet()
+            chain = sample(model, NUTS(), 1000)
+            @test mean(Array(chain)) ≈ 0.2
         end
-        model = vector_of_dirichlet()
-        chain = sample(model, NUTS(), 1000)
-        @test mean(Array(chain)) ≈ 0.2
     end
 end
