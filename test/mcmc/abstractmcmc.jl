@@ -97,7 +97,7 @@ end
                 sampler = initialize_nuts(model);
                 sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model)
                 @testset "initial_params" begin
-                    check_initial_params(model, sampler_ext; n_adapt=0)
+                    check_initial_params(model, sampler_ext; n_adapts=0)
                 end
                 @testset "inference" begin
                     DynamicPPL.TestUtils.test_sampler(
