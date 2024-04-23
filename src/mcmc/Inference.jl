@@ -89,6 +89,8 @@ struct ExternalSampler{S<:AbstractSampler} <: InferenceAlgorithm
     sampler::S
 end
 
+DynamicPPL.getspace(::ExternalSampler) = ()
+
 """
     externalsampler(sampler::AbstractSampler)
 
