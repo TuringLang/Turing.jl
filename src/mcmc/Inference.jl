@@ -78,10 +78,6 @@ abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
-_bool_from_val(::Val{true}) = true
-_bool_from_val(::Val{false}) = false
-_bool_from_val(@nospecialize(x)) = throw(ArgumentError("Expected Val{true} or Val{false}, got $x"))
-
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
 
@@ -111,9 +107,12 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     function ExternalSampler(
         sampler::AbstractSampler,
         adtype::ADTypes.AbstractADType,
-        unconstrained::Union{Val{false},Val{true}}=Val{true}()
-    )
-        return new{typeof(sampler),typeof(adtype),_bool_from_val(unconstrained)}(sampler, adtype)
+       ::Val{unconstrained}=Val(true)
+    ) where {unconstrained}
+        if !(unconstrained isa Bool)
+            throw(ArgumentError("Expected Val{true} or Val{false}, got Val{$unconstrained}"))
+        end
+        return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
     end
 end
 

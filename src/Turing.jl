@@ -22,7 +22,7 @@ import Random
 
 using ADTypes: ADTypes
 
-DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
+const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
 const PROGRESS = Ref(true)
 
