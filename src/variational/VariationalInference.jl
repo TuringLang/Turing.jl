@@ -37,8 +37,11 @@ function make_logjoint(model::DynamicPPL.Model; weight = 1.0)
         DynamicPPL.DefaultContext(),
         weight
     )
-    model_contextualized = DynamicPPL.contextualize(model, ctx)
-    f = DynamicPPL.LogDensityFunction(model_contextualized)
+    f = DynamicPPL.LogDensityFunction(
+        model,
+        DynamicPPL.VarInfo(model),
+        ctx
+    )
     return Base.Fix1(LogDensityProblems.logdensity, f)
 end
 
