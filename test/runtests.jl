@@ -88,6 +88,10 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
         end
     end
 
+    @testset "experimental" begin
+        @timeit_include("experimental/gibbs.jl")
+    end
+
     @testset "variational optimisers" begin
         @timeit_include("variational/optimisers.jl")
     end

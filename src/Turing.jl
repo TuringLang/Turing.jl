@@ -11,9 +11,11 @@ using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
 import NamedArrays
-import Setfield
+import Accessors
 import StatsAPI
 import StatsBase
+
+using Accessors: Accessors
 
 import Printf
 import Random
@@ -48,6 +50,7 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+include("experimental/Experimental.jl")
 include("deprecated.jl") # to be removed in the next minor version release
 
 ###########
