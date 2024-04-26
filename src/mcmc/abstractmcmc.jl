@@ -23,7 +23,7 @@ getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.pa
 getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
 getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
 
-setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Setfield.@set f.varinfo = varinfo
+setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Accessors.@set f.varinfo = varinfo
 setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo) = setvarinfo(parent(f), varinfo)
 
 # TODO: Do we also support `resume`, etc?

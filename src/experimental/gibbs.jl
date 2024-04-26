@@ -107,9 +107,9 @@ Returns the preferred value type for a variable with the given `varinfo`.
 preferred_value_type(::DynamicPPL.AbstractVarInfo) = DynamicPPL.OrderedDict
 preferred_value_type(::DynamicPPL.SimpleVarInfo{<:NamedTuple}) = NamedTuple
 function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
-    # We can only do this in the scenario where all the varnames are `Setfield.IdentityLens`.
+    # We can only do this in the scenario where all the varnames are `Accessors.IdentityLens`.
     namedtuple_compatible = all(varinfo.metadata) do md
-        eltype(md.vns) <: VarName{<:Any,Setfield.IdentityLens}
+        eltype(md.vns) <: VarName{<:Any,typeof(identity)}
     end
     return namedtuple_compatible ? NamedTuple : DynamicPPL.OrderedDict
 end
@@ -321,8 +321,8 @@ function AbstractMCMC.step(
         )
 
         # Update the `states` and `varinfos`.
-        states = Setfield.setindex(states, new_state_local, index)
-        varinfos = Setfield.setindex(varinfos, new_varinfo_local, index)
+        states = Accessors.setindex(states, new_state_local, index)
+        varinfos = Accessors.setindex(varinfos, new_varinfo_local, index)
     end
 
     # Combine the resulting varinfo objects.
@@ -349,7 +349,7 @@ function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler
     # NOTE: This is different from the implementation used in the old `Gibbs` sampler, where we specifically provide
     # a `gid`. Here, because `model` only contains random variables to be sampled by `sampler`, we just use the exact
     # same `selector` as before but now with `rerun` set to `true` if needed.
-    return Setfield.@set sampler.selector.rerun = true
+    return Accessors.@set sampler.selector.rerun = true
 end
 
 # Interface we need a sampler to implement to work as a component in a Gibbs sampler.
