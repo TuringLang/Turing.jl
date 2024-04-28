@@ -20,6 +20,10 @@ using Accessors: Accessors
 import Printf
 import Random
 
+using ADTypes: ADTypes
+
+const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
+
 const PROGRESS = Ref(true)
 
 # TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
