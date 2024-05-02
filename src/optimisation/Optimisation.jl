@@ -24,6 +24,21 @@ export  constrained_space,
         optim_function,
         optim_problem
 
+
+# TODO(torfjelde): Make these two methods work.
+function maximum_a_posteriori(model::DynamicPPL.Model, solver; kwargs...)
+    # NOTE: Don't know why we need the `init` and `transform` here.
+    prob, init, transform = optim_problem(model, MAP(); kwargs...)
+    return SciMLBase.solve(prob, solver)
+end
+
+function maximum_likelihood(model::DynamicPPL.Model, solver; kwargs...)
+    # NOTE: Don't know why we need the `init` and `transform` here.
+    prob, init, transform = optim_problem(model, MLE(); kwargs...)
+    return SciMLBase.solve(prob, solver)
+end
+
+# TODO(torfjelde): Don't think we need this constrained space struct?
 struct constrained_space{x} end 
 
 struct MLE end
