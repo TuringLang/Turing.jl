@@ -49,5 +49,39 @@ end
 
 MoGtest_default = MoGtest([1.0 1.0 4.0 4.0])
 
+@model function MoGtest_z_vector(D)
+    mu1 ~ Normal(1, 1)
+    mu2 ~ Normal(4, 1)
+
+    z = Vector{Int}(undef, 4)
+    z[1] ~ Categorical(2)
+    if z[1] == 1
+        D[1] ~ Normal(mu1, 1)
+    else
+        D[1] ~ Normal(mu2, 1)
+    end
+    z[2] ~ Categorical(2)
+    if z[2] == 1
+        D[2] ~ Normal(mu1, 1)
+    else
+        D[2] ~ Normal(mu2, 1)
+    end
+    z[3] ~ Categorical(2)
+    if z[3] == 1
+        D[3] ~ Normal(mu1, 1)
+    else
+        D[3] ~ Normal(mu2, 1)
+    end
+    z[4] ~ Categorical(2)
+    if z[4] == 1
+        D[4] ~ Normal(mu1, 1)
+    else
+        D[4] ~ Normal(mu2, 1)
+    end
+    z[1], z[2], z[3], z[4], mu1, mu2
+end
+
+MoGtest_default_z_vector = MoGtest_z_vector([1.0 1.0 4.0 4.0])
+
 # Declare empty model to make the Sampler constructor work.
 @model empty_model() = x = 1

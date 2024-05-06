@@ -34,44 +34,125 @@ function initialize_nuts(model::Turing.Model)
 end
 
 
-function initialize_mh(model)
+function initialize_mh_rw(model)
     f = DynamicPPL.LogDensityFunction(model)
     d = LogDensityProblems.dimension(f)
     return AdvancedMH.RWMH(MvNormal(Zeros(d), 0.1 * I))
 end
 
+# TODO: Should this go somewhere else?
+# Convert a model into a `Distribution` to allow usage as a proposal in AdvancedMH.jl.
+struct ModelDistribution{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo} <: ContinuousMultivariateDistribution
+    model::M
+    varinfo::V
+end
+ModelDistribution(model::DynamicPPL.Model) = ModelDistribution(model, DynamicPPL.VarInfo(model))
+
+Base.length(d::ModelDistribution) = length(d.varinfo[:])
+function Distributions._logpdf(d::ModelDistribution, x::AbstractVector)
+    return logprior(d.model, DynamicPPL.unflatten(d.varinfo, x))
+end
+function Distributions._rand!(rng::Random.AbstractRNG, d::ModelDistribution, x::AbstractVector{<:Real})
+    model = d.model
+    varinfo = deepcopy(d.varinfo)
+    for vn in keys(varinfo)
+        DynamicPPL.set_flag!(varinfo, vn, "del")
+    end
+    DynamicPPL.evaluate!!(model, varinfo, DynamicPPL.SamplingContext(rng))
+    x .= varinfo[:]
+    return x
+end
+
+function initialize_mh_with_prior_proposal(model)
+    return AdvancedMH.MetropolisHastings(AdvancedMH.StaticProposal(ModelDistribution(model)))
+end
+
+function test_initial_params(model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...)
+    # Execute the transition with two different RNGs and check that the resulting
+    # parameter values are the same.
+    rng1 = Random.MersenneTwister(42)
+    rng2 = Random.MersenneTwister(43)
+
+    transition1, _ = AbstractMCMC.step(rng1, model, sampler; initial_params, kwargs...)
+    transition2, _ = AbstractMCMC.step(rng2, model, sampler; initial_params, kwargs...)
+    vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
+    vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
+    for vn in union(keys(vn_to_val1), keys(vn_to_val2))
+        @test vn_to_val1[vn] ≈ vn_to_val2[vn]
+    end
+end
+
 @testset "External samplers" begin
     @turing_testset "AdvancedHMC.jl" begin
-        for model in DynamicPPL.TestUtils.DEMO_MODELS
-            # Need some functionality to initialize the sampler.
-            # TODO: Remove this once the constructors in the respective packages become "lazy".
-            sampler = initialize_nuts(model);
-            DynamicPPL.TestUtils.test_sampler(
-                [model],
-                DynamicPPL.Sampler(externalsampler(sampler), model),
-                5_000;
-                n_adapts=1_000,
-                discard_initial=1_000,
-                rtol=0.2,
-                sampler_name="AdvancedHMC"
-            )
+        # Try a few different AD backends.
+        @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
+            @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+                # Need some functionality to initialize the sampler.
+                # TODO: Remove this once the constructors in the respective packages become "lazy".
+                sampler = initialize_nuts(model);
+                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model)
+                # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
+                # @testset "initial_params" begin
+                #     test_initial_params(model, sampler_ext; n_adapts=0)
+                # end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        5_000;
+                        n_adapts=1_000,
+                        discard_initial=1_000,
+                        # FIXME: Remove this once we can run `test_initial_params` above.
+                        initial_params=DynamicPPL.VarInfo(model)[:],
+                        rtol=0.2,
+                        sampler_name="AdvancedHMC"
+                    )
+                end
+            end
         end
     end
 
     @turing_testset "AdvancedMH.jl" begin
-        for model in DynamicPPL.TestUtils.DEMO_MODELS
-            # Need some functionality to initialize the sampler.
-            # TODO: Remove this once the constructors in the respective packages become "lazy".
-            sampler = initialize_mh(model);
-            DynamicPPL.TestUtils.test_sampler(
-                [model],
-                DynamicPPL.Sampler(externalsampler(sampler), model),
-                10_000;
-                discard_initial=1_000,
-                thinning=10,
-                rtol=0.2,
-                sampler_name="AdvancedMH"
-            )
+        @testset "RWMH" begin
+            @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+                # Need some functionality to initialize the sampler.
+                # TODO: Remove this once the constructors in the respective packages become "lazy".
+                sampler = initialize_mh_rw(model);
+                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=true), model)
+                @testset "initial_params" begin
+                    test_initial_params(model, sampler_ext)
+                end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        10_000;
+                        discard_initial=1_000,
+                        thinning=10,
+                        rtol=0.2,
+                        sampler_name="AdvancedMH"
+                    )
+                end
+            end
+        end
+        @testset "MH with prior proposal" begin
+            @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+                sampler = initialize_mh_with_prior_proposal(model);
+                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false), model)
+                @testset "initial_params" begin
+                    test_initial_params(model, sampler_ext)
+                end
+                @testset "inference" begin
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        10_000;
+                        discard_initial=1_000,
+                        rtol=0.2,
+                        sampler_name="AdvancedMH"
+                    )
+                end
+            end
         end
     end
 end
