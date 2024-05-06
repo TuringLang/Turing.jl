@@ -324,7 +324,8 @@ function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # as they are seen in the model, i.e. in the constrained space. Moreover,
     # this means that the code below will work both of linked and invlinked `vi`.
     # Ref: https://github.com/TuringLang/Turing.jl/issues/2195
-    vals = DynamicPPL.values_as_in_model(model, vi)
+    # NOTE: We need to `deepcopy` here to avoid modifying the original `vi`.
+    vals = DynamicPPL.values_as_in_model(model, deepcopy(vi))
 
     # Obtain an iterator over the flattened parameter names and values.
     iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
