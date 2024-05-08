@@ -280,7 +280,6 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    check_model::Bool=true,
     kwargs...
 )
     return AbstractMCMC.sample(Random.default_rng(), model, alg, ensemble, N, n_chains;
