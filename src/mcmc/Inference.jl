@@ -308,12 +308,10 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    check_model::Bool=true,
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
     kwargs...
 )
-    check_model && _check_model(model, alg)
     return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
                                    chain_type=chain_type, progress=progress, kwargs...)
 end
