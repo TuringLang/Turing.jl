@@ -61,7 +61,7 @@ include("deprecated.jl") # to be removed in the next minor version release
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint, condition, decondition, fix, unfix, OrderedDict
 using StatsBase: predict
 
 # Turing essentials - modelling macros and inference algorithms
@@ -114,7 +114,8 @@ export  @model,                 # modelling
         BernoulliLogit,         # Part of Distributions >= 0.25.77
         OrderedLogistic,
         LogPoisson,
-        NamedDist,
+
+        NamedDist,              # Exports from DynamicPPL
         filldist,
         arraydist,
 
@@ -126,6 +127,12 @@ export  @model,                 # modelling
         logjoint,
         LogDensityFunction,
 
+        condition,
+        decondition,
+        fix,
+        unfix,
+        OrderedDict,
+    
         constrained_space,            # optimisation interface
         MAP,
         MLE,
