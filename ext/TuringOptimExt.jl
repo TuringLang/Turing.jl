@@ -2,104 +2,13 @@ module TuringOptimExt
 
 if isdefined(Base, :get_extension)
     import Turing
-    import Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Accessors, Statistics, StatsAPI, StatsBase 
+    import Turing: Distributions, DynamicPPL, NamedArrays, Accessors, ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
     import Optim
 else
     import ..Turing
-    import ..Turing: Distributions, DynamicPPL, ForwardDiff, NamedArrays, Printf, Accessors, Statistics, StatsAPI, StatsBase
+    import ..Turing: Distributions, DynamicPPL, NamedArrays, Accessors, ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
     import ..Optim
 end
-
-"""
-    ModeResult{
-        V<:NamedArrays.NamedArray,
-        M<:NamedArrays.NamedArray,
-        O<:Optim.MultivariateOptimizationResults,
-        S<:NamedArrays.NamedArray
-    }
-
-A wrapper struct to store various results from a MAP or MLE estimation.
-"""
-struct ModeResult{
-    V<:NamedArrays.NamedArray,
-    O<:Optim.MultivariateOptimizationResults,
-    M<:Turing.OptimLogDensity
-} <: StatsBase.StatisticalModel
-    "A vector with the resulting point estimates."
-    values::V
-    "The stored Optim.jl results."
-    optim_result::O
-    "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run."
-    lp::Float64
-    "The evaluation function used to calculate the output."
-    f::M
-end
-#############################
-# Various StatsBase methods #
-#############################
-
-
-
-function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
-    print(io, "ModeResult with maximized lp of ")
-    Printf.@printf(io, "%.2f", m.lp)
-    println(io)
-    show(io, m.values)
-end
-
-function Base.show(io::IO, m::ModeResult)
-    show(io, m.values.array)
-end
-
-function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
-    # Get columns for coeftable.
-    terms = string.(StatsBase.coefnames(m))
-    estimates = m.values.array[:, 1]
-    stderrors = StatsBase.stderror(m)
-    zscore = estimates ./ stderrors
-    p = map(z -> StatsAPI.pvalue(Distributions.Normal(), z; tail=:both), zscore)
-
-    # Confidence interval (CI)
-    q = Statistics.quantile(Distributions.Normal(), (1 + level) / 2)
-    ci_low = estimates .- q .* stderrors
-    ci_high = estimates .+ q .* stderrors
-    
-    level_ = 100*level
-    level_percentage = isinteger(level_) ? Int(level_) : level_ 
-    
-    StatsBase.CoefTable(
-        [estimates, stderrors, zscore, p, ci_low, ci_high],
-        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower $(level_percentage)%", "Upper $(level_percentage)%"],
-        terms)
-end
-
-function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
-    # Calculate Hessian and information matrix.
-
-    # Convert the values to their unconstrained states to make sure the
-    # Hessian is computed with respect to the untransformed parameters.
-    linked = DynamicPPL.istrans(m.f.varinfo)
-    if linked
-        m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
-    end
-
-    # Calculate the Hessian, which is the information matrix because the negative of the log likelihood was optimized
-    varnames = StatsBase.coefnames(m)
-    info = hessian_function(m.f, m.values.array[:, 1])
-
-    # Link it back if we invlinked it.
-    if linked
-        m = Accessors.@set m.f.varinfo = DynamicPPL.link!!(m.f.varinfo, m.f.model)
-    end
-
-    return NamedArrays.NamedArray(info, (varnames, varnames))
-end
-
-StatsBase.coef(m::ModeResult) = m.values
-StatsBase.coefnames(m::ModeResult) = names(m.values)[1]
-StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
-StatsBase.vcov(m::ModeResult) = inv(StatsBase.informationmatrix(m))
-StatsBase.loglikelihood(m::ModeResult) = m.lp
 
 ####################
 # Optim.jl methods #
@@ -256,7 +165,7 @@ function _optimize(
     # Store the parameters and their names in an array.
     vmat = NamedArrays.NamedArray(vals, varnames)
 
-    return ModeResult(vmat, M, -M.minimum, f)
+    return Turing.ModeResult(vmat, M, -M.minimum, f)
 end
 
 end # module

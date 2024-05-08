@@ -47,6 +47,8 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
+include("optimisation/OptimisationCore.jl")
+using .OptimisationCore
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
@@ -122,13 +124,13 @@ export  @model,                 # modelling
         logjoint,
         LogDensityFunction,
 
-        constrained_space,            # optimisation interface
-        MAP,
+        MAP,            # optimisation interface
         MLE,
-        get_parameter_bounds,
-        optim_objective,
-        optim_function,
-        optim_problem
+        OptimLogDensity,
+        ModeResult,
+        estimate_mode,
+        maximum_a_posteriori,
+        maximum_likelihood
 
 if !isdefined(Base, :get_extension)
     using Requires
