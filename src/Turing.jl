@@ -63,6 +63,7 @@ include("deprecated.jl") # to be removed in the next minor version release
 # `using` statements for stuff to re-export
 using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint, condition, decondition, fix, unfix, OrderedDict, conditioned
 using StatsBase: predict
+using Bijectors: ordered
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
@@ -132,7 +133,9 @@ export  @model,                 # modelling
         unfix,
         conditioned,
         OrderedDict,
-    
+
+        ordered,                # Exports from Bijectors
+
         constrained_space,            # optimisation interface
         MAP,
         MLE,
