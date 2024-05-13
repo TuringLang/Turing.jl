@@ -158,7 +158,7 @@ struct ModeResult{
 } <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
-    "The stored Optim.jl results."
+    "The stored optimiser results."
     optim_result::O
     "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run."
     lp::Float64

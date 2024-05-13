@@ -155,14 +155,8 @@ function _optimize(
     vals = DynamicPPL.getparams(f)
     f = Accessors.@set f.varinfo = DynamicPPL.link(f.varinfo, model)
 
-    # Make one transition to get the parameter names.
-    ts = [Turing.Inference.Transition(
-        Turing.Inference.getparams(model, f.varinfo),
-        DynamicPPL.getlogp(f.varinfo)
-    )]
-    varnames = map(Symbol, first(Turing.Inference._params_to_array(model, ts)))
-
     # Store the parameters and their names in an array.
+    varnames = map(Symbol ∘ first, Turing.Inference.getparams(model, f.varinfo))
     vmat = NamedArrays.NamedArray(vals, varnames)
 
     return Turing.ModeResult(vmat, M, -M.minimum, f)
