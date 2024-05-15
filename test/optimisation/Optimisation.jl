@@ -1,4 +1,3 @@
-# TODO(mhauru) This file should be moved to a different folder.
 @testset "ext/Optimisation.jl" begin
     @numerical_testset "gdemo" begin
         @testset "MLE" begin
