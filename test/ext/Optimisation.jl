@@ -82,10 +82,12 @@
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            function check_success(result)
+            function check_success(result, check_retcode=true)
                 optimum = result.values.array
                 @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+                if check_retcode
+                    @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+                end
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
@@ -93,7 +95,10 @@
             m2 = estimate_mode(
                 gdemo_default, MLE(), true_value, Fminbox(LBFGS()); lb=lb, ub=ub
             )
-            m3 = estimate_mode(gdemo_default, MLE(), IPNewton(); lb=lb, ub=ub)
+            m3 = estimate_mode(
+                gdemo_default, MLE(), BBO_separable_nes();
+                maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
+            )
             m4 = estimate_mode(
                 gdemo_default, MLE(), Fminbox(BFGS()); adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
@@ -102,7 +107,9 @@
 
             check_success(m1)
             check_success(m2)
-            check_success(m3)
+            # BBO retcodes are misconfigured, so skip checking the retcode in this case.
+            # See https://github.com/SciML/Optimization.jl/issues/745
+            check_success(m3, false)
             check_success(m4)
             check_success(m5)
             check_success(m6)
@@ -111,7 +118,7 @@
             @test m5.optim_result.stats.iterations <= 1
 
             @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals > 0
+            @test m3.optim_result.stats.gevals == 0
             @test m4.optim_result.stats.gevals > 0
             @test m5.optim_result.stats.gevals > 0
         end
@@ -124,10 +131,12 @@
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            function check_success(result)
+            function check_success(result, check_retcode=true)
                 optimum = result.values.array
                 @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+                if check_retcode
+                    @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+                end
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
@@ -135,7 +144,10 @@
             m2 = estimate_mode(
                 gdemo_default, MAP(), true_value, Fminbox(LBFGS()); lb=lb, ub=ub
             )
-            m3 = estimate_mode(gdemo_default, MAP(), IPNewton(); lb=lb, ub=ub)
+            m3 = estimate_mode(
+                gdemo_default, MAP(), BBO_separable_nes();
+                maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
+            )
             m4 = estimate_mode(
                 gdemo_default, MAP(), Fminbox(BFGS()); adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
@@ -144,7 +156,9 @@
 
             check_success(m1)
             check_success(m2)
-            check_success(m3)
+            # BBO retcodes are misconfigured, so skip checking the retcode in this case.
+            # See https://github.com/SciML/Optimization.jl/issues/745
+            check_success(m3, false)
             check_success(m4)
             check_success(m5)
             check_success(m6)
@@ -153,7 +167,7 @@
             @test m5.optim_result.stats.iterations <= 1
 
             @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals > 0
+            @test m3.optim_result.stats.gevals == 0
             @test m4.optim_result.stats.gevals > 0
             @test m5.optim_result.stats.gevals > 0
         end
