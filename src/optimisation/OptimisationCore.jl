@@ -8,7 +8,6 @@ module OptimisationCore
 using ..Turing
 using NamedArrays
 using DynamicPPL
-#using DynamicPPL: Model, VarInfo, istrans
 import LogDensityProblems
 import LogDensityProblemsAD
 using StatsBase
