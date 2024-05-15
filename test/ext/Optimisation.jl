@@ -1,4 +1,5 @@
 @testset "ext/Optimisation.jl" begin
+    # TODO(mhauru) Should this be a numerical_testset?
     @testset "gdemo" begin
         @testset "MLE" begin
             Random.seed!(222)
@@ -15,6 +16,7 @@
             m1 = estimate_mode(gdemo_default, MLE())
             m2 = estimate_mode(gdemo_default, MLE(), true_value, LBFGS())
             m3 = estimate_mode(gdemo_default, MLE(), Newton())
+            # TODO(mhauru) How can we check that the adtype is actually AutoReverseDiff?
             m4 = estimate_mode(gdemo_default, MLE(), BFGS(); adtype=AutoReverseDiff())
             m5 = estimate_mode(gdemo_default, MLE(), true_value, NelderMead())
             m6 = maximum_likelihood(gdemo_default, NelderMead())
@@ -248,8 +250,6 @@
     end
 
     @numerical_testset "Optimization.jl interface" begin
-        # TODO Below are tests copied over from the tests of the Optim.jl interface.
-        # Make sure we implement similar tests here.
 
         @testset "StatsBase integration" begin
             Random.seed!(54321)
@@ -293,8 +293,6 @@
             y = x*true_beta
             
             model = regtest(x, y)
-            # TODO This fails because our initial value generation can't handle variables
-            # with that are vectors.
             mle = estimate_mode(model, MLE())
             
             vcmat = inv(x'x)
@@ -380,8 +378,8 @@
             end
         end
 
-        # TODO This does not belong here, nor in Optim.jl's tests, because it only uses
-        # OptimizationCore. I think.
+        # TODO(mhauru) Make a separate test file for OptimizationCore, and move this test
+        # there.
         # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
         @testset "OptimizationContext" begin
             @model function model1(x)
@@ -432,8 +430,6 @@
         @testset "with different linked dimensionality" begin
             @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
             model = demo_dirichlet()
-            # TODO This fails because our initial value generation can't handle variables
-            # with that are vectors.
             result = estimate_mode(model, MAP())
             @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
         end
