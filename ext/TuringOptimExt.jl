@@ -2,11 +2,27 @@ module TuringOptimExt
 
 if isdefined(Base, :get_extension)
     import Turing
-    import Turing: Distributions, DynamicPPL, NamedArrays, Accessors, ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
+    import Turing:
+        DynamicPPL,
+        NamedArrays,
+        Accessors,
+        ModeResult,
+        MLE,
+        MAP,
+        OptimLogDensity,
+        OptimizationContext
     import Optim
 else
     import ..Turing
-    import ..Turing: Distributions, DynamicPPL, NamedArrays, Accessors, ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
+    import Turing:
+        DynamicPPL,
+        NamedArrays,
+        Accessors,
+        ModeResult,
+        MLE,
+        MAP,
+        OptimLogDensity,
+        OptimizationContext
     import ..Optim
 end
 

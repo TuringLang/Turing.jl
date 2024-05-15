@@ -1,17 +1,17 @@
 module Optimisation
 
 using ..Turing
-using ..Turing: NamedArrays, ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
+using ..Turing: ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
+using NamedArrays: NamedArray
 using Optimization
 using OptimizationOptimJL: LBFGS, IPNewton
 using DocStringExtensions: TYPEDFIELDS
 using Bijectors
 using Random
-using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, NoAD, solve, AbstractSciMLAlgorithm
+using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, solve
 
 using Accessors: Accessors
-using DynamicPPL
-using DynamicPPL: Model, VarInfo, istrans
+using DynamicPPL: Model, DefaultContext, LikelihoodContext
 
 export estimate_mode, maximum_a_posteriori, maximum_likelihood
 
@@ -46,7 +46,7 @@ has_box_constraints(c::ModeEstimationConstraints) = c.ub !== nothing || c.lb !==
 has_generic_constraints(c::ModeEstimationConstraints) = c.cons !== nothing || c.lcons !== nothing || c.ucons !== nothing
 has_constraints(c::ModeEstimationConstraints) = has_box_constraints(c) || has_generic_constraints(c)
 
-function ensure_init_value(model::DynamicPPL.Model, init_value, constraints)
+function ensure_init_value(model::Model, init_value, constraints)
     if init_value !== nothing
         return copy(init_value)
     end
@@ -68,7 +68,7 @@ A struct that defines a mode estimation problem.
 $(TYPEDFIELDS)
 """
 struct ModeEstimationProblem{
-    M<:DynamicPPL.Model,
+    M<:Model,
     E<:ModeEstimator,
     Iv<:AbstractVector,
     Cons<:ModeEstimationConstraints,
@@ -190,7 +190,7 @@ function ModeResult(prob::ModeEstimationProblem, solution::AbstractVector)
     end
     # Store the parameters and their names in an array.
     varnames = variable_names(prob.log_density)
-    vmat = NamedArrays.NamedArray(solution_values, varnames)
+    vmat = NamedArray(solution_values, varnames)
     return ModeResult(vmat, solution, -solution.minimum, prob.log_density)
 end
 
@@ -201,7 +201,8 @@ end
         [init_value::Union{AbstractVector,Nothing},
         [solver]];
         adtype::AbstractADType=AutoForwardDiff(),
-        <constraints>
+        <constraints>,
+        <extra kwargs>
     )
 
 Find the mode of the probability distribution of a model.
@@ -219,9 +220,11 @@ Optimization.jl. If it is `nothing` or omitted a default solver is chosen.
 `<constraints>` refers to the keyword arguments `lb`, `ub`, `cons`, `lcons`, and `ucons`
 that define constraints for the optimization problem. Please see the documentation of
 `ModeEstimationConstraints` for more details.
+
+Any <extra kwargs> are passed to `Optimization.solve`.
 """
 function estimate_mode(
-    model::DynamicPPL.Model,
+    model::Model,
     estimator::ModeEstimator,
     init_value::Union{AbstractVector,Nothing},
     solver;
@@ -231,30 +234,33 @@ function estimate_mode(
     ucons=nothing,
     lb=nothing,
     ub=nothing,
+    kwargs...
 )
     prob = ModeEstimationProblem(
         model, estimator, init_value, lb, ub, cons, lcons, ucons, adtype
     )
     (solver === nothing) && (solver = default_solver(prob))
     # TODO(mhauru) We currently couple together the questions of whether the user specified
-    # bounds/constraints, and whether we transform the objective function to an
+    # bounds/constraints and whether we transform the objective function to an
     # unconstrained space. These should be separate concerns, but for that we need to
     # implement getting the bounds of the prior distributions.
     optimise_in_unconstrained_space = !has_constraints(prob)
-    optimise_in_unconstrained_space && prob = link(prob)
-    solution = solve(OptimizationProblem(prob), solver)
+    optimise_in_unconstrained_space && (prob = link(prob))
+    solution = solve(OptimizationProblem(prob), solver; kwargs...)
+    # TODO(mhauru) We return a ModeResult for compatibility with the older Optim.jl
+    # interface. Might we want to break that and develop a better return type?
     return ModeResult(prob, solution)
 end
 
-function estimate_mode(model::DynamicPPL.Model, estimator::ModeEstimator, init_value::Union{AbstractVector,Nothing}, args...; kwargs...)
+function estimate_mode(model::Model, estimator::ModeEstimator, init_value::Union{AbstractVector,Nothing}, args...; kwargs...)
     return estimate_mode(model, estimator, init_value, nothing, args...; kwargs...)
 end
 
-function estimate_mode(model::DynamicPPL.Model, estimator::ModeEstimator, solver, args...; kwargs...)
+function estimate_mode(model::Model, estimator::ModeEstimator, solver, args...; kwargs...)
     return estimate_mode(model, estimator, nothing, solver, args...; kwargs...)
 end
 
-function estimate_mode(model::DynamicPPL.Model, estimator::ModeEstimator, args...; kwargs...)
+function estimate_mode(model::Model, estimator::ModeEstimator, args...; kwargs...)
     return estimate_mode(model, estimator, nothing, nothing, args...; kwargs...)
 end
 
@@ -272,7 +278,7 @@ Find the maximum a posteriori estimate of a model.
 This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator.
 Please do see the documentation of `estimate_mode` for more details.
 """
-function maximum_a_posteriori(model::DynamicPPL.Model, args...; kwargs...)
+function maximum_a_posteriori(model::Model, args...; kwargs...)
     return estimate_mode(model, MAP(), args...; kwargs...)
 end
 
@@ -290,7 +296,7 @@ Find the maximum likelihood estimate of a model.
 This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator.
 Please do see the documentation of `estimate_mode` for more details.
 """
-function maximum_likelihood(model::DynamicPPL.Model, args...; kwargs...)
+function maximum_likelihood(model::Model, args...; kwargs...)
     return estimate_mode(model, MLE(), args...; kwargs...)
 end
 

@@ -8,7 +8,7 @@ module OptimisationCore
 using ..Turing
 using NamedArrays
 using DynamicPPL
-using DynamicPPL: Model, AbstractContext, VarInfo, get_and_set_val!, istrans
+#using DynamicPPL: Model, VarInfo, istrans
 import LogDensityProblems
 import LogDensityProblemsAD
 using StatsBase
@@ -34,10 +34,10 @@ The `OptimizationContext` transforms variables to their constrained space, but
 does not use the density with respect to the transformation. This context is
 intended to allow an optimizer to sample in R^n freely.
 """
-struct OptimizationContext{C<:AbstractContext} <: AbstractContext
+struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
     context::C
 
-    function OptimizationContext{C}(context::C) where {C<:AbstractContext}
+    function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
         if !(context isa Union{DefaultContext,LikelihoodContext})
             throw(ArgumentError("`OptimizationContext` supports only leaf contexts of type `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` (given: `$(typeof(context)))`"))
         end
@@ -45,7 +45,7 @@ struct OptimizationContext{C<:AbstractContext} <: AbstractContext
     end
 end
 
-OptimizationContext(context::AbstractContext) = OptimizationContext{typeof(context)}(context)
+OptimizationContext(context::DynamicPPL.AbstractContext) = OptimizationContext{typeof(context)}(context)
 
 DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
@@ -208,7 +208,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    linked = DynamicPPL.istrans(m.f.varinfo)
+    linked = istrans(m.f.varinfo)
     if linked
         m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
