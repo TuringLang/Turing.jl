@@ -11,7 +11,9 @@ using MCMCChains
 using NamedArrays
 using Optim
 using Optimization
-using OptimizationOptimJL
+using OptimizationBBO: BBO_separable_nes
+using OptimizationOptimJL: LBFGS, NelderMead, Fminbox, IPNewton
+using OptimizationNLopt: NLopt.LD_TNEWTON_PRECOND_RESTART
 using PDMats
 using ReverseDiff
 using SpecialFunctions

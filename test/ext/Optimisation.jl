@@ -338,7 +338,8 @@
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
+        optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             result = maximum_a_posteriori(model, optimizer)
             vals = result.values
 
@@ -372,8 +373,8 @@
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
-        # `NelderMead` seems to struggle with convergence here, so we exclude it.
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(),]
+        optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             result = maximum_likelihood(model, optimizer; reltol=1e-3)
             vals = result.values
 
