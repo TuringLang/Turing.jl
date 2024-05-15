@@ -1,7 +1,8 @@
 module Optimisation
 
 using ..Turing
-using ..Turing: ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext, ModeEstimator
+using ..OptimisationCore: ModeResult, MLE, MAP, OptimLogDensity, OptimizationContext,
+    ModeEstimator, variable_names
 using NamedArrays: NamedArray
 using Optimization
 using OptimizationOptimJL: LBFGS, IPNewton
@@ -43,20 +44,36 @@ struct ModeEstimationConstraints{
 end
 
 has_box_constraints(c::ModeEstimationConstraints) = c.ub !== nothing || c.lb !== nothing
-has_generic_constraints(c::ModeEstimationConstraints) = c.cons !== nothing || c.lcons !== nothing || c.ucons !== nothing
-has_constraints(c::ModeEstimationConstraints) = has_box_constraints(c) || has_generic_constraints(c)
+has_generic_constraints(c::ModeEstimationConstraints) = (
+    c.cons !== nothing || c.lcons !== nothing || c.ucons !== nothing
+)
+has_constraints(c) = has_box_constraints(c) || has_generic_constraints(c)
 
-function ensure_init_value(model::Model, init_value, constraints)
+"""
+    generate_init_value(model::Model, init_value, constraints)
+
+Generate an initial value for the optimization problem.
+
+If `init_value` is not `nothing`, a copy of it is returned. Otherwise an initial value is
+generated either by sampling from the prior (if no constraints are present) or uniformly
+from the box constraints. If generic constraints are set, an error is thrown.
+"""
+function generate_init_value(model::Model, init_value, constraints)
     if init_value !== nothing
         return copy(init_value)
     end
     if has_generic_constraints(constraints)
-        throw(ArgumentError("You must provide an initial value when using generic constraints."))
+        throw(ArgumentError(
+            "You must provide an initial value when using generic constraints."
+        ))
     end
     if has_box_constraints(constraints)
-        return [rand(Uniform(lower, upper)) for (lower, upper) in zip(constraints.lb, constraints.ub)]
+        return [
+            rand(Uniform(lower, upper))
+            for (lower, upper) in zip(constraints.lb, constraints.ub)
+        ]
     end
-    return collect(Iterators.flatten(values(rand(model))))
+    return rand(model) |> values |> Iterators.flatten |> collect
 end
 
 """
@@ -77,17 +94,18 @@ struct ModeEstimationProblem{
 }
     "The DynamicPPL model for which to estimate the mode."
     model::M
-    "The mode estimator. Either `MLE()` for maximum likelihood or `MAP()` for maximum a posteriori."
+    """The mode estimator. Either `MLE()` for maximum likelihood or `MAP()` for maximum a
+    posteriori."""
     estimator::E
     "The initial value for the optimization."
     init_value::Iv
     "The constraints for the optimization problem."
     constraints::Cons
-    "The `OptimLogDensity` of the model, used as the objective function for the optimization."
+    "`OptimLogDensity` of the model, used as the objective function for the optimization."
     log_density::OLD
-    "The automatic differentiation type to use."
+    "The automatic differentiation type to use. See ADTypes.jl."
     adtype::ADType
-    "Whether the objective function \"linked\", i.e. transformed to an unconstrained space."
+    "Whether the objective function is transformed to an unconstrained space."
     linked::Bool
 end
 
@@ -105,18 +123,21 @@ or uniformly from the box constraints.
 The problem is always created with `linked=false`. See [`link`](@ref) for how to transform
 it.
 """
-function ModeEstimationProblem(model, estimator, init_value, lb, ub, cons, lcons, ucons, adtype)
+function ModeEstimationProblem(
+    model, estimator, init_value, lb, ub, cons, lcons, ucons, adtype
+)
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
-    init_value = ensure_init_value(model, init_value, constraints)
+    init_value = generate_init_value(model, init_value, constraints)
     inner_context = estimator isa MAP ? DefaultContext() : LikelihoodContext()
     ctx = OptimizationContext(inner_context)
     log_density = OptimLogDensity(model, ctx)
-    return ModeEstimationProblem(model, estimator, init_value, constraints, log_density, adtype, false)
+    return ModeEstimationProblem(
+        model, estimator, init_value, constraints, log_density, adtype, false
+    )
 end
 
 has_box_constraints(p::ModeEstimationProblem) = has_box_constraints(p.constraints)
 has_generic_constraints(p::ModeEstimationProblem) = has_generic_constraints(p.constraints)
-has_constraints(p::ModeEstimationProblem) = has_constraints(p.constraints)
 
 function default_solver(problem::ModeEstimationProblem)
     return has_generic_constraints(problem.constraints) ? IPNewton() : LBFGS()
@@ -149,7 +170,7 @@ end
 """
     OptimizationProblem(me_prob::ModeEstimationProblem)
 
-Create a SciML `OptimizationProblem` from a `ModeEstimationProblem`
+Create a SciML `OptimizationProblem` from a `ModeEstimationProblem`.
 """
 function OptimizationProblem(me_prob::ModeEstimationProblem)
     c = me_prob.constraints
@@ -165,10 +186,6 @@ function OptimizationProblem(me_prob::ModeEstimationProblem)
         )
     end
     return opt_prob
-end
-
-function variable_names(lg::OptimLogDensity)
-    return map(Symbol ∘ first, Turing.Inference.getparams(lg.model, lg.varinfo))
 end
 
 """
@@ -188,7 +205,7 @@ function ModeResult(prob::ModeEstimationProblem, solution::AbstractVector)
         ld = Accessors.@set ld.varinfo = DynamicPPL.invlink(ld.varinfo, ld.model)
         solution_values = ld.varinfo[:]
     end
-    # Store the parameters and their names in an array.
+    # Store the parameters and their names in a NamedArray.
     varnames = variable_names(prob.log_density)
     vmat = NamedArray(solution_values, varnames)
     return ModeResult(vmat, solution, -solution.minimum, prob.log_density)
@@ -198,8 +215,8 @@ end
     estimate_mode(
         model::Model,
         estimator::ModeEstimator,
-        [init_value::Union{AbstractVector,Nothing},
-        [solver]];
+        [init_value::Union{AbstractVector,Nothing}],
+        [solver];
         adtype::AbstractADType=AutoForwardDiff(),
         <constraints>,
         <extra kwargs>
@@ -207,15 +224,18 @@ end
 
 Find the mode of the probability distribution of a model.
 
+Under the hood this function calls `Optimization.solve`.
+
 `estimator` can be either `MLE()` for maximum likelihood estimation or `MAP()` for maximum
 a posteriori estimation.
 
 `init_value` is the initial value for the optimization. If it is `nothing` or omitted it is
 generated by either sampling from the prior distribution or uniformly from the box
-constraints.
+constraints, if any.
 
 `solver` is the optimization algorithm to use. It can be any solver recognised by
-Optimization.jl. If it is `nothing` or omitted a default solver is chosen.
+Optimization.jl. If it is `nothing` or omitted a default solver is used: LBFGS, or IPNewton
+if generic constraints are present.
 
 `<constraints>` refers to the keyword arguments `lb`, `ub`, `cons`, `lcons`, and `ucons`
 that define constraints for the optimization problem. Please see the documentation of
@@ -252,14 +272,17 @@ function estimate_mode(
     return ModeResult(prob, solution)
 end
 
+# If no solver is given.
 function estimate_mode(model::Model, estimator::ModeEstimator, init_value::Union{AbstractVector,Nothing}, args...; kwargs...)
     return estimate_mode(model, estimator, init_value, nothing, args...; kwargs...)
 end
 
+# If no initial value is given.
 function estimate_mode(model::Model, estimator::ModeEstimator, solver, args...; kwargs...)
     return estimate_mode(model, estimator, nothing, solver, args...; kwargs...)
 end
 
+# If no solver or initial value is given.
 function estimate_mode(model::Model, estimator::ModeEstimator, args...; kwargs...)
     return estimate_mode(model, estimator, nothing, nothing, args...; kwargs...)
 end
@@ -267,8 +290,8 @@ end
 """
     maximum_a_posteriori(
         model::Model,
-        [init_value::Union{AbstractVector,Nothing},
-        [solver]];
+        [init_value::Union{AbstractVector,Nothing}],
+        [solver];
         adtype::AbstractADType=AutoForwardDiff(),
         <constraints>
         )
@@ -276,7 +299,7 @@ end
 Find the maximum a posteriori estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator.
-Please do see the documentation of `estimate_mode` for more details.
+Please see the documentation of `estimate_mode` for more details.
 """
 function maximum_a_posteriori(model::Model, args...; kwargs...)
     return estimate_mode(model, MAP(), args...; kwargs...)
@@ -285,8 +308,8 @@ end
 """
     maximum_likelihood(
         model::Model,
-        [init_value::Union{AbstractVector,Nothing},
-        [solver]];
+        [init_value::Union{AbstractVector,Nothing}],
+        [solver];
         adtype::AbstractADType=AutoForwardDiff(),
         <constraints>
         )
@@ -294,7 +317,7 @@ end
 Find the maximum likelihood estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator.
-Please do see the documentation of `estimate_mode` for more details.
+Please see the documentation of `estimate_mode` for more details.
 """
 function maximum_likelihood(model::Model, args...; kwargs...)
     return estimate_mode(model, MLE(), args...; kwargs...)

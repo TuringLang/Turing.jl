@@ -20,12 +20,18 @@ using Random
 
 export ModeResult, OptimizationContext, OptimLogDensity, MLE, MAP, ModeEstimator
 
+"""
+    ModeEstimator
 
+An abstract type to mark whether mode estimation is to be done with maximum a posteriori
+(MAP) or maximum likelihood estimation (MLE).
+"""
 abstract type ModeEstimator end
 struct MLE <: ModeEstimator end
 struct MAP <: ModeEstimator end
 
-
+# TODO(mhauru) Is the docstring out of date? I don't think this context does the
+# transformation.
 """
     OptimizationContext{C<:AbstractContext} <: AbstractContext
 
@@ -38,13 +44,17 @@ struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.Abstract
 
     function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
         if !(context isa Union{DefaultContext,LikelihoodContext})
-            throw(ArgumentError("`OptimizationContext` supports only leaf contexts of type `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` (given: `$(typeof(context)))`"))
+            throw(ArgumentError(
+                "`OptimizationContext` supports only leaf contexts of type "
+                * "`DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` "
+                * "(given: `$(typeof(context)))`"
+            ))
         end
         return new{C}(context)
     end
 end
 
-OptimizationContext(context::DynamicPPL.AbstractContext) = OptimizationContext{typeof(context)}(context)
+OptimizationContext(ctx::DynamicPPL.AbstractContext) = OptimizationContext{typeof(ctx)}(ctx)
 
 DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
@@ -65,8 +75,8 @@ end
 _loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
 _loglikelihood(dists::AbstractArray{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
 function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument shouldn't
-    # affect anything.
+    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument
+    # shouldn't affect anything.
     # TODO: Stop using `get_and_set_val!`.
     r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
     lp = if ctx.context isa DefaultContext
@@ -138,7 +148,14 @@ function (f::OptimLogDensity)(F, G, z)
     return nothing
 end
 
+"""
+    variable_names(lg::OptimLogDensity)
 
+Return the names of the variables in the model of an `OptimLogDensity` as symbols.
+"""
+function variable_names(lg::OptimLogDensity)
+    return map(Symbol ∘ first, Turing.Inference.getparams(lg.model, lg.varinfo))
+end
 
 """
     ModeResult{

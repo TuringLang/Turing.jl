@@ -167,7 +167,7 @@
 
             # Constrain the parameters to live in a doughnut with radius between 0.5 and 2,
             # but with the first parameter being strictly greater than 0.
-            cons(res, x, _) = (res .= [x[1], sqrt(sum(x.^2))])
+            cons(res, x, _) = (res .= [x[1], sqrt(sum(x .^ 2))])
             lcons = [0, 0.5]
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
@@ -211,7 +211,7 @@
 
             # Constrain the parameters to live in a doughnut with radius between 0.5 and 2,
             # but with the first parameter being strictly greater than 0.
-            cons(res, x, _) = (res .= [x[1], sqrt(sum(x.^2))])
+            cons(res, x, _) = (res .= [x[1], sqrt(sum(x .^ 2))])
             lcons = [0, 0.5]
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
@@ -262,10 +262,10 @@
             diffs = coef(mle_est).array - [0.0625031; 1.75001]
             @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-            infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
+            infomat = [2/(2*true_values[1]^2) 0.0; 0.0 2/true_values[1]]
             @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
 
-            vcovmat = [2*true_values[1]^2 / 2 0.0; 0.0 true_values[1]/2]
+            vcovmat = [2*true_values[1]^2/2 0.0; 0.0 true_values[1]/2]
             @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
             ctable = coeftable(mle_est)
@@ -283,33 +283,33 @@
         @testset "Linear regression test" begin
             @model function regtest(x, y)
                 beta ~ MvNormal(Zeros(2), I)
-                mu = x*beta
+                mu = x * beta
                 y ~ MvNormal(mu, I)
             end
-            
+
             Random.seed!(987)
             true_beta = [1.0, -2.2]
             x = rand(40, 2)
-            y = x*true_beta
-            
+            y = x * true_beta
+
             model = regtest(x, y)
             mle = estimate_mode(model, MLE())
-            
+
             vcmat = inv(x'x)
             vcmat_mle = vcov(mle).array
-            
+
             @test isapprox(mle.values.array, true_beta)
             @test isapprox(vcmat, vcmat_mle)
         end
 
         @testset "Dot tilde test" begin
             @model function dot_gdemo(x)
-                s ~ InverseGamma(2,3)
+                s ~ InverseGamma(2, 3)
                 m ~ Normal(0, sqrt(s))
-            
+
                 (.~)(x, Normal(m, sqrt(s)))
             end
-            
+
             model_dot = dot_gdemo([1.5, 2.0])
 
             mle1 = estimate_mode(gdemo_default, MLE())
@@ -332,7 +332,7 @@
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
                     for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
-                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                     end
                 end
             end
@@ -371,7 +371,7 @@
                         if model.f in allowed_incorrect_mle
                             @test isfinite(get(result_true, vn_leaf))
                         else
-                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                         end
                     end
                 end
@@ -397,7 +397,7 @@
 
             @testset "With ConditionContext" begin
                 m1 = model1(x)
-                m2 = model2() | (x = x,)
+                m2 = model2() | (x=x,)
                 ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
                 @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
             end
@@ -407,7 +407,7 @@
                     return DynamicPPL.contextualize(model, DynamicPPL.PrefixContext{:inner}(model.context))
                 end
                 m1 = prefix_μ(model1(x))
-                m2 = prefix_μ(model2() | (var"inner.x" = x,))
+                m2 = prefix_μ(model2() | (var"inner.x"=x,))
                 ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
                 @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
             end
@@ -420,7 +420,7 @@
                     )
                 end
                 m1 = override(model1(x))
-                m2 = override(model2() | (x = x,))
+                m2 = override(model2() | (x=x,))
                 ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
                 @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
             end
@@ -431,7 +431,7 @@
             @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
             model = demo_dirichlet()
             result = estimate_mode(model, MAP())
-            @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
+            @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
         end
     end
 end

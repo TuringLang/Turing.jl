@@ -5,23 +5,27 @@ if isdefined(Base, :get_extension)
     import Turing:
         DynamicPPL,
         NamedArrays,
-        Accessors,
+        Accessors
+    import Turing.OptimisationCore:
         ModeResult,
         MLE,
         MAP,
         OptimLogDensity,
+        variable_names,
         OptimizationContext
     import Optim
 else
     import ..Turing
-    import Turing:
+    import ..Turing:
         DynamicPPL,
         NamedArrays,
-        Accessors,
+        Accessors
+    import ..OptimisationCore:
         ModeResult,
         MLE,
         MAP,
         OptimLogDensity,
+        variable_names,
         OptimizationContext
     import ..Optim
 end
