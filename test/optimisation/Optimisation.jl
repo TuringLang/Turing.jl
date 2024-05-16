@@ -338,6 +338,7 @@
     # TODO(mhauru): The corresponding Optim.jl test had a note saying that some models
     # don't work for Tracker and ReverseDiff. Is that still the case?
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+        Random.seed!(23)
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
         optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
@@ -373,6 +374,7 @@
         DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+        Random.seed!(23)
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
         optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
