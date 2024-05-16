@@ -110,6 +110,19 @@ end
                 end
             end
         end
+
+        @testset "don't drop `ADgradient` (PR: #2223)" begin
+            rng = Random.default_rng()
+            model = DynamicPPL.TestUtils.DEMO_MODELS[1]
+            sampler = initialize_nuts(model)
+            sampler_ext = externalsampler(sampler; unconstrained=true, adtype=AutoForwardDiff())
+            # Initial step.
+            state = last(AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext)); n_adapts=0)
+            @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
+            # Subsequent step.
+            state = last(AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext), state); n_adapts=0)
+            @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
+        end
     end
 
     @turing_testset "AdvancedMH.jl" begin
