@@ -9,7 +9,8 @@ using OptimizationOptimJL: LBFGS, IPNewton
 using DocStringExtensions: TYPEDFIELDS
 using Bijectors
 using Random
-using SciMLBase: OptimizationFunction, OptimizationProblem, AbstractADType, solve
+using SciMLBase: OptimizationFunction, OptimizationProblem, solve
+using ADTypes: AbstractADType
 
 using Accessors: Accessors
 using DynamicPPL: Model, DefaultContext, LikelihoodContext
