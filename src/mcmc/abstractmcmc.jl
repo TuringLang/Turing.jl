@@ -12,7 +12,7 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(f.model, varinfo, transition)
 end
 
-state_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, state) = state_to_turing(parent(f), state)
+state_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, state) = TuringState(state, f)
 function transition_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, transition)
     return transition_to_turing(parent(f), transition)
 end
@@ -29,7 +29,9 @@ getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
 getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
 
 setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Accessors.@set f.varinfo = varinfo
-setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo) = setvarinfo(parent(f), varinfo)
+function setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo)
+    return Accessors.@set f.ℓ = setvarinfo(f.ℓ, varinfo)
+end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
