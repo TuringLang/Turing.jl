@@ -84,6 +84,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
         end
 
         @testset "mode estimation" begin
+            @timeit_include("optimisation/OptimisationCore.jl")
             @timeit_include("optimisation/Optimisation.jl")
             @timeit_include("ext/OptimInterface.jl")
         end
