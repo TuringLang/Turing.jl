@@ -209,7 +209,7 @@ function ModeResult(prob::ModeEstimationProblem, solution::AbstractVector)
     # Store the parameters and their names in a NamedArray.
     varnames = variable_names(prob.log_density)
     vmat = NamedArray(solution_values, varnames)
-    return ModeResult(vmat, solution, -solution.minimum, prob.log_density)
+    return ModeResult(vmat, solution, -solution.objective, prob.log_density)
 end
 
 """
