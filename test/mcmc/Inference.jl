@@ -274,8 +274,8 @@
         @test_throws ErrorException chain = sample(gauss2(; x=x), PG(10), 10)
         @test_throws ErrorException chain = sample(gauss2(; x=x), SMC(), 10)
 
-        @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), PG(10), 10)
-        @test_throws ErrorException chain = sample(gauss2(Vector{Float64}; x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10)
+        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10)
 
         @model function gauss3(x, ::Type{TV}=Vector{Float64}) where {TV}
             priors = TV(undef, 2)
@@ -290,8 +290,8 @@
         chain = sample(gauss3(x), PG(10), 10)
         chain = sample(gauss3(x), SMC(), 10)
 
-        chain = sample(gauss3(x, Vector{Real}), PG(10), 10)
-        chain = sample(gauss3(x, Vector{Real}), SMC(), 10)
+        chain = sample(gauss3(x, DynamicPPL.TypeWrap{Vector{Real}}()), PG(10), 10)
+        chain = sample(gauss3(x, DynamicPPL.TypeWrap{Vector{Real}}()), SMC(), 10)
     end
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -506,10 +506,10 @@
         end
 
         t_loop = @elapsed res = sample(vdemo1(), alg, 250)
-        t_loop = @elapsed res = sample(vdemo1(Float64), alg, 250)
+        t_loop = @elapsed res = sample(vdemo1(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo1kw(; T) = vdemo1(T)
-        t_loop = @elapsed res = sample(vdemo1kw(; T=Float64), alg, 250)
+        t_loop = @elapsed res = sample(vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         @model function vdemo2(::Type{T}=Float64) where {T<:Real}
             x = Vector{T}(undef, N)
@@ -517,10 +517,10 @@
         end
 
         t_vec = @elapsed res = sample(vdemo2(), alg, 250)
-        t_vec = @elapsed res = sample(vdemo2(Float64), alg, 250)
+        t_vec = @elapsed res = sample(vdemo2(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo2kw(; T) = vdemo2(T)
-        t_vec = @elapsed res = sample(vdemo2kw(; T=Float64), alg, 250)
+        t_vec = @elapsed res = sample(vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         @model function vdemo3(::Type{TV}=Vector{Float64}) where {TV<:AbstractVector}
             x = TV(undef, N)
@@ -528,10 +528,10 @@
         end
 
         sample(vdemo3(), alg, 250)
-        sample(vdemo3(Vector{Float64}), alg, 250)
+        sample(vdemo3(DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 250)
 
         vdemo3kw(; T) = vdemo3(T)
-        sample(vdemo3kw(; T=Vector{Float64}), alg, 250)
+        sample(vdemo3kw(; T=DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 250)
     end
 
     @testset "names_values" begin
