@@ -18,8 +18,8 @@
         s4 = Gibbs(MH(:m), MH(:s))
         c4 = sample(gdemo_default, s4, N)
 
-        s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
-        c5 = sample(gdemo_default, s5, N)
+        # s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
+        # c5 = sample(gdemo_default, s5, N)
 
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
         # it with `NamedTuple` instead of `AbstractVector`.
