@@ -21,6 +21,8 @@
         s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
         c5 = sample(gdemo_default, s5, N)
 
+        # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
+        # it with `NamedTuple` instead of `AbstractVector`.
         # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
         # c6 = sample(gdemo_default, s6, N)
     end
