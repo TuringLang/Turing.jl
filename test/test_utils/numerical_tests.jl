@@ -71,3 +71,7 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
         [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
         atol=atol, rtol=rtol)
 end
+
+function ks_test(xs_left, xs_right; pval = 0.01)
+    return pvalue(ApproximateTwoSampleKSTest(xs_left, xs_right)) > pval
+end
