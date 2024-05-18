@@ -78,7 +78,7 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        return value, broadcast_logpdf(right, values), vi
+        return value, broadcast_logpdf(right, value), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -90,8 +90,8 @@ function DynamicPPL.dot_tilde_assume(
 )
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
-        values = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        return values, broadcast_logpdf(right, values), vi
+        value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        return value, broadcast_logpdf(right, value), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -144,14 +144,14 @@ end
 Return a `GibbsContext` with the values extracted from the given `varinfos` treated as conditioned.
 """
 function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
-    return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+    return condition_gibbs(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
 end
-function DynamicPPL.condition(
+function condition_gibbs(
     context::DynamicPPL.AbstractContext,
     varinfo::DynamicPPL.AbstractVarInfo,
     varinfos::DynamicPPL.AbstractVarInfo...
 )
-    return DynamicPPL.condition(DynamicPPL.condition(context, varinfo), varinfos...)
+    return condition_gibbs(condition_gibbs(context, varinfo), varinfos...)
 end
 # Allow calling this on a `DynamicPPL.Model` directly.
 function condition_gibbs(model::DynamicPPL.Model, values...)
