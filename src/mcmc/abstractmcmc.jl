@@ -55,7 +55,7 @@ function recompute_logprob!!(
 )
     # Re-using the log-density function from the `state` and updating only the `model` field.
     f = state.logdensity
-    f = Setfield.@set f.model = model
+    f = Accessors.@set f.model = model
     # Recompute the log-probability with the new `model`.
     state_inner = recompute_logprob!!(
         rng,
@@ -75,7 +75,7 @@ function recompute_logprob!!(
     # Construct hamiltionian.
     hamiltonian = AdvancedHMC.Hamiltonian(state.metric, model)
     # Re-compute the log-probability and gradient.
-    return Setfield.@set state.transition.z = AdvancedHMC.phasepoint(
+    return Accessors.@set state.transition.z = AdvancedHMC.phasepoint(
         hamiltonian,
         state.transition.z.θ,
         state.transition.z.r,
