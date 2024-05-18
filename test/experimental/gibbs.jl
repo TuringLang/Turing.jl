@@ -74,6 +74,67 @@ has_dot_assume(::Model) = true
                     check_transition_varnames(transition, vns)
                 end
             end
+
+            @testset "comparison with (old) Gibbs" begin
+                # We will run `num_iterations` and then subsample `num_samples` from the chain.
+                # All the chains should converge easily, so by subsampling to a much lower
+                # number of samples, we should be left with something we can compare easily to
+                # "ground truth" samples (using NUTS here, but should implement exact sampling).
+                num_samples = 1_000
+                num_iterations = 5_000
+                num_chains = 4
+
+                # Determine initial parameters to make comparison as fair as possible.
+                posterior_mean = DynamicPPL.TestUtils.posterior_mean(model)
+                initial_params = DynamicPPL.TestUtils.update_values!!(
+                    DynamicPPL.VarInfo(model),
+                    posterior_mean,
+                    DynamicPPL.TestUtils.varnames(model),
+                )[:]
+                initial_params = fill(initial_params, num_chains)
+
+                # Sampler to use for Gibbs components.
+                sampler_inner = HMC(0.1, 32)
+                sampler = Turing.Experimental.Gibbs(
+                    vns_s => sampler_inner,
+                    vns_m => sampler_inner,
+                )
+                chain = sample(
+                    sample(
+                        model,
+                        sampler,
+                        MCMCThreads(),
+                        num_iterations,
+                        num_chains;
+                        progress = false,
+                        initial_params = initial_params,
+                        discard_initial = 1_000,
+                    ),
+                    num_samples,
+                )
+
+                # "Ground truth" samples.
+                # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
+                chain_true = sample(
+                    sample(
+                        model,
+                        NUTS(),
+                        MCMCThreads(),
+                        num_iterations,
+                        num_chains;
+                        progress = false,
+                        initial_params = initial_params,
+                    ),
+                    num_samples,
+                )
+
+                # Perform KS test to ensure that the chains are similar.
+                xs = Array(chain)
+                xs_true = Array(chain_true)
+                for i = 1:size(xs, 2)
+                    @test ks_test(xs[:, i], xs_true[:, i])
+                end
+            end
         end
     end
 
