@@ -95,18 +95,28 @@ end
                 # @testset "initial_params" begin
                 #     test_initial_params(model, sampler_ext; n_adapts=0)
                 # end
+
+                sample_kwargs = (
+                    n_adapts=1_000,
+                    discard_initial=1_000,
+                    # FIXME: Remove this once we can run `test_initial_params` above.
+                    initial_params=DynamicPPL.VarInfo(model)[:],
+                )
+
                 @testset "inference" begin
-                    DynamicPPL.TestUtils.test_sampler(
-                        [model],
-                        sampler_ext,
-                        5_000;
-                        n_adapts=1_000,
-                        discard_initial=1_000,
-                        # FIXME: Remove this once we can run `test_initial_params` above.
-                        initial_params=DynamicPPL.VarInfo(model)[:],
-                        rtol=0.2,
-                        sampler_name="AdvancedHMC"
-                    )
+                    if adtype isa AutoReverseDiff && model.f === DynamicPPL.TestUtils.demo_assume_index_observe && VERSION < v"1.8"
+                        # Ref: https://github.com/TuringLang/DynamicPPL.jl/issues/612
+                        @test_throws UndefRefError sample(model, sampler_ext, 5_000; sample_kwargs...)
+                    else
+                        DynamicPPL.TestUtils.test_sampler(
+                            [model],
+                            sampler_ext,
+                            5_000;
+                            rtol=0.2,
+                            sampler_name="AdvancedHMC",
+                            sample_kwargs...,
+                        )
+                    end
                 end
             end
         end
