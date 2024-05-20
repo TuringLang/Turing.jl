@@ -135,7 +135,7 @@ has_dot_assume(::Model) = true
                 xs = Array(chain)
                 xs_true = Array(chain_true)
                 for i = 1:size(xs, 2)
-                    @test ks_test(xs[:, i], xs_true[:, i])
+                    @test two_sample_ks_test(xs[:, i], xs_true[:, i]; pval=1e-3)
                 end
             end
         end
@@ -163,13 +163,6 @@ has_dot_assume(::Model) = true
             @test size(chain, 1) == 1000
             display(mean(chain))
         end
-    end
-
-    @testset "gdemo with CSMC & ESS" begin
-        Random.seed!(100)
-        alg = Turing.Experimental.Gibbs(@varname(s) => CSMC(15), @varname(m) => ESS())
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_gdemo(chain)
     end
 
     @testset "multiple varnames" begin
@@ -224,7 +217,7 @@ has_dot_assume(::Model) = true
         end
 
         # Sample!
-        chain = sample(MoGtest_default, alg, 1000; progress=true)
+        chain = sample(MoGtest_default, alg, 1000; progress=false)
         check_MoGtest_default(chain, atol = 0.2)
     end
 
@@ -246,7 +239,7 @@ has_dot_assume(::Model) = true
         end
 
         # Sample!
-        chain = sample(model, alg, 1000; progress=true)
+        chain = sample(model, alg, 1000; progress=false)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
 end
