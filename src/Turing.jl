@@ -47,8 +47,6 @@ using .Inference
 include("variational/VariationalInference.jl")
 using .Variational
 
-include("optimisation/OptimisationCore.jl")
-using .OptimisationCore
 include("optimisation/Optimisation.jl")
 using .Optimisation
 

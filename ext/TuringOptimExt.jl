@@ -6,7 +6,7 @@ if isdefined(Base, :get_extension)
         DynamicPPL,
         NamedArrays,
         Accessors
-    import Turing.OptimisationCore:
+    import Turing.Optimisation:
         ModeResult,
         MLE,
         MAP,
@@ -20,7 +20,7 @@ else
         DynamicPPL,
         NamedArrays,
         Accessors
-    import ..OptimisationCore:
+    import ..Optimisation:
         ModeResult,
         MLE,
         MAP,
