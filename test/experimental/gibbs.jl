@@ -80,8 +80,9 @@ has_dot_assume(::Model) = true
                 # All the chains should converge easily, so by subsampling to a much lower
                 # number of samples, we should be left with something we can compare easily to
                 # "ground truth" samples (using NUTS here, but should implement exact sampling).
-                num_samples = 1_000
-                num_iterations = 5_000
+                num_samples = 500
+                num_iterations = 1_000
+                thinning = 10
                 num_chains = 4
 
                 # Determine initial parameters to make comparison as fair as possible.
@@ -109,6 +110,7 @@ has_dot_assume(::Model) = true
                         progress = false,
                         initial_params = initial_params,
                         discard_initial = 1_000,
+                        thinning = thinning
                     ),
                     num_samples,
                 )
@@ -124,6 +126,7 @@ has_dot_assume(::Model) = true
                         num_chains;
                         progress = false,
                         initial_params = initial_params,
+                        thinning = thinning,
                     ),
                     num_samples,
                 )
