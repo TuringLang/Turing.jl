@@ -2,25 +2,22 @@ module Optimisation
 
 using ..Turing
 using NamedArrays: NamedArrays
-using DynamicPPL
-import LogDensityProblems
-import LogDensityProblemsAD
-using Optimization
-using OptimizationOptimJL: LBFGS, IPNewton
-using DocStringExtensions: TYPEDFIELDS
-using Bijectors
-using Random
-using SciMLBase: OptimizationFunction, OptimizationProblem, solve
-using ADTypes: AbstractADType
-using StatsBase
+using DynamicPPL: DynamicPPL
+import LogDensityProblems: LogDensityProblems
+import LogDensityProblemsAD: LogDensityProblemsAD
+using Optimization: Optimization
+using OptimizationOptimJL: OptimizationOptimJL
+using DocStringExtensions: DocStringExtensions
+using Bijectors: Bijectors
+using Random: Random
+using SciMLBase: SciMLBase
+using ADTypes: ADTypes
+using StatsBase: StatsBase
 using Accessors: Accessors
-using Printf
-using ForwardDiff
-using StatsAPI
-using Statistics
-
-using Accessors: Accessors
-using DynamicPPL: Model, DefaultContext, LikelihoodContext
+using Printf: Printf
+using ForwardDiff: ForwardDiff
+using StatsAPI: StatsAPI
+using Statistics: Statistics
 
 export estimate_mode, maximum_a_posteriori, maximum_likelihood, MLE, MAP, ModeResult,
     OptimLogDensity, OptimizationContext
@@ -46,7 +43,7 @@ struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.Abstract
     context::C
 
     function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(context isa Union{DefaultContext,LikelihoodContext})
+        if !(context isa Union{DynamicPPL.DefaultContext,DynamicPPL.LikelihoodContext})
             throw(ArgumentError(
                 "`OptimizationContext` supports only leaf contexts of type "
                 * "`DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` "
@@ -63,7 +60,7 @@ DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
-    lp = if ctx.context isa DefaultContext
+    lp = if ctx.context isa DynamicPPL.DefaultContext
         # MAP
         Distributions.logpdf(dist, r)
     else
@@ -73,14 +70,20 @@ function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     return r, lp, vi
 end
 
-_loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
-_loglikelihood(dists::AbstractArray{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
+_loglikelihood(dist::Distribution, x) = StatsAPI.loglikelihood(dist, x)
+
+function _loglikelihood(dists::AbstractArray{<:Distribution}, x)
+    return StatsAPI.loglikelihood(arraydist(dists), x)
+end
+
 function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
     # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument
     # shouldn't affect anything.
     # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(Random.default_rng(), vi, vns, right, SampleFromPrior())
-    lp = if ctx.context isa DefaultContext
+    r = DynamicPPL.get_and_set_val!(
+        Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
+    )
+    lp = if ctx.context isa DynamicPPL.DefaultContext
         # MAP
         _loglikelihood(right, r)
     else
@@ -91,19 +94,19 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
 end
 
 """
-    OptimLogDensity{M<:Model,C<:Context,V<:VarInfo}
+    OptimLogDensity{M<:DynamicPPL.Model,C<:Context,V<:DynamicPPL.VarInfo}
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:Model,C<:OptimizationContext,V<:VarInfo} = Turing.LogDensityFunction{V,M,C}
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{V,M,C}
 
 """
-    OptimLogDensity(model::Model, context::OptimizationContext)
+    OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
 
 Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
 """
-function OptimLogDensity(model::Model, context::OptimizationContext)
-    init = VarInfo(model)
+function OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
+    init = DynamicPPL.VarInfo(model)
     return Turing.LogDensityFunction(init, model, context)
 end
 
@@ -115,7 +118,7 @@ depends on the context of `f`.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
-    return -getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
+    return -DynamicPPL.getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
 
 # NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
@@ -225,7 +228,7 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    linked = istrans(m.f.varinfo)
+    linked = DynamicPPL.istrans(m.f.varinfo)
     if linked
         m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
@@ -283,7 +286,7 @@ has_generic_constraints(c::ModeEstimationConstraints) = (
 has_constraints(c) = has_box_constraints(c) || has_generic_constraints(c)
 
 """
-    generate_initial_params(model::Model, initial_params, constraints)
+    generate_initial_params(model::DynamicPPL.Model, initial_params, constraints)
 
 Generate an initial value for the optimization problem.
 
@@ -291,7 +294,7 @@ If `initial_params` is not `nothing`, a copy of it is returned. Otherwise initia
 values are generated either by sampling from the prior (if no constraints are present) or
 uniformly from the box constraints. If generic constraints are set, an error is thrown.
 """
-function generate_initial_params(model::Model, initial_params, constraints)
+function generate_initial_params(model::DynamicPPL.Model, initial_params, constraints)
     if initial_params !== nothing
         return copy(initial_params)
     end
@@ -302,7 +305,7 @@ function generate_initial_params(model::Model, initial_params, constraints)
     end
     if has_box_constraints(constraints)
         return [
-            rand(Uniform(lower, upper))
+            rand(Distributions.Uniform(lower, upper))
             for (lower, upper) in zip(constraints.lb, constraints.ub)
         ]
     end
@@ -315,15 +318,15 @@ end
 A struct that defines a mode estimation problem.
 
 # Fields
-$(TYPEDFIELDS)
+$(DocStringExtensions.TYPEDFIELDS)
 """
 struct ModeEstimationProblem{
-    M<:Model,
+    M<:DynamicPPL.Model,
     E<:ModeEstimator,
     Iv<:AbstractVector,
     Cons<:ModeEstimationConstraints,
     OLD<:OptimLogDensity,
-    ADType<:AbstractADType,
+    ADType<:ADTypes.AbstractADType,
 }
     "Model for which to estimate the mode."
     model::M
@@ -348,7 +351,7 @@ end
 Create a mode estimation problem.
 
 # Arguments:
-- `model::Model`: The model for which to estimate the mode.
+- `model::DynamicPPL.Model`: The model for which to estimate the mode.
 - `estimator::ModeEstimator`: Can be either `MLE()` for maximum likelihood estimation or
 `MAP()` for maximum a posteriori estimation.
 - `initial_params::Union{AbstractVector,Nothing}`: Initial value for the optimization.
@@ -368,7 +371,11 @@ function ModeEstimationProblem(
 )
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
     initial_params = generate_initial_params(model, initial_params, constraints)
-    inner_context = estimator isa MAP ? DefaultContext() : LikelihoodContext()
+    inner_context = if estimator isa MAP
+        DynamicPPL.DefaultContext()
+    else
+        DynamicPPL.LikelihoodContext()
+    end
     ctx = OptimizationContext(inner_context)
     log_density = OptimLogDensity(model, ctx)
     return ModeEstimationProblem(
@@ -380,7 +387,11 @@ has_box_constraints(p::ModeEstimationProblem) = has_box_constraints(p.constraint
 has_generic_constraints(p::ModeEstimationProblem) = has_generic_constraints(p.constraints)
 
 function default_solver(problem::ModeEstimationProblem)
-    return has_generic_constraints(problem.constraints) ? IPNewton() : LBFGS()
+    return if has_generic_constraints(problem.constraints)
+        OptimizationOptimJL.IPNewton()
+    else
+        OptimizationOptimJL.LBFGS()
+    end
 end
 
 """
@@ -413,15 +424,15 @@ end
 
 Create a SciML `OptimizationProblem` from `prob`.
 """
-function OptimizationProblem(prob::ModeEstimationProblem)
+function Optimization.OptimizationProblem(prob::ModeEstimationProblem)
     c = prob.constraints
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it as the objective function.
-    f = OptimizationFunction((x, _) -> prob.log_density(x), prob.adtype; cons=c.cons)
+    f = Optimization.OptimizationFunction((x, _) -> prob.log_density(x), prob.adtype; cons=c.cons)
     opt_prob = if !has_constraints(prob)
-        OptimizationProblem(f, prob.initial_params)
+        Optimization.OptimizationProblem(f, prob.initial_params)
     else
-        OptimizationProblem(
+        Optimization.OptimizationProblem(
             f, prob.initial_params;
             lcons=c.lcons, ucons=c.ucons, lb=c.lb, ub=c.ub
         )
@@ -488,7 +499,7 @@ function estimate_mode(
     estimator::ModeEstimator,
     initial_params::Union{AbstractVector,Nothing},
     solver;
-    adtype=AutoForwardDiff(),
+    adtype=ADTypes.AutoForwardDiff(),
     cons=nothing,
     lcons=nothing,
     ucons=nothing,
@@ -510,30 +521,47 @@ function estimate_mode(
     if optimise_in_unconstrained_space
         prob = link(prob)
     end
-    solution = solve(OptimizationProblem(prob), solver; kwargs...)
+    solution = Optimization.solve(Optimization.OptimizationProblem(prob), solver; kwargs...)
     # TODO(mhauru) We return a ModeResult for compatibility with the older Optim.jl
     # interface. Might we want to break that and develop a better return type?
     return ModeResult(prob, solution)
 end
 
 # If no solver is given.
-function estimate_mode(model::Model, estimator::ModeEstimator, initial_params::Union{AbstractVector,Nothing}, args...; kwargs...)
+function estimate_mode(
+    model::DynamicPPL.Model,
+    estimator::ModeEstimator,
+    initial_params::Union{AbstractVector,Nothing},
+    args...;
+    kwargs...
+)
     return estimate_mode(model, estimator, initial_params, nothing, args...; kwargs...)
 end
 
 # If no initial value is given.
-function estimate_mode(model::Model, estimator::ModeEstimator, solver, args...; kwargs...)
+function estimate_mode(
+    model::DynamicPPL.Model,
+    estimator::ModeEstimator,
+    solver,
+    args...;
+    kwargs...
+)
     return estimate_mode(model, estimator, nothing, solver, args...; kwargs...)
 end
 
 # If no solver or initial value is given.
-function estimate_mode(model::Model, estimator::ModeEstimator, args...; kwargs...)
+function estimate_mode(
+    model::DynamicPPL.Model,
+    estimator::ModeEstimator,
+    args...;
+    kwargs...
+)
     return estimate_mode(model, estimator, nothing, nothing, args...; kwargs...)
 end
 
 """
     maximum_a_posteriori(
-        model::Model,
+        model::DynamicPPL.Model,
         [initial_params::Union{AbstractVector,Nothing}],
         [solver];
         <keyword arguments>
@@ -544,13 +572,13 @@ Find the maximum a posteriori estimate of a model.
 This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator.
 Please see the documentation of [`estimate_mode`](@ref) for more details.
 """
-function maximum_a_posteriori(model::Model, args...; kwargs...)
+function maximum_a_posteriori(model::DynamicPPL.Model, args...; kwargs...)
     return estimate_mode(model, MAP(), args...; kwargs...)
 end
 
 """
     maximum_likelihood(
-        model::Model,
+        model::DynamicPPL.Model,
         [initial_params::Union{AbstractVector,Nothing}],
         [solver];
         <keyword arguments>
@@ -561,7 +589,7 @@ Find the maximum likelihood estimate of a model.
 This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator.
 Please see the documentation of [`estimate_mode`](@ref) for more details.
 """
-function maximum_likelihood(model::Model, args...; kwargs...)
+function maximum_likelihood(model::DynamicPPL.Model, args...; kwargs...)
     return estimate_mode(model, MLE(), args...; kwargs...)
 end
 
