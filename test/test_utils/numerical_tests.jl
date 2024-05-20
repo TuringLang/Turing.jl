@@ -72,7 +72,12 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
         atol=atol, rtol=rtol)
 end
 
-function two_sample_ks_test(xs_left, xs_right; pval = 0.01)
-    t = ApproximateTwoSampleKSTest(xs_left, xs_right)
-    return pvalue(t) > pval
+"""
+    two_sample_ad_test(xs_left, xs_right; α=1e-2)
+
+Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and `xs_right`.
+"""
+function two_sample_ks_test(xs_left, xs_right; α=1e-2)
+    t = KSampleADTest(xs_left, xs_right)
+    return pvalue(t) > α
 end

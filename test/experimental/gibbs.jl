@@ -76,11 +76,6 @@ has_dot_assume(::Model) = true
             end
 
             @testset "comparison with (old) Gibbs" begin
-                # We will run `num_iterations` and then subsample `num_samples` from the chain.
-                # All the chains should converge easily, so by subsampling to a much lower
-                # number of samples, we should be left with something we can compare easily to
-                # "ground truth" samples (using NUTS here, but should implement exact sampling).
-                num_samples = 500
                 num_iterations = 1_000
                 thinning = 10
                 num_chains = 4
@@ -101,41 +96,42 @@ has_dot_assume(::Model) = true
                     vns_m => sampler_inner,
                 )
                 chain = sample(
-                    sample(
-                        model,
-                        sampler,
-                        MCMCThreads(),
-                        num_iterations,
-                        num_chains;
-                        progress = false,
-                        initial_params = initial_params,
-                        discard_initial = 1_000,
-                        thinning = thinning
-                    ),
-                    num_samples,
+                    model,
+                    sampler,
+                    MCMCThreads(),
+                    num_iterations,
+                    num_chains;
+                    progress=false,
+                    initial_params=initial_params,
+                    discard_initial=1_000,
+                    thinning=thinning
                 )
 
                 # "Ground truth" samples.
                 # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
                 chain_true = sample(
-                    sample(
-                        model,
-                        NUTS(),
-                        MCMCThreads(),
-                        num_iterations,
-                        num_chains;
-                        progress = false,
-                        initial_params = initial_params,
-                        thinning = thinning,
-                    ),
-                    num_samples,
+                    model,
+                    NUTS(),
+                    MCMCThreads(),
+                    num_iterations,
+                    num_chains;
+                    progress=false,
+                    initial_params=initial_params,
+                    thinning=thinning,
                 )
 
                 # Perform KS test to ensure that the chains are similar.
                 xs = Array(chain)
                 xs_true = Array(chain_true)
                 for i = 1:size(xs, 2)
-                    @test two_sample_ks_test(xs[:, i], xs_true[:, i]; pval=1e-3)
+                    @test two_sample_ks_test(xs[:, i], xs_true[:, i])
+                    # Let's make sure that the significance level is not too low by
+                    # checking that the KS test fails for some simple transformations.
+                    # TODO: Replace the heuristic below with closed-form implementations
+                    # of the targets, once they are implemented in DynamicPPL.
+                    @test !two_sample_ks_test(0.9 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_ks_test(1.1 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_ks_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
                 end
             end
         end
