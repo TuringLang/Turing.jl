@@ -172,7 +172,8 @@
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
             m4 = estimate_mode(
-                gdemo_default, MLE(), Fminbox(BFGS()); adtype=AutoReverseDiff(), lb=lb, ub=ub
+                gdemo_default, MLE(), Fminbox(BFGS());
+                adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
             m5 = estimate_mode(gdemo_default, MLE(), true_value, IPNewton(); lb=lb, ub=ub)
             m6 = maximum_likelihood(gdemo_default; lb=lb, ub=ub)
@@ -221,7 +222,8 @@
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
             m4 = estimate_mode(
-                gdemo_default, MAP(), Fminbox(BFGS()); adtype=AutoReverseDiff(), lb=lb, ub=ub
+                gdemo_default, MAP(), Fminbox(BFGS());
+                adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
             m5 = estimate_mode(gdemo_default, MAP(), true_value, IPNewton(); lb=lb, ub=ub)
             m6 = maximum_a_posteriori(gdemo_default; lb=lb, ub=ub)
@@ -255,7 +257,7 @@
             lcons = [0, 0.5]
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
-            init_value = [0.5, -1.0]
+            initial_params = [0.5, -1.0]
 
             function check_success(result)
                 optimum = result.values.array
@@ -264,14 +266,16 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MLE(), init_value; cons_args...)
+            m1 = estimate_mode(gdemo_default, MLE(), initial_params; cons_args...)
             m2 = estimate_mode(gdemo_default, MLE(), true_value; cons_args...)
-            m3 = estimate_mode(gdemo_default, MLE(), init_value, IPNewton(); cons_args...)
+            m3 = estimate_mode(
+                gdemo_default, MLE(), initial_params, IPNewton(); cons_args...
+            )
             m4 = estimate_mode(
-                gdemo_default, MLE(), init_value, IPNewton();
+                gdemo_default, MLE(), initial_params, IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
-            m5 = maximum_likelihood(gdemo_default, init_value; cons_args...)
+            m5 = maximum_likelihood(gdemo_default, initial_params; cons_args...)
 
             check_success(m1)
             check_success(m2)
@@ -301,7 +305,7 @@
             lcons = [0, 0.5]
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
-            init_value = [0.5, -1.0]
+            initial_params = [0.5, -1.0]
 
             function check_success(result)
                 optimum = result.values.array
@@ -310,14 +314,16 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MAP(), init_value; cons_args...)
+            m1 = estimate_mode(gdemo_default, MAP(), initial_params; cons_args...)
             m2 = estimate_mode(gdemo_default, MAP(), true_value; cons_args...)
-            m3 = estimate_mode(gdemo_default, MAP(), init_value, IPNewton(); cons_args...)
+            m3 = estimate_mode(
+                gdemo_default, MAP(), initial_params, IPNewton(); cons_args...
+            )
             m4 = estimate_mode(
-                gdemo_default, MAP(), init_value, IPNewton();
+                gdemo_default, MAP(), initial_params, IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
-            m5 = maximum_a_posteriori(gdemo_default, init_value; cons_args...)
+            m5 = maximum_a_posteriori(gdemo_default, initial_params; cons_args...)
 
             check_success(m1)
             check_success(m2)
