@@ -61,7 +61,6 @@ OptimizationContext(ctx::DynamicPPL.AbstractContext) = OptimizationContext{typeo
 
 DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
-# assume
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
     lp = if ctx.context isa DefaultContext
@@ -74,7 +73,6 @@ function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     return r, lp, vi
 end
 
-# dot assume
 _loglikelihood(dist::Distribution, x) = loglikelihood(dist, x)
 _loglikelihood(dists::AbstractArray{<:Distribution}, x) = loglikelihood(arraydist(dists), x)
 function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
@@ -267,15 +265,15 @@ Any of the fields can be `nothing`, disabling the corresponding constraints.
 struct ModeEstimationConstraints{
     Lb<:Union{Nothing,AbstractVector},
     Ub<:Union{Nothing,AbstractVector},
-    Conns,
-    LConns<:Union{Nothing,AbstractVector},
-    UConns<:Union{Nothing,AbstractVector},
+    Cons,
+    LCons<:Union{Nothing,AbstractVector},
+    UCons<:Union{Nothing,AbstractVector},
 }
     lb::Lb
     ub::Ub
-    cons::Conns
-    lcons::LConns
-    ucons::UConns
+    cons::Cons
+    lcons::LCons
+    ucons::UCons
 end
 
 has_box_constraints(c::ModeEstimationConstraints) = c.ub !== nothing || c.lb !== nothing
@@ -308,7 +306,7 @@ function generate_initial_params(model::Model, initial_params, constraints)
             for (lower, upper) in zip(constraints.lb, constraints.ub)
         ]
     end
-    return rand(model) |> values |> Iterators.flatten |> collect
+    return rand(Vector, model)
 end
 
 """
@@ -400,29 +398,31 @@ function link(p::ModeEstimationProblem)
     # Note that redefining obj and initial_params out of place is intentional: It avoids
     # issues with models for which linking changes the parameter space dimension.
     ld = p.log_density
-    ld = Accessors.@set ld.varinfo = DynamicPPL.unflatten(ld.varinfo, copy(p.initial_params))
-    ld = Accessors.@set ld.varinfo = DynamicPPL.link(ld.varinfo, ld.model)
-    initial_params = ld.varinfo[:]
+    varinfo = DynamicPPL.link(
+        DynamicPPL.unflatten(ld.varinfo, copy(p.initial_params)), ld.model
+    )
+    ld = Accessors.@set ld.varinfo = varinfo
+    initial_params = varinfo[:]
     return ModeEstimationProblem(
         p.model, p.estimator, initial_params, p.constraints, ld, p.adtype, true
     )
 end
 
 """
-    OptimizationProblem(me_prob::ModeEstimationProblem)
+    OptimizationProblem(prob::ModeEstimationProblem)
 
-Create a SciML `OptimizationProblem` from `me_prob`.
+Create a SciML `OptimizationProblem` from `prob`.
 """
-function OptimizationProblem(me_prob::ModeEstimationProblem)
-    c = me_prob.constraints
+function OptimizationProblem(prob::ModeEstimationProblem)
+    c = prob.constraints
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it as the objective function.
-    f = OptimizationFunction((x, _) -> me_prob.log_density(x), me_prob.adtype; cons=c.cons)
-    if !has_constraints(me_prob)
-        opt_prob = OptimizationProblem(f, me_prob.initial_params)
+    f = OptimizationFunction((x, _) -> prob.log_density(x), prob.adtype; cons=c.cons)
+    opt_prob = if !has_constraints(prob)
+        OptimizationProblem(f, prob.initial_params)
     else
-        opt_prob = OptimizationProblem(
-            f, me_prob.initial_params;
+        OptimizationProblem(
+            f, prob.initial_params;
             lcons=c.lcons, ucons=c.ucons, lb=c.lb, ub=c.ub
         )
     end
@@ -499,13 +499,17 @@ function estimate_mode(
     prob = ModeEstimationProblem(
         model, estimator, initial_params, lb, ub, cons, lcons, ucons, adtype
     )
-    (solver === nothing) && (solver = default_solver(prob))
+    if solver === nothing
+        solver = default_solver(prob)
+    end
     # TODO(mhauru) We currently couple together the questions of whether the user specified
     # bounds/constraints and whether we transform the objective function to an
     # unconstrained space. These should be separate concerns, but for that we need to
     # implement getting the bounds of the prior distributions.
     optimise_in_unconstrained_space = !has_constraints(prob)
-    optimise_in_unconstrained_space && (prob = link(prob))
+    if optimise_in_unconstrained_space
+        prob = link(prob)
+    end
     solution = solve(OptimizationProblem(prob), solver; kwargs...)
     # TODO(mhauru) We return a ModeResult for compatibility with the older Optim.jl
     # interface. Might we want to break that and develop a better return type?
