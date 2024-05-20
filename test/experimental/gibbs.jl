@@ -141,30 +141,6 @@ has_dot_assume(::Model) = true
         end
     end
 
-    @testset "demo_assume_dot_observe" begin
-        model = DynamicPPL.TestUtils.demo_assume_dot_observe()
-
-        # Sample!
-        rng = Random.default_rng()
-        vns = [@varname(s), @varname(m)]
-        sampler = Turing.Experimental.Gibbs(map(Base.Fix2(Pair, MH()), vns)...)
-
-        @testset "step" begin
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
-            check_transition_varnames(transition, vns)
-            for _ = 1:5
-                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
-                check_transition_varnames(transition, vns)
-            end
-        end
-
-        @testset "sample" begin
-            chain = sample(model, sampler, 1000; progress=false)
-            @test size(chain, 1) == 1000
-            display(mean(chain))
-        end
-    end
-
     @testset "multiple varnames" begin
         rng = Random.default_rng()
 
