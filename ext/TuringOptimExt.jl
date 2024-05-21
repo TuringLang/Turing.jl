@@ -42,18 +42,33 @@ mle = optimize(model, MLE())
 mle = optimize(model, MLE(), NelderMead())
 ```
 """
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model, ::Optimisation.MLE, options::Optim.Options=Optim.Options();
+    kwargs...
+)
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model,
+    ::Optimisation.MLE,
+    init_vals::AbstractArray,
+    options::Optim.Options=Optim.Options();
+    kwargs...
+)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model,
+    ::Optimisation.MLE,
+    optimizer::Optim.AbstractOptimizer,
+    options::Optim.Options=Optim.Options();
+    kwargs...
+)
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
@@ -95,18 +110,33 @@ map_est = optimize(model, MAP())
 map_est = optimize(model, MAP(), NelderMead())
 ```
 """
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model, ::Optimisation.MAP, options::Optim.Options=Optim.Options();
+    kwargs...
+)
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model,
+    ::Optimisation.MAP,
+    init_vals::AbstractArray,
+    options::Optim.Options=Optim.Options();
+    kwargs...
+)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(
+    model::DynamicPPL.Model,
+    ::Optimisation.MAP,
+    optimizer::Optim.AbstractOptimizer,
+    options::Optim.Options=Optim.Options();
+    kwargs...
+)
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
@@ -153,7 +183,10 @@ function _optimize(
 
     # Warn the user if the optimization did not converge.
     if !Optim.converged(M)
-        @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
+        @warn """
+            Optimization did not converge! You may need to correct your model or adjust the
+            Optim parameters.
+        """
     end
 
     # Get the optimum in unconstrained space. `getparams` does the invlinking.
