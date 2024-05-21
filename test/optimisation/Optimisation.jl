@@ -103,7 +103,7 @@
                 gdemo_default, MLE()
             )
             m2 = maximum_likelihood(
-                gdemo_default, true_value, OptimizationOptimJL.LBFGS()
+                gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
             )
             m3 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.Newton()
@@ -113,7 +113,7 @@
                 gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
             )
             m5 = maximum_likelihood(
-                gdemo_default, true_value, OptimizationOptimJL.NelderMead()
+                gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value
             )
             m6 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.NelderMead()
@@ -146,7 +146,7 @@
                 gdemo_default, MAP()
             )
             m2 = maximum_a_posteriori(
-                gdemo_default, true_value, OptimizationOptimJL.LBFGS()
+                gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
             )
             m3 = maximum_a_posteriori(
                 gdemo_default, OptimizationOptimJL.Newton()
@@ -155,7 +155,7 @@
                 gdemo_default, BFGS(); adtype=AutoReverseDiff()
             )
             m5 = maximum_a_posteriori(
-                gdemo_default, true_value, OptimizationOptimJL.NelderMead()
+                gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value
             )
             m6 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.NelderMead())
 
@@ -192,10 +192,8 @@
             )
             m2 = maximum_likelihood(
                 gdemo_default,
-                true_value,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                lb=lb, ub=ub
-            )
+                initial_params=true_value, lb=lb, ub=ub)
             m3 = maximum_likelihood(
                 gdemo_default,
                 OptimizationBBO.BBO_separable_nes();
@@ -208,9 +206,8 @@
             )
             m5 = maximum_likelihood(
                 gdemo_default,
-                true_value,
                 OptimizationOptimJL.IPNewton();
-                lb=lb, ub=ub
+                initial_params=true_value, lb=lb, ub=ub
             )
             m6 = maximum_likelihood(gdemo_default; lb=lb, ub=ub)
 
@@ -248,9 +245,8 @@
             )
             m2 = maximum_a_posteriori(
                 gdemo_default,
-                true_value,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                lb=lb, ub=ub
+                initial_params=true_value, lb=lb, ub=ub
             )
             m3 = maximum_a_posteriori(
                 gdemo_default,
@@ -264,9 +260,8 @@
             )
             m5 = maximum_a_posteriori(
                 gdemo_default,
-                true_value,
                 OptimizationOptimJL.IPNewton();
-                lb=lb, ub=ub
+                initial_params=true_value, lb=lb, ub=ub
             )
             m6 = maximum_a_posteriori(gdemo_default; lb=lb, ub=ub)
 
@@ -305,18 +300,21 @@
             initial_params = [0.5, -1.0]
 
             m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MLE(), initial_params; cons_args...
+                gdemo_default, MLE(); initial_params=initial_params, cons_args...
             )
-            m2 = maximum_likelihood(gdemo_default, true_value; cons_args...)
+            m2 = maximum_likelihood(gdemo_default; initial_params=true_value, cons_args...)
             m3 = maximum_likelihood(
-                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
-                cons_args...
+                gdemo_default, OptimizationOptimJL.IPNewton();
+                initial_params=initial_params, cons_args...
             )
             m4 = maximum_likelihood(
-                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
-                adtype=AutoReverseDiff(), cons_args...
+                gdemo_default, OptimizationOptimJL.IPNewton();
+                initial_params=initial_params, adtype=AutoReverseDiff(), cons_args...
             )
-            m5 = maximum_likelihood(gdemo_default, initial_params; cons_args...)
+            m5 = maximum_likelihood(
+                gdemo_default;
+                initial_params=initial_params, cons_args...
+            )
 
             check_success(m1)
             check_success(m2)
@@ -352,18 +350,23 @@
             initial_params = [0.5, -1.0]
 
             m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MAP(), initial_params; cons_args...
+                gdemo_default, MAP(); initial_params=initial_params, cons_args...
             )
-            m2 = maximum_a_posteriori(gdemo_default, true_value; cons_args...)
+            m2 = maximum_a_posteriori(
+                gdemo_default; initial_params=true_value, cons_args...
+            )
             m3 = maximum_a_posteriori(
-                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
-                cons_args...
+                gdemo_default, OptimizationOptimJL.IPNewton();
+                initial_params=initial_params, cons_args...
             )
             m4 = maximum_a_posteriori(
-                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
-                adtype=AutoReverseDiff(), cons_args...
+                gdemo_default, OptimizationOptimJL.IPNewton();
+                initial_params=initial_params, adtype=AutoReverseDiff(), cons_args...
             )
-            m5 = maximum_a_posteriori(gdemo_default, initial_params; cons_args...)
+            m5 = maximum_a_posteriori(
+                gdemo_default;
+                initial_params=initial_params, cons_args...
+            )
 
             check_success(m1)
             check_success(m2)
@@ -536,7 +539,7 @@
         end
         model = demo_track()
         result = maximum_a_posteriori(model)
-        @test result.values[:x] ≈ 0 atol=1e-1
-        @test result.values[:y] ≈ 100 atol=1e-1
+        @test result.values[:x] ≈ 0 atol = 1e-1
+        @test result.values[:y] ≈ 100 atol = 1e-1
     end
 end
