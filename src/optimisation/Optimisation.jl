@@ -179,10 +179,6 @@ struct ModeResult{
     f::M
 end
 
-#############################
-# Various StatsBase methods #
-#############################
-
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
     print(io, "ModeResult with maximized lp of ")
     Printf.@printf(io, "%.2f", m.lp)
@@ -193,6 +189,8 @@ end
 function Base.show(io::IO, m::ModeResult)
     show(io, m.values.array)
 end
+
+# Various StatsBase methods for ModeResult
 
 function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     # Get columns for coeftable.
