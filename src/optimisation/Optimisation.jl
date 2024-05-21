@@ -19,8 +19,9 @@ using ForwardDiff: ForwardDiff
 using StatsAPI: StatsAPI
 using Statistics: Statistics
 
-export estimate_mode, maximum_a_posteriori, maximum_likelihood, MLE, MAP, ModeResult,
-    OptimLogDensity, OptimizationContext
+export maximum_a_posteriori, maximum_likelihood
+# The MAP and MLE exports are only needed for the Optim.jl interface.
+export MAP, MLE
 
 """
     ModeEstimator

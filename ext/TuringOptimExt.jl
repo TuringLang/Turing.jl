@@ -5,26 +5,16 @@ if isdefined(Base, :get_extension)
     import Turing:
         DynamicPPL,
         NamedArrays,
-        Accessors
-    import Turing.Optimisation:
-        ModeResult,
-        MLE,
-        MAP,
-        OptimLogDensity,
-        OptimizationContext
+        Accessors,
+        Optimisation
     import Optim
 else
     import ..Turing
     import ..Turing:
         DynamicPPL,
         NamedArrays,
-        Accessors
-    import ..Optimisation:
-        ModeResult,
-        MLE,
-        MAP,
-        OptimLogDensity,
-        OptimizationContext
+        Accessors,
+        Optimisation
     import ..Optim
 end
 
@@ -52,26 +42,26 @@ mle = optimize(model, MLE())
 mle = optimize(model, MLE(), NelderMead())
 ```
 """
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, options::Optim.Options=Optim.Options(); kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-    f = Turing.OptimLogDensity(model, ctx)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, options::Optim.Options=Optim.Options(); kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+    f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-    f = Turing.OptimLogDensity(model, ctx)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MLE, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+    f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 function Optim.optimize(
     model::DynamicPPL.Model,
-    ::Turing.MLE,
+    ::Optimisation.MLE,
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
@@ -81,8 +71,8 @@ function Optim.optimize(
 end
 
 function _mle_optimize(model::DynamicPPL.Model, args...; kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(model, Turing.OptimLogDensity(model, ctx), args...; kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -105,26 +95,26 @@ map_est = optimize(model, MAP())
 map_est = optimize(model, MAP(), NelderMead())
 ```
 """
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, options::Optim.Options=Optim.Options(); kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
-    f = Turing.OptimLogDensity(model, ctx)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, options::Optim.Options=Optim.Options(); kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+    f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, init_vals::AbstractArray, options::Optim.Options=Optim.Options(); kwargs...)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
-function Optim.optimize(model::DynamicPPL.Model, ::Turing.MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
-    f = Turing.OptimLogDensity(model, ctx)
+function Optim.optimize(model::DynamicPPL.Model, ::Optimisation.MAP, optimizer::Optim.AbstractOptimizer, options::Optim.Options=Optim.Options(); kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+    f = Optimisation.OptimLogDensity(model, ctx)
     init_vals = DynamicPPL.getparams(f)
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 function Optim.optimize(
     model::DynamicPPL.Model,
-    ::Turing.MAP,
+    ::Optimisation.MAP,
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
@@ -134,8 +124,8 @@ function Optim.optimize(
 end
 
 function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
-    ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(model, Turing.OptimLogDensity(model, ctx), args...; kwargs...)
+    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -145,7 +135,7 @@ Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function _optimize(
     model::DynamicPPL.Model,
-    f::Turing.OptimLogDensity,
+    f::Optimisation.OptimLogDensity,
     init_vals::AbstractArray=DynamicPPL.getparams(f),
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     options::Optim.Options=Optim.Options(),
@@ -172,7 +162,7 @@ function _optimize(
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
-    return Turing.ModeResult(vmat, M, -M.minimum, f)
+    return Optimisation.ModeResult(vmat, M, -M.minimum, f)
 end
 
 end # module

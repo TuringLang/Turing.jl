@@ -122,13 +122,11 @@ export  @model,                 # modelling
         logjoint,
         LogDensityFunction,
 
-        MAP,            # optimisation interface
-        MLE,
-        OptimLogDensity,
-        ModeResult,
-        estimate_mode,
         maximum_a_posteriori,
-        maximum_likelihood
+        maximum_likelihood,
+        # The MAP and MLE exports are only needed for the Optim.jl interface.
+        MAP,
+        MLE
 
 if !isdefined(Base, :get_extension)
     using Requires

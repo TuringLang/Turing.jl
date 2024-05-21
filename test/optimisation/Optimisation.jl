@@ -42,8 +42,9 @@
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x=x,)
-            ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
+                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
 
         @testset "With prefixes" begin
@@ -54,8 +55,9 @@
             end
             m1 = prefix_μ(model1(x))
             m2 = prefix_μ(model2() | (var"inner.x"=x,))
-            ctx = Turing.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
+                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
 
         @testset "Weighted" begin
@@ -67,8 +69,9 @@
             end
             m1 = override(model1(x))
             m2 = override(model2() | (x=x,))
-            ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
-            @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
+            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
+                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
     end
 
@@ -85,21 +88,21 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(
+            m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MLE()
             )
-            m2 = estimate_mode(
-                gdemo_default, MLE(), true_value, OptimizationOptimJL.LBFGS()
+            m2 = maximum_likelihood(
+                gdemo_default, true_value, OptimizationOptimJL.LBFGS()
             )
-            m3 = estimate_mode(
-                gdemo_default, MLE(), OptimizationOptimJL.Newton()
+            m3 = maximum_likelihood(
+                gdemo_default, OptimizationOptimJL.Newton()
             )
             # TODO(mhauru) How can we check that the adtype is actually AutoReverseDiff?
-            m4 = estimate_mode(
-                gdemo_default, MLE(), OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
+            m4 = maximum_likelihood(
+                gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
             )
-            m5 = estimate_mode(
-                gdemo_default, MLE(), true_value, OptimizationOptimJL.NelderMead()
+            m5 = maximum_likelihood(
+                gdemo_default, true_value, OptimizationOptimJL.NelderMead()
             )
             m6 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.NelderMead()
@@ -134,20 +137,20 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(
+            m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MAP()
             )
-            m2 = estimate_mode(
-                gdemo_default, MAP(), true_value, OptimizationOptimJL.LBFGS()
+            m2 = maximum_a_posteriori(
+                gdemo_default, true_value, OptimizationOptimJL.LBFGS()
             )
-            m3 = estimate_mode(
-                gdemo_default, MAP(), OptimizationOptimJL.Newton()
+            m3 = maximum_a_posteriori(
+                gdemo_default, OptimizationOptimJL.Newton()
             )
-            m4 = estimate_mode(
-                gdemo_default, MAP(), BFGS(); adtype=AutoReverseDiff()
+            m4 = maximum_a_posteriori(
+                gdemo_default, BFGS(); adtype=AutoReverseDiff()
             )
-            m5 = estimate_mode(
-                gdemo_default, MAP(), true_value, OptimizationOptimJL.NelderMead()
+            m5 = maximum_a_posteriori(
+                gdemo_default, true_value, OptimizationOptimJL.NelderMead()
             )
             m6 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.NelderMead())
 
@@ -185,29 +188,27 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MLE(); lb=lb, ub=ub)
-            m2 = estimate_mode(
+            m1 = Turing.Optimisation.estimate_mode(
+                gdemo_default, MLE(); lb=lb, ub=ub
+            )
+            m2 = maximum_likelihood(
                 gdemo_default,
-                MLE(),
                 true_value,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
                 lb=lb, ub=ub
             )
-            m3 = estimate_mode(
+            m3 = maximum_likelihood(
                 gdemo_default,
-                MLE(),
                 OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
-            m4 = estimate_mode(
+            m4 = maximum_likelihood(
                 gdemo_default,
-                MLE(),
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
-            m5 = estimate_mode(
+            m5 = maximum_likelihood(
                 gdemo_default,
-                MLE(),
                 true_value,
                 OptimizationOptimJL.IPNewton();
                 lb=lb, ub=ub
@@ -249,29 +250,27 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MAP(); lb=lb, ub=ub)
-            m2 = estimate_mode(
+            m1 = Turing.Optimisation.estimate_mode(
+                gdemo_default, MAP(); lb=lb, ub=ub
+            )
+            m2 = maximum_a_posteriori(
                 gdemo_default,
-                MAP(),
                 true_value,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
                 lb=lb, ub=ub
             )
-            m3 = estimate_mode(
+            m3 = maximum_a_posteriori(
                 gdemo_default,
-                MAP(),
                 OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
-            m4 = estimate_mode(
+            m4 = maximum_a_posteriori(
                 gdemo_default,
-                MAP(),
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
-            m5 = estimate_mode(
+            m5 = maximum_a_posteriori(
                 gdemo_default,
-                MAP(),
                 true_value,
                 OptimizationOptimJL.IPNewton();
                 lb=lb, ub=ub
@@ -316,14 +315,16 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MLE(), initial_params; cons_args...)
-            m2 = estimate_mode(gdemo_default, MLE(), true_value; cons_args...)
-            m3 = estimate_mode(
-                gdemo_default, MLE(), initial_params, OptimizationOptimJL.IPNewton();
+            m1 = Turing.Optimisation.estimate_mode(
+                gdemo_default, MLE(), initial_params; cons_args...
+            )
+            m2 = maximum_likelihood(gdemo_default, true_value; cons_args...)
+            m3 = maximum_likelihood(
+                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
                 cons_args...
             )
-            m4 = estimate_mode(
-                gdemo_default, MLE(), initial_params, OptimizationOptimJL.IPNewton();
+            m4 = maximum_likelihood(
+                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
             m5 = maximum_likelihood(gdemo_default, initial_params; cons_args...)
@@ -365,14 +366,16 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MAP(), initial_params; cons_args...)
-            m2 = estimate_mode(gdemo_default, MAP(), true_value; cons_args...)
-            m3 = estimate_mode(
-                gdemo_default, MAP(), initial_params, OptimizationOptimJL.IPNewton();
+            m1 = Turing.Optimisation.estimate_mode(
+                gdemo_default, MAP(), initial_params; cons_args...
+            )
+            m2 = maximum_a_posteriori(gdemo_default, true_value; cons_args...)
+            m3 = maximum_a_posteriori(
+                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
                 cons_args...
             )
-            m4 = estimate_mode(
-                gdemo_default, MAP(), initial_params, OptimizationOptimJL.IPNewton();
+            m4 = maximum_a_posteriori(
+                gdemo_default, initial_params, OptimizationOptimJL.IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
             m5 = maximum_a_posteriori(gdemo_default, initial_params; cons_args...)
@@ -537,7 +540,7 @@
     @testset "Optimization with different linked dimensionality" begin
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
         model = demo_dirichlet()
-        result = estimate_mode(model, MAP())
+        result = maximum_a_posteriori(model)
         @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
     end
 end
