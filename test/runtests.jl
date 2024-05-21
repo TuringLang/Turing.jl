@@ -19,6 +19,7 @@ using ReverseDiff
 using SpecialFunctions
 using StatsBase
 using StatsFuns
+using HypothesisTests
 using Tracker
 using Turing
 using Turing.Inference
