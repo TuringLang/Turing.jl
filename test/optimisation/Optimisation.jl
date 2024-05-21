@@ -88,7 +88,7 @@
             optimum = result.values.array
             @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
             if check_retcode
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+                @test result.optim_result.retcode == Optimization.ReturnCode.Success
             end
             @test isapprox(result.lp, true_logp, atol=0.01)
         end
