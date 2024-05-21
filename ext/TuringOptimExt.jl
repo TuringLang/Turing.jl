@@ -11,7 +11,6 @@ if isdefined(Base, :get_extension)
         MLE,
         MAP,
         OptimLogDensity,
-        variable_names,
         OptimizationContext
     import Optim
 else
@@ -25,7 +24,6 @@ else
         MLE,
         MAP,
         OptimLogDensity,
-        variable_names,
         OptimizationContext
     import ..Optim
 end
@@ -168,17 +166,12 @@ function _optimize(
         @warn "Optimization did not converge! You may need to correct your model or adjust the Optim parameters."
     end
 
-    # Get the VarInfo at the MLE/MAP point, and run the model to ensure
-    # correct dimensionality.
+    # Get the optimum in unconstrained space. `getparams` does the invlinking.
     f = Accessors.@set f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
-    f = Accessors.@set f.varinfo = DynamicPPL.invlink(f.varinfo, model)
-    vals = DynamicPPL.getparams(f)
-    f = Accessors.@set f.varinfo = DynamicPPL.link(f.varinfo, model)
-
-    # Store the parameters and their names in an array.
-    varnames = map(Symbol ∘ first, Turing.Inference.getparams(model, f.varinfo))
+    vns_vals_iter = Turing.Inference.getparams(model, f.varinfo)
+    varnames = map(Symbol ∘ first, vns_vals_iter)
+    vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
-
     return Turing.ModeResult(vmat, M, -M.minimum, f)
 end
 

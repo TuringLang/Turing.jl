@@ -153,15 +153,6 @@ function (f::OptimLogDensity)(F, G, z)
 end
 
 """
-    variable_names(lg::OptimLogDensity)
-
-Return the names of the variables in the model of an `OptimLogDensity` as symbols.
-"""
-function variable_names(lg::OptimLogDensity)
-    return map(Symbol ∘ first, Turing.Inference.getparams(lg.model, lg.varinfo))
-end
-
-"""
     ModeResult{
         V<:NamedArrays.NamedArray,
         M<:NamedArrays.NamedArray,
@@ -450,17 +441,14 @@ richer format of `ModeResult`. It also takes care of transforming them back to t
 parameter space in case the optimization was done in a transformed space.
 """
 function ModeResult(prob::ModeEstimationProblem, solution::AbstractVector)
-    solution_values = solution.u
-    ld = prob.log_density
-    if prob.linked
-        ld = Accessors.@set ld.varinfo = DynamicPPL.unflatten(ld.varinfo, solution_values)
-        ld = Accessors.@set ld.varinfo = DynamicPPL.invlink(ld.varinfo, ld.model)
-        solution_values = ld.varinfo[:]
-    end
-    # Store the parameters and their names in a NamedArray.
-    varnames = variable_names(prob.log_density)
-    vmat = NamedArrays.NamedArray(solution_values, varnames)
-    return ModeResult(vmat, solution, -solution.objective, prob.log_density)
+    varinfo_new = DynamicPPL.unflatten(prob.log_density.varinfo, solution.u)
+    # `getparams` performs invlinking if needed
+    vns_vals_iter = Turing.Inference.getparams(prob.model, varinfo_new)
+    syms = map(Symbol ∘ first, vns_vals_iter)
+    vals = map(last, vns_vals_iter)
+    return ModeResult(
+        NamedArrays.NamedArray(vals, syms), solution, -solution.objective, prob.log_density
+    )
 end
 
 """
