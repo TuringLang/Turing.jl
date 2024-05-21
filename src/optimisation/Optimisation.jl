@@ -490,7 +490,8 @@ end
 Find the maximum a posteriori estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator.
-Please see the documentation of [`estimate_mode`](@ref) for more details.
+Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
+details.
 """
 function maximum_a_posteriori(model::DynamicPPL.Model, args...; kwargs...)
     return estimate_mode(model, MAP(), args...; kwargs...)
@@ -507,7 +508,8 @@ end
 Find the maximum likelihood estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator.
-Please see the documentation of [`estimate_mode`](@ref) for more details.
+Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
+details.
 """
 function maximum_likelihood(model::DynamicPPL.Model, args...; kwargs...)
     return estimate_mode(model, MLE(), args...; kwargs...)
