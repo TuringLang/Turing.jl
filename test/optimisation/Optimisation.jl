@@ -152,7 +152,7 @@
                 gdemo_default, OptimizationOptimJL.Newton()
             )
             m4 = maximum_a_posteriori(
-                gdemo_default, BFGS(); adtype=AutoReverseDiff()
+                gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
             )
             m5 = maximum_a_posteriori(
                 gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value

@@ -3,10 +3,10 @@
         Random.seed!(222)
         true_value = [0.0625, 1.75]
 
-        m1 = optimize(gdemo_default, MLE())
-        m2 = optimize(gdemo_default, MLE(), Optim.NelderMead())
-        m3 = optimize(gdemo_default, MLE(), true_value, Optim.LBFGS())
-        m4 = optimize(gdemo_default, MLE(), true_value)
+        m1 = Optim.optimize(gdemo_default, MLE())
+        m2 = Optim.optimize(gdemo_default, MLE(), Optim.NelderMead())
+        m3 = Optim.optimize(gdemo_default, MLE(), true_value, Optim.LBFGS())
+        m4 = Optim.optimize(gdemo_default, MLE(), true_value)
 
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
@@ -18,10 +18,10 @@
         Random.seed!(222)
         true_value = [49 / 54, 7 / 6]
 
-        m1 = optimize(gdemo_default, MAP())
-        m2 = optimize(gdemo_default, MAP(), Optim.NelderMead())
-        m3 = optimize(gdemo_default, MAP(), true_value, Optim.LBFGS())
-        m4 = optimize(gdemo_default, MAP(), true_value)
+        m1 = Optim.optimize(gdemo_default, MAP())
+        m2 = Optim.optimize(gdemo_default, MAP(), Optim.NelderMead())
+        m3 = Optim.optimize(gdemo_default, MAP(), true_value, Optim.LBFGS())
+        m4 = Optim.optimize(gdemo_default, MAP(), true_value)
 
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
         @test all(isapprox.(m2.values.array - true_value, 0.0, atol=0.01))
@@ -31,7 +31,7 @@
 
     @testset "StatsBase integration" begin
         Random.seed!(54321)
-        mle_est = optimize(gdemo_default, MLE())
+        mle_est = Optim.optimize(gdemo_default, MLE())
         # Calculated based on the two data points in gdemo_default, [1.5, 2.0]
         true_values = [0.0625, 1.75]
 
@@ -71,7 +71,7 @@
         y = x*true_beta
         
         model = regtest(x, y)
-        mle = optimize(model, MLE())
+        mle = Optim.optimize(model, MLE())
         
         vcmat = inv(x'x)
         vcmat_mle = vcov(mle).array
@@ -90,11 +90,11 @@
         
         model_dot = dot_gdemo([1.5, 2.0])
 
-        mle1 = optimize(gdemo_default, MLE())
-        mle2 = optimize(model_dot, MLE())
+        mle1 = Optim.optimize(gdemo_default, MLE())
+        mle2 = Optim.optimize(model_dot, MLE())
 
-        map1 = optimize(gdemo_default, MAP())
-        map2 = optimize(model_dot, MAP())
+        map1 = Optim.optimize(gdemo_default, MAP())
+        map2 = Optim.optimize(model_dot, MAP())
 
         @test isapprox(mle1.values.array, mle2.values.array)
         @test isapprox(map1.values.array, map2.values.array)
@@ -106,7 +106,7 @@
 
         optimizers = [Optim.LBFGS(), Optim.NelderMead()]
         @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
-            result = optimize(model, MAP(), optimizer)
+            result = Optim.optimize(model, MAP(), optimizer)
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
@@ -143,7 +143,7 @@
         # `NelderMead` seems to struggle with convergence here, so we exclude it.
         @testset "$(nameof(typeof(optimizer)))" for optimizer in [Optim.LBFGS(),]
             options = Optim.Options(g_tol=1e-3, f_tol=1e-3)
-            result = optimize(model, MLE(), optimizer, options)
+            result = Optim.optimize(model, MLE(), optimizer, options)
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
@@ -162,7 +162,7 @@
     @testset "with different linked dimensionality" begin
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
         model = demo_dirichlet()
-        result = optimize(model, MAP())
+        result = Optim.optimize(model, MAP())
         @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
     end
 
@@ -172,7 +172,7 @@
             y := 100 + x
         end
         model = demo_track()
-        result = optimize(model, MAP())
+        result = Optim.optimize(model, MAP())
         @test result.values[:x] ≈ 0 atol=1e-1
         @test result.values[:y] ≈ 100 atol=1e-1
     end
