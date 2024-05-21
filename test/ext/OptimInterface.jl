@@ -1,4 +1,4 @@
-@numerical_testset "ext/OptimInterface.jl" begin
+@numerical_testset "TuringOptimExt" begin
     @testset "MLE" begin
         Random.seed!(222)
         true_value = [0.0625, 1.75]

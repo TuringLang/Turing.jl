@@ -1,4 +1,4 @@
-@testset "optimisation/Optimisation.jl" begin
+@testset "Optimisation" begin
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
     @testset "OptimizationContext" begin
