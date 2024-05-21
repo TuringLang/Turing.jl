@@ -543,4 +543,15 @@
         result = maximum_a_posteriori(model)
         @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
     end
+
+    @testset "with :=" begin
+        @model function demo_track()
+            x ~ Normal()
+            y := 100 + x
+        end
+        model = demo_track()
+        result = maximum_a_posteriori(model)
+        @test result.values[:x] ≈ 0 atol=1e-1
+        @test result.values[:y] ≈ 100 atol=1e-1
+    end
 end
