@@ -401,7 +401,7 @@ function estimate_mode(
     model::DynamicPPL.Model,
     estimator::ModeEstimator,
     solver=nothing;
-    initial_params::Union{AbstractVector,Nothing}=nothing,
+    initial_params=nothing,
     adtype=ADTypes.AutoForwardDiff(),
     cons=nothing,
     lcons=nothing,
