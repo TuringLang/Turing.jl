@@ -76,17 +76,28 @@
     end
 
     @numerical_testset "gdemo" begin
+
+        """
+            check_success(result, true_value, true_logp, check_retcode=true)
+
+        Check that the `result` returned by optimisation is close to the truth.
+        """
+        function check_optimisation_result(
+            result, true_value, true_logp, check_retcode=true
+        )
+            optimum = result.values.array
+            @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
+            if check_retcode
+                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
+            end
+            @test isapprox(result.lp, true_logp, atol=0.01)
+        end
+
         @testset "MLE" begin
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-
-            function check_success(result)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
+            check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MLE()
@@ -129,13 +140,7 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-
-            function check_success(result)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
+            check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MAP()
@@ -175,18 +180,12 @@
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
+            check_success(result, check_retcode=true) = check_optimisation_result(
+                result, true_value, true_logp, check_retcode
+            )
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
-
-            function check_success(result, check_retcode=true)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                if check_retcode
-                    @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                end
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MLE(); lb=lb, ub=ub
@@ -237,18 +236,12 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
+            check_success(result, check_retcode=true) = check_optimisation_result(
+                result, true_value, true_logp, check_retcode
+            )
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
-
-            function check_success(result, check_retcode=true)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                if check_retcode
-                    @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                end
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MAP(); lb=lb, ub=ub
@@ -299,6 +292,9 @@
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
+            check_success(result, check_retcode=true) = check_optimisation_result(
+                result, true_value, true_logp, check_retcode
+            )
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
@@ -307,13 +303,6 @@
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
             initial_params = [0.5, -1.0]
-
-            function check_success(result)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MLE(), initial_params; cons_args...
@@ -350,6 +339,9 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
+            check_success(result, check_retcode=true) = check_optimisation_result(
+                result, true_value, true_logp, check_retcode
+            )
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
@@ -358,13 +350,6 @@
             ucons = [Inf, 2.0]
             cons_args = (cons=cons, lcons=lcons, ucons=ucons)
             initial_params = [0.5, -1.0]
-
-            function check_success(result)
-                optimum = result.values.array
-                @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-                @test result.optim_result.retcode == SciMLBase.ReturnCode.Success
-                @test isapprox(result.lp, true_logp, atol=0.01)
-            end
 
             m1 = Turing.Optimisation.estimate_mode(
                 gdemo_default, MAP(), initial_params; cons_args...
