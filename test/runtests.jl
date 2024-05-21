@@ -9,11 +9,11 @@ using FiniteDifferences
 using ForwardDiff
 using MCMCChains
 using NamedArrays
-using Optim
-using Optimization
-using OptimizationBBO: BBO_separable_nes
-using OptimizationOptimJL: LBFGS, NelderMead, Fminbox, IPNewton
-using OptimizationNLopt: NLopt.LD_TNEWTON_PRECOND_RESTART
+using Optim: Optim
+using Optimization: Optimization
+using OptimizationBBO: OptimizationBBO
+using OptimizationOptimJL: OptimizationOptimJL
+using OptimizationNLopt: OptimizationNLopt
 using PDMats
 using ReverseDiff
 using SpecialFunctions

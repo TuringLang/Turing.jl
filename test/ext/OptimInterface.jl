@@ -4,8 +4,8 @@
         true_value = [0.0625, 1.75]
 
         m1 = optimize(gdemo_default, MLE())
-        m2 = optimize(gdemo_default, MLE(), NelderMead())
-        m3 = optimize(gdemo_default, MLE(), true_value, LBFGS())
+        m2 = optimize(gdemo_default, MLE(), Optim.NelderMead())
+        m3 = optimize(gdemo_default, MLE(), true_value, Optim.LBFGS())
         m4 = optimize(gdemo_default, MLE(), true_value)
 
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
@@ -19,8 +19,8 @@
         true_value = [49 / 54, 7 / 6]
 
         m1 = optimize(gdemo_default, MAP())
-        m2 = optimize(gdemo_default, MAP(), NelderMead())
-        m3 = optimize(gdemo_default, MAP(), true_value, LBFGS())
+        m2 = optimize(gdemo_default, MAP(), Optim.NelderMead())
+        m3 = optimize(gdemo_default, MAP(), true_value, Optim.LBFGS())
         m4 = optimize(gdemo_default, MAP(), true_value)
 
         @test all(isapprox.(m1.values.array - true_value, 0.0, atol=0.01))
@@ -104,7 +104,8 @@
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(), NelderMead()]
+        optimizers = [Optim.LBFGS(), Optim.NelderMead()]
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             result = optimize(model, MAP(), optimizer)
             vals = result.values
 
@@ -140,7 +141,7 @@
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
         # `NelderMead` seems to struggle with convergence here, so we exclude it.
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in [LBFGS(),]
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in [Optim.LBFGS(),]
             result = optimize(model, MLE(), optimizer, Optim.Options(g_tol=1e-3, f_tol=1e-3))
             vals = result.values
 

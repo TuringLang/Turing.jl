@@ -85,13 +85,25 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MLE())
-            m2 = estimate_mode(gdemo_default, MLE(), true_value, LBFGS())
-            m3 = estimate_mode(gdemo_default, MLE(), Newton())
+            m1 = estimate_mode(
+                gdemo_default, MLE()
+            )
+            m2 = estimate_mode(
+                gdemo_default, MLE(), true_value, OptimizationOptimJL.LBFGS()
+            )
+            m3 = estimate_mode(
+                gdemo_default, MLE(), OptimizationOptimJL.Newton()
+            )
             # TODO(mhauru) How can we check that the adtype is actually AutoReverseDiff?
-            m4 = estimate_mode(gdemo_default, MLE(), BFGS(); adtype=AutoReverseDiff())
-            m5 = estimate_mode(gdemo_default, MLE(), true_value, NelderMead())
-            m6 = maximum_likelihood(gdemo_default, NelderMead())
+            m4 = estimate_mode(
+                gdemo_default, MLE(), OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
+            )
+            m5 = estimate_mode(
+                gdemo_default, MLE(), true_value, OptimizationOptimJL.NelderMead()
+            )
+            m6 = maximum_likelihood(
+                gdemo_default, OptimizationOptimJL.NelderMead()
+            )
 
             check_success(m1)
             check_success(m2)
@@ -122,12 +134,22 @@
                 @test isapprox(result.lp, true_logp, atol=0.01)
             end
 
-            m1 = estimate_mode(gdemo_default, MAP())
-            m2 = estimate_mode(gdemo_default, MAP(), true_value, LBFGS())
-            m3 = estimate_mode(gdemo_default, MAP(), Newton())
-            m4 = estimate_mode(gdemo_default, MAP(), BFGS(); adtype=AutoReverseDiff())
-            m5 = estimate_mode(gdemo_default, MAP(), true_value, NelderMead())
-            m6 = maximum_a_posteriori(gdemo_default, NelderMead())
+            m1 = estimate_mode(
+                gdemo_default, MAP()
+            )
+            m2 = estimate_mode(
+                gdemo_default, MAP(), true_value, OptimizationOptimJL.LBFGS()
+            )
+            m3 = estimate_mode(
+                gdemo_default, MAP(), OptimizationOptimJL.Newton()
+            )
+            m4 = estimate_mode(
+                gdemo_default, MAP(), BFGS(); adtype=AutoReverseDiff()
+            )
+            m5 = estimate_mode(
+                gdemo_default, MAP(), true_value, OptimizationOptimJL.NelderMead()
+            )
+            m6 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.NelderMead())
 
             check_success(m1)
             check_success(m2)
@@ -165,17 +187,31 @@
 
             m1 = estimate_mode(gdemo_default, MLE(); lb=lb, ub=ub)
             m2 = estimate_mode(
-                gdemo_default, MLE(), true_value, Fminbox(LBFGS()); lb=lb, ub=ub
+                gdemo_default,
+                MLE(),
+                true_value,
+                OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
+                lb=lb, ub=ub
             )
             m3 = estimate_mode(
-                gdemo_default, MLE(), BBO_separable_nes();
+                gdemo_default,
+                MLE(),
+                OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
             m4 = estimate_mode(
-                gdemo_default, MLE(), Fminbox(BFGS());
+                gdemo_default,
+                MLE(),
+                OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
-            m5 = estimate_mode(gdemo_default, MLE(), true_value, IPNewton(); lb=lb, ub=ub)
+            m5 = estimate_mode(
+                gdemo_default,
+                MLE(),
+                true_value,
+                OptimizationOptimJL.IPNewton();
+                lb=lb, ub=ub
+            )
             m6 = maximum_likelihood(gdemo_default; lb=lb, ub=ub)
 
             check_success(m1)
@@ -215,17 +251,31 @@
 
             m1 = estimate_mode(gdemo_default, MAP(); lb=lb, ub=ub)
             m2 = estimate_mode(
-                gdemo_default, MAP(), true_value, Fminbox(LBFGS()); lb=lb, ub=ub
+                gdemo_default,
+                MAP(),
+                true_value,
+                OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
+                lb=lb, ub=ub
             )
             m3 = estimate_mode(
-                gdemo_default, MAP(), BBO_separable_nes();
+                gdemo_default,
+                MAP(),
+                OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
             )
             m4 = estimate_mode(
-                gdemo_default, MAP(), Fminbox(BFGS());
+                gdemo_default,
+                MAP(),
+                OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(), lb=lb, ub=ub
             )
-            m5 = estimate_mode(gdemo_default, MAP(), true_value, IPNewton(); lb=lb, ub=ub)
+            m5 = estimate_mode(
+                gdemo_default,
+                MAP(),
+                true_value,
+                OptimizationOptimJL.IPNewton();
+                lb=lb, ub=ub
+            )
             m6 = maximum_a_posteriori(gdemo_default; lb=lb, ub=ub)
 
             check_success(m1)
@@ -269,10 +319,11 @@
             m1 = estimate_mode(gdemo_default, MLE(), initial_params; cons_args...)
             m2 = estimate_mode(gdemo_default, MLE(), true_value; cons_args...)
             m3 = estimate_mode(
-                gdemo_default, MLE(), initial_params, IPNewton(); cons_args...
+                gdemo_default, MLE(), initial_params, OptimizationOptimJL.IPNewton();
+                cons_args...
             )
             m4 = estimate_mode(
-                gdemo_default, MLE(), initial_params, IPNewton();
+                gdemo_default, MLE(), initial_params, OptimizationOptimJL.IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
             m5 = maximum_likelihood(gdemo_default, initial_params; cons_args...)
@@ -317,10 +368,11 @@
             m1 = estimate_mode(gdemo_default, MAP(), initial_params; cons_args...)
             m2 = estimate_mode(gdemo_default, MAP(), true_value; cons_args...)
             m3 = estimate_mode(
-                gdemo_default, MAP(), initial_params, IPNewton(); cons_args...
+                gdemo_default, MAP(), initial_params, OptimizationOptimJL.IPNewton();
+                cons_args...
             )
             m4 = estimate_mode(
-                gdemo_default, MAP(), initial_params, IPNewton();
+                gdemo_default, MAP(), initial_params, OptimizationOptimJL.IPNewton();
                 adtype=AutoReverseDiff(), cons_args...
             )
             m5 = maximum_a_posteriori(gdemo_default, initial_params; cons_args...)
@@ -420,7 +472,11 @@
         Random.seed!(23)
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
-        optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
+        optimizers = [
+            OptimizationOptimJL.LBFGS(),
+            OptimizationOptimJL.NelderMead(),
+            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
+        ]
         @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             result = maximum_a_posteriori(model, optimizer)
             vals = result.values
@@ -456,7 +512,11 @@
         Random.seed!(23)
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
-        optimizers = [LBFGS(), NelderMead(), LD_TNEWTON_PRECOND_RESTART()]
+        optimizers = [
+            OptimizationOptimJL.LBFGS(),
+            OptimizationOptimJL.NelderMead(),
+            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
+        ]
         @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             result = maximum_likelihood(model, optimizer; reltol=1e-3)
             vals = result.values
