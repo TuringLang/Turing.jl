@@ -315,21 +315,22 @@ values are generated either by sampling from the prior (if no constraints are pr
 uniformly from the box constraints. If generic constraints are set, an error is thrown.
 """
 function generate_initial_params(model::DynamicPPL.Model, initial_params, constraints)
-    if initial_params !== nothing
-        return copy(initial_params)
-    end
-    if has_generic_constraints(constraints)
+    if initial_params === nothing && has_box_constraints(constraints)
         throw(ArgumentError(
             "You must provide an initial value when using generic constraints."
         ))
     end
-    if has_box_constraints(constraints)
-        return [
+
+    return if initial_params !== nothing
+        copy(initial_params)
+    elseif has_box_constraints(constraints)
+        [
             rand(Distributions.Uniform(lower, upper))
             for (lower, upper) in zip(constraints.lb, constraints.ub)
         ]
+    else
+        rand(Vector, model)
     end
-    return rand(Vector, model)
 end
 
 function default_solver(constraints::ModeEstimationConstraints)
