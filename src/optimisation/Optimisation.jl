@@ -315,7 +315,7 @@ values are generated either by sampling from the prior (if no constraints are pr
 uniformly from the box constraints. If generic constraints are set, an error is thrown.
 """
 function generate_initial_params(model::DynamicPPL.Model, initial_params, constraints)
-    if initial_params === nothing && has_box_constraints(constraints)
+    if initial_params === nothing && has_generic_constraints(constraints)
         throw(ArgumentError(
             "You must provide an initial value when using generic constraints."
         ))
