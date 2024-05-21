@@ -98,7 +98,8 @@ end
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{V,M,C}
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} =
+    Turing.LogDensityFunction{V,M,C}
 
 """
     OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
@@ -130,7 +131,8 @@ LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector) = f(z)
 function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
         # Calculate negative log joint and its gradient.
-        # TODO: Make OptimLogDensity already an LogDensityProblems.ADgradient? Allow to specify AD?
+        # TODO: Make OptimLogDensity already an LogDensityProblems.ADgradient? Allow to
+        # specify AD?
         ℓ = LogDensityProblemsAD.ADgradient(f)
         neglogp, ∇neglogp = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
@@ -208,13 +210,21 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     level_ = 100 * level
     level_percentage = isinteger(level_) ? Int(level_) : level_
 
-    StatsBase.CoefTable(
-        [estimates, stderrors, zscore, p, ci_low, ci_high],
-        ["Coef.", "Std. Error", "z", "Pr(>|z|)", "Lower $(level_percentage)%", "Upper $(level_percentage)%"],
-        terms)
+    cols = [estimates, stderrors, zscore, p, ci_low, ci_high]
+    colnms = [
+        "Coef.",
+        "Std. Error",
+        "z",
+        "Pr(>|z|)",
+        "Lower $(level_percentage)%",
+        "Upper $(level_percentage)%",
+    ]
+    return StatsBase.CoefTable(cols, colnms, terms)
 end
 
-function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...)
+function StatsBase.informationmatrix(
+    m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...
+)
     # Calculate Hessian and information matrix.
 
     # Convert the values to their unconstrained states to make sure the
@@ -224,7 +234,8 @@ function StatsBase.informationmatrix(m::ModeResult; hessian_function=ForwardDiff
         m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
     end
 
-    # Calculate the Hessian, which is the information matrix because the negative of the log likelihood was optimized
+    # Calculate the Hessian, which is the information matrix because the negative of the log
+    # likelihood was optimized
     varnames = StatsBase.coefnames(m)
     info = hessian_function(m.f, m.values.array[:, 1])
 
@@ -419,7 +430,9 @@ function Optimization.OptimizationProblem(prob::ModeEstimationProblem)
     c = prob.constraints
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it as the objective function.
-    f = Optimization.OptimizationFunction((x, _) -> prob.log_density(x), prob.adtype; cons=c.cons)
+    f = Optimization.OptimizationFunction(
+        (x, _) -> prob.log_density(x), prob.adtype; cons=c.cons
+    )
     opt_prob = if !has_constraints(prob)
         Optimization.OptimizationProblem(f, prob.initial_params)
     else

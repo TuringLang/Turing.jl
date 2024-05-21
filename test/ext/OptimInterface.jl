@@ -142,7 +142,8 @@
 
         # `NelderMead` seems to struggle with convergence here, so we exclude it.
         @testset "$(nameof(typeof(optimizer)))" for optimizer in [Optim.LBFGS(),]
-            result = optimize(model, MLE(), optimizer, Optim.Options(g_tol=1e-3, f_tol=1e-3))
+            options = Optim.Options(g_tol=1e-3, f_tol=1e-3)
+            result = optimize(model, MLE(), optimizer, options)
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
