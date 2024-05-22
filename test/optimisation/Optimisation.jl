@@ -1,5 +1,9 @@
 @testset "Optimisation" begin
 
+    # The `stats` field is populated only in newer versions of OptimizationOptimJL and
+    # similar packages. Hence we end up doing this check a lot
+    hasstats(result) = result.optim_result.stats !== nothing
+
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
     @testset "OptimizationContext" begin
         # Used for testing how well it works with nested contexts.
@@ -126,14 +130,16 @@
             check_success(m5)
             check_success(m6)
 
-            @test m2.optim_result.stats.iterations <= 1
-            @test m5.optim_result.stats.iterations < m6.optim_result.stats.iterations
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
+            if hasstats(m6) && hasstats(m5)
+                @test m5.optim_result.stats.iterations < m6.optim_result.stats.iterations
+            end
 
-            @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals > 0
-            @test m4.optim_result.stats.gevals > 0
-            @test m5.optim_result.stats.gevals == 0
-            @test m6.optim_result.stats.gevals == 0
+            @test !hasstats(m2) || m2.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
+            @test !hasstats(m5) || m5.optim_result.stats.gevals == 0
+            @test !hasstats(m6) || m6.optim_result.stats.gevals == 0
         end
 
         @testset "MAP" begin
@@ -166,14 +172,16 @@
             check_success(m5)
             check_success(m6)
 
-            @test m2.optim_result.stats.iterations <= 1
-            @test m5.optim_result.stats.iterations < m6.optim_result.stats.iterations
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
+            if hasstats(m6) && hasstats(m5)
+                @test m5.optim_result.stats.iterations < m6.optim_result.stats.iterations
+            end
 
-            @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals > 0
-            @test m4.optim_result.stats.gevals > 0
-            @test m5.optim_result.stats.gevals == 0
-            @test m6.optim_result.stats.gevals == 0
+            @test !hasstats(m2) || m2.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
+            @test !hasstats(m5) || m5.optim_result.stats.gevals == 0
+            @test !hasstats(m6) || m6.optim_result.stats.gevals == 0
         end
 
         @testset "MLE with box constraints" begin
@@ -220,13 +228,13 @@
             check_success(m5)
             check_success(m6)
 
-            @test m2.optim_result.stats.iterations <= 1
-            @test m5.optim_result.stats.iterations <= 1
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
+            @test !hasstats(m5) || m5.optim_result.stats.iterations <= 1
 
-            @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals == 0
-            @test m4.optim_result.stats.gevals > 0
-            @test m5.optim_result.stats.gevals > 0
+            @test !hasstats(m2) || m2.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals == 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
+            @test !hasstats(m5) || m5.optim_result.stats.gevals > 0
         end
 
         @testset "MAP with box constraints" begin
@@ -274,13 +282,14 @@
             check_success(m5)
             check_success(m6)
 
-            @test m2.optim_result.stats.iterations <= 1
-            @test m5.optim_result.stats.iterations <= 1
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
+            @test !hasstats(m5) || m5.optim_result.stats.iterations <= 1
 
-            @test m2.optim_result.stats.gevals > 0
-            @test m3.optim_result.stats.gevals == 0
-            @test m4.optim_result.stats.gevals > 0
-            @test m5.optim_result.stats.gevals > 0
+            @show m2.optim_result.stats
+            @test !hasstats(m2) || m2.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals == 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
+            @test !hasstats(m5) || m5.optim_result.stats.gevals > 0
         end
 
         @testset "MLE with generic constraints" begin
@@ -322,10 +331,10 @@
             check_success(m4)
             check_success(m5)
 
-            @test m2.optim_result.stats.iterations <= 1
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
 
-            @test m3.optim_result.stats.gevals > 0
-            @test m4.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
 
             expected_error = ArgumentError(
                 "You must provide an initial value when using generic constraints."
@@ -374,10 +383,10 @@
             check_success(m4)
             check_success(m5)
 
-            @test m2.optim_result.stats.iterations <= 1
+            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
 
-            @test m3.optim_result.stats.gevals > 0
-            @test m4.optim_result.stats.gevals > 0
+            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
+            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
 
             expected_error = ArgumentError(
                 "You must provide an initial value when using generic constraints."
