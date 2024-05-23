@@ -1,54 +1,10 @@
-using AbstractMCMC
-using AdvancedMH
-using AdvancedPS
-using Clustering
-using Distributions
-using Distributions.FillArrays
-using DistributionsAD
-using FiniteDifferences
-using ForwardDiff
-using MCMCChains
-using NamedArrays
-using Optim
-using Optimization
-using OptimizationOptimJL
-using PDMats
-using ReverseDiff
-using SpecialFunctions
-using StatsBase
-using StatsFuns
-using HypothesisTests
-using Tracker
-using Turing
-using Turing.Inference
-using Turing.RandomMeasures
-using Zygote
-
-using LinearAlgebra
 using Pkg
-using Random
 using Test
-using StableRNGs
-
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
-using Distributions: Binomial, logpdf
-using DynamicPPL: getval, getlogp
-using ForwardDiff: Dual
-using MCMCChains: Chains
-using StatsFuns: binomlogpdf, logistic, logsumexp
 using TimerOutputs: TimerOutputs, @timeit
-using Turing: BinomialLogit, Sampler, SampleFromPrior, NUTS,
-                Variational, getspace
-using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
 
-import LogDensityProblems
-import LogDensityProblemsAD
+using Turing: Turing
 
-setprogress!(false)
-
-include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
+Turing.setprogress!(false)
 
 # Collect timing and allocations information to show in a clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()

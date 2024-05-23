@@ -1,5 +1,24 @@
+module AdTests
+
+using LinearAlgebra
+using Test: @testset, @test
+
+using ForwardDiff
+using ReverseDiff
+using Distributions: logpdf
+import LogDensityProblems
+import LogDensityProblemsAD
+using Zygote
+
+using Turing
+using DynamicPPL: getval, getlogp
+using Turing: SampleFromPrior
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/ad_utils.jl")
+
 @testset "ad.jl" begin
-    @turing_testset "adr" begin
+    @testset "adr" begin
         ad_test_f = gdemo_default
         vi = Turing.VarInfo(ad_test_f)
         ad_test_f(vi, SampleFromPrior())
@@ -50,7 +69,8 @@
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
         @test sort(∇E2) ≈ grad_FWAD atol = 1e-9
     end
-    @turing_testset "general AD tests" begin
+
+    @testset "general AD tests" begin
         # Tests gdemo gradient.
         function logp1(x::Vector)
             dist_s = InverseGamma(2, 3)
@@ -178,4 +198,6 @@
         @test ℓ == ℓ_compiled
         @test ℓ_grad == ℓ_grad_compiled
     end
+end
+
 end

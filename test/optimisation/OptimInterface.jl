@@ -1,3 +1,19 @@
+module OptimInterfaceTests
+
+using LinearAlgebra: I
+using Random: Random
+using Test: @testset, @test
+
+using Optim: Optim
+using Optim: optimize, NelderMead, LBFGS
+using StatsBase: StatsBase
+using StatsBase: vcov, coef, coeftable, coefnames, informationmatrix, stderror
+using Distributions.FillArrays: Zeros
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+
 # Used for testing how well it works with nested contexts.
 struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext
     context::C
@@ -22,7 +38,7 @@ function DynamicPPL.tilde_observe(context::OverrideContext, right, left, vi)
     return context.loglikelihood_weight, vi
 end
 
-@numerical_testset "OptimInterface.jl" begin
+@testset "OptimInterface.jl" begin
     @testset "MLE" begin
         Random.seed!(222)
         true_value = [0.0625, 1.75]
@@ -244,4 +260,6 @@ end
         result = optimize(model, MAP())
         @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
     end
+end
+
 end
