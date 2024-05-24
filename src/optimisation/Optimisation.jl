@@ -3,9 +3,9 @@ module Optimisation
 using ..Turing
 using NamedArrays: NamedArrays
 using DynamicPPL: DynamicPPL
-import LogDensityProblems: LogDensityProblems
-import LogDensityProblemsAD: LogDensityProblemsAD
-import Optimization: Optimization
+using LogDensityProblems: LogDensityProblems
+using LogDensityProblemsAD: LogDensityProblemsAD
+using Optimization: Optimization
 using OptimizationOptimJL: OptimizationOptimJL
 using Random: Random
 using SciMLBase: SciMLBase
