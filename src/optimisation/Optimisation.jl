@@ -372,7 +372,7 @@ end
         model::DynamicPPL.Model,
         estimator::ModeEstimator,
         [solver];
-        <keyword arguments>
+        kwargs...
     )
 
 Find the mode of the probability distribution of a model.
@@ -450,7 +450,7 @@ end
     maximum_a_posteriori(
         model::DynamicPPL.Model,
         [solver];
-        <keyword arguments>
+        kwargs...
     )
 
 Find the maximum a posteriori estimate of a model.
@@ -467,7 +467,7 @@ end
     maximum_likelihood(
         model::DynamicPPL.Model,
         [solver];
-        <keyword arguments>
+        kwargs...
     )
 
 Find the maximum likelihood estimate of a model.
