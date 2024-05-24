@@ -113,14 +113,20 @@ end
 
 """
     (f::OptimLogDensity)(z)
+    (f::OptimLogDensity)(z, _)
 
 Evaluate the negative log joint or log likelihood at the array `z`. Which one is evaluated
 depends on the context of `f`.
+
+Any second argument is ignored. The two-argument method only exists to match interface the
+required by Optimization.jl.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
     return -DynamicPPL.getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
+
+(f::OptimLogDensity)(z, _) = f(z)
 
 # NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
 LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector) = f(z)
@@ -349,15 +355,13 @@ Create an `OptimizationProblem` for the objective function defined by `log_densi
 function Optimization.OptimizationProblem(log_density::OptimLogDensity, adtype, constraints)
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it in the objective function as below.
-    f = Optimization.OptimizationFunction(
-        (x, _log_density) -> _log_density(x), adtype; cons=constraints.cons
-    )
+    f = Optimization.OptimizationFunction(log_density, adtype; cons=constraints.cons)
     initial_params = log_density.varinfo[:]
     prob = if !has_constraints(constraints)
-        Optimization.OptimizationProblem(f, initial_params, log_density)
+        Optimization.OptimizationProblem(f, initial_params)
     else
         Optimization.OptimizationProblem(
-            f, initial_params, log_density;
+            f, initial_params;
             lcons=constraints.lcons,
             ucons=constraints.ucons,
             lb=constraints.lb,
