@@ -6,9 +6,23 @@ using Turing: Turing
 
 Turing.setprogress!(false)
 
-# Collect timing and allocations information to show in a clear way.
+include("test_utils/SelectiveTests.jl")
+using .SelectiveTests: parse_args, isincluded
+
+included_paths, excluded_paths = parse_args(ARGS)
+
+# Filter which tests to run and collect timing and allocations information to show in a
+# clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
-macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
+macro timeit_include(path::AbstractString)
+    return quote
+        if isincluded($path, included_paths, excluded_paths)
+            @timeit TIMEROUTPUT $path include($path)
+        else
+            println("Skipping tests in $($path)")
+        end
+    end
+end
 
 @testset "Turing" begin
     @testset "essential" begin
