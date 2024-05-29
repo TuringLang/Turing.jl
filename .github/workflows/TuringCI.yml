@@ -1,4 +1,4 @@
-name: Turing-CI
+name: Tests
 
 on:
   push:
@@ -10,8 +10,18 @@ jobs:
   test:
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.version == 'nightly' }}
+
     strategy:
       matrix:
+        test-args:
+          # Run some of the slower test files individually. The last one catches everything
+          # not included in the others.
+          - "mcmc/gibbs.jl"
+          - "mcmc/hmc.jl"
+          - "mcmc/Inference.jl"
+          - "experimental/gibbs.jl"
+          - "mcmc/ess.jl"
+          - "--skip mcmc/gibbs.jl mcmc/hmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
         version:
           - '1.7'
           - '1'
@@ -33,15 +43,19 @@ jobs:
             num_threads: 2
           - version: '1.7'
             os: macOS-latest
-            arch: x64
+            arch: aarch64
             num_threads: 2
+
+    env:
+      DO_COVERAGE: ${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1 }}
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache@v1
+      - uses: actions/cache@v4
         env:
           cache-name: cache-artifacts
         with:
@@ -52,19 +66,16 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
-        with:
-          coverage: ${{ matrix.version == '1.6' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1 }}
-        env:
-          JULIA_NUM_THREADS: ${{ matrix.num_threads }}
+      - name: Call Pkg.test
+        run: julia --color=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; coverage=parse(Bool, "${{ env.DO_COVERAGE }}"); Pkg.test(; coverage=coverage)'
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1.7' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1
-      - uses: codecov/codecov-action@v1
-        if: matrix.version == '1.7' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1
+        if: env.DO_COVERAGE
+      - uses: codecov/codecov-action@v3
+        if: env.DO_COVERAGE
         with:
           file: lcov.info
       - uses: coverallsapp/github-action@master
-        if: matrix.version == '1.7' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 1
+        if: env.DO_COVERAGE
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: lcov.info
