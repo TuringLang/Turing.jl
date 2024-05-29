@@ -106,6 +106,7 @@ export  @model,                 # modelling
         AutoForwardDiff,        # ADTypes
         AutoReverseDiff,
         AutoZygote,
+        AutoEnzyme,
         AutoTracker,
         AutoTapir,
 
