@@ -27,6 +27,7 @@ end
 @testset "Turing" begin
     @testset "essential" begin
         @timeit_include("essential/ad.jl")
+        @timeit_include("essential/container.jl")
     end
 
     @testset "samplers (without AD)" begin
