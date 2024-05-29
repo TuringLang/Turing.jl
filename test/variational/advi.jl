@@ -1,5 +1,22 @@
+module AdvancedVITests
+
+using LinearAlgebra: I
+using Random: Random
+using Test: @testset, @test
+
+using AdvancedVI: AdvancedVI
+using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
+using Distributions: Dirichlet, Normal
+using MCMCChains: Chains
+
+using Turing
+using Turing.Essential: TuringDiagMvNormal
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "advi.jl" begin
-    @turing_testset "advi constructor" begin
+    @testset "advi constructor" begin
         Random.seed!(0)
         N = 500
 
@@ -7,7 +24,7 @@
         q = vi(gdemo_default, s1)
         c1 = rand(q, N)
     end
-    @numerical_testset "advi inference" begin
+    @testset "advi inference" begin
         @testset for opt in [TruncatedADAGrad(), DecayedADAGrad()]
             Random.seed!(1)
             N = 500
@@ -22,7 +39,7 @@
         end
     end
 
-    @turing_testset "advi different interfaces" begin
+    @testset "advi different interfaces" begin
         Random.seed!(1234)
 
         target = MvNormal(zeros(2), I)
@@ -50,7 +67,7 @@
 
     # regression test for:
     # https://github.com/TuringLang/Turing.jl/issues/2065
-    @turing_testset "simplex bijector" begin
+    @testset "simplex bijector" begin
         @model function dirichlet()
             x ~ Dirichlet([1.0,1.0])
             return x
@@ -72,7 +89,7 @@
     end
 
     # Ref: https://github.com/TuringLang/Turing.jl/issues/2205
-    @turing_testset "with `condition` (issue #2205)" begin
+    @testset "with `condition` (issue #2205)" begin
         @model function demo_issue2205()
             x ~ Normal()
             y ~ Normal(x, 1)
@@ -90,4 +107,6 @@
         @test mean_est ≈ mean_true atol=0.2
         @test var_est ≈ var_true atol=0.2
     end
+end
+
 end

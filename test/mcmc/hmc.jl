@@ -8,6 +8,8 @@ using Distributions: sample
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart
 using StableRNGs: StableRNG
 using StatsFuns: logistic
+using ReverseDiff: ReverseDiff
+using ForwardDiff: ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler

@@ -9,6 +9,8 @@ using Distributions: Bernoulli, Beta, Normal, InverseGamma
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler, getlogp
 using MCMCChains: MCMCChains
+using ReverseDiff: ReverseDiff
+using ForwardDiff: ForwardDiff
 
 using Turing
 

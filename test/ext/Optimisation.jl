@@ -1,3 +1,15 @@
+module OptimisationTests
+
+using Random: Random
+using Test: @testset, @test
+
+using Optimization
+using OptimizationOptimJL: optimize, NelderMead, LBFGS, Fminbox, BFGS
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+
 @testset "ext/Optimisation.jl" begin
     @testset "gdemo" begin
         @testset "MLE" begin
@@ -120,4 +132,6 @@
             @test all(isapprox.(p3.transform(m6.minimizer) - true_value, 0.0, atol=0.01))
         end
     end
+end
+
 end
