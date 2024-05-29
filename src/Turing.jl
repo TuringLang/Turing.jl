@@ -107,6 +107,7 @@ export  @model,                 # modelling
         AutoReverseDiff,
         AutoZygote,
         AutoTracker,
+        AutoTapir,
 
         setprogress!,           # debugging
 
