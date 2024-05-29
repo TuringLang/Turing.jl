@@ -1,3 +1,17 @@
+module MCMCUtilitiesTests
+
+using LinearAlgebra: I, vec
+using Test: @testset, @test
+using Random: Random
+using Random: MersenneTwister
+
+using Distributions: sample
+using Distributions: Normal, truncated
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+
 @testset "predict" begin
     Random.seed!(100)
 
@@ -137,4 +151,6 @@ end
     @test chain.info.start_time isa Float64
     @test chain.info.stop_time isa Float64
     @test chain.info.start_time ≤ chain.info.stop_time
+end
+
 end

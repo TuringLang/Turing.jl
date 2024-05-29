@@ -1,6 +1,20 @@
+module DistributionsTests
+
+using LinearAlgebra: I
+using Test: @testset, @test
+using Random: Random
+
+using Distributions
+using StatsFuns: logistic
+using StableRNGs: StableRNG
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "distributions.jl" begin
     rng = StableRNG(12345)
-    @turing_testset "distributions functions" begin
+    @testset "distributions functions" begin
         ns = 10
         logitp = randn(rng)
         d1 = BinomialLogit(ns, logitp)
@@ -9,7 +23,7 @@
         @test logpdf(d1, k) ≈ logpdf(d2, k)
     end
 
-    @turing_testset "distributions functions" begin
+    @testset "distributions functions" begin
         d = OrderedLogistic(-2, [-1, 1])
 
         n = 1_000_000
@@ -21,7 +35,7 @@
         @test all(((x, y),) -> abs(x - y) < 0.001, zip(p, pmf))
     end
 
-    @turing_testset "distributions functions" begin
+    @testset "distributions functions" begin
         λ = .01:.01:5
         LLp = @. logpdf(Poisson(λ),1)
         LLlp = @. logpdf(LogPoisson(log(λ)),1)
@@ -29,7 +43,7 @@
 
     end
 
-    @numerical_testset "single distribution correctness" begin
+    @testset "single distribution correctness" begin
         rng = StableRNG(1)
 
         n_samples = 10_000
@@ -99,7 +113,7 @@
             InverseWishart(7, [1.0 0.5; 0.5 1.0]),
         ]
 
-        @numerical_testset "Correctness test for single distributions" begin
+        @testset "Correctness test for single distributions" begin
             for (dist_set, dist_list) ∈ [
                 ("UnivariateDistribution",   dist_uni),
                 ("MultivariateDistribution", dist_multi),
@@ -126,4 +140,6 @@
             end
         end
     end
+end
+
 end

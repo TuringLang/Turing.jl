@@ -1,3 +1,18 @@
+module AbstractMCMCTests
+
+using LinearAlgebra: I
+using Test: @testset, @test, @test_throws
+using Random: Random
+
+using Distributions: sample
+using Distributions.FillArrays: Zeros
+using StableRNGs: StableRNG
+using LogDensityProblems: LogDensityProblems
+using LogDensityProblemsAD: LogDensityProblemsAD
+using AdvancedMH: AdvancedMH
+using DynamicPPL: DynamicPPL
+
+using Turing
 using Turing.Inference: AdvancedHMC
 
 function initialize_nuts(model::Turing.Model)
@@ -83,7 +98,7 @@ function test_initial_params(model, sampler, initial_params=DynamicPPL.VarInfo(m
 end
 
 @testset "External samplers" begin
-    @turing_testset "AdvancedHMC.jl" begin
+    @testset "AdvancedHMC.jl" begin
         # Try a few different AD backends.
         @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
@@ -135,7 +150,7 @@ end
         end
     end
 
-    @turing_testset "AdvancedMH.jl" begin
+    @testset "AdvancedMH.jl" begin
         @testset "RWMH" begin
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
@@ -180,4 +195,6 @@ end
         #     end
         # end
     end
+end
+
 end

@@ -1,3 +1,20 @@
+module InferenceTests
+
+using LinearAlgebra: I
+using Test: @testset, @test, @test_throws
+using Random: Random
+
+using Distributions: sample
+using Distributions: Bernoulli, Beta, Normal, InverseGamma
+using DynamicPPL: DynamicPPL
+using DynamicPPL: Sampler, getlogp
+using MCMCChains: MCMCChains
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
@@ -543,4 +560,6 @@
         @test all(xs[:, 1] .=== [1, missing, 3])
         @test all(xs[:, 2] .=== [missing, 2, 4])
     end
+end
+
 end

@@ -1,3 +1,17 @@
+module ESSTests
+
+using Test: @testset, @test
+using Distributions: Normal
+using Distributions: sample
+using Random: Random
+using DynamicPPL: DynamicPPL
+using DynamicPPL: Sampler
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "ESS" begin
     @model function demo(x)
         m ~ Normal()
@@ -12,7 +26,7 @@
     end
     demodot_default = demodot(1.0)
 
-    @turing_testset "ESS constructor" begin
+    @testset "ESS constructor" begin
         Random.seed!(0)
         N = 500
 
@@ -31,7 +45,7 @@
         c5 = sample(gdemo_default, s3, N)
     end
 
-    @numerical_testset "ESS inference" begin
+    @testset "ESS inference" begin
         Random.seed!(1)
         chain = sample(demo_default, ESS(), 5_000)
         check_numerical(chain, [:m], [0.8], atol = 0.1)
@@ -70,4 +84,6 @@
             varnames_filter=vn -> DynamicPPL.getsym(vn) != :s
         )
     end
+end
+
 end

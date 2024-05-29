@@ -1,5 +1,19 @@
+module GibbsTests
+
+using Test: @testset, @test
+using Distributions: InverseGamma, Normal
+using Distributions: sample
+using Random: Random
+
+using Turing
+using Turing: Inference
+using Turing.RandomMeasures: DirichletProcess, ChineseRestaurantProcess
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "Testing gibbs.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
-    @turing_testset "gibbs constructor" begin
+    @testset "gibbs constructor" begin
         N = 500
         s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
         s2 = Gibbs(PG(10, :s, :m))
@@ -30,7 +44,7 @@
         # it should return a Chains object
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
-    @numerical_testset "gibbs inference" begin
+    @testset "gibbs inference" begin
         Random.seed!(100)
         alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m; adtype=adbackend))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
@@ -65,7 +79,7 @@
         end
     end
 
-    @turing_testset "transitions" begin
+    @testset "transitions" begin
         @model function gdemo_copy()
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -96,7 +110,7 @@
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m; adtype=adbackend))
         sample(model, alg, 100; callback = callback)
     end
-    @turing_testset "dynamic model" begin
+    @testset "dynamic model" begin
         @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
@@ -121,4 +135,6 @@
         # sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m; adtype=adbackend)), 100)
     end
+end
+
 end

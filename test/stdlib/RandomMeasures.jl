@@ -1,3 +1,14 @@
+module RandomMeasuresTests
+
+using Test: @testset, @test
+using Random: Random
+
+using Distributions: sample
+using Distributions: Normal
+
+using Turing
+using Turing.RandomMeasures: DirichletProcess, ChineseRestaurantProcess
+
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin
         @model function infiniteGMM(x)
@@ -380,4 +391,6 @@
     #     @test l2 < 0.05
     #     @test discr < 0.2
     # end
+end
+
 end

@@ -1,4 +1,14 @@
-using Test, Random, Turing, DynamicPPL
+module ExperimentalGibbsTests
+
+using Random
+using Test
+
+using DynamicPPL
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
@@ -186,4 +196,6 @@ end
         chain = sample(model, alg, 1000; progress=true)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
+end
+
 end

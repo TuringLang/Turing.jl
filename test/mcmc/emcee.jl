@@ -1,3 +1,16 @@
+module EmceeTests
+
+using Test: @testset, @test, @test_throws
+using Random: Random
+using DynamicPPL: DynamicPPL
+using DynamicPPL: Sampler
+using Distributions: sample
+
+using Turing
+
+include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+
 @testset "emcee.jl" begin
     @testset "gdemo" begin
         Random.seed!(9876)
@@ -40,4 +53,6 @@
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
     end
+end
+
 end
