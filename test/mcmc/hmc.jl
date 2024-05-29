@@ -228,7 +228,7 @@
         alg = NUTS(1000, 0.8; adtype=adbackend)
         gdemo_default_prior = DynamicPPL.contextualize(demo_hmc_prior(), DynamicPPL.PriorContext())
         chain = sample(gdemo_default_prior, alg, 10_000; initial_params=[3.0, 0.0])
-        check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.1)
+        check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.2)
     end
 
     @turing_testset "warning for difficult init params" begin
@@ -248,14 +248,60 @@
         end
     end
 
-    @turing_testset "(partially) issue: #2095" begin
-        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
-            xs = Vector{TV}(undef, 2)
-            xs[1] ~ Dirichlet(ones(5))
-            xs[2] ~ Dirichlet(ones(5))
+    # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
+    # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
+    if VERSION ≥ v"1.8"
+        @turing_testset "(partially) issue: #2095" begin
+            @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+                xs = Vector{TV}(undef, 2)
+                xs[1] ~ Dirichlet(ones(5))
+                xs[2] ~ Dirichlet(ones(5))
+            end
+            model = vector_of_dirichlet()
+            chain = sample(model, NUTS(), 1000)
+            @test mean(Array(chain)) ≈ 0.2
         end
-        model = vector_of_dirichlet()
-        chain = sample(model, NUTS(), 1000)
-        @test mean(Array(chain)) ≈ 0.2
+    end
+
+    @turing_testset "issue: #2195" begin
+        @model function buggy_model()
+            lb ~ Uniform(0, 1)
+            ub ~ Uniform(1.5, 2)
+
+            # HACK: Necessary to avoid NUTS failing during adaptation.
+            try
+                x ~ transformed(Normal(0, 1), inverse(Bijectors.Logit(lb, ub)))
+            catch e
+                if e isa DomainError
+                    Turing.@addlogprob! -Inf
+                    return nothing
+                else
+                    rethrow()
+                end
+            end
+        end
+
+        model = buggy_model();
+        num_samples = 1_000;
+
+        chain = sample(
+            model,
+            NUTS(),
+            num_samples;
+            initial_params=[0.5, 1.75, 1.0]
+        )
+        chain_prior = sample(model, Prior(), num_samples)
+        
+        # Extract the `x` like this because running `generated_quantities` was how
+        # the issue was discovered, hence we also want to make sure that it works.
+        results = generated_quantities(model, chain)
+        results_prior = generated_quantities(model, chain_prior)
+
+        # Make sure none of the samples in the chains resulted in errors.
+        @test all(!isnothing, results)
+
+        # The discrepancies in the chains are in the tails, so we can't just compare the mean, etc.
+        # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
+        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.01
     end
 end

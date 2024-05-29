@@ -11,12 +11,18 @@ using DynamicPPL: DynamicPPL, LogDensityFunction
 import DynamicPPL: getspace, NoDist, NamedDist
 import LogDensityProblems
 import NamedArrays
-import Setfield
+import Accessors
 import StatsAPI
 import StatsBase
 
+using Accessors: Accessors
+
 import Printf
 import Random
+
+using ADTypes: ADTypes
+
+const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
 const PROGRESS = Ref(true)
 
@@ -48,14 +54,17 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+include("experimental/Experimental.jl")
 include("deprecated.jl") # to be removed in the next minor version release
 
 ###########
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint, condition, decondition, fix, unfix, conditioned
 using StatsBase: predict
+using Bijectors: ordered
+using OrderedCollections: OrderedDict
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
@@ -98,6 +107,7 @@ export  @model,                 # modelling
         AutoReverseDiff,
         AutoZygote,
         AutoTracker,
+        AutoTapir,
 
         setprogress!,           # debugging
 
@@ -107,10 +117,10 @@ export  @model,                 # modelling
         BernoulliLogit,         # Part of Distributions >= 0.25.77
         OrderedLogistic,
         LogPoisson,
-        NamedDist,
         filldist,
         arraydist,
 
+        NamedDist,              # Exports from DynamicPPL
         predict,
         pointwise_loglikelihoods,
         elementwise_loglikelihoods,
@@ -118,6 +128,15 @@ export  @model,                 # modelling
         logprior,
         logjoint,
         LogDensityFunction,
+
+        condition,
+        decondition,
+        fix,
+        unfix,
+        conditioned,
+        OrderedDict,
+
+        ordered,                # Exports from Bijectors
 
         constrained_space,            # optimisation interface
         MAP,

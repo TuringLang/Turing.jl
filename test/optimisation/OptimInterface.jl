@@ -224,5 +224,24 @@ end
             ctx = Turing.OptimizationContext(DynamicPPL.DefaultContext())
             @test Turing.OptimLogDensity(m1, ctx)(w) == Turing.OptimLogDensity(m2, ctx)(w)
         end
+
+        @testset "with :=" begin
+            @model function demo_track()
+                x ~ Normal()
+                y := 100 + x
+            end
+            model = demo_track()
+            result = optimize(model, MAP())
+            @test result.values[:x] ≈ 0 atol=1e-1
+            @test result.values[:y] ≈ 100 atol=1e-1
+        end
+    end
+
+    # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910
+    @testset "with different linked dimensionality" begin
+        @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
+        model = demo_dirichlet()
+        result = optimize(model, MAP())
+        @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
     end
 end

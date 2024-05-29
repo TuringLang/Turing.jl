@@ -10,7 +10,7 @@
 
 Turing's home page, with links to everything you'll need to use Turing, is available at:
 
-https://turinglang.org/dev/docs/using-turing/get-started
+https://turinglang.org/docs/
 
 
 ## What's changed recently?

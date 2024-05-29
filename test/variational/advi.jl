@@ -70,4 +70,24 @@
         x = rand(q, 1000)
         @test mean(eachcol(x)) ≈ [0.5, 0.5] atol=0.1
     end
+
+    # Ref: https://github.com/TuringLang/Turing.jl/issues/2205
+    @turing_testset "with `condition` (issue #2205)" begin
+        @model function demo_issue2205()
+            x ~ Normal()
+            y ~ Normal(x, 1)
+        end
+
+        model = demo_issue2205() | (y = 1.0,)
+        q = vi(model, ADVI(10, 1000))
+        # True mean.
+        mean_true = 1 / 2
+        var_true = 1 / 2
+        # Check the mean and variance of the posterior.
+        samples = rand(q, 1000)
+        mean_est = mean(samples)
+        var_est = var(samples)
+        @test mean_est ≈ mean_true atol=0.2
+        @test var_est ≈ var_true atol=0.2
+    end
 end
