@@ -39,9 +39,9 @@ jobs:
           # With Windows and macOS, only run Julia 1.7, x64, 2 threads. We just want to see
           # some combination work on OSes other than Ubuntu.
           - os: windows-latest
-            version: '1.0'
+            version: '1'
           - os: macOS-latest
-            version: '1.0'
+            version: '1'
           - os: windows-latest
             arch: x86
           - os: macOS-latest
@@ -51,7 +51,7 @@ jobs:
           - os: macOS-latest
             num_threads: 1
           # It's sufficient to test x86 with one version of Julia and one thread.
-          - version: '1.0'
+          - version: '1'
             arch: x86
           - num_threads: 2
             arch: x86
