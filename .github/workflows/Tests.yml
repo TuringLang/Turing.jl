@@ -74,4 +74,4 @@ jobs:
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@latest
       - name: Call Pkg.test
-        run: julia --color=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; test_args="${{ matrix.test-args }}")'
+        run: julia --color=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; test_args=ARGS)' -- ${{ matrix.test-args }}
