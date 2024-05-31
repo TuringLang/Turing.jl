@@ -8,7 +8,7 @@ using OptimizationOptimJL: optimize, NelderMead, LBFGS, Fminbox, BFGS
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "ext/Optimisation.jl" begin
     @testset "gdemo" begin

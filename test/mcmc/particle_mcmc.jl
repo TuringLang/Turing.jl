@@ -9,7 +9,7 @@ using DynamicPPL: getspace
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "SMC" begin
     @testset "constructor" begin

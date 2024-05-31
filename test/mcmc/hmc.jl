@@ -16,8 +16,8 @@ using DynamicPPL: Sampler
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Set a seed

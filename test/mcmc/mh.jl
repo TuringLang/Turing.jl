@@ -14,9 +14,9 @@ using DynamicPPL: Sampler
 using Turing
 using Turing.Inference: Inference
 
-include(pkgdir(Turing)*"/test/test_utils/testing_functions.jl")
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/testing_functions.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "mh.jl" begin
     @testset "mh constructor" begin

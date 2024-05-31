@@ -14,8 +14,8 @@ using Turing
 using DynamicPPL: getval, getlogp
 using Turing: SampleFromPrior
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/ad_utils.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
 
 @testset "ad.jl" begin
     @testset "adr" begin

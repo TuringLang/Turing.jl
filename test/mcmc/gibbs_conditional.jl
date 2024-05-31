@@ -13,8 +13,8 @@ using StableRNGs: StableRNG
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     Random.seed!(1000); rng = StableRNG(123)

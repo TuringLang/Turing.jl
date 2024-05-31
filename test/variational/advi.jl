@@ -12,8 +12,8 @@ using MCMCChains: Chains
 using Turing
 using Turing.Essential: TuringDiagMvNormal
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "advi.jl" begin
     @testset "advi constructor" begin

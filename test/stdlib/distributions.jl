@@ -10,7 +10,7 @@ using StableRNGs: StableRNG
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "distributions.jl" begin
     rng = StableRNG(12345)

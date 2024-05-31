@@ -11,8 +11,8 @@ using Turing
 using Turing: Inference
 using Turing.RandomMeasures: DirichletProcess, ChineseRestaurantProcess
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     @testset "gibbs constructor" begin

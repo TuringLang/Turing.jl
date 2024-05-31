@@ -2,13 +2,12 @@ module ExperimentalGibbsTests
 
 using Random
 using Test
-
 using DynamicPPL
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
-include(pkgdir(Turing)*"/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,

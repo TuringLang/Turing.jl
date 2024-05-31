@@ -12,7 +12,7 @@ using Distributions.FillArrays: Zeros
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 # Used for testing how well it works with nested contexts.
 struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext

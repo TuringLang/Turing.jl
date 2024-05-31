@@ -9,7 +9,6 @@ using DynamicPPL: logpdf
 
 using Turing
 
-
 @testset "is.jl" begin
     function reference(n)
         as = Vector{Float64}(undef, n)

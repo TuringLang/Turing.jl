@@ -10,7 +10,7 @@ using Distributions: Normal, truncated
 
 using Turing
 
-include(pkgdir(Turing)*"/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "predict" begin
     Random.seed!(100)
