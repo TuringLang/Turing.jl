@@ -16,12 +16,14 @@ jobs:
         test-args:
           # Run some of the slower test files individually. The last one catches everything
           # not included in the others.
+          - "essential/ad.jl"
           - "mcmc/gibbs.jl"
           - "mcmc/hmc.jl"
+          - "mcmc/abstractmcmc.jl"
           - "mcmc/Inference.jl"
           - "experimental/gibbs.jl"
           - "mcmc/ess.jl"
-          - "--skip mcmc/gibbs.jl mcmc/hmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
+          - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
         version:
           - '1.7'
           - '1'
