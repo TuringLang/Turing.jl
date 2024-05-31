@@ -2,9 +2,9 @@ module GibbsTests
 
 using Distributions: InverseGamma, Normal
 using Distributions: sample
-using ForwardDiff: ForwardDiff
-using Random: Random
-using ReverseDiff: ReverseDiff
+import ForwardDiff
+import Random
+import ReverseDiff
 using Test: @test, @testset
 using Turing
 using Turing: Inference

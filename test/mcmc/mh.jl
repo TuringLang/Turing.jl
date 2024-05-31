@@ -1,12 +1,12 @@
 module MHTests
 
-using AdvancedMH: AdvancedMH
+import AdvancedMH
 using Distributions: Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal,
     Normal, sample
-using DynamicPPL: DynamicPPL
+import DynamicPPL
 using DynamicPPL: Sampler
 using LinearAlgebra: I
-using Random: Random
+import Random
 using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing

@@ -1,6 +1,6 @@
 module OptimisationTests
 
-using Random: Random
+import Random
 using Optimization
 using OptimizationOptimJL: BFGS, Fminbox, LBFGS, NelderMead, optimize
 using Test: @test, @testset

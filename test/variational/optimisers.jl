@@ -1,8 +1,8 @@
 module VariationalOptimisersTests
 
 using AdvancedVI: DecayedADAGrad, TruncatedADAGrad, apply!
-using ForwardDiff: ForwardDiff
-using ReverseDiff: ReverseDiff
+import ForwardDiff
+import ReverseDiff
 using Test: @test, @testset
 using Turing
 

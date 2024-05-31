@@ -1,11 +1,11 @@
 module AdvancedVITests
 
-using AdvancedVI: AdvancedVI
+import AdvancedVI
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
 using Distributions: Dirichlet, Normal
 using LinearAlgebra: I
 using MCMCChains: Chains
-using Random: Random
+import Random
 using Test: @test, @testset
 using Turing
 using Turing.Essential: TuringDiagMvNormal

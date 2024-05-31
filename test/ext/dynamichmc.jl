@@ -2,10 +2,10 @@ module DynamicHMCTests
 
 using Test: @test, @testset
 using Distributions: sample
-using DynamicHMC: DynamicHMC
-using DynamicPPL: DynamicPPL
+import DynamicHMC
+import DynamicPPL
 using DynamicPPL: Sampler
-using Random: Random
+import Random
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

@@ -1,6 +1,6 @@
 module ContainerTests
 
-using AdvancedPS: AdvancedPS
+import AdvancedPS
 using Distributions: Bernoulli, Beta, Gamma, Normal
 using DynamicPPL: @model, Sampler
 using Test: @test, @testset

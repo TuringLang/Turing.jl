@@ -3,7 +3,7 @@ module ParticleMCMCTests
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using DynamicPPL: getspace
-using Random: Random
+import Random
 using Test: @test, @test_throws, @testset
 using Turing
 

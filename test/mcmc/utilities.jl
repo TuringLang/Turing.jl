@@ -2,7 +2,7 @@ module MCMCUtilitiesTests
 
 using Distributions: Normal, sample, truncated
 using LinearAlgebra: I, vec
-using Random: Random
+import Random
 using Random: MersenneTwister
 using Test: @test, @testset
 using Turing

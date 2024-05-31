@@ -2,7 +2,7 @@ module ISTests
 
 using Distributions: Normal, sample
 using DynamicPPL: logpdf
-using Random: Random
+import Random
 using StatsFuns: logsumexp
 using Test: @test, @testset
 using Turing

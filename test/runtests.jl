@@ -3,7 +3,7 @@ using .SelectiveTests: isincluded, parse_args
 using Pkg
 using Test
 using TimerOutputs: TimerOutputs, @timeit
-using Turing: Turing
+import Turing
 
 Turing.setprogress!(false)
 

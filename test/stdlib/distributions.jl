@@ -2,7 +2,7 @@ module DistributionsTests
 
 using Distributions
 using LinearAlgebra: I
-using Random: Random
+import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 using Test: @testset, @test

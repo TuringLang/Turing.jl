@@ -1,7 +1,7 @@
 module RandomMeasuresTests
 
 using Distributions: Normal, sample
-using Random: Random
+import Random
 using Test: @test, @testset
 using Turing
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess

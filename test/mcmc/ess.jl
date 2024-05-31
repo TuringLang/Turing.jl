@@ -1,9 +1,9 @@
 module ESSTests
 
 using Distributions: Normal, sample
-using DynamicPPL: DynamicPPL
+import DynamicPPL
 using DynamicPPL: Sampler
-using Random: Random
+import Random
 using Test: @test, @testset
 using Turing
 

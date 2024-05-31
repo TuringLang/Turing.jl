@@ -1,12 +1,12 @@
 module GibbsConditionalTests
 
-using Clustering: Clustering
+import Clustering
 using Distributions: Categorical, InverseGamma, Normal, sample
 using LinearAlgebra: Diagonal, I
-using Random: Random
+import Random
 using StableRNGs: StableRNG
 using StatsBase: counts
-using StatsFuns: StatsFuns
+import StatsFuns
 using Test: @test, @testset
 using Turing
 

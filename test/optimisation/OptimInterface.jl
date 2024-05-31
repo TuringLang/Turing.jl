@@ -2,10 +2,10 @@ module OptimInterfaceTests
 
 using Distributions.FillArrays: Zeros
 using LinearAlgebra: I
-using Optim: Optim
+import Optim
 using Optim: NelderMead, LBFGS, optimize
-using Random: Random
-using StatsBase: StatsBase
+import Random
+import StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
 using Test: @test, @testset
 using Turing

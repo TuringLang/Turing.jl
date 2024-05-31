@@ -1,13 +1,13 @@
 module HMCTests
 
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-using DynamicPPL: DynamicPPL
+import DynamicPPL
 using DynamicPPL: Sampler
-using ForwardDiff: ForwardDiff
+import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
-using ReverseDiff: ReverseDiff
+import ReverseDiff
 using LinearAlgebra: I, dot, vec
-using Random: Random
+import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 using Test: @test, @test_logs, @testset

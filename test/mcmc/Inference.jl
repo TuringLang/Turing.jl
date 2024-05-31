@@ -2,13 +2,13 @@ module InferenceTests
 
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
-using DynamicPPL: DynamicPPL
+import DynamicPPL
 using DynamicPPL: Sampler, getlogp
-using ForwardDiff: ForwardDiff
+import ForwardDiff
 using LinearAlgebra: I
-using MCMCChains: MCMCChains
-using Random: Random
-using ReverseDiff: ReverseDiff
+import MCMCChains
+import Random
+import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
 

@@ -1,9 +1,9 @@
 module EmceeTests
 
 using Distributions: sample
-using DynamicPPL: DynamicPPL
+import DynamicPPL
 using DynamicPPL: Sampler
-using Random: Random
+import Random
 using Test: @test, @test_throws, @testset
 using Turing
 
