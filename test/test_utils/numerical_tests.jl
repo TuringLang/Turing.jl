@@ -1,6 +1,7 @@
 module NumericalTests
 
 using Distributions
+using MCMCChains: namesingroup
 using Test: @test, @testset
 
 export check_MoGtest_default, check_MoGtest_default_z_vector, check_dist_numerical,
