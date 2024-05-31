@@ -13,7 +13,45 @@ using Turing: SampleFromPrior
 using Zygote
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
+
+function test_model_ad(model, f, syms::Vector{Symbol})
+    # Set up VI.
+    vi = Turing.VarInfo(model)
+
+    # Collect symbols.
+    vnms = Vector(undef, length(syms))
+    vnvals = Vector{Float64}()
+    for i in 1:length(syms)
+        s = syms[i]
+        vnms[i] = getfield(vi.metadata, s).vns[1]
+
+        vals = getval(vi, vnms[i])
+        for i in eachindex(vals)
+            push!(vnvals, vals[i])
+        end
+    end
+
+    # Compute primal.
+    x = vec(vnvals)
+    logp = f(x)
+
+    # Call ForwardDiff's AD directly.
+    grad_FWAD = sort(ForwardDiff.gradient(f, x))
+
+    # Compare with `logdensity_and_gradient`.
+    z = vi[SampleFromPrior()]
+    for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
+        ℓ = LogDensityProblemsAD.ADgradient(
+            Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag),
+            Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()),
+        )
+        l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
+
+        # Compare result
+        @test l ≈ logp
+        @test sort(∇E) ≈ grad_FWAD atol = 1e-9
+    end
+end
 
 @testset "ad.jl" begin
     @testset "adr" begin
