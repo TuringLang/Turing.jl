@@ -1,12 +1,12 @@
 module ExperimentalGibbsTests
 
+using ..Models: MoGtest_default, MoGtest_default_z_vector, gdemo
+using ..NumericalTests: check_MoGtest_default, check_MoGtest_default_z_vector, check_gdemo,
+    check_numerical
 using DynamicPPL
 using Random
 using Test
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,

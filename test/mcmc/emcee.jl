@@ -1,14 +1,13 @@
 module EmceeTests
 
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
 using Distributions: sample
 import DynamicPPL
 using DynamicPPL: Sampler
 import Random
 using Test: @test, @test_throws, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "emcee.jl" begin
     @testset "gdemo" begin

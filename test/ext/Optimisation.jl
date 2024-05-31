@@ -1,12 +1,11 @@
 module OptimisationTests
 
+using ..Models: gdemo, gdemo_default
 import Random
 using Optimization
 using OptimizationOptimJL: BFGS, Fminbox, LBFGS, NelderMead, optimize
 using Test: @test, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "ext/Optimisation.jl" begin
     @testset "gdemo" begin

@@ -1,5 +1,8 @@
 module HMCTests
 
+using ..Models: gdemo_default
+#using ..Models: gdemo
+using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
@@ -12,9 +15,6 @@ using StableRNGs: StableRNG
 using StatsFuns: logistic
 using Test: @test, @test_logs, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Set a seed

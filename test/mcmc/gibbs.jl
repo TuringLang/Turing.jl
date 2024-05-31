@@ -1,5 +1,7 @@
 module GibbsTests
 
+using ..Models: MoGtest_default, gdemo, gdemo_default
+using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 import ForwardDiff
@@ -9,9 +11,6 @@ using Test: @test, @testset
 using Turing
 using Turing: Inference
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     @testset "gibbs constructor" begin

@@ -1,5 +1,7 @@
 module AdvancedVITests
 
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
 import AdvancedVI
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
 using Distributions: Dirichlet, Normal
@@ -9,9 +11,6 @@ import Random
 using Test: @test, @testset
 using Turing
 using Turing.Essential: TuringDiagMvNormal
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "advi.jl" begin
     @testset "advi constructor" begin

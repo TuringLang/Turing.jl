@@ -1,5 +1,7 @@
 module DynamicHMCTests
 
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
 using Test: @test, @testset
 using Distributions: sample
 import DynamicHMC
@@ -7,9 +9,6 @@ import DynamicPPL
 using DynamicPPL: Sampler
 import Random
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "TuringDynamicHMCExt" begin
     Random.seed!(100)

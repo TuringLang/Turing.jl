@@ -1,5 +1,6 @@
 module DistributionsTests
 
+using ..NumericalTests: check_dist_numerical
 using Distributions
 using LinearAlgebra: I
 import Random
@@ -7,8 +8,6 @@ using StableRNGs: StableRNG
 using StatsFuns: logistic
 using Test: @testset, @test
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "distributions.jl" begin
     rng = StableRNG(12345)

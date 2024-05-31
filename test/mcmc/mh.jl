@@ -12,8 +12,8 @@ using Test: @test, @testset
 using Turing
 using Turing.Inference: Inference
 
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
+using ..Models: gdemo_default, MoGtest_default
+using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
 

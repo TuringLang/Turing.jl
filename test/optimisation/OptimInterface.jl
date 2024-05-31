@@ -1,5 +1,6 @@
 module OptimInterfaceTests
 
+using ..Models: gdemo_default
 using Distributions.FillArrays: Zeros
 using LinearAlgebra: I
 import Optim
@@ -9,8 +10,6 @@ import StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
 using Test: @test, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 # Used for testing how well it works with nested contexts.
 struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext

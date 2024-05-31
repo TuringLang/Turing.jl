@@ -1,14 +1,13 @@
 module ESSTests
 
+using ..Models: MoGtest, MoGtest_default, gdemo, gdemo_default
+using ..NumericalTests: check_MoGtest_default, check_numerical
 using Distributions: Normal, sample
 import DynamicPPL
 using DynamicPPL: Sampler
 import Random
 using Test: @test, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "ESS" begin
     @model function demo(x)

@@ -1,13 +1,13 @@
 module ParticleMCMCTests
 
+using ..Models: gdemo_default
+#using ..Models: MoGtest, MoGtest_default
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using DynamicPPL: getspace
 import Random
 using Test: @test, @test_throws, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "SMC" begin
     @testset "constructor" begin

@@ -5,6 +5,9 @@ using Test
 using TimerOutputs: TimerOutputs, @timeit
 import Turing
 
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
+
 Turing.setprogress!(false)
 
 included_paths, excluded_paths = parse_args(ARGS)

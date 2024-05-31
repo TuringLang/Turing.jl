@@ -6,9 +6,6 @@ import ReverseDiff
 using Test: @test, @testset
 using Turing
 
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
-
 function test_opt(ADPack, opt)
     θ = randn(10, 10)
     θ_fit = randn(10, 10)

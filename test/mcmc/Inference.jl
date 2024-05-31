@@ -1,5 +1,7 @@
 module InferenceTests
 
+using ..Models: gdemo_d, gdemo_default
+using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
@@ -11,9 +13,6 @@ import Random
 import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Only test threading if 1.3+.

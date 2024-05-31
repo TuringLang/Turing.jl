@@ -1,5 +1,7 @@
 module SGHMCTests
 
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
 using Distributions: sample
 import ForwardDiff
 using LinearAlgebra: dot
@@ -7,9 +9,6 @@ import ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
 @testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     @testset "sghmc constructor" begin

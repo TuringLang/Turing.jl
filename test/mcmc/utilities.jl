@@ -1,13 +1,12 @@
 module MCMCUtilitiesTests
 
+using ..Models: gdemo_default
 using Distributions: Normal, sample, truncated
 using LinearAlgebra: I, vec
 import Random
 using Random: MersenneTwister
 using Test: @test, @testset
 using Turing
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 @testset "predict" begin
     Random.seed!(100)

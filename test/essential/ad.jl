@@ -1,5 +1,6 @@
 module AdTests
 
+using ..Models: gdemo_default
 using Distributions: logpdf
 using DynamicPPL: getlogp, getval
 using ForwardDiff
@@ -11,8 +12,6 @@ using Test: @test, @testset
 using Turing
 using Turing: SampleFromPrior
 using Zygote
-
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
 
 function test_model_ad(model, f, syms::Vector{Symbol})
     # Set up VI.
