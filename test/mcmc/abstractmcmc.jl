@@ -4,10 +4,12 @@ import AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
 import DynamicPPL
+import ForwardDiff
 using LinearAlgebra: I
 import LogDensityProblems
 import LogDensityProblemsAD
 import Random
+import ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
