@@ -2,8 +2,10 @@ module GibbsConditionalTests
 
 import Clustering
 using Distributions: Categorical, InverseGamma, Normal, sample
+import ForwardDiff
 using LinearAlgebra: Diagonal, I
 import Random
+import ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: counts
 import StatsFuns

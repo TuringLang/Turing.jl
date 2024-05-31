@@ -1,7 +1,9 @@
 module SGHMCTests
 
 using Distributions: sample
+import ForwardDiff
 using LinearAlgebra: dot
+import ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
