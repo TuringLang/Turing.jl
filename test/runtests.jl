@@ -1,13 +1,11 @@
+include("test_utils/SelectiveTests.jl")
+using .SelectiveTests: isincluded, parse_args
 using Pkg
 using Test
 using TimerOutputs: TimerOutputs, @timeit
-
 using Turing: Turing
 
 Turing.setprogress!(false)
-
-include("test_utils/SelectiveTests.jl")
-using .SelectiveTests: parse_args, isincluded
 
 included_paths, excluded_paths = parse_args(ARGS)
 

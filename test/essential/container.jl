@@ -1,11 +1,9 @@
 module ContainerTests
 
-using Test: @test, @testset
-
 using AdvancedPS: AdvancedPS
-using Distributions: Normal, Bernoulli, Gamma, Beta
+using Distributions: Bernoulli, Beta, Gamma, Normal
 using DynamicPPL: @model, Sampler
-
+using Test: @test, @testset
 using Turing
 
 @testset "container.jl" begin

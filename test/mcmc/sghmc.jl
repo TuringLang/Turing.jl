@@ -1,11 +1,9 @@
 module SGHMCTests
 
-using Test: @testset, @test
-using LinearAlgebra: dot
-
 using Distributions: sample
+using LinearAlgebra: dot
 using StableRNGs: StableRNG
-
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

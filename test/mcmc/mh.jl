@@ -1,16 +1,14 @@
 module MHTests
 
-using LinearAlgebra: I
-using Test: @testset, @test
-using Random: Random
-
-using Distributions: InverseGamma, Normal, MvNormal, Dirichlet, Exponential, LogNormal, Bernoulli
-using Distributions: sample
-using StableRNGs: StableRNG
 using AdvancedMH: AdvancedMH
+using Distributions: Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal,
+    Normal, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-
+using LinearAlgebra: I
+using Random: Random
+using StableRNGs: StableRNG
+using Test: @test, @testset
 using Turing
 using Turing.Inference: Inference
 

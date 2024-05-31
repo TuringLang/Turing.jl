@@ -1,12 +1,10 @@
 module ISTests
 
-using Test: @testset, @test
-using Distributions: Normal
-using Distributions: sample
+using Distributions: Normal, sample
+using DynamicPPL: logpdf
 using Random: Random
 using StatsFuns: logsumexp
-using DynamicPPL: logpdf
-
+using Test: @test, @testset
 using Turing
 
 @testset "is.jl" begin

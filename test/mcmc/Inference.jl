@@ -1,17 +1,15 @@
 module InferenceTests
 
-using LinearAlgebra: I
-using Test: @testset, @test, @test_throws
-using Random: Random
-
+using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
-using Distributions: Bernoulli, Beta, Normal, InverseGamma
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler, getlogp
-using MCMCChains: MCMCChains
-using ReverseDiff: ReverseDiff
 using ForwardDiff: ForwardDiff
-
+using LinearAlgebra: I
+using MCMCChains: MCMCChains
+using Random: Random
+using ReverseDiff: ReverseDiff
+using Test: @test, @test_throws, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

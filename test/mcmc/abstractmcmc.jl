@@ -1,17 +1,15 @@
 module AbstractMCMCTests
 
-using LinearAlgebra: I
-using Test: @testset, @test, @test_throws
-using Random: Random
-
+using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
-using StableRNGs: StableRNG
+using DynamicPPL: DynamicPPL
+using LinearAlgebra: I
 using LogDensityProblems: LogDensityProblems
 using LogDensityProblemsAD: LogDensityProblemsAD
-using AdvancedMH: AdvancedMH
-using DynamicPPL: DynamicPPL
-
+using Random: Random
+using StableRNGs: StableRNG
+using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
 

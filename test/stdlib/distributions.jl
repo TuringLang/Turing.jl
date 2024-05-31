@@ -1,13 +1,11 @@
 module DistributionsTests
 
-using LinearAlgebra: I
-using Test: @testset, @test
-using Random: Random
-
 using Distributions
-using StatsFuns: logistic
+using LinearAlgebra: I
+using Random: Random
 using StableRNGs: StableRNG
-
+using StatsFuns: logistic
+using Test: @testset, @test
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")

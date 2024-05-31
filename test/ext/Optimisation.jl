@@ -1,11 +1,9 @@
 module OptimisationTests
 
 using Random: Random
-using Test: @testset, @test
-
 using Optimization
-using OptimizationOptimJL: optimize, NelderMead, LBFGS, Fminbox, BFGS
-
+using OptimizationOptimJL: BFGS, Fminbox, LBFGS, NelderMead, optimize
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

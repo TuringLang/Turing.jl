@@ -1,12 +1,10 @@
 module ESSTests
 
-using Test: @testset, @test
-using Distributions: Normal
-using Distributions: sample
-using Random: Random
+using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-
+using Random: Random
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

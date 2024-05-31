@@ -1,9 +1,8 @@
 module ExperimentalGibbsTests
 
+using DynamicPPL
 using Random
 using Test
-using DynamicPPL
-
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

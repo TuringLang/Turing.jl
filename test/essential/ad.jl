@@ -1,18 +1,16 @@
 module AdTests
 
-using LinearAlgebra
-using Test: @testset, @test
-
-using ForwardDiff
-using ReverseDiff
 using Distributions: logpdf
+using DynamicPPL: getlogp, getval
+using ForwardDiff
+using LinearAlgebra
 import LogDensityProblems
 import LogDensityProblemsAD
-using Zygote
-
+using ReverseDiff
+using Test: @test, @testset
 using Turing
-using DynamicPPL: getval, getlogp
 using Turing: SampleFromPrior
+using Zygote
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
 include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")

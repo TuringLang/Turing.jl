@@ -1,19 +1,16 @@
 module HMCTests
 
-using LinearAlgebra: I, dot, vec
-using Test: @testset, @test, @test_logs
-using Random: Random
-
-using Distributions: sample
-using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart
-using StableRNGs: StableRNG
-using StatsFuns: logistic
-using ReverseDiff: ReverseDiff
-using ForwardDiff: ForwardDiff
-using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
+using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-
+using ForwardDiff: ForwardDiff
+using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
+using ReverseDiff: ReverseDiff
+using LinearAlgebra: I, dot, vec
+using Random: Random
+using StableRNGs: StableRNG
+using StatsFuns: logistic
+using Test: @test, @test_logs, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

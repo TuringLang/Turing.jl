@@ -1,13 +1,10 @@
 module MCMCUtilitiesTests
 
+using Distributions: Normal, sample, truncated
 using LinearAlgebra: I, vec
-using Test: @testset, @test
 using Random: Random
 using Random: MersenneTwister
-
-using Distributions: sample
-using Distributions: Normal, truncated
-
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

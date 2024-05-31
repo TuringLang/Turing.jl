@@ -1,15 +1,14 @@
 module GibbsTests
 
-using Test: @testset, @test
 using Distributions: InverseGamma, Normal
 using Distributions: sample
+using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
-using ForwardDiff: ForwardDiff
-
+using Test: @test, @testset
 using Turing
 using Turing: Inference
-using Turing.RandomMeasures: DirichletProcess, ChineseRestaurantProcess
+using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
 include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")

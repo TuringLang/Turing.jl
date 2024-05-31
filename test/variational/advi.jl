@@ -1,14 +1,12 @@
 module AdvancedVITests
 
-using LinearAlgebra: I
-using Random: Random
-using Test: @testset, @test
-
 using AdvancedVI: AdvancedVI
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
 using Distributions: Dirichlet, Normal
+using LinearAlgebra: I
 using MCMCChains: Chains
-
+using Random: Random
+using Test: @test, @testset
 using Turing
 using Turing.Essential: TuringDiagMvNormal
 

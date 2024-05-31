@@ -1,11 +1,9 @@
 module VariationalOptimisersTests
 
-using Test: @testset, @test
-
-using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
+using AdvancedVI: DecayedADAGrad, TruncatedADAGrad, apply!
 using ForwardDiff: ForwardDiff
 using ReverseDiff: ReverseDiff
-
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

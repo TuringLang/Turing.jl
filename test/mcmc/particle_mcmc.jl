@@ -1,12 +1,10 @@
 module ParticleMCMCTests
 
-using Test: @testset, @test, @test_throws
-using Distributions: Bernoulli, Beta, Gamma, Normal
-using Distributions: sample
-using Random: Random
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using DynamicPPL: getspace
-
+using Random: Random
+using Test: @test, @test_throws, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

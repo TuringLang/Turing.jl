@@ -1,11 +1,10 @@
 module EmceeTests
 
-using Test: @testset, @test, @test_throws
-using Random: Random
+using Distributions: sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-using Distributions: sample
-
+using Random: Random
+using Test: @test, @test_throws, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

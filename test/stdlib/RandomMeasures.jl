@@ -1,13 +1,10 @@
 module RandomMeasuresTests
 
-using Test: @testset, @test
+using Distributions: Normal, sample
 using Random: Random
-
-using Distributions: sample
-using Distributions: Normal
-
+using Test: @test, @testset
 using Turing
-using Turing.RandomMeasures: DirichletProcess, ChineseRestaurantProcess
+using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin

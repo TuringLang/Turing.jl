@@ -1,16 +1,13 @@
 module GibbsConditionalTests
 
+using Clustering: Clustering
+using Distributions: Categorical, InverseGamma, Normal, sample
 using LinearAlgebra: Diagonal, I
 using Random: Random
-using Test: @testset, @test
-
-using Distributions: Categorical, InverseGamma, Normal
-using Distributions: sample
-using StatsFuns: StatsFuns
-using StatsBase: counts
-using Clustering: Clustering
 using StableRNGs: StableRNG
-
+using StatsBase: counts
+using StatsFuns: StatsFuns
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")

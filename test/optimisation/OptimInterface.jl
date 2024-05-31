@@ -1,15 +1,13 @@
 module OptimInterfaceTests
 
-using LinearAlgebra: I
-using Random: Random
-using Test: @testset, @test
-
-using Optim: Optim
-using Optim: optimize, NelderMead, LBFGS
-using StatsBase: StatsBase
-using StatsBase: vcov, coef, coeftable, coefnames, informationmatrix, stderror
 using Distributions.FillArrays: Zeros
-
+using LinearAlgebra: I
+using Optim: Optim
+using Optim: NelderMead, LBFGS, optimize
+using Random: Random
+using StatsBase: StatsBase
+using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
+using Test: @test, @testset
 using Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
