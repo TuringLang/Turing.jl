@@ -138,13 +138,11 @@ export  @model,                 # modelling
 
         ordered,                # Exports from Bijectors
 
-        constrained_space,            # optimisation interface
+        maximum_a_posteriori,
+        maximum_likelihood,
+        # The MAP and MLE exports are only needed for the Optim.jl interface.
         MAP,
-        MLE,
-        get_parameter_bounds,
-        optim_objective,
-        optim_function,
-        optim_problem
+        MLE
 
 if !isdefined(Base, :get_extension)
     using Requires
