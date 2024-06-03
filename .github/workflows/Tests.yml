@@ -12,6 +12,7 @@ jobs:
     continue-on-error: ${{ matrix.version == 'nightly' }}
 
     strategy:
+      fail-fast: false
       matrix:
         test-args:
           # Run some of the slower test files individually. The last one catches everything
