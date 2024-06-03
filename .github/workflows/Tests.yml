@@ -60,6 +60,13 @@ jobs:
             arch: x86
 
     steps:
+      - name: Print matrix variables
+        run: |
+          echo "OS: ${{ matrix.os }}"
+          echo "Architecture: ${{ matrix.arch }}"
+          echo "Julia version: ${{ matrix.version }}"
+          echo "Number of threads: ${{ matrix.num_threads }}"
+          echo "Test arguments: ${{ matrix.test_args }}"
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
