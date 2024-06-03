@@ -66,7 +66,7 @@ jobs:
           echo "Architecture: ${{ matrix.arch }}"
           echo "Julia version: ${{ matrix.version }}"
           echo "Number of threads: ${{ matrix.num_threads }}"
-          echo "Test arguments: ${{ matrix.test_args }}"
+          echo "Test arguments: ${{ matrix.test-args }}"
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
