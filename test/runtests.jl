@@ -9,9 +9,11 @@ using FiniteDifferences
 using ForwardDiff
 using MCMCChains
 using NamedArrays
-using Optim
-using Optimization
-using OptimizationOptimJL
+using Optim: Optim
+using Optimization: Optimization
+using OptimizationBBO: OptimizationBBO
+using OptimizationOptimJL: OptimizationOptimJL
+using OptimizationNLopt: OptimizationNLopt
 using PDMats
 using ReverseDiff
 using SpecialFunctions
@@ -83,8 +85,8 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
         end
 
         @testset "mode estimation" begin
-            @timeit_include("optimisation/OptimInterface.jl")
-            @timeit_include("ext/Optimisation.jl")
+            @timeit_include("optimisation/Optimisation.jl")
+            @timeit_include("ext/OptimInterface.jl")
         end
     end
 
