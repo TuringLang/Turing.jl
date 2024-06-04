@@ -5,6 +5,7 @@ using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
+using Compat: pkgversion
 
 import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
@@ -107,7 +108,6 @@ export  @model,                 # modelling
         AutoReverseDiff,
         AutoZygote,
         AutoTracker,
-        AutoTapir,
 
         setprogress!,           # debugging
 
@@ -143,6 +143,10 @@ export  @model,                 # modelling
         # The MAP and MLE exports are only needed for the Optim.jl interface.
         MAP,
         MLE
+
+@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
+    export AutoTapir
+end
 
 if !isdefined(Base, :get_extension)
     using Requires
