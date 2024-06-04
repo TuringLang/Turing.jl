@@ -144,6 +144,7 @@ export  @model,                 # modelling
         MAP,
         MLE
 
+# AutoTapir is only supported by ADTypes v1.0 and above.
 @static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
     export AutoTapir
 end
