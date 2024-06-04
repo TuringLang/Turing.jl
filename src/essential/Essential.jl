@@ -11,7 +11,7 @@ using Bijectors: PDMatDistribution
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote, AutoTapir
+using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote
 
 import AdvancedPS
 
@@ -39,9 +39,14 @@ export  @model,
         AutoTracker,
         AutoZygote,
         AutoReverseDiff,
-        AutoTapir,
         value,
         @logprob_str,
         @prob_str
+
+# AutoTapir is only supported by ADTypes v1.0 and above.
+@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
+    using ADTypes: AutoTapir
+    export AutoTapir
+end
 
 end # module
