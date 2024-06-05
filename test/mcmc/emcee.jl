@@ -1,3 +1,14 @@
+module EmceeTests
+
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
+using Distributions: sample
+import DynamicPPL
+using DynamicPPL: Sampler
+import Random
+using Test: @test, @test_throws, @testset
+using Turing
+
 @testset "emcee.jl" begin
     @testset "gdemo" begin
         Random.seed!(9876)
@@ -40,4 +51,6 @@
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
     end
+end
+
 end

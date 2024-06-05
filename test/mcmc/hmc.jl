@@ -1,7 +1,25 @@
+module HMCTests
+
+using ..Models: gdemo_default
+#using ..Models: gdemo
+using ..NumericalTests: check_gdemo, check_numerical
+using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
+import DynamicPPL
+using DynamicPPL: Sampler
+import ForwardDiff
+using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
+import ReverseDiff
+using LinearAlgebra: I, dot, vec
+import Random
+using StableRNGs: StableRNG
+using StatsFuns: logistic
+using Test: @test, @test_logs, @testset
+using Turing
+
 @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Set a seed
     rng = StableRNG(123)
-    @numerical_testset "constrained bounded" begin
+    @testset "constrained bounded" begin
         obs = [0,1,0,1,1,1,1,1,1,1]
 
         @model function constrained_test(obs)
@@ -20,7 +38,7 @@
 
         check_numerical(chain, [:p], [10/14], atol=0.1)
     end
-    @numerical_testset "constrained simplex" begin
+    @testset "constrained simplex" begin
         obs12 = [1,2,1,2,2,2,2,2,2,2]
 
         @model function constrained_simplex_test(obs12)
@@ -40,12 +58,12 @@
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5/16, 11/16], atol=0.015)
     end
-    @numerical_testset "hmc reverse diff" begin
+    @testset "hmc reverse diff" begin
         alg = HMC(0.1, 10; adtype=adbackend)
         res = sample(rng, gdemo_default, alg, 4000)
         check_gdemo(res, rtol=0.1)
     end
-    @turing_testset "matrix support" begin
+    @testset "matrix support" begin
         @model function hmcmatrixsup()
             v ~ Wishart(7, [1 0.5; 0.5 1])
         end
@@ -60,7 +78,7 @@
 
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
     end
-    @turing_testset "multivariate support" begin
+    @testset "multivariate support" begin
         # Define NN flow
         function nn(x, b1, w11, w12, w13, bo, wo)
             h = tanh.([w11 w12 w13]' * x .+ b1)
@@ -106,7 +124,7 @@
         chain = sample(rng, bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
     end
 
-    @numerical_testset "hmcda inference" begin
+    @testset "hmcda inference" begin
         alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
         # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m; adtype=adbackend), HMC(0.25, 3, :s; adtype=adbackend))
 
@@ -122,7 +140,7 @@
         # @test mean(res2[:m]) ≈ 7/6 atol=0.2
     end
 
-    @numerical_testset "hmcda+gibbs inference" begin
+    @testset "hmcda+gibbs inference" begin
         rng = StableRNG(123)
         Random.seed!(12345) # particle samplers do not support user-provided `rng` yet
         alg3 = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, :m; init_ϵ=0.05, adtype=adbackend))
@@ -131,7 +149,7 @@
         check_gdemo(res3)
     end
 
-    @turing_testset "hmcda constructor" begin
+    @testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75; adtype=adbackend)
         println(alg)
         sampler = Sampler(alg, gdemo_default)
@@ -150,12 +168,12 @@
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
-    @numerical_testset "nuts inference" begin
+    @testset "nuts inference" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
         res = sample(rng, gdemo_default, alg, 6000)
         check_gdemo(res)
     end
-    @turing_testset "nuts constructor" begin
+    @testset "nuts constructor" begin
         alg = NUTS(200, 0.65; adtype=adbackend)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
@@ -168,7 +186,7 @@
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
-    @turing_testset "check discard" begin
+    @testset "check discard" begin
         alg = NUTS(100, 0.8; adtype=adbackend)
 
         c1 = sample(rng, gdemo_default, alg, 500, discard_adapt=true)
@@ -177,7 +195,7 @@
         @test size(c1, 1) == 500
         @test size(c2, 1) == 500
     end
-    @turing_testset "AHMC resize" begin
+    @testset "AHMC resize" begin
         alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s; adtype=adbackend))
         alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s; adtype=adbackend))
         alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s; adtype=adbackend))
@@ -186,7 +204,7 @@
         @test sample(rng, gdemo_default, alg3, 300) isa Chains
     end
 
-    @turing_testset "Regression tests" begin
+    @testset "Regression tests" begin
         # https://github.com/TuringLang/DynamicPPL.jl/issues/27
         @model function mwe1(::Type{T}=Float64) where {T<:Real}
             m = Matrix{T}(undef, 2, 3)
@@ -209,7 +227,7 @@
     end
 
     # issue #1923
-    @turing_testset "reproducibility" begin
+    @testset "reproducibility" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
         res1 = sample(StableRNG(123), gdemo_default, alg, 1000)
         res2 = sample(StableRNG(123), gdemo_default, alg, 1000)
@@ -217,7 +235,7 @@
         @test Array(res1) == Array(res2) == Array(res3)
     end
 
-    @turing_testset "prior" begin
+    @testset "prior" begin
         @model function demo_hmc_prior()
             # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
             # which means that it's _very_ difficult to find a good tolerance in the test below:)
@@ -230,7 +248,7 @@
         check_numerical(chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0], atol=0.2)
     end
 
-    @turing_testset "warning for difficult init params" begin
+    @testset "warning for difficult init params" begin
         attempt = 0
         @model function demo_warn_initial_params()
             x ~ Normal()
@@ -250,7 +268,7 @@
     # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
     # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
     if VERSION ≥ v"1.8"
-        @turing_testset "(partially) issue: #2095" begin
+        @testset "(partially) issue: #2095" begin
             @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
                 xs = Vector{TV}(undef, 2)
                 xs[1] ~ Dirichlet(ones(5))
@@ -262,7 +280,7 @@
         end
     end
 
-    @turing_testset "issue: #2195" begin
+    @testset "issue: #2195" begin
         @model function buggy_model()
             lb ~ Uniform(0, 1)
             ub ~ Uniform(1.5, 2)
@@ -303,4 +321,6 @@
         # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
         @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.01
     end
+end
+
 end

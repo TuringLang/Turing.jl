@@ -1,3 +1,21 @@
+module OptimisationTests
+
+using ..Models: gdemo, gdemo_default
+using Distributions
+using Distributions.FillArrays: Zeros
+import DynamicPPL
+using LinearAlgebra: I
+import Random
+using Optimization
+using Optimization: Optimization
+using OptimizationBBO: OptimizationBBO
+using OptimizationNLopt: OptimizationNLopt
+using OptimizationOptimJL: OptimizationOptimJL
+import StatsBase
+using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
+using Test: @test, @testset, @test_throws
+using Turing
+
 @testset "Optimisation" begin
 
     # The `stats` field is populated only in newer versions of OptimizationOptimJL and
@@ -95,7 +113,7 @@
         end
     end
 
-    @numerical_testset "gdemo" begin
+    @testset "gdemo" begin
 
         """
             check_success(result, true_value, true_logp, check_retcode=true)
@@ -567,4 +585,6 @@
         @test result.values[:x] ≈ 0 atol = 1e-1
         @test result.values[:y] ≈ 100 atol = 1e-1
     end
+end
+
 end

@@ -1,4 +1,13 @@
-@turing_testset "is.jl" begin
+module ISTests
+
+using Distributions: Normal, sample
+using DynamicPPL: logpdf
+import Random
+using StatsFuns: logsumexp
+using Test: @test, @testset
+using Turing
+
+@testset "is.jl" begin
     function reference(n)
         as = Vector{Float64}(undef, n)
         bs = Vector{Float64}(undef, n)
@@ -46,7 +55,7 @@
         @test chain.logevidence == ref.logevidence
     end
 
-    @turing_testset "logevidence" begin
+    @testset "logevidence" begin
         Random.seed!(100)
 
         @model function test()
@@ -64,4 +73,6 @@
         @test all(isone, chains[:x])
         @test chains.logevidence ≈ - 2 * log(2)
     end
+end
+
 end
