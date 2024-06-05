@@ -42,11 +42,11 @@ struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.Abstract
     context::C
 
     function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(context isa Union{DynamicPPL.DefaultContext,DynamicPPL.LikelihoodContext})
+        if !(context isa Union{DynamicPPL.DefaultContext,DynamicPPL.LikelihoodContext,DynamicPPL.PriorContext})
             msg = """
-                `OptimizationContext` supports only leaf contexts of type 
-                `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` 
-                (given: `$(typeof(context)))`
+                `OptimizationContext` supports only leaf contexts of type
+                `DynamicPPL.DefaultContext`, `DynamicPPL.LikelihoodContext`,
+                and `DynamicPPL.PriorContext` (given: `$(typeof(context)))`
             """
             throw(ArgumentError(msg))
         end
@@ -60,7 +60,7 @@ DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
-    lp = if ctx.context isa DynamicPPL.DefaultContext
+    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
         # MAP
         Distributions.logpdf(dist, r)
     else
@@ -83,7 +83,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     r = DynamicPPL.get_and_set_val!(
         Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
     )
-    lp = if ctx.context isa DynamicPPL.DefaultContext
+    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
         # MAP
         _loglikelihood(right, r)
     else
@@ -92,6 +92,12 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     end
     return r, lp, vi
 end
+
+DynamicPPL.tilde_observe(ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...) =
+    DynamicPPL.tilde_observe(ctx.context, args...)
+
+DynamicPPL.dot_tilde_observe(ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...) =
+    DynamicPPL.dot_tilde_observe(ctx.context, args...)
 
 """
     OptimLogDensity{M<:DynamicPPL.Model,C<:Context,V<:DynamicPPL.VarInfo}
