@@ -1,3 +1,11 @@
+module VariationalOptimisersTests
+
+using AdvancedVI: DecayedADAGrad, TruncatedADAGrad, apply!
+import ForwardDiff
+import ReverseDiff
+using Test: @test, @testset
+using Turing
+
 function test_opt(ADPack, opt)
     θ = randn(10, 10)
     θ_fit = randn(10, 10)
@@ -16,4 +24,6 @@ for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
 end
 for opt in [TruncatedADAGrad(), DecayedADAGrad(1e-2)]
     test_opt(ReverseDiff, opt)
+end
+
 end

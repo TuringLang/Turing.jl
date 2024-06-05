@@ -1,7 +1,23 @@
-@turing_testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+module GibbsConditionalTests
+
+using ..Models: gdemo, gdemo_default
+using ..NumericalTests: check_gdemo, check_numerical
+import Clustering
+using Distributions: Categorical, InverseGamma, Normal, sample
+import ForwardDiff
+using LinearAlgebra: Diagonal, I
+import Random
+import ReverseDiff
+using StableRNGs: StableRNG
+using StatsBase: counts
+import StatsFuns
+using Test: @test, @testset
+using Turing
+
+@testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     Random.seed!(1000); rng = StableRNG(123)
 
-    @turing_testset "gdemo" begin
+    @testset "gdemo" begin
         # We consider the model
         # ```math
         # s ~ InverseGamma(2, 3)
@@ -61,7 +77,7 @@
         check_gdemo(chain)
     end
 
-    @turing_testset "GMM" begin
+    @testset "GMM" begin
         Random.seed!(1000); rng = StableRNG(123)
         # We consider the model
         # ```math
@@ -144,4 +160,6 @@
             @test isapprox(ari, 1, atol=0.1)
         end
     end
+end
+
 end

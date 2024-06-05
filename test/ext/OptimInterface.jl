@@ -1,4 +1,16 @@
-@numerical_testset "TuringOptimExt" begin
+module OptimInterfaceTests
+
+using ..Models: gdemo_default
+using Distributions.FillArrays: Zeros
+using LinearAlgebra: I
+import Optim
+import Random
+import StatsBase
+using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
+using Test: @test, @testset
+using Turing
+
+@testset "TuringOptimExt" begin
     @testset "MLE" begin
         Random.seed!(222)
         true_value = [0.0625, 1.75]
@@ -176,4 +188,6 @@
         @test result.values[:x] ≈ 0 atol=1e-1
         @test result.values[:y] ≈ 100 atol=1e-1
     end
+end
+
 end

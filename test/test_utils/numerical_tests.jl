@@ -1,3 +1,12 @@
+module NumericalTests
+
+using Distributions
+using MCMCChains: namesingroup
+using Test: @test, @testset
+
+export check_MoGtest_default, check_MoGtest_default_z_vector, check_dist_numerical,
+    check_gdemo, check_numerical
+
 function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
     @testset "numerical" begin
         # Extract values.
@@ -70,4 +79,6 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
         [Symbol("z[1]"), Symbol("z[2]"), Symbol("z[3]"), Symbol("z[4]"), :mu1, :mu2],
         [1.0, 1.0, 2.0, 2.0, 1.0, 4.0],
         atol=atol, rtol=rtol)
+end
+
 end

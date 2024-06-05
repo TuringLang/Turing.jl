@@ -1,3 +1,13 @@
+module MCMCUtilitiesTests
+
+using ..Models: gdemo_default
+using Distributions: Normal, sample, truncated
+using LinearAlgebra: I, vec
+import Random
+using Random: MersenneTwister
+using Test: @test, @testset
+using Turing
+
 @testset "predict" begin
     Random.seed!(100)
 
@@ -137,4 +147,6 @@ end
     @test chain.info.start_time isa Float64
     @test chain.info.stop_time isa Float64
     @test chain.info.start_time ≤ chain.info.stop_time
+end
+
 end
