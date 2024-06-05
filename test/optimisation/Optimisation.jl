@@ -77,6 +77,22 @@
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
                   Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
+
+        @testset "Default, Likelihood, Prior Contexts" begin
+            m1 = model1(x)
+            defctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+            llhctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+            prictx = Turing.Optimisation.OptimizationContext(DynamicPPL.PriorContext())
+            a = [0.3]
+
+            @test Turing.Optimisation.OptimLogDensity(m1, defctx)(a) ==
+                Turing.Optimisation.OptimLogDensity(m1, llhctx)(a) +
+                Turing.Optimisation.OptimLogDensity(m1, prictx)(a)
+
+            # test that PriorContext is calculating the right thing
+            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([0.3]) ≈ -Distributions.logpdf(Uniform(0, 2), 0.3)
+            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([-0.3]) ≈ -Distributions.logpdf(Uniform(0, 2), -0.3)
+        end
     end
 
     @numerical_testset "gdemo" begin
