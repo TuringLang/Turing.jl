@@ -113,7 +113,7 @@ end
     @testset "gdemo with CSMC & ESS" begin
         Random.seed!(100)
         alg = Turing.Experimental.Gibbs(@varname(s) => CSMC(15), @varname(m) => ESS())
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000; progress=false)
         check_gdemo(chain)
     end
 
@@ -169,7 +169,7 @@ end
         end
 
         # Sample!
-        chain = sample(MoGtest_default, alg, 1000; progress=true)
+        chain = sample(MoGtest_default, alg, 1000; progress=false)
         check_MoGtest_default(chain, atol = 0.2)
     end
 
@@ -191,7 +191,7 @@ end
         end
 
         # Sample!
-        chain = sample(model, alg, 1000; progress=true)
+        chain = sample(model, alg, 1000; progress=false)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
 end
