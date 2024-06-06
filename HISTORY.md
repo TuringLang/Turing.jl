@@ -3,6 +3,7 @@
 ## Breaking changes
 
 The following exported functions have been removed:
+
   - `constrained_space`
   - `get_parameter_bounds`
   - `optim_objective`
@@ -10,6 +11,7 @@ The following exported functions have been removed:
   - `optim_problem`
 
 The same functionality is now offered by the new exported functions
+
   - `maximum_likelihood`
   - `maximum_a_posteriori`
 
