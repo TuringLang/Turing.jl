@@ -124,14 +124,14 @@ has_dot_assume(::Model) = true
                 xs = Array(chain)
                 xs_true = Array(chain_true)
                 for i = 1:size(xs, 2)
-                    @test two_sample_ks_test(xs[:, i], xs_true[:, i])
+                    @test two_sample_ad_test(xs[:, i], xs_true[:, i])
                     # Let's make sure that the significance level is not too low by
                     # checking that the KS test fails for some simple transformations.
                     # TODO: Replace the heuristic below with closed-form implementations
                     # of the targets, once they are implemented in DynamicPPL.
-                    @test !two_sample_ks_test(0.9 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_ks_test(1.1 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_ks_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_ad_test(0.9 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_ad_test(1.1 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_ad_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
                 end
             end
         end
