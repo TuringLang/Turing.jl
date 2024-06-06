@@ -69,7 +69,7 @@ using Turing.Essential: TuringDiagMvNormal
             x ~ Dirichlet([1.0,1.0])
             return x
         end
-        
+
         m = dirichlet()
         b = bijector(m)
         x0 = m()

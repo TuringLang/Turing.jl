@@ -90,7 +90,7 @@ for seed in seeds
             # Eq. (90) in "Conjugate Bayesian analysis of the Gaussian distribution" by Murphy
             # `scale(post)` = θ
             p_τ = Gamma(post.shape, scale(post))
-            p_σ²_pdf = z -> pdf(p_τ, 1 / z) # τ => 1 / σ² 
+            p_σ²_pdf = z -> pdf(p_τ, 1 / z) # τ => 1 / σ²
 
             # marginal of μ
             # Eq. (91) in "Conjugate Bayesian analysis of the Gaussian distribution" by Murphy
@@ -102,7 +102,7 @@ for seed in seeds
             βₙ = post.rate  # β → rate
 
             # numerically more stable but doesn't seem to have effect; issue is probably internal to
-            # `pdf` which needs to compute ≈ Γ(1000) 
+            # `pdf` which needs to compute ≈ Γ(1000)
             p_μ_pdf =
                 z -> exp(
                     logpdf(

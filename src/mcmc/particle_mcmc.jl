@@ -340,7 +340,7 @@ function trace_local_varinfo_maybe(varinfo)
         trace = AdvancedPS.current_trace()
         return trace.model.f.varinfo
     catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
         if e == KeyError(:__trace) || current_task().storage isa Nothing
             return varinfo
         else
