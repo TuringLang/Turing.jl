@@ -4,11 +4,8 @@ format_markdown = true
 # We ignore these files because when formatting was first put in place they were being worked on.
 # These ignores should be removed once the relevant PRs are merged/closed.
 ignore = [
-    # https://github.com/TuringLang/Turing.jl/pull/2254/files
-    "test/experimental/gibbs.jl",
     # https://github.com/TuringLang/Turing.jl/pull/2231/files
     "src/experimental/gibbs.jl",
-    "src/mcmc/Inference.jl",
     "src/mcmc/abstractmcmc.jl",
     "test/experimental/gibbs.jl",
     "test/test_utils/numerical_tests.jl",
@@ -18,12 +15,9 @@ ignore = [
     # https://github.com/TuringLang/Turing.jl/pull/2068
     "src/variational/VariationalInference.jl",
     "src/variational/advi.jl",
-    "test/runtests.jl",
     "test/variational/advi.jl",
     "test/variational/optimisers.jl",
     # https://github.com/TuringLang/Turing.jl/pull/1887
-    "src/Turing.jl",
-    "src/essential/Essential.jl",
     "test/mcmc/Inference.jl",
     "test/mcmc/hmc.jl",
     "test/mcmc/sghmc.jl",
