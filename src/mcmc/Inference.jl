@@ -38,7 +38,6 @@ import StatsBase: predict
 
 export  InferenceAlgorithm,
         Hamiltonian,
-        GibbsComponent,
         StaticHamiltonian,
         AdaptiveHamiltonian,
         SampleFromUniform,
@@ -54,7 +53,6 @@ export  InferenceAlgorithm,
         SGHMC,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
-        DynamicNUTS,
         IS,
         SMC,
         CSMC,
