@@ -5,7 +5,7 @@ using ..Models: gdemo_default
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using DynamicPPL: getspace
-import Random
+using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -58,24 +58,24 @@ using Turing
 
     @testset "models" begin
         @model function normal()
-            a ~ Normal(4,5)
-            3 ~ Normal(a,2)
-            b ~ Normal(a,1)
-            1.5 ~ Normal(b,2)
-            a, b
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
+            1.5 ~ Normal(b, 2)
+            return a, b
         end
 
-        tested = sample(normal(), SMC(), 100);
+        tested = sample(normal(), SMC(), 100)
 
         # failing test
         @model function fail_smc()
-            a ~ Normal(4,5)
-            3 ~ Normal(a,2)
-            b ~ Normal(a,1)
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
             if a >= 4.0
-                1.5 ~ Normal(b,2)
+                1.5 ~ Normal(b, 2)
             end
-            a, b
+            return a, b
         end
 
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
@@ -91,7 +91,7 @@ using Turing
             1 ~ Bernoulli(x / 2)
             c ~ Beta()
             0 ~ Bernoulli(x / 2)
-            x
+            return x
         end
 
         chains_smc = sample(test(), SMC(), 100)
@@ -169,7 +169,7 @@ end
             1 ~ Bernoulli(x / 2)
             c ~ Beta()
             0 ~ Bernoulli(x / 2)
-            x
+            return x
         end
 
         chains_pg = sample(test(), PG(10), 100)
@@ -187,7 +187,7 @@ end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007
     @testset "keyword arguments not supported" begin
-        @model kwarg_demo(; x = 2) = return x
+        @model kwarg_demo(; x=2) = return x
         @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
     end
 end

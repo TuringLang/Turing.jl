@@ -61,13 +61,19 @@ sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
-struct HMC{AD, space, metricT <: AHMC.AbstractMetric} <: StaticHamiltonian
+struct HMC{AD,space,metricT<:AHMC.AbstractMetric} <: StaticHamiltonian
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
     adtype::AD
 end
 
-function HMC(ϵ::Float64, n_leapfrog::Int, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE) where {metricT<:AHMC.AbstractMetric}
+function HMC(
+    ϵ::Float64,
+    n_leapfrog::Int,
+    ::Type{metricT},
+    space::Tuple;
+    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+) where {metricT<:AHMC.AbstractMetric}
     return HMC{typeof(adtype),space,metricT}(ϵ, n_leapfrog, adtype)
 end
 function HMC(
@@ -77,7 +83,7 @@ function HMC(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMC(ϵ, n_leapfrog, metricT, space; adtype = adtype)
+    return HMC(ϵ, n_leapfrog, metricT, space; adtype=adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -95,7 +101,7 @@ function AbstractMCMC.sample(
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
-    kwargs...
+    kwargs...,
 )
     if resume_from === nothing
         # If `nadapts` is `-1`, then the user called a convenience
@@ -114,15 +120,30 @@ function AbstractMCMC.sample(
             _discard_initial = discard_initial
         end
 
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type, progress=progress,
-                                       nadapts=_nadapts, discard_initial=_discard_initial,
-                                       kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng,
+            model,
+            sampler,
+            N;
+            chain_type=chain_type,
+            progress=progress,
+            nadapts=_nadapts,
+            discard_initial=_discard_initial,
+            kwargs...,
+        )
     else
         return AbstractMCMC.mcmcsample(
-            rng, model, sampler, N;
-            chain_type=chain_type, initial_state=initial_state, progress=progress,
-            nadapts=0, discard_adapt=false, discard_initial=0, kwargs...
+            rng,
+            model,
+            sampler,
+            N;
+            chain_type=chain_type,
+            initial_state=initial_state,
+            progress=progress,
+            nadapts=0,
+            discard_adapt=false,
+            discard_initial=0,
+            kwargs...,
         )
     end
 end
@@ -134,7 +155,7 @@ function DynamicPPL.initialstep(
     vi_original::AbstractVarInfo;
     initial_params=nothing,
     nadapts=0,
-    kwargs...
+    kwargs...,
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
     vi = DynamicPPL.link(vi_original, spl, model)
@@ -152,8 +173,8 @@ function DynamicPPL.initialstep(
             # Use the leaf-context from the `model` in case the user has
             # contextualized the model with something like `PriorContext`
             # to sample from the prior.
-            DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
-        )
+            DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
+        ),
     )
     logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
     ∂logπ∂θ(x) = LogDensityProblems.logdensity_and_gradient(ℓ, x)
@@ -203,9 +224,9 @@ function DynamicPPL.initialstep(
     # Adaptation
     adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, kernel, _ =
-            AHMC.adapt!(hamiltonian, kernel, adaptor,
-                        1, nadapts, t.z.θ, t.stat.acceptance_rate)
+        hamiltonian, kernel, _ = AHMC.adapt!(
+            hamiltonian, kernel, adaptor, 1, nadapts, t.z.θ, t.stat.acceptance_rate
+        )
     end
 
     # Update `vi` based on acceptance
@@ -229,7 +250,7 @@ function AbstractMCMC.step(
     spl::Sampler{<:Hamiltonian},
     state::HMCState;
     nadapts=0,
-    kwargs...
+    kwargs...,
 )
     # Get step size
     @debug "current ϵ" getstepsize(spl, state)
@@ -242,9 +263,15 @@ function AbstractMCMC.step(
     # Adaptation
     i = state.i + 1
     if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, kernel, _ =
-            AHMC.adapt!(hamiltonian, state.kernel, state.adaptor,
-                        i, nadapts, t.z.θ, t.stat.acceptance_rate)
+        hamiltonian, kernel, _ = AHMC.adapt!(
+            hamiltonian,
+            state.kernel,
+            state.adaptor,
+            i,
+            nadapts,
+            t.z.θ,
+            t.stat.acceptance_rate,
+        )
     else
         kernel = state.kernel
     end
@@ -269,8 +296,8 @@ function get_hamiltonian(model, spl, vi, state, n)
         Turing.LogDensityFunction(
             vi,
             model,
-            DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context))
-        )
+            DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context)),
+        ),
     )
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
     ∂ℓπ∂θ = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ℓ)
@@ -308,15 +335,23 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
 setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD, space, metricT <: AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts    ::  Int         # number of samples with adaption for ϵ
-    δ           ::  Float64     # target accept rate
-    λ           ::  Float64     # target leapfrog length
-    ϵ           ::  Float64     # (initial) step size
+struct HMCDA{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+    n_adapts::Int         # number of samples with adaption for ϵ
+    δ::Float64     # target accept rate
+    λ::Float64     # target leapfrog length
+    ϵ::Float64     # (initial) step size
     adtype::AD
 end
 
-function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ϵ::Float64, ::Type{metricT}, space::Tuple; adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE) where {metricT<:AHMC.AbstractMetric}
+function HMCDA(
+    n_adapts::Int,
+    δ::Float64,
+    λ::Float64,
+    ϵ::Float64,
+    ::Type{metricT},
+    space::Tuple;
+    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+) where {metricT<:AHMC.AbstractMetric}
     return HMCDA{typeof(adtype),space,metricT}(n_adapts, δ, λ, ϵ, adtype)
 end
 
@@ -327,16 +362,10 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype = adtype)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype=adtype)
 end
 
-function HMCDA(
-    n_adapts::Int,
-    δ::Float64,
-    λ::Float64,
-    ::Tuple{};
-    kwargs...
-)
+function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ::Tuple{}; kwargs...)
     return HMCDA(n_adapts, δ, λ; kwargs...)
 end
 
@@ -349,9 +378,8 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype = adtype)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype=adtype)
 end
-
 
 """
     NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()
@@ -398,13 +426,8 @@ function NUTS(
     return NUTS{typeof(adtype),space,metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
 
-function NUTS(
-    n_adapts::Int,
-    δ::Float64,
-    ::Tuple{};
-    kwargs...
-)
-    NUTS(n_adapts, δ; kwargs...)
+function NUTS(n_adapts::Int, δ::Float64, ::Tuple{}; kwargs...)
+    return NUTS(n_adapts, δ; kwargs...)
 end
 
 function NUTS(
@@ -417,7 +440,7 @@ function NUTS(
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype=adtype)
+    return NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype=adtype)
 end
 
 function NUTS(
@@ -428,15 +451,15 @@ function NUTS(
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
+    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
 end
 
 function NUTS(; kwargs...)
-    NUTS(-1, 0.65; kwargs...)
+    return NUTS(-1, 0.65; kwargs...)
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any, <:Any, metricT}) where {metricT} = metricT
+    @eval getmetricT(::$alg{<:Any,<:Any,metricT}) where {metricT} = metricT
 end
 
 #####
@@ -452,23 +475,28 @@ function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
 end
 
 function make_ahmc_kernel(alg::HMC, ϵ)
-    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedNSteps(alg.n_leapfrog)))
+    return AHMC.HMCKernel(
+        AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedNSteps(alg.n_leapfrog))
+    )
 end
 function make_ahmc_kernel(alg::HMCDA, ϵ)
-    return AHMC.HMCKernel(AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ)))
+    return AHMC.HMCKernel(
+        AHMC.Trajectory{AHMC.EndPointTS}(AHMC.Leapfrog(ϵ), AHMC.FixedIntegrationTime(alg.λ))
+    )
 end
-make_ahmc_kernel(alg::NUTS, ϵ) =
-    AHMC.HMCKernel(AHMC.Trajectory{AHMC.MultinomialTS}(AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)))
+function make_ahmc_kernel(alg::NUTS, ϵ)
+    return AHMC.HMCKernel(
+        AHMC.Trajectory{AHMC.MultinomialTS}(
+            AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)
+        ),
+    )
+end
 
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:Hamiltonian},
-    dist::Distribution,
-    vn::VarName,
-    vi,
+    rng, spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
     DynamicPPL.updategid!(vi, vn, spl)
     return DynamicPPL.assume(dist, vn, vi)
@@ -488,7 +516,7 @@ end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:Hamiltonian},
-    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    dists::Union{Distribution,AbstractArray{<:Distribution}},
     vns::AbstractArray{<:VarName},
     var::AbstractArray,
     vi,
@@ -497,18 +525,13 @@ function DynamicPPL.dot_assume(
     return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
-function DynamicPPL.observe(
-    spl::Sampler{<:Hamiltonian},
-    d::Distribution,
-    value,
-    vi,
-)
+function DynamicPPL.observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
     return DynamicPPL.observe(d, value, vi)
 end
 
 function DynamicPPL.dot_observe(
     spl::Sampler{<:Hamiltonian},
-    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    ds::Union{Distribution,AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi,
 )
@@ -537,7 +560,9 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=a
     return adaptor
 end
 
-AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...) = AHMC.Adaptation.NoAdaptation()
+function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...)
+    return AHMC.Adaptation.NoAdaptation()
+end
 
 ##########################
 # HMC State Constructors #
@@ -548,7 +573,7 @@ function HMCState(
     model::Model,
     spl::Sampler{<:Hamiltonian},
     vi::AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     # Link everything if needed.
     waslinked = islinked(vi, spl)
@@ -561,9 +586,8 @@ function HMCState(
     logπ = Turing.LogDensityFunction(
         vi,
         model,
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
+        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
     )
-
 
     # Get the metric type.
     metricT = getmetricT(spl.alg)

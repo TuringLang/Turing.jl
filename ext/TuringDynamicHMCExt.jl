@@ -3,9 +3,8 @@ module TuringDynamicHMCExt
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
-
 if isdefined(Base, :get_extension)
-    import DynamicHMC
+    using DynamicHMC: DynamicHMC
     using Turing
     using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
     using Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
@@ -13,7 +12,7 @@ else
     import ..DynamicHMC
     using ..Turing
     using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using ..Turing.Inference:  ADTypes, LogDensityProblemsAD, TYPEDFIELDS
+    using ..Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
 end
 
 """
@@ -25,22 +24,22 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 ```julia
 using DynamicHMC
 ```
-""" 
+"""
 struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
     sampler::T
     adtype::AD
 end
 
 function DynamicNUTS(
-    spl::DynamicHMC.NUTS = DynamicHMC.NUTS(),
-    space::Tuple = ();
-    adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE
+    spl::DynamicHMC.NUTS=DynamicHMC.NUTS(),
+    space::Tuple=();
+    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
     return DynamicNUTS{typeof(adtype),space,typeof(spl)}(spl, adtype)
 end
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
-DynamicPPL.getspace(::DynamicNUTS{<:Any, space}) where {space} = space
+DynamicPPL.getspace(::DynamicNUTS{<:Any,space}) where {space} = space
 
 """
     DynamicNUTSState
@@ -59,14 +58,16 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS}) = DynamicPPL.SampleFromUniform()
+function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
+    return DynamicPPL.SampleFromUniform()
+end
 
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:DynamicNUTS},
     vi::DynamicPPL.AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     # Ensure that initial sample is in unconstrained space.
     if !DynamicPPL.islinked(vi, spl)
@@ -75,15 +76,13 @@ function DynamicPPL.initialstep(
     end
 
     # Define log-density function.
-    ℓ = LogDensityProblemsAD.ADgradient(Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()))
+    ℓ = LogDensityProblemsAD.ADgradient(
+        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    )
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng,
-        ℓ,
-        0;
-        initialization = (q = vi[spl],),
-        reporter = DynamicHMC.NoProgressReport(),
+        rng, ℓ, 0; initialization=(q=vi[spl],), reporter=DynamicHMC.NoProgressReport()
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
@@ -104,18 +103,12 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:DynamicNUTS},
     state::DynamicNUTSState;
-    kwargs...
+    kwargs...,
 )
     # Compute next sample.
     vi = state.vi
     ℓ = state.logdensity
-    steps = DynamicHMC.mcmc_steps(
-        rng,
-        spl.alg.sampler,
-        state.metric,
-        ℓ,
-        state.stepsize,
-    )
+    steps = DynamicHMC.mcmc_steps(rng, spl.alg.sampler, state.metric, ℓ, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.

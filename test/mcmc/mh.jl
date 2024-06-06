@@ -1,12 +1,12 @@
 module MHTests
 
-import AdvancedMH
-using Distributions: Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal,
-    Normal, sample
-import DynamicPPL
+using AdvancedMH: AdvancedMH
+using Distributions:
+    Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal, Normal, sample
+using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
 using LinearAlgebra: I
-import Random
+using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
@@ -21,9 +21,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "mh constructor" begin
         Random.seed!(10)
         N = 500
-        s1 = MH(
-            (:s, InverseGamma(2,3)),
-            (:m, GKernel(3.0)))
+        s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))
         s2 = MH(:s, :m)
         s3 = MH()
         for s in (s1, s2, s3)
@@ -49,30 +47,27 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         Random.seed!(125)
         alg = MH()
         chain = sample(gdemo_default, alg, 10_000)
-        check_gdemo(chain, atol = 0.1)
+        check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MH with Gaussian proposal
-        alg = MH(
-            (:s, InverseGamma(2,3)),
-            (:m, GKernel(1.0)))
+        alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
         chain = sample(gdemo_default, alg, 10_000)
-        check_gdemo(chain, atol = 0.1)
+        check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
         chain = sample(gdemo_default, alg, 10_000)
-        check_gdemo(chain, atol = 0.1)
+        check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MoGtest
         gibbs = Gibbs(
-            CSMC(15, :z1, :z2, :z3, :z4),
-            MH((:mu1,GKernel(1)), (:mu2,GKernel(1)))
+            CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
         )
         chain = sample(MoGtest_default, gibbs, 500)
-        check_MoGtest_default(chain, atol = 0.15)
+        check_MoGtest_default(chain; atol=0.15)
     end
 
     # Test MH shape passing.
@@ -91,7 +86,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
             -1.5 ~ Normal(m[1], m[2])
 
             1.5 ~ Normal(m[1], s)
-            2.0 ~ Normal(m[1], s)
+            return 2.0 ~ Normal(m[1], s)
         end
 
         model = M(zeros(2), I, 1)
@@ -100,7 +95,8 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
 
         @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
-        @test dt[:m] isa AdvancedMH.StaticProposal{false,Vector{ContinuousUnivariateDistribution}}
+        @test dt[:m] isa
+            AdvancedMH.StaticProposal{false,Vector{ContinuousUnivariateDistribution}}
         @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
         @test dt[:s] isa AdvancedMH.StaticProposal{false,<:InverseGamma}
 
@@ -115,7 +111,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
     @testset "proposal matrix" begin
         Random.seed!(100)
-        
+
         mat = [1.0 -0.05; -0.05 1.0]
 
         prop1 = mat # Matrix only constructor
@@ -142,42 +138,37 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # generate data
         x = rand(Normal(5, 10), 20)
         y = rand(LogNormal(-3, 2), 20)
-        
+
         # Turing model
         @model function twomeans(x, y)
             # Set Priors
             μ ~ MvNormal(zeros(2), 9 * I)
             σ ~ filldist(Exponential(1), 2)
-        
+
             # Distributions of supplied data
             x .~ Normal(μ[1], σ[1])
-            y .~ LogNormal(μ[2], σ[2])
-        
+            return y .~ LogNormal(μ[2], σ[2])
         end
         mod = twomeans(x, y)
-        
+
         # generate covariance matrix for RWMH
         # with small-valued VC matrix to check if we only see very small steps
-        vc_μ = convert(Array, 1e-4*I(2))
-        vc_σ = convert(Array, 1e-4*I(2))
+        vc_μ = convert(Array, 1e-4 * I(2))
+        vc_σ = convert(Array, 1e-4 * I(2))
 
-        alg = Gibbs(
-            MH((:μ, vc_μ)),
-            MH((:σ, vc_σ)),
-        )
+        alg = Gibbs(MH((:μ, vc_μ)), MH((:σ, vc_σ)))
 
         chn = sample(
             mod,
             alg,
-            3_000 # draws
+            3_000, # draws
         )
-        
-            
+
         chn2 = sample(mod, MH(), 3_000)
 
         # Test that the small variance version is actually smaller.
-        v1 = var(diff(Array(chn["μ[1]"]), dims=1))
-        v2 = var(diff(Array(chn2["μ[1]"]), dims=1))
+        v1 = var(diff(Array(chn["μ[1]"]); dims=1))
+        v2 = var(diff(Array(chn2["μ[1]"]); dims=1))
 
         # FIXME: Do this properly. It sometimes fails.
         # @test v1 < v2
@@ -241,7 +232,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         vi = deepcopy(vi_base)
         alg = MH(
             :m => AdvancedMH.StaticProposal(Normal()),
-            :s => AdvancedMH.RandomWalkProposal(Normal())
+            :s => AdvancedMH.RandomWalkProposal(Normal()),
         )
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
@@ -253,21 +244,27 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # find a non-trivial `atol` where the tests will pass for all seeds. Hence we fix it :/
         rng = StableRNG(10)
         alg = MH()
-        gdemo_default_prior = DynamicPPL.contextualize(gdemo_default, DynamicPPL.PriorContext())
+        gdemo_default_prior = DynamicPPL.contextualize(
+            gdemo_default, DynamicPPL.PriorContext()
+        )
         burnin = 10_000
         n = 10_000
-        chain = sample(rng, gdemo_default_prior, alg, n; discard_initial = burnin, thinning=10)
-        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
+        chain = sample(
+            rng, gdemo_default_prior, alg, n; discard_initial=burnin, thinning=10
+        )
+        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0]; atol=0.3)
     end
 
     @testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(
-           demo_filldist_issue2180(),
-           MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
-           10_000
+            demo_filldist_issue2180(),
+            MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
+            10_000,
         )
-        check_numerical(chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0], atol=0.2)
+        check_numerical(
+            chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0]; atol=0.2
+        )
     end
 end
 

@@ -49,11 +49,11 @@ m = inverse_gdemo(x)
 sample(m, Gibbs(GibbsConditional(:λ, cond_λ), GibbsConditional(:m, cond_m)), 10)
 ```
 """
-struct GibbsConditional{S, C}
+struct GibbsConditional{S,C}
     conditional::C
 
     function GibbsConditional(sym::Symbol, conditional::C) where {C}
-        return new{sym, C}(conditional)
+        return new{sym,C}(conditional)
     end
 end
 
@@ -64,7 +64,7 @@ function DynamicPPL.initialstep(
     model::Model,
     spl::Sampler{<:GibbsConditional},
     vi::AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     return nothing, vi
 end
@@ -74,7 +74,7 @@ function AbstractMCMC.step(
     model::Model,
     spl::Sampler{<:GibbsConditional},
     vi::AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     condvals = DynamicPPL.values_as(DynamicPPL.invlink(vi, model), NamedTuple)
     conddist = spl.alg.conditional(condvals)

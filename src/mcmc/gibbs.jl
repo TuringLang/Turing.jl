@@ -2,7 +2,6 @@
 ### Gibbs samplers / compositional samplers.
 ###
 
-
 """
     isgibbscomponent(alg)
 
@@ -16,7 +15,7 @@ isgibbscomponent(::Hamiltonian) = true
 isgibbscomponent(::MH) = true
 isgibbscomponent(::PG) = true
 
-const TGIBBS = Union{InferenceAlgorithm, GibbsConditional}
+const TGIBBS = Union{InferenceAlgorithm,GibbsConditional}
 
 """
     Gibbs(algs...)
@@ -47,12 +46,15 @@ Tips:
 methods like Particle Gibbs. You can increase the effectiveness of particle sampling by including
 more particles in the particle sampler.
 """
-struct Gibbs{space, N, A<:NTuple{N, TGIBBS}, B<:NTuple{N, Int}} <: InferenceAlgorithm
+struct Gibbs{space,N,A<:NTuple{N,TGIBBS},B<:NTuple{N,Int}} <: InferenceAlgorithm
     algs::A   # component sampling algorithms
     iterations::B
-    function Gibbs{space, N, A, B}(algs::A, iterations::B) where {space, N, A<:NTuple{N, TGIBBS}, B<:NTuple{N, Int}}
-        all(isgibbscomponent, algs) || error("all algorithms have to support Gibbs sampling")
-        return new{space, N, A, B}(algs, iterations)
+    function Gibbs{space,N,A,B}(
+        algs::A, iterations::B
+    ) where {space,N,A<:NTuple{N,TGIBBS},B<:NTuple{N,Int}}
+        all(isgibbscomponent, algs) ||
+            error("all algorithms have to support Gibbs sampling")
+        return new{space,N,A,B}(algs, iterations)
     end
 end
 
@@ -61,19 +63,18 @@ function Gibbs(alg1::TGIBBS, algrest::Vararg{TGIBBS,N}) where {N}
     iterations = ntuple(Returns(1), Val(N + 1))
     # obtain space for sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space,N + 1,typeof(algs),typeof(iterations)}(algs, iterations)
 end
 
 function Gibbs(
-    arg1::Tuple{<:TGIBBS,Int},
-    argrest::Vararg{<:Tuple{<:TGIBBS,Int}, N},
+    arg1::Tuple{<:TGIBBS,Int}, argrest::Vararg{<:Tuple{<:TGIBBS,Int},N}
 ) where {N}
     allargs = (arg1, argrest...)
     algs = map(first, allargs)
     iterations = map(last, allargs)
     # obtain space for sampling algorithms
     space = Tuple(union(getspace.(algs)...))
-    return Gibbs{space, N + 1, typeof(algs), typeof(iterations)}(algs, iterations)
+    return Gibbs{space,N + 1,typeof(algs),typeof(iterations)}(algs, iterations)
 end
 
 """
@@ -110,14 +111,13 @@ Return an updated state, taking into account the variables sampled by other Gibb
 - `varinfo`: the variables, including the ones sampled by other Gibbs components.
 """
 gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
-gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo) = PGState(varinfo, state.rng)
+function gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo)
+    return PGState(varinfo, state.rng)
+end
 
 # Update state in Gibbs sampling
 function gibbs_state(
-    model::Model,
-    spl::Sampler{<:Hamiltonian},
-    state::HMCState,
-    varinfo::AbstractVarInfo,
+    model::Model, spl::Sampler{<:Hamiltonian}, state::HMCState, varinfo::AbstractVarInfo
 )
     # Update hamiltonian
     θ_old = varinfo[spl]
@@ -159,11 +159,7 @@ gibbs_rerun(prev_alg, ::PG) = false
 
 # Initialize the Gibbs sampler.
 function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    vi::AbstractVarInfo;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:Gibbs}, vi::AbstractVarInfo; kwargs...
 )
     # TODO: Technically this only works for `VarInfo` or `ThreadSafeVarInfo{<:VarInfo}`.
     # Should we enforce this?
@@ -176,7 +172,7 @@ function DynamicPPL.initialstep(
         if i == 1
             prev_alg = algs[end]
         else
-            prev_alg = algs[i-1]
+            prev_alg = algs[i - 1]
         end
         rerun = gibbs_rerun(prev_alg, alg)
         selector = DynamicPPL.Selector(Symbol(typeof(alg)), rerun)
@@ -202,7 +198,11 @@ function DynamicPPL.initialstep(
     states = map(samplers) do local_spl
         # Recompute `vi.logp` if needed.
         if local_spl.selector.rerun
-            vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, local_spl)))
+            vi = last(
+                DynamicPPL.evaluate!!(
+                    model, vi, DynamicPPL.SamplingContext(rng, local_spl)
+                ),
+            )
         end
 
         # Compute initial state.
@@ -223,11 +223,7 @@ end
 
 # Subsequent steps
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Gibbs},
-    state::GibbsState;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:Gibbs}, state::GibbsState; kwargs...
 )
     # Iterate through each of the samplers.
     vi = state.vi

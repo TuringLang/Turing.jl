@@ -31,21 +31,13 @@ IS() = IS{()}()
 DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 
 function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:IS},
-    vi::AbstractVarInfo;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:IS}, vi::AbstractVarInfo; kwargs...
 )
     return Transition(model, vi), nothing
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:IS},
-    ::Nothing;
-    kwargs...
+    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:IS}, ::Nothing; kwargs...
 )
     vi = VarInfo(rng, model, spl)
     return Transition(model, vi), nothing
