@@ -4,15 +4,17 @@ using ..Models: MoGtest_default, gdemo, gdemo_default
 using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 using Distributions: InverseGamma, Normal
 using Distributions: sample
-import ForwardDiff
-import Random
-import ReverseDiff
+using ForwardDiff: ForwardDiff
+using Random: Random
+using ReverseDiff: ReverseDiff
 using Test: @test, @testset
 using Turing
 using Turing: Inference
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing gibbs.jl with $adbackend" for adbackend in (
+    AutoForwardDiff(; chunksize=0), AutoReverseDiff(false)
+)
     @testset "gibbs constructor" begin
         N = 500
         s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
@@ -48,26 +50,28 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
         Random.seed!(100)
         alg = Gibbs(CSMC(15, :s), HMC(0.2, 4, :m; adtype=adbackend))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.15)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.15)
 
         Random.seed!(100)
 
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m; adtype=adbackend))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
         alg = Gibbs(CSMC(15, :s), ESS(:m))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
         alg = CSMC(15)
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49/24, 7/6], atol=0.1)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
         Random.seed!(200)
-        gibbs = Gibbs(PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2; adtype=adbackend))
+        gibbs = Gibbs(
+            PG(15, :z1, :z2, :z3, :z4), HMC(0.15, 3, :mu1, :mu2; adtype=adbackend)
+        )
         chain = sample(MoGtest_default, gibbs, 10_000)
-        check_MoGtest_default(chain, atol=0.15)
+        check_MoGtest_default(chain; atol=0.15)
 
         Random.seed!(200)
         for alg in [
@@ -95,42 +99,41 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
             ::Turing.Sampler{<:Gibbs},
             state,
             ::Type{MCMCChains.Chains};
-            kwargs...
+            kwargs...,
         )
-            samples isa Vector{<:Inference.Transition} ||
-                error("incorrect transitions")
-            return
+            samples isa Vector{<:Inference.Transition} || error("incorrect transitions")
+            return nothing
         end
 
         function callback(rng, model, sampler, sample, state, i; kwargs...)
             sample isa Inference.Transition || error("incorrect sample")
-            return
+            return nothing
         end
 
         alg = Gibbs(MH(:s), HMC(0.2, 4, :m; adtype=adbackend))
-        sample(model, alg, 100; callback = callback)
+        sample(model, alg, 100; callback=callback)
     end
     @testset "dynamic model" begin
         @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
-        
+
             z = zeros(Int, N)
             cluster_counts = zeros(Int, N)
             fill!(cluster_counts, 0)
-        
+
             for i in 1:N
                 z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
                 cluster_counts[z[i]] += 1
             end
-        
+
             Kmax = findlast(!iszero, cluster_counts)
             m = M(undef, Kmax)
-            for k = 1:Kmax
+            for k in 1:Kmax
                 m[k] ~ Normal(1.0, 1.0)
             end
         end
-        model = imm(randn(100), 1.0);
+        model = imm(randn(100), 1.0)
         # https://github.com/TuringLang/Turing.jl/issues/1725
         # sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
         sample(model, Gibbs(PG(10, :z), HMC(0.01, 4, :m; adtype=adbackend)), 100)

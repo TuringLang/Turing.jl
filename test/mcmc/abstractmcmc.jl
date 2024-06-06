@@ -1,15 +1,15 @@
 module AbstractMCMCTests
 
-import AdvancedMH
+using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
-import DynamicPPL
-import ForwardDiff
+using DynamicPPL: DynamicPPL
+using ForwardDiff: ForwardDiff
 using LinearAlgebra: I
-import LogDensityProblems
-import LogDensityProblemsAD
-import Random
-import ReverseDiff
+using LogDensityProblems: LogDensityProblems
+using LogDensityProblemsAD: LogDensityProblemsAD
+using Random: Random
+using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
@@ -21,7 +21,9 @@ function initialize_nuts(model::Turing.Model)
     f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
 
     # Link the varinfo.
-    f = Turing.Inference.setvarinfo(f, DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model))
+    f = Turing.Inference.setvarinfo(
+        f, DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model)
+    )
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)
@@ -39,15 +41,17 @@ function initialize_nuts(model::Turing.Model)
     #   - multinomial sampling scheme,
     #   - generalised No-U-Turn criteria, and
     #   - windowed adaption for step-size and diagonal mass matrix
-    proposal = AdvancedHMC.HMCKernel(AdvancedHMC.Trajectory{AdvancedHMC.MultinomialTS}(integrator, AdvancedHMC.GeneralisedNoUTurn()))
+    proposal = AdvancedHMC.HMCKernel(
+        AdvancedHMC.Trajectory{AdvancedHMC.MultinomialTS}(
+            integrator, AdvancedHMC.GeneralisedNoUTurn()
+        ),
+    )
     adaptor = AdvancedHMC.StanHMCAdaptor(
-        AdvancedHMC.MassMatrixAdaptor(metric),
-        AdvancedHMC.StepSizeAdaptor(0.65, integrator)
+        AdvancedHMC.MassMatrixAdaptor(metric), AdvancedHMC.StepSizeAdaptor(0.65, integrator)
     )
 
     return AdvancedHMC.HMCSampler(proposal, metric, adaptor)
 end
-
 
 function initialize_mh_rw(model)
     f = DynamicPPL.LogDensityFunction(model)
@@ -57,17 +61,22 @@ end
 
 # TODO: Should this go somewhere else?
 # Convert a model into a `Distribution` to allow usage as a proposal in AdvancedMH.jl.
-struct ModelDistribution{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo} <: ContinuousMultivariateDistribution
+struct ModelDistribution{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo} <:
+       ContinuousMultivariateDistribution
     model::M
     varinfo::V
 end
-ModelDistribution(model::DynamicPPL.Model) = ModelDistribution(model, DynamicPPL.VarInfo(model))
+function ModelDistribution(model::DynamicPPL.Model)
+    return ModelDistribution(model, DynamicPPL.VarInfo(model))
+end
 
 Base.length(d::ModelDistribution) = length(d.varinfo[:])
 function Distributions._logpdf(d::ModelDistribution, x::AbstractVector)
     return logprior(d.model, DynamicPPL.unflatten(d.varinfo, x))
 end
-function Distributions._rand!(rng::Random.AbstractRNG, d::ModelDistribution, x::AbstractVector{<:Real})
+function Distributions._rand!(
+    rng::Random.AbstractRNG, d::ModelDistribution, x::AbstractVector{<:Real}
+)
     model = d.model
     varinfo = deepcopy(d.varinfo)
     for vn in keys(varinfo)
@@ -79,10 +88,14 @@ function Distributions._rand!(rng::Random.AbstractRNG, d::ModelDistribution, x::
 end
 
 function initialize_mh_with_prior_proposal(model)
-    return AdvancedMH.MetropolisHastings(AdvancedMH.StaticProposal(ModelDistribution(model)))
+    return AdvancedMH.MetropolisHastings(
+        AdvancedMH.StaticProposal(ModelDistribution(model))
+    )
 end
 
-function test_initial_params(model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...)
+function test_initial_params(
+    model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...
+)
     # Execute the transition with two different RNGs and check that the resulting
     # parameter values are the same.
     rng1 = Random.MersenneTwister(42)
@@ -104,8 +117,10 @@ end
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
-                sampler = initialize_nuts(model);
-                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; adtype, unconstrained=true), model)
+                sampler = initialize_nuts(model)
+                sampler_ext = DynamicPPL.Sampler(
+                    externalsampler(sampler; adtype, unconstrained=true), model
+                )
                 # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
                 # @testset "initial_params" begin
                 #     test_initial_params(model, sampler_ext; n_adapts=0)
@@ -119,9 +134,13 @@ end
                 )
 
                 @testset "inference" begin
-                    if adtype isa AutoReverseDiff && model.f === DynamicPPL.TestUtils.demo_assume_index_observe && VERSION < v"1.8"
+                    if adtype isa AutoReverseDiff &&
+                        model.f === DynamicPPL.TestUtils.demo_assume_index_observe &&
+                        VERSION < v"1.8"
                         # Ref: https://github.com/TuringLang/DynamicPPL.jl/issues/612
-                        @test_throws UndefRefError sample(model, sampler_ext, 5_000; sample_kwargs...)
+                        @test_throws UndefRefError sample(
+                            model, sampler_ext, 5_000; sample_kwargs...
+                        )
                     else
                         DynamicPPL.TestUtils.test_sampler(
                             [model],
@@ -140,12 +159,20 @@ end
             rng = Random.default_rng()
             model = DynamicPPL.TestUtils.DEMO_MODELS[1]
             sampler = initialize_nuts(model)
-            sampler_ext = externalsampler(sampler; unconstrained=true, adtype=AutoForwardDiff())
+            sampler_ext = externalsampler(
+                sampler; unconstrained=true, adtype=AutoForwardDiff()
+            )
             # Initial step.
-            state = last(AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext); n_adapts=0))
+            state = last(
+                AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext); n_adapts=0)
+            )
             @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
             # Subsequent step.
-            state = last(AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext), state; n_adapts=0))
+            state = last(
+                AbstractMCMC.step(
+                    rng, model, DynamicPPL.Sampler(sampler_ext), state; n_adapts=0
+                ),
+            )
             @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
         end
     end
@@ -155,8 +182,10 @@ end
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
-                sampler = initialize_mh_rw(model);
-                sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=true), model)
+                sampler = initialize_mh_rw(model)
+                sampler_ext = DynamicPPL.Sampler(
+                    externalsampler(sampler; unconstrained=true), model
+                )
                 @testset "initial_params" begin
                     test_initial_params(model, sampler_ext)
                 end
@@ -168,7 +197,7 @@ end
                         discard_initial=1_000,
                         thinning=10,
                         rtol=0.2,
-                        sampler_name="AdvancedMH"
+                        sampler_name="AdvancedMH",
                     )
                 end
             end

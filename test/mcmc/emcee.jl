@@ -3,9 +3,9 @@ module EmceeTests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Distributions: sample
-import DynamicPPL
+using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-import Random
+using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -15,7 +15,7 @@ using Turing
 
         n_samples = 1000
         n_walkers = 250
-        
+
         spl = Emcee(n_walkers, 2.0)
         @test DynamicPPL.alg_str(Sampler(spl, gdemo_default)) == "Emcee"
 

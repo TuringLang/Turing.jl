@@ -2,7 +2,7 @@
 ### Sampler states
 ###
 
-struct Emcee{space, E<:AMH.Ensemble} <: InferenceAlgorithm
+struct Emcee{space,E<:AMH.Ensemble} <: InferenceAlgorithm
     ensemble::E
 end
 
@@ -12,7 +12,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     # ensemble sampling.
     prop = AMH.StretchProposal(nothing, stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
-    return Emcee{(), typeof(ensemble)}(ensemble)
+    return Emcee{(),typeof(ensemble)}(ensemble)
 end
 
 struct EmceeState{V<:AbstractVarInfo,S}
@@ -24,9 +24,9 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
     spl::Sampler{<:Emcee};
-    resume_from = nothing,
-    initial_params = nothing,
-    kwargs...
+    resume_from=nothing,
+    initial_params=nothing,
+    kwargs...,
 )
     if resume_from !== nothing
         state = loadstate(resume_from)
@@ -39,9 +39,8 @@ function AbstractMCMC.step(
 
     # Update the parameters if provided.
     if initial_params !== nothing
-        length(initial_params) == n || throw(
-            ArgumentError("initial parameters have to be specified for each walker")
-        )
+        length(initial_params) == n ||
+            throw(ArgumentError("initial parameters have to be specified for each walker"))
         vis = map(vis, initial_params) do vi, init
             vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
 
@@ -59,18 +58,14 @@ function AbstractMCMC.step(
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, spl, model)
             AMH.Transition(vi[spl], getlogp(vi), false)
-        end
+        end,
     )
 
     return transition, state
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Emcee},
-    state::EmceeState;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:Emcee}, state::EmceeState; kwargs...
 )
     # Generate a log joint function.
     vi = state.vi
@@ -98,11 +93,11 @@ function AbstractMCMC.bundle_samples(
     spl::Sampler{<:Emcee},
     state::EmceeState,
     chain_type::Type{MCMCChains.Chains};
-    save_state = false,
-    sort_chain = false,
-    discard_initial = 0,
-    thinning = 1,
-    kwargs...
+    save_state=false,
+    sort_chain=false,
+    discard_initial=0,
+    thinning=1,
+    kwargs...,
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
@@ -134,9 +129,9 @@ function AbstractMCMC.bundle_samples(
     le = getlogevidence(samples, state, spl)
 
     # Set up the info tuple.
-    info = (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),)
+    info = (varname_to_symbol=OrderedDict(zip(varnames, varnames_symbol)),)
     if save_state
-        info = merge(info, (model = model, sampler = spl, samplerstate = state))
+        info = merge(info, (model=model, sampler=spl, samplerstate=state))
     end
 
     # Concretize the array before giving it to MCMCChains.
@@ -146,7 +141,7 @@ function AbstractMCMC.bundle_samples(
     chain = MCMCChains.Chains(
         parray,
         nms,
-        (internals = extra_params,);
+        (internals=extra_params,);
         evidence=le,
         info=info,
         start=discard_initial + 1,

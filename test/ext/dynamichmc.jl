@@ -4,10 +4,10 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Test: @test, @testset
 using Distributions: sample
-import DynamicHMC
-import DynamicPPL
+using DynamicHMC: DynamicHMC
+using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
-import Random
+using Random: Random
 using Turing
 
 @testset "TuringDynamicHMCExt" begin

@@ -2,36 +2,26 @@ using ReverseDiff: GradientTape, GradientConfig, gradient, gradient!, compile
 using Turing: _hmc_step
 using Turing
 using HDF5, JLD
-sv_data = load(TPATH*"/example-models/nips-2017/sv-data.jld.data")["data"]
+sv_data = load(TPATH * "/example-models/nips-2017/sv-data.jld.data")["data"]
 
 @model function sv_model(T, y)
     ϕ ~ Uniform(-1, 1)
-    σ ~ truncated(Cauchy(0,5), 0, Inf)
+    σ ~ truncated(Cauchy(0, 5), 0, Inf)
     μ ~ Cauchy(0, 10)
 
     h = Vector{Real}(T)
     h[1] ~ Normal(μ, σ / sqrt(1 - ϕ^2))
     y[1] ~ Normal(0, exp.(h[1] / 2))
-    for t = 2:T
-      h[t] ~ Normal(μ + ϕ * (h[t-1] - μ) , σ)
-      y[t] ~ Normal(0, exp.(h[t] / 2))
+    for t in 2:T
+        h[t] ~ Normal(μ + ϕ * (h[t - 1] - μ), σ)
+        y[t] ~ Normal(0, exp.(h[t] / 2))
     end
-  end
+end
 
-
-mf = sv_model(data=sv_data[1])
+mf = sv_model(; data=sv_data[1])
 chain_nuts = sample(mf, HMC(0.05, 10), 2000)
 
 println("mean of m: $(mean(chn[1000:end, :μ]))")
-
-
-
-
-
-
-
-
-
 
 # θ_dim = 1
 # function lj_func(θ)
@@ -73,7 +63,6 @@ println("mean of m: $(mean(chn[1000:end, :μ]))")
 
 # chn = []
 # accept_num = 1
-
 
 # totla_num = 5000
 # for iter = 1:totla_num
