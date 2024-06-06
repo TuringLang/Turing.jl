@@ -132,7 +132,7 @@ has_dot_assume(::Model) = true
                 xs = Array(chain)
                 xs_true = Array(chain_true)
                 for i = 1:size(xs, 2)
-                    @test two_sample_ad_test(xs[:, i], xs_true[:, i])
+                    @test two_sample_ad_test(xs[:, i], xs_true[:, i]; warn_on_fail=true)
                     # Let's make sure that the significance level is not too low by
                     # checking that the KS test fails for some simple transformations.
                     # TODO: Replace the heuristic below with closed-form implementations

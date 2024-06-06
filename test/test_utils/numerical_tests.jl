@@ -83,18 +83,27 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
 end
 
 """
-    two_sample_ad_test(xs_left, xs_right; α=1e-3)
+    two_sample_ad_test(xs_left, xs_right; α=1e-3, warn_on_fail=false)
 
 Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and `xs_right`.
+
+# Arguments
+- `xs_left::AbstractVector`: samples from the first distribution.
+- `xs_right::AbstractVector`: samples from the second distribution.
+
+# Keyword arguments
+- `α::Real`: significance level for the test. Default: `1e-3`.
+- `warn_on_fail::Bool`: whether to warn if the test fails. Default: `false`.
+    Makes failures a bit more informative.
 """
-function two_sample_ad_test(xs_left, xs_right; α=1e-3)
+function two_sample_ad_test(xs_left, xs_right; α=1e-3, warn_on_fail=false)
     t = HypothesisTests.KSampleADTest(xs_left, xs_right)
     # Just a way to make the logs a bit more informative in case of failure.
     if HypothesisTests.pvalue(t) > α
-        @test true
+        true
     else
-        @warn "Two-sample AD test failed with p-value $(HypothesisTests.pvalue(t))"
-        @test false
+        warn_on_fail && @warn "Two-sample AD test failed with p-value $(HypothesisTests.pvalue(t))"
+        false
     end
 end
 
