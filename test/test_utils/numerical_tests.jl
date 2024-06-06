@@ -103,6 +103,9 @@ function two_sample_ad_test(xs_left, xs_right; α=1e-3, warn_on_fail=false)
         true
     else
         warn_on_fail && @warn "Two-sample AD test failed with p-value $(HypothesisTests.pvalue(t))"
+        warn_on_fail && @warn "Test statistic: $(HypothesisTests.teststat(t))"
+        warn_on_fail && @warn "Means of the two samples: $(mean(xs_left)), $(mean(xs_right))"
+        warn_on_fail && @warn "Variances of the two samples: $(var(xs_left)), $(var(xs_right))"
         false
     end
 end
