@@ -26,6 +26,10 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" begin
+    @testset "Aqua" begin
+        @timeit_include("Aqua.jl")
+    end
+
     @testset "essential" begin
         @timeit_include("essential/ad.jl")
         @timeit_include("essential/container.jl")
