@@ -3,6 +3,7 @@ module NumericalTests
 using Distributions
 using MCMCChains: namesingroup
 using Test: @test, @testset
+using HypothesisTests: HypothesisTests
 
 export check_MoGtest_default, check_MoGtest_default_z_vector, check_dist_numerical,
     check_gdemo, check_numerical
@@ -87,8 +88,8 @@ end
 Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and `xs_right`.
 """
 function two_sample_ad_test(xs_left, xs_right; α=1e-3)
-    t = KSampleADTest(xs_left, xs_right)
-    return pvalue(t) > α
+    t = HypothesisTests.KSampleADTest(xs_left, xs_right)
+    return HypothesisTests.pvalue(t) > α
 end
 
 end

@@ -2,7 +2,7 @@ module ExperimentalGibbsTests
 
 using ..Models: MoGtest_default, MoGtest_default_z_vector, gdemo
 using ..NumericalTests: check_MoGtest_default, check_MoGtest_default_z_vector, check_gdemo,
-    check_numerical
+    check_numerical, two_sample_ad_test
 using DynamicPPL
 using Random
 using Test
