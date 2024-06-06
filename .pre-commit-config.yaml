@@ -1,0 +1,13 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+  - repo: "https://github.com/domluna/JuliaFormatter.jl"
+    rev: "v1.0.56"
+    hooks:
+    - id: "julia-formatter"
