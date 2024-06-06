@@ -89,7 +89,13 @@ Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and
 """
 function two_sample_ad_test(xs_left, xs_right; α=1e-3)
     t = HypothesisTests.KSampleADTest(xs_left, xs_right)
-    return HypothesisTests.pvalue(t) > α
+    # Just a way to make the logs a bit more informative in case of failure.
+    if HypothesisTests.pvalue(t) > α
+        @test true
+    else
+        @warn "Two-sample AD test failed with p-value $(HypothesisTests.pvalue(t))"
+        @test false
+    end
 end
 
 end
