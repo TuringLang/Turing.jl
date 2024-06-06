@@ -1,4 +1,12 @@
-using Test, Random, Turing, DynamicPPL
+module ExperimentalGibbsTests
+
+using ..Models: MoGtest_default, MoGtest_default_z_vector, gdemo
+using ..NumericalTests: check_MoGtest_default, check_MoGtest_default_z_vector, check_gdemo,
+    check_numerical
+using DynamicPPL
+using Random
+using Test
+using Turing
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
@@ -214,4 +222,6 @@ has_dot_assume(::Model) = true
         chain = sample(model, alg, 1000; progress=false)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
+end
+
 end

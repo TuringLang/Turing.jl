@@ -1,3 +1,12 @@
+module NumericalTests
+
+using Distributions
+using MCMCChains: namesingroup
+using Test: @test, @testset
+
+export check_MoGtest_default, check_MoGtest_default_z_vector, check_dist_numerical,
+    check_gdemo, check_numerical
+
 function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
     @testset "numerical" begin
         # Extract values.
@@ -80,4 +89,6 @@ Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and
 function two_sample_ad_test(xs_left, xs_right; α=1e-3)
     t = KSampleADTest(xs_left, xs_right)
     return pvalue(t) > α
+end
+
 end

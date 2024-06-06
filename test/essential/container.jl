@@ -1,3 +1,11 @@
+module ContainerTests
+
+import AdvancedPS
+using Distributions: Bernoulli, Beta, Gamma, Normal
+using DynamicPPL: @model, Sampler
+using Test: @test, @testset
+using Turing
+
 @testset "container.jl" begin
     @model function test()
         a ~ Normal(0, 1)
@@ -9,7 +17,7 @@
         x
     end
 
-    @turing_testset "constructor" begin
+    @testset "constructor" begin
       vi = DynamicPPL.VarInfo()
       sampler = Sampler(PG(10))
       model = test()
@@ -29,7 +37,7 @@
       @test DynamicPPL.get_num_produce(newtrace.model.f.varinfo) == 1
     end
 
-    @turing_testset "fork" begin
+    @testset "fork" begin
       @model function normal()
           a ~ Normal(0, 1)
           3 ~ Normal(a, 2)
@@ -47,4 +55,6 @@
       # Catch broken replay mechanism
       @test AdvancedPS.advance!(trace) ≈ AdvancedPS.advance!(newtrace) 
     end
+end
+
 end

@@ -1,3 +1,11 @@
+module RandomMeasuresTests
+
+using Distributions: Normal, sample
+import Random
+using Test: @test, @testset
+using Turing
+using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
+
 @testset "RandomMeasures.jl" begin
     @testset "Infinite Mixture Model" begin
         @model function infiniteGMM(x)
@@ -72,7 +80,7 @@
     #     [[1], [2], [3, 4]],
     #     [[1], [2], [3], [4]]]
 
-    # @turing_testset "chinese restaurant processes" begin
+    # @testset "chinese restaurant processes" begin
     #     # Data
     #     data = [-2,2,-1.5,1.5]
 
@@ -146,7 +154,7 @@
     #     @test discr < 0.2
     # end
     # @testset "distributions" begin
-    #     @turing_testset "Representations" begin
+    #     @testset "Representations" begin
     #         d = StickBreakingProcess(DirichletProcess(1.0))
     #         @test minimum(d) == 0
     #         @test maximum(d) == 1
@@ -159,7 +167,7 @@
     #         @test minimum(d) == 1
     #         @test maximum(d) == 3
     #     end
-    #     @turing_testset "Dirichlet Process" begin
+    #     @testset "Dirichlet Process" begin
 
     #         α = 0.1
     #         N = 10_000
@@ -187,7 +195,7 @@
     #         @test p[2] ≈ q[2] atol=0.1
     #         @test p[3] ≈ q[3] atol=0.1
     #     end
-    #     @turing_testset "Pitman-Yor Process" begin
+    #     @testset "Pitman-Yor Process" begin
 
     #         a = 0.5
     #         θ = 0.1
@@ -218,7 +226,7 @@
     #         @test p[3] ≈ q[3] atol=0.1
     #     end
     # end
-    # @turing_testset "stick breaking" begin
+    # @testset "stick breaking" begin
     #     # Data
     #     data = [-2,2,-1.5,1.5]
 
@@ -304,7 +312,7 @@
     #     @test l2 < 0.1
     #     @test discr < 0.3
     # end
-    # @turing_testset "size-based sampling" begin
+    # @testset "size-based sampling" begin
     #     # Data
     #     data = [-2,2,-1.5,1.5]
 
@@ -380,4 +388,6 @@
     #     @test l2 < 0.05
     #     @test discr < 0.2
     # end
+end
+
 end

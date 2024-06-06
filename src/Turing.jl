@@ -5,6 +5,7 @@ using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
+using Compat: pkgversion
 
 import AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
@@ -61,8 +62,10 @@ include("deprecated.jl") # to be removed in the next minor version release
 # Exports #
 ###########
 # `using` statements for stuff to re-export
-using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint
+using DynamicPPL: pointwise_loglikelihoods, generated_quantities, logprior, logjoint, condition, decondition, fix, unfix, conditioned
 using StatsBase: predict
+using Bijectors: ordered
+using OrderedCollections: OrderedDict
 
 # Turing essentials - modelling macros and inference algorithms
 export  @model,                 # modelling
@@ -114,10 +117,10 @@ export  @model,                 # modelling
         BernoulliLogit,         # Part of Distributions >= 0.25.77
         OrderedLogistic,
         LogPoisson,
-        NamedDist,
         filldist,
         arraydist,
 
+        NamedDist,              # Exports from DynamicPPL
         predict,
         pointwise_loglikelihoods,
         elementwise_loglikelihoods,
@@ -126,13 +129,25 @@ export  @model,                 # modelling
         logjoint,
         LogDensityFunction,
 
-        constrained_space,            # optimisation interface
+        condition,
+        decondition,
+        fix,
+        unfix,
+        conditioned,
+        OrderedDict,
+
+        ordered,                # Exports from Bijectors
+
+        maximum_a_posteriori,
+        maximum_likelihood,
+        # The MAP and MLE exports are only needed for the Optim.jl interface.
         MAP,
-        MLE,
-        get_parameter_bounds,
-        optim_objective,
-        optim_function,
-        optim_problem
+        MLE
+
+# AutoTapir is only supported by ADTypes v1.0 and above.
+@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
+    export AutoTapir
+end
 
 if !isdefined(Base, :get_extension)
     using Requires
