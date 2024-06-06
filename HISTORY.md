@@ -1,3 +1,20 @@
+# Release 0.33.0
+
+## Breaking changes
+
+The following exported functions have been removed:
+
+  - `constrained_space`
+  - `get_parameter_bounds`
+  - `optim_objective`
+  - `optim_function`
+  - `optim_problem`
+
+The same functionality is now offered by the new exported functions
+
+  - `maximum_likelihood`
+  - `maximum_a_posteriori`
+
 # Release 0.30.5
 
   - `essential/ad.jl` is removed, `ForwardDiff` and `ReverseDiff` integrations via `LogDensityProblemsAD` are moved to `DynamicPPL` and live in corresponding package extensions.
