@@ -41,7 +41,7 @@ end
         @timeit_include("mcmc/ess.jl")
         @timeit_include("mcmc/is.jl")
     end
-    
+
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" begin
             @timeit_include("mcmc/gibbs.jl")
