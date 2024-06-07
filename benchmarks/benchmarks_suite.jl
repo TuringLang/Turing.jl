@@ -4,14 +4,14 @@ using LinearAlgebra
 const BenchmarkSuite = BenchmarkTools.BenchmarkGroup()
 
 #
-# Add models to benchmarks 
+# Add models to benchmarks
 #
 
 include("models/hlr.jl")
 include("models/lr.jl")
 include("models/sv_nuts.jl")
 
-# constrained 
+# constrained
 BenchmarkSuite["constrained"] = BenchmarkGroup(["constrained"])
 
 data = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
