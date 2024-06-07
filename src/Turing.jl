@@ -92,8 +92,6 @@ export @model,                 # modelling
     SGHMC,
     HMCDA,
     NUTS,
-    DynamicNUTS,
-    ANUTS,
     PolynomialStepsize,
     IS,                     # particle-based sampling
     SMC,
@@ -121,7 +119,6 @@ export @model,                 # modelling
     NamedDist,              # Exports from DynamicPPL
     predict,
     pointwise_loglikelihoods,
-    elementwise_loglikelihoods,
     generated_quantities,
     logprior,
     logjoint,
