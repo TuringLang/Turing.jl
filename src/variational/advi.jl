@@ -23,8 +23,9 @@ denoting the dimensionality of the latent variables.
 function Bijectors.bijector(
     model::DynamicPPL.Model, ::Val{sym2ranges}=Val(false); varinfo=DynamicPPL.VarInfo(model)
 ) where {sym2ranges}
-    num_params = sum([size(varinfo.metadata[sym].vals, 1) for sym in keys(varinfo.metadata)
-])
+    num_params = sum([
+        size(varinfo.metadata[sym].vals, 1) for sym in keys(varinfo.metadata)
+    ])
 
     dists = vcat([varinfo.metadata[sym].dists for sym in keys(varinfo.metadata)]...)
 
