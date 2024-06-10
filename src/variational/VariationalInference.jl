@@ -12,16 +12,9 @@ using Random: Random
 import AdvancedVI
 import Bijectors
 
-
 # Reexports
 using AdvancedVI: vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
-export
-    vi,
-    ADVI,
-    ELBO,
-    elbo,
-    TruncatedADAGrad,
-    DecayedADAGrad
+export vi, ADVI, ELBO, elbo, TruncatedADAGrad, DecayedADAGrad
 
 """
     make_logjoint(model::Model; weight = 1.0)
@@ -31,17 +24,10 @@ use `DynamicPPL.MiniBatch` context to run the `Model` with a weight `num_total_o
 ## Notes
 - For sake of efficiency, the returned function is closes over an instance of `VarInfo`. This means that you *might* run into some weird behaviour if you call this method sequentially using different types; if that's the case, just generate a new one for each type using `make_logjoint`.
 """
-function make_logjoint(model::DynamicPPL.Model; weight = 1.0)
+function make_logjoint(model::DynamicPPL.Model; weight=1.0)
     # setup
-    ctx = DynamicPPL.MiniBatchContext(
-        DynamicPPL.DefaultContext(),
-        weight
-    )
-    f = DynamicPPL.LogDensityFunction(
-        model,
-        DynamicPPL.VarInfo(model),
-        ctx
-    )
+    ctx = DynamicPPL.MiniBatchContext(DynamicPPL.DefaultContext(), weight)
+    f = DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx)
     return Base.Fix1(LogDensityProblems.logdensity, f)
 end
 
@@ -52,10 +38,10 @@ function (elbo::ELBO)(
     q,
     model::DynamicPPL.Model,
     num_samples;
-    weight = 1.0,
-    kwargs...
+    weight=1.0,
+    kwargs...,
 )
-    return elbo(rng, alg, q, make_logjoint(model; weight = weight), num_samples; kwargs...)
+    return elbo(rng, alg, q, make_logjoint(model; weight=weight), num_samples; kwargs...)
 end
 
 # VI algorithms

@@ -14,7 +14,6 @@ function wrap_in_vec_reshape(f, in_size)
     return reshape_outer ∘ f ∘ reshape_inner
 end
 
-
 """
     bijector(model::Model[, sym2ranges = Val(false)])
 
@@ -22,26 +21,25 @@ Returns a `Stacked <: Bijector` which maps from the support of the posterior to 
 denoting the dimensionality of the latent variables.
 """
 function Bijectors.bijector(
-    model::DynamicPPL.Model,
-    ::Val{sym2ranges} = Val(false);
-    varinfo = DynamicPPL.VarInfo(model)
+    model::DynamicPPL.Model, ::Val{sym2ranges}=Val(false); varinfo=DynamicPPL.VarInfo(model)
 ) where {sym2ranges}
-    num_params = sum([size(varinfo.metadata[sym].vals, 1)
-                      for sym ∈ keys(varinfo.metadata)])
+    num_params = sum([size(varinfo.metadata[sym].vals, 1) for sym in keys(varinfo.metadata)
+])
 
-    dists = vcat([varinfo.metadata[sym].dists for sym ∈ keys(varinfo.metadata)]...)
+    dists = vcat([varinfo.metadata[sym].dists for sym in keys(varinfo.metadata)]...)
 
-    num_ranges = sum([length(varinfo.metadata[sym].ranges)
-                      for sym ∈ keys(varinfo.metadata)])
+    num_ranges = sum([
+        length(varinfo.metadata[sym].ranges) for sym in keys(varinfo.metadata)
+    ])
     ranges = Vector{UnitRange{Int}}(undef, num_ranges)
     idx = 0
     range_idx = 1
 
     # ranges might be discontinuous => values are vectors of ranges rather than just ranges
-    sym_lookup = Dict{Symbol, Vector{UnitRange{Int}}}()
-    for sym ∈ keys(varinfo.metadata)
+    sym_lookup = Dict{Symbol,Vector{UnitRange{Int}}}()
+    for sym in keys(varinfo.metadata)
         sym_lookup[sym] = Vector{UnitRange{Int}}()
-        for r ∈ varinfo.metadata[sym].ranges
+        for r in varinfo.metadata[sym].ranges
             ranges[range_idx] = idx .+ r
             push!(sym_lookup[sym], ranges[range_idx])
             range_idx += 1
@@ -117,27 +115,24 @@ function AdvancedVI.update(
 end
 
 function AdvancedVI.vi(
-    model::DynamicPPL.Model,
-    alg::AdvancedVI.ADVI;
-    optimizer = AdvancedVI.TruncatedADAGrad(),
+    model::DynamicPPL.Model, alg::AdvancedVI.ADVI; optimizer=AdvancedVI.TruncatedADAGrad()
 )
     q = meanfield(model)
-    return AdvancedVI.vi(model, alg, q; optimizer = optimizer)
+    return AdvancedVI.vi(model, alg, q; optimizer=optimizer)
 end
-
 
 function AdvancedVI.vi(
     model::DynamicPPL.Model,
     alg::AdvancedVI.ADVI,
     q::Bijectors.TransformedDistribution{<:DistributionsAD.TuringDiagMvNormal};
-    optimizer = AdvancedVI.TruncatedADAGrad(),
+    optimizer=AdvancedVI.TruncatedADAGrad(),
 )
     # Initial parameters for mean-field approx
     μ, σs = StatsBase.params(q)
     θ = vcat(μ, StatsFuns.invsoftplus.(σs))
 
     # Optimize
-    AdvancedVI.optimize!(elbo, alg, q, make_logjoint(model), θ; optimizer = optimizer)
+    AdvancedVI.optimize!(elbo, alg, q, make_logjoint(model), θ; optimizer=optimizer)
 
     # Return updated `Distribution`
     return AdvancedVI.update(q, θ)
