@@ -9,8 +9,8 @@ using Turing
 function test_opt(ADPack, opt)
     θ = randn(10, 10)
     θ_fit = randn(10, 10)
-    loss(x, θ_) = mean(sum(abs2, θ*x - θ_*x; dims = 1))
-    for t = 1:10^4
+    loss(x, θ_) = mean(sum(abs2, θ * x - θ_ * x; dims=1))
+    for t in 1:(10^4)
         x = rand(10)
         Δ = ADPack.gradient(θ_ -> loss(x, θ_), θ_fit)
         Δ = apply!(opt, θ_fit, Δ)
