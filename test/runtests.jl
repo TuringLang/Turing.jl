@@ -1,64 +1,38 @@
-using AbstractMCMC
-using AdvancedMH
-using AdvancedPS
-using Clustering
-using Distributions
-using Distributions.FillArrays
-using DistributionsAD
-using FiniteDifferences
-using ForwardDiff
-using MCMCChains
-using NamedArrays
-using Optim: Optim
-using Optimization: Optimization
-using OptimizationBBO: OptimizationBBO
-using OptimizationOptimJL: OptimizationOptimJL
-using OptimizationNLopt: OptimizationNLopt
-using PDMats
-using ReverseDiff
-using SpecialFunctions
-using StatsBase
-using StatsFuns
-using HypothesisTests
-using Tracker
-using Turing
-using Turing.Inference
-using Turing.RandomMeasures
-using Zygote
-
-using LinearAlgebra
+include("test_utils/SelectiveTests.jl")
+using .SelectiveTests: isincluded, parse_args
 using Pkg
-using Random
 using Test
-using StableRNGs
-
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-using AdvancedVI: TruncatedADAGrad, DecayedADAGrad, apply!
-using Distributions: Binomial, logpdf
-using DynamicPPL: getval, getlogp
-using ForwardDiff: Dual
-using MCMCChains: Chains
-using StatsFuns: binomlogpdf, logistic, logsumexp
 using TimerOutputs: TimerOutputs, @timeit
-using Turing: BinomialLogit, Sampler, SampleFromPrior, NUTS,
-                Variational, getspace
-using Turing.Essential: TuringDenseMvNormal, TuringDiagMvNormal
-using Turing.Variational: TruncatedADAGrad, DecayedADAGrad, AdvancedVI
+import Turing
 
-import LogDensityProblems
-import LogDensityProblemsAD
+include(pkgdir(Turing) * "/test/test_utils/models.jl")
+include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 
-setprogress!(false)
+Turing.setprogress!(false)
 
-include(pkgdir(Turing)*"/test/test_utils/AllUtils.jl")
+included_paths, excluded_paths = parse_args(ARGS)
 
-# Collect timing and allocations information to show in a clear way.
+# Filter which tests to run and collect timing and allocations information to show in a
+# clear way.
 const TIMEROUTPUT = TimerOutputs.TimerOutput()
-macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($path)) end
+macro timeit_include(path::AbstractString)
+    return quote
+        if isincluded($path, included_paths, excluded_paths)
+            @timeit TIMEROUTPUT $path include($path)
+        else
+            println("Skipping tests in $($path)")
+        end
+    end
+end
 
 @testset "Turing" begin
+    @testset "Aqua" begin
+        @timeit_include("Aqua.jl")
+    end
+
     @testset "essential" begin
         @timeit_include("essential/ad.jl")
+        @timeit_include("essential/container.jl")
     end
 
     @testset "samplers (without AD)" begin
@@ -67,7 +41,7 @@ macro timeit_include(path::AbstractString) :(@timeit TIMEROUTPUT $path include($
         @timeit_include("mcmc/ess.jl")
         @timeit_include("mcmc/is.jl")
     end
-    
+
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" begin
             @timeit_include("mcmc/gibbs.jl")

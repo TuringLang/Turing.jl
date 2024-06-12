@@ -10,14 +10,13 @@ end
 X, Y = readlrdata()
 
 @model function lr_nuts(x, y, σ)
-
-    N,D = size(x)
+    N, D = size(x)
 
     α ~ Normal(0, σ)
     β ~ MvNormal(zeros(D), σ^2 * I)
 
-    for n = 1:N
-        y[n] ~ BinomialLogit(1, dot(x[n,:], β) + α)
+    for n in 1:N
+        y[n] ~ BinomialLogit(1, dot(x[n, :], β) + α)
     end
 end
 
@@ -26,5 +25,6 @@ n_samples = 1_000
 n_adapts = 1_000
 
 # Sampling
-BenchmarkSuite["nuts"]["lr"] = @benchmarkable sample(lr_nuts(X, Y, 100),
-                                                     NUTS(0.65), n_samples)
+BenchmarkSuite["nuts"]["lr"] = @benchmarkable sample(
+    lr_nuts(X, Y, 100), NUTS(0.65), n_samples
+)

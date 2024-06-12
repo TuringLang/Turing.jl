@@ -42,11 +42,17 @@ struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.Abstract
     context::C
 
     function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(context isa Union{DynamicPPL.DefaultContext,DynamicPPL.LikelihoodContext})
+        if !(
+            context isa Union{
+                DynamicPPL.DefaultContext,
+                DynamicPPL.LikelihoodContext,
+                DynamicPPL.PriorContext,
+            }
+        )
             msg = """
-                `OptimizationContext` supports only leaf contexts of type 
-                `DynamicPPL.DefaultContext` and `DynamicPPL.LikelihoodContext` 
-                (given: `$(typeof(context)))`
+                `OptimizationContext` supports only leaf contexts of type
+                `DynamicPPL.DefaultContext`, `DynamicPPL.LikelihoodContext`,
+                and `DynamicPPL.PriorContext` (given: `$(typeof(context)))`
             """
             throw(ArgumentError(msg))
         end
@@ -60,7 +66,7 @@ DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     r = vi[vn, dist]
-    lp = if ctx.context isa DynamicPPL.DefaultContext
+    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
         # MAP
         Distributions.logpdf(dist, r)
     else
@@ -83,7 +89,7 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     r = DynamicPPL.get_and_set_val!(
         Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
     )
-    lp = if ctx.context isa DynamicPPL.DefaultContext
+    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
         # MAP
         _loglikelihood(right, r)
     else
@@ -93,13 +99,26 @@ function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns,
     return r, lp, vi
 end
 
+function DynamicPPL.tilde_observe(
+    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
+)
+    return DynamicPPL.tilde_observe(ctx.context, args...)
+end
+
+function DynamicPPL.dot_tilde_observe(
+    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
+)
+    return DynamicPPL.dot_tilde_observe(ctx.context, args...)
+end
+
 """
     OptimLogDensity{M<:DynamicPPL.Model,C<:Context,V<:DynamicPPL.VarInfo}
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} =
-    Turing.LogDensityFunction{V,M,C}
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{
+    V,M,C
+}
 
 """
     OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
@@ -170,11 +189,8 @@ end
 
 A wrapper struct to store various results from a MAP or MLE estimation.
 """
-struct ModeResult{
-    V<:NamedArrays.NamedArray,
-    O<:Any,
-    M<:OptimLogDensity
-} <: StatsBase.StatisticalModel
+struct ModeResult{V<:NamedArrays.NamedArray,O<:Any,M<:OptimLogDensity} <:
+       StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
     "The stored optimiser results."
@@ -189,11 +205,11 @@ function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
     print(io, "ModeResult with maximized lp of ")
     Printf.@printf(io, "%.2f", m.lp)
     println(io)
-    show(io, m.values)
+    return show(io, m.values)
 end
 
 function Base.show(io::IO, m::ModeResult)
-    show(io, m.values.array)
+    return show(io, m.values.array)
 end
 
 # Various StatsBase methods for ModeResult
@@ -306,9 +322,9 @@ struct ModeEstimationConstraints{
 end
 
 has_box_constraints(c::ModeEstimationConstraints) = c.ub !== nothing || c.lb !== nothing
-has_generic_constraints(c::ModeEstimationConstraints) = (
-    c.cons !== nothing || c.lcons !== nothing || c.ucons !== nothing
-)
+function has_generic_constraints(c::ModeEstimationConstraints)
+    return (c.cons !== nothing || c.lcons !== nothing || c.ucons !== nothing)
+end
 has_constraints(c) = has_box_constraints(c) || has_generic_constraints(c)
 
 """
@@ -322,17 +338,19 @@ uniformly from the box constraints. If generic constraints are set, an error is 
 """
 function generate_initial_params(model::DynamicPPL.Model, initial_params, constraints)
     if initial_params === nothing && has_generic_constraints(constraints)
-        throw(ArgumentError(
-            "You must provide an initial value when using generic constraints."
-        ))
+        throw(
+            ArgumentError(
+                "You must provide an initial value when using generic constraints."
+            ),
+        )
     end
 
     return if initial_params !== nothing
         copy(initial_params)
     elseif has_box_constraints(constraints)
         [
-            rand(Distributions.Uniform(lower, upper))
-            for (lower, upper) in zip(constraints.lb, constraints.ub)
+            rand(Distributions.Uniform(lower, upper)) for
+            (lower, upper) in zip(constraints.lb, constraints.ub)
         ]
     else
         rand(Vector, model)
@@ -361,11 +379,12 @@ function Optimization.OptimizationProblem(log_density::OptimLogDensity, adtype, 
         Optimization.OptimizationProblem(f, initial_params)
     else
         Optimization.OptimizationProblem(
-            f, initial_params;
+            f,
+            initial_params;
             lcons=constraints.lcons,
             ucons=constraints.ucons,
             lb=constraints.lb,
-            ub=constraints.ub
+            ub=constraints.ub,
         )
     end
     return prob
@@ -412,7 +431,7 @@ function estimate_mode(
     ucons=nothing,
     lb=nothing,
     ub=nothing,
-    kwargs...
+    kwargs...,
 )
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
     initial_params = generate_initial_params(model, initial_params, constraints)

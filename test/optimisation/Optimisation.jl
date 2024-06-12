@@ -1,3 +1,21 @@
+module OptimisationTests
+
+using ..Models: gdemo, gdemo_default
+using Distributions
+using Distributions.FillArrays: Zeros
+using DynamicPPL: DynamicPPL
+using LinearAlgebra: I
+using Random: Random
+using Optimization
+using Optimization: Optimization
+using OptimizationBBO: OptimizationBBO
+using OptimizationNLopt: OptimizationNLopt
+using OptimizationOptimJL: OptimizationOptimJL
+using StatsBase: StatsBase
+using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
+using Test: @test, @testset, @test_throws
+using Turing
+
 @testset "Optimisation" begin
 
     # The `stats` field is populated only in newer versions of OptimizationOptimJL and
@@ -14,11 +32,8 @@
         end
         DynamicPPL.NodeTrait(::OverrideContext) = DynamicPPL.IsParent()
         DynamicPPL.childcontext(parent::OverrideContext) = parent.context
-        DynamicPPL.setchildcontext(parent::OverrideContext, child) = OverrideContext(
-            child,
-            parent.logprior_weight,
-            parent.loglikelihood_weight
-        )
+        DynamicPPL.setchildcontext(parent::OverrideContext, child) =
+            OverrideContext(child, parent.logprior_weight, parent.loglikelihood_weight)
 
         # Only implement what we need for the models above.
         function DynamicPPL.tilde_assume(context::OverrideContext, right, vn, vi)
@@ -32,12 +47,12 @@
 
         @model function model1(x)
             μ ~ Uniform(0, 2)
-            x ~ LogNormal(μ, 1)
+            return x ~ LogNormal(μ, 1)
         end
 
         @model function model2()
             μ ~ Uniform(0, 2)
-            x ~ LogNormal(μ, 1)
+            return x ~ LogNormal(μ, 1)
         end
 
         x = 1.0
@@ -48,7 +63,7 @@
             m2 = model2() | (x=x,)
             ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
 
         @testset "With prefixes" begin
@@ -61,26 +76,42 @@
             m2 = prefix_μ(model2() | (var"inner.x"=x,))
             ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
         end
 
         @testset "Weighted" begin
             function override(model)
                 return DynamicPPL.contextualize(
-                    model,
-                    OverrideContext(model.context, 100, 1)
+                    model, OverrideContext(model.context, 100, 1)
                 )
             end
             m1 = override(model1(x))
             m2 = override(model2() | (x=x,))
             ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                  Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+        end
+
+        @testset "Default, Likelihood, Prior Contexts" begin
+            m1 = model1(x)
+            defctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
+            llhctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+            prictx = Turing.Optimisation.OptimizationContext(DynamicPPL.PriorContext())
+            a = [0.3]
+
+            @test Turing.Optimisation.OptimLogDensity(m1, defctx)(a) ==
+                Turing.Optimisation.OptimLogDensity(m1, llhctx)(a) +
+                  Turing.Optimisation.OptimLogDensity(m1, prictx)(a)
+
+            # test that PriorContext is calculating the right thing
+            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([0.3]) ≈
+                -Distributions.logpdf(Uniform(0, 2), 0.3)
+            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([-0.3]) ≈
+                -Distributions.logpdf(Uniform(0, 2), -0.3)
         end
     end
 
-    @numerical_testset "gdemo" begin
-
+    @testset "gdemo" begin
         """
             check_success(result, true_value, true_logp, check_retcode=true)
 
@@ -103,15 +134,11 @@
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MLE()
-            )
+            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MLE())
             m2 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
             )
-            m3 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.Newton()
-            )
+            m3 = maximum_likelihood(gdemo_default, OptimizationOptimJL.Newton())
             # TODO(mhauru) How can we check that the adtype is actually AutoReverseDiff?
             m4 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
@@ -119,9 +146,7 @@
             m5 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value
             )
-            m6 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.NelderMead()
-            )
+            m6 = maximum_likelihood(gdemo_default, OptimizationOptimJL.NelderMead())
 
             check_success(m1)
             check_success(m2)
@@ -148,15 +173,11 @@
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MAP()
-            )
+            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MAP())
             m2 = maximum_a_posteriori(
                 gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
             )
-            m3 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.Newton()
-            )
+            m3 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.Newton())
             m4 = maximum_a_posteriori(
                 gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
             )
@@ -188,34 +209,41 @@
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MLE(); lb=lb, ub=ub
-            )
+            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MLE(); lb=lb, ub=ub)
             m2 = maximum_likelihood(
                 gdemo_default,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                initial_params=true_value, lb=lb, ub=ub)
+                initial_params=true_value,
+                lb=lb,
+                ub=ub,
+            )
             m3 = maximum_likelihood(
                 gdemo_default,
                 OptimizationBBO.BBO_separable_nes();
-                maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
+                maxiters=100_000,
+                abstol=1e-5,
+                lb=lb,
+                ub=ub,
             )
             m4 = maximum_likelihood(
                 gdemo_default,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
-                adtype=AutoReverseDiff(), lb=lb, ub=ub
+                adtype=AutoReverseDiff(),
+                lb=lb,
+                ub=ub,
             )
             m5 = maximum_likelihood(
                 gdemo_default,
                 OptimizationOptimJL.IPNewton();
-                initial_params=true_value, lb=lb, ub=ub
+                initial_params=true_value,
+                lb=lb,
+                ub=ub,
             )
             m6 = maximum_likelihood(gdemo_default; lb=lb, ub=ub)
 
@@ -241,35 +269,41 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
 
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MAP(); lb=lb, ub=ub
-            )
+            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MAP(); lb=lb, ub=ub)
             m2 = maximum_a_posteriori(
                 gdemo_default,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                initial_params=true_value, lb=lb, ub=ub
+                initial_params=true_value,
+                lb=lb,
+                ub=ub,
             )
             m3 = maximum_a_posteriori(
                 gdemo_default,
                 OptimizationBBO.BBO_separable_nes();
-                maxiters=100_000, abstol=1e-5, lb=lb, ub=ub
+                maxiters=100_000,
+                abstol=1e-5,
+                lb=lb,
+                ub=ub,
             )
             m4 = maximum_a_posteriori(
                 gdemo_default,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
-                adtype=AutoReverseDiff(), lb=lb, ub=ub
+                adtype=AutoReverseDiff(),
+                lb=lb,
+                ub=ub,
             )
             m5 = maximum_a_posteriori(
                 gdemo_default,
                 OptimizationOptimJL.IPNewton();
-                initial_params=true_value, lb=lb, ub=ub
+                initial_params=true_value,
+                lb=lb,
+                ub=ub,
             )
             m6 = maximum_a_posteriori(gdemo_default; lb=lb, ub=ub)
 
@@ -296,9 +330,8 @@
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
@@ -313,16 +346,20 @@
             )
             m2 = maximum_likelihood(gdemo_default; initial_params=true_value, cons_args...)
             m3 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.IPNewton();
-                initial_params=initial_params, cons_args...
+                gdemo_default,
+                OptimizationOptimJL.IPNewton();
+                initial_params=initial_params,
+                cons_args...,
             )
             m4 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.IPNewton();
-                initial_params=initial_params, adtype=AutoReverseDiff(), cons_args...
+                gdemo_default,
+                OptimizationOptimJL.IPNewton();
+                initial_params=initial_params,
+                adtype=AutoReverseDiff(),
+                cons_args...,
             )
             m5 = maximum_likelihood(
-                gdemo_default;
-                initial_params=initial_params, cons_args...
+                gdemo_default; initial_params=initial_params, cons_args...
             )
 
             check_success(m1)
@@ -346,9 +383,8 @@
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
@@ -365,16 +401,20 @@
                 gdemo_default; initial_params=true_value, cons_args...
             )
             m3 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.IPNewton();
-                initial_params=initial_params, cons_args...
+                gdemo_default,
+                OptimizationOptimJL.IPNewton();
+                initial_params=initial_params,
+                cons_args...,
             )
             m4 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.IPNewton();
-                initial_params=initial_params, adtype=AutoReverseDiff(), cons_args...
+                gdemo_default,
+                OptimizationOptimJL.IPNewton();
+                initial_params=initial_params,
+                adtype=AutoReverseDiff(),
+                cons_args...,
             )
             m5 = maximum_a_posteriori(
-                gdemo_default;
-                initial_params=initial_params, cons_args...
+                gdemo_default; initial_params=initial_params, cons_args...
             )
 
             check_success(m1)
@@ -406,10 +446,10 @@
         diffs = coef(mle_est).array - [0.0625031; 1.75001]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-        infomat = [2/(2*true_values[1]^2) 0.0; 0.0 2/true_values[1]]
+        infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
         @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
 
-        vcovmat = [2*true_values[1]^2/2 0.0; 0.0 true_values[1]/2]
+        vcovmat = [2 * true_values[1]^2/2 0.0; 0.0 true_values[1]/2]
         @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
@@ -428,7 +468,7 @@
         @model function regtest(x, y)
             beta ~ MvNormal(Zeros(2), I)
             mu = x * beta
-            y ~ MvNormal(mu, I)
+            return y ~ MvNormal(mu, I)
         end
 
         Random.seed!(987)
@@ -451,7 +491,7 @@
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
 
-            (.~)(x, Normal(m, sqrt(s)))
+            return (.~)(x, Normal(m, sqrt(s)))
         end
 
         model_dot = dot_gdemo([1.5, 2.0])
@@ -544,11 +584,13 @@
     @testset "with :=" begin
         @model function demo_track()
             x ~ Normal()
-            y := 100 + x
+            return y := 100 + x
         end
         model = demo_track()
         result = maximum_a_posteriori(model)
         @test result.values[:x] ≈ 0 atol = 1e-1
         @test result.values[:y] ≈ 100 atol = 1e-1
     end
+end
+
 end

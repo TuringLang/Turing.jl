@@ -1,3 +1,19 @@
+module InferenceTests
+
+using ..Models: gdemo_d, gdemo_default
+using ..NumericalTests: check_gdemo, check_numerical
+using Distributions: Bernoulli, Beta, InverseGamma, Normal
+using Distributions: sample
+import DynamicPPL
+using DynamicPPL: Sampler, getlogp
+import ForwardDiff
+using LinearAlgebra: I
+import MCMCChains
+import Random
+import ReverseDiff
+using Test: @test, @test_throws, @testset
+using Turing
+
 @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
@@ -565,4 +581,6 @@
             demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
         )
     end
+end
+
 end

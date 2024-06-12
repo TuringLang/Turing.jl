@@ -11,37 +11,25 @@ using Bijectors: PDMatDistribution
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote, AutoTapir
+using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote
 
-import AdvancedPS
+using AdvancedPS: AdvancedPS
 
 include("container.jl")
 
-export  @model,
-        @varname,
-        generate_observe,
-        translate_tilde!,
-        get_vars,
-        get_data,
-        get_default_values,
-        ParticleContainer,
-        Particle,
-        Trace,
-        fork,
-        forkr,
-        current_trace,
-        getweights,
-        getweight,
-        effectiveSampleSize,
-        sweep!,
-        ResampleWithESSThreshold,
-        AutoForwardDiff,
-        AutoTracker,
-        AutoZygote,
-        AutoReverseDiff,
-        AutoTapir,
-        value,
-        @logprob_str,
-        @prob_str
+export @model,
+    @varname,
+    AutoForwardDiff,
+    AutoTracker,
+    AutoZygote,
+    AutoReverseDiff,
+    @logprob_str,
+    @prob_str
+
+# AutoTapir is only supported by ADTypes v1.0 and above.
+@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
+    using ADTypes: AutoTapir
+    export AutoTapir
+end
 
 end # module

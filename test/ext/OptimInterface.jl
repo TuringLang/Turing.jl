@@ -1,4 +1,16 @@
-@numerical_testset "TuringOptimExt" begin
+module OptimInterfaceTests
+
+using ..Models: gdemo_default
+using Distributions.FillArrays: Zeros
+using LinearAlgebra: I
+using Optim: Optim
+using Random: Random
+using StatsBase: StatsBase
+using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
+using Test: @test, @testset
+using Turing
+
+@testset "TuringOptimExt" begin
     @testset "MLE" begin
         Random.seed!(222)
         true_value = [0.0625, 1.75]
@@ -43,7 +55,7 @@
         infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
         @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
 
-        vcovmat = [2*true_values[1]^2 / 2 0.0; 0.0 true_values[1]/2]
+        vcovmat = [2 * true_values[1]^2/2 0.0; 0.0 true_values[1]/2]
         @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
@@ -61,33 +73,33 @@
     @testset "Linear regression test" begin
         @model function regtest(x, y)
             beta ~ MvNormal(Zeros(2), I)
-            mu = x*beta
-            y ~ MvNormal(mu, I)
+            mu = x * beta
+            return y ~ MvNormal(mu, I)
         end
-        
+
         Random.seed!(987)
         true_beta = [1.0, -2.2]
         x = rand(40, 2)
-        y = x*true_beta
-        
+        y = x * true_beta
+
         model = regtest(x, y)
         mle = Optim.optimize(model, MLE())
-        
+
         vcmat = inv(x'x)
         vcmat_mle = vcov(mle).array
-        
+
         @test isapprox(mle.values.array, true_beta)
         @test isapprox(vcmat, vcmat_mle)
     end
 
     @testset "Dot tilde test" begin
         @model function dot_gdemo(x)
-            s ~ InverseGamma(2,3)
+            s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
-        
-            (.~)(x, Normal(m, sqrt(s)))
+
+            return (.~)(x, Normal(m, sqrt(s)))
         end
-        
+
         model_dot = dot_gdemo([1.5, 2.0])
 
         mle1 = Optim.optimize(gdemo_default, MLE())
@@ -111,12 +123,11 @@
 
             for vn in DynamicPPL.TestUtils.varnames(model)
                 for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
-                    @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                    @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                 end
             end
         end
     end
-
 
     # Some of the models have one variance parameter per observation, and so
     # the MLE should have the variances set to 0. Since we're working in
@@ -141,8 +152,8 @@
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
         # `NelderMead` seems to struggle with convergence here, so we exclude it.
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in [Optim.LBFGS(),]
-            options = Optim.Options(g_tol=1e-3, f_tol=1e-3)
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in [Optim.LBFGS()]
+            options = Optim.Options(; g_tol=1e-3, f_tol=1e-3)
             result = Optim.optimize(model, MLE(), optimizer, options)
             vals = result.values
 
@@ -151,7 +162,7 @@
                     if model.f in allowed_incorrect_mle
                         @test isfinite(get(result_true, vn_leaf))
                     else
-                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol=0.05
+                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                     end
                 end
             end
@@ -163,17 +174,19 @@
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
         model = demo_dirichlet()
         result = Optim.optimize(model, MAP())
-        @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol=0.2
+        @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
     end
 
     @testset "with :=" begin
         @model function demo_track()
             x ~ Normal()
-            y := 100 + x
+            return y := 100 + x
         end
         model = demo_track()
         result = Optim.optimize(model, MAP())
-        @test result.values[:x] ≈ 0 atol=1e-1
-        @test result.values[:y] ≈ 100 atol=1e-1
+        @test result.values[:x] ≈ 0 atol = 1e-1
+        @test result.values[:y] ≈ 100 atol = 1e-1
     end
+end
+
 end

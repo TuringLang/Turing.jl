@@ -1,20 +1,12 @@
 module TuringOptimExt
 
 if isdefined(Base, :get_extension)
-    import Turing
-    import Turing:
-        DynamicPPL,
-        NamedArrays,
-        Accessors,
-        Optimisation
-    import Optim
+    using Turing: Turing
+    import Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
+    using Optim: Optim
 else
     import ..Turing
-    import ..Turing:
-        DynamicPPL,
-        NamedArrays,
-        Accessors,
-        Optimisation
+    import ..Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
     import ..Optim
 end
 
@@ -43,8 +35,10 @@ mle = optimize(model, MLE(), NelderMead())
 ```
 """
 function Optim.optimize(
-    model::DynamicPPL.Model, ::Optimisation.MLE, options::Optim.Options=Optim.Options();
-    kwargs...
+    model::DynamicPPL.Model,
+    ::Optimisation.MLE,
+    options::Optim.Options=Optim.Options();
+    kwargs...,
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
@@ -57,7 +51,7 @@ function Optim.optimize(
     ::Optimisation.MLE,
     init_vals::AbstractArray,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -67,7 +61,7 @@ function Optim.optimize(
     ::Optimisation.MLE,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
@@ -80,7 +74,7 @@ function Optim.optimize(
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -111,8 +105,10 @@ map_est = optimize(model, MAP(), NelderMead())
 ```
 """
 function Optim.optimize(
-    model::DynamicPPL.Model, ::Optimisation.MAP, options::Optim.Options=Optim.Options();
-    kwargs...
+    model::DynamicPPL.Model,
+    ::Optimisation.MAP,
+    options::Optim.Options=Optim.Options();
+    kwargs...,
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
@@ -125,7 +121,7 @@ function Optim.optimize(
     ::Optimisation.MAP,
     init_vals::AbstractArray,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -135,7 +131,7 @@ function Optim.optimize(
     ::Optimisation.MAP,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
@@ -148,7 +144,7 @@ function Optim.optimize(
     init_vals::AbstractArray,
     optimizer::Optim.AbstractOptimizer,
     options::Optim.Options=Optim.Options();
-    kwargs...
+    kwargs...,
 )
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -170,7 +166,7 @@ function _optimize(
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     options::Optim.Options=Optim.Options(),
     args...;
-    kwargs...
+    kwargs...,
 )
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.

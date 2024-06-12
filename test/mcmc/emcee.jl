@@ -1,10 +1,21 @@
+module EmceeTests
+
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
+using Distributions: sample
+using DynamicPPL: DynamicPPL
+using DynamicPPL: Sampler
+using Random: Random
+using Test: @test, @test_throws, @testset
+using Turing
+
 @testset "emcee.jl" begin
     @testset "gdemo" begin
         Random.seed!(9876)
 
         n_samples = 1000
         n_walkers = 250
-        
+
         spl = Emcee(n_walkers, 2.0)
         @test DynamicPPL.alg_str(Sampler(spl, gdemo_default)) == "Emcee"
 
@@ -40,4 +51,6 @@
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
     end
+end
+
 end

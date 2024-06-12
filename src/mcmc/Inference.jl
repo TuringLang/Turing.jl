@@ -38,7 +38,6 @@ import StatsBase: predict
 
 export  InferenceAlgorithm,
         Hamiltonian,
-        GibbsComponent,
         StaticHamiltonian,
         AdaptiveHamiltonian,
         SampleFromUniform,
@@ -54,7 +53,6 @@ export  InferenceAlgorithm,
         SGHMC,
         HMCDA,
         NUTS,       # Hamiltonian-like sampling
-        DynamicNUTS,
         IS,
         SMC,
         CSMC,
@@ -331,7 +329,7 @@ Return a named tuple of parameters.
 getparams(model, t) = t.θ
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # NOTE: In the past, `invlink(vi, model)` + `values_as(vi, OrderedDict)` was used.
-    # Unfortunately, using `invlink` can cause issues in scenarios where the constraints 
+    # Unfortunately, using `invlink` can cause issues in scenarios where the constraints
     # of the parameters change depending on the realizations. Hence we have to use
     # `values_as_in_model`, which re-runs the model and extracts the parameters
     # as they are seen in the model, i.e. in the constrained space. Moreover,

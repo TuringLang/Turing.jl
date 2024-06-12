@@ -2,7 +2,7 @@
 ### Sampler states
 ###
 
-struct MH{space, P} <: InferenceAlgorithm
+struct MH{space,P} <: InferenceAlgorithm
     proposals::P
 end
 
@@ -173,7 +173,7 @@ function MH(space...)
             prop = proposal(s)
 
             # Return early, we got a covariance matrix.
-            return MH{(), typeof(prop)}(prop)
+            return MH{(),typeof(prop)}(prop)
         else
             # Try to convert it to a proposal anyways,
             # throw an error if not acceptable.
@@ -185,7 +185,7 @@ function MH(space...)
     proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
     syms = vcat(syms, prop_syms)
 
-    return MH{tuple(syms...), typeof(proposals)}(proposals)
+    return MH{tuple(syms...),typeof(proposals)}(proposals)
 end
 
 # Some of the proposals require working in unconstrained space.
@@ -225,11 +225,11 @@ function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTup
             # assign the unpacked values
             if length(vals) == 1
                 vi[vns[1]] = [vals[1];]
-            # otherwise just assign the values
+                # otherwise just assign the values
             else
                 vi[vns[1]] = [vals;]
             end
-        # if there are multiple variables
+            # if there are multiple variables
         elseif vals isa AbstractArray
             nvals = length(vals)
             # if values are provided as an array with a single element
@@ -238,7 +238,7 @@ function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTup
                 for (vn, val) in zip(vns, vals[1])
                     vi[vn] = [val;]
                 end
-            # otherwise number of variables and number of values have to be equal
+                # otherwise number of variables and number of values have to be equal
             elseif nvals == nvns
                 # iterate over variables and values
                 for (vn, val) in zip(vns, vals)
@@ -260,7 +260,9 @@ A log density function for the MH sampler.
 
 This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
-const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.SamplingContext{<:S}}
+const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{
+    V,M,<:DynamicPPL.SamplingContext{<:S}
+}
 
 function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
     # TODO: Make this work with immutable `f.varinfo` too.
@@ -284,16 +286,10 @@ unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
 # possibly unpack and reshape samples according to the prior distribution
 reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
-function reconstruct(
-    dist::AbstractVector{<:UnivariateDistribution},
-    val::AbstractVector
-)
+function reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector)
     return val
 end
-function reconstruct(
-    dist::AbstractVector{<:MultivariateDistribution},
-    val::AbstractVector
-)
+function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::AbstractVector)
     offset = 0
     return map(dist) do d
         n = length(d)
@@ -319,23 +315,22 @@ function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVa
     return dt, vt
 end
 
-@generated function _val_tuple(
-    vi::VarInfo,
-    vns::NamedTuple{names}
-) where {names}
+@generated function _val_tuple(vi::VarInfo, vns::NamedTuple{names}) where {names}
     isempty(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
     expr.args = Any[
-        :($name = reconstruct(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
-                              DynamicPPL.getval(vi, vns.$name)))
-        for name in names]
+        :(
+            $name = reconstruct(
+                unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
+                DynamicPPL.getval(vi, vns.$name),
+            )
+        ) for name in names
+    ]
     return expr
 end
 
 @generated function _dist_tuple(
-    props::NamedTuple{propnames},
-    vi::VarInfo,
-    vns::NamedTuple{names}
+    props::NamedTuple{propnames}, vi::VarInfo, vns::NamedTuple{names}
 ) where {names,propnames}
     isempty(names) === 0 && return :(NamedTuple())
     expr = Expr(:tuple)
@@ -345,14 +340,19 @@ end
             :($name = props.$name)
         else
             # Otherwise, use the default proposal.
-            :($name = AMH.StaticProposal(unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))))
-        end for name in names]
+            :(
+                $name = AMH.StaticProposal(
+                    unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name))
+                )
+            )
+        end for name in names
+    ]
     return expr
 end
 
 # Utility functions to link
 should_link(varinfo, sampler, proposal) = false
-function should_link(varinfo, sampler, proposal::NamedTuple{(), Tuple{}})
+function should_link(varinfo, sampler, proposal::NamedTuple{(),Tuple{}})
     # If it's an empty `NamedTuple`, we're using the priors as proposals
     # in which case we shouldn't link.
     return false
@@ -362,24 +362,22 @@ function should_link(varinfo, sampler, proposal::AdvancedMH.RandomWalkProposal)
 end
 # FIXME: This won't be hit unless `vals` are all the exactly same concrete type of `AdvancedMH.RandomWalkProposal`!
 function should_link(
-    varinfo,
-    sampler,
-    proposal::NamedTuple{names, vals}
-) where {names, vals<:NTuple{<:Any, <:AdvancedMH.RandomWalkProposal}}
+    varinfo, sampler, proposal::NamedTuple{names,vals}
+) where {names,vals<:NTuple{<:Any,<:AdvancedMH.RandomWalkProposal}}
     return true
 end
 
 function maybe_link!!(varinfo, sampler, proposal, model)
-    return should_link(varinfo, sampler, proposal) ? link!!(varinfo, sampler, model) : varinfo
+    return if should_link(varinfo, sampler, proposal)
+        link!!(varinfo, sampler, model)
+    else
+        varinfo
+    end
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
 function propose!!(
-    rng::AbstractRNG,
-    vi::AbstractVarInfo,
-    model::Model,
-    spl::Sampler{<:MH},
-    proposal
+    rng::AbstractRNG, vi::AbstractVarInfo, model::Model, spl::Sampler{<:MH}, proposal
 )
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl, vi)
@@ -395,9 +393,9 @@ function propose!!(
             Turing.LogDensityFunction(
                 vi,
                 model,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
-            )
-        )
+                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
+            ),
+        ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
@@ -413,7 +411,7 @@ function propose!!(
     vi::AbstractVarInfo,
     model::Model,
     spl::Sampler{<:MH},
-    proposal::AdvancedMH.RandomWalkProposal
+    proposal::AdvancedMH.RandomWalkProposal,
 )
     # If this is the case, we can just draw directly from the proposal
     # matrix.
@@ -430,9 +428,9 @@ function propose!!(
             Turing.LogDensityFunction(
                 vi,
                 model,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context))
-            )
-        )
+                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
+            ),
+        ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
@@ -444,7 +442,7 @@ function DynamicPPL.initialstep(
     model::AbstractModel,
     spl::Sampler{<:MH},
     vi::AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
@@ -454,11 +452,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:MH},
-    vi::AbstractVarInfo;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, vi::AbstractVarInfo; kwargs...
 )
     # Cases:
     # 1. A covariance proposal matrix
@@ -471,13 +465,7 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:MH},
-    dist::Distribution,
-    vn::VarName,
-    vi,
-)
+function DynamicPPL.assume(rng, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi)
     DynamicPPL.updategid!(vi, vn, spl)
     r = vi[vn]
     return r, logpdf_with_trans(dist, r, istrans(vi, vn)), vi
@@ -502,7 +490,7 @@ end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:MH},
-    dists::Union{Distribution, AbstractArray{<:Distribution}},
+    dists::Union{Distribution,AbstractArray{<:Distribution}},
     vn::VarName,
     var::AbstractArray,
     vi,
@@ -515,18 +503,13 @@ function DynamicPPL.dot_assume(
     return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1]))), vi
 end
 
-function DynamicPPL.observe(
-    spl::Sampler{<:MH},
-    d::Distribution,
-    value,
-    vi,
-)
+function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)
     return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
 end
 
 function DynamicPPL.dot_observe(
     spl::Sampler{<:MH},
-    ds::Union{Distribution, AbstractArray{<:Distribution}},
+    ds::Union{Distribution,AbstractArray{<:Distribution}},
     value::AbstractArray,
     vi,
 )

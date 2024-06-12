@@ -15,7 +15,7 @@ Sequential Monte Carlo sampler.
 
 $(TYPEDFIELDS)
 """
-struct SMC{space, R} <: ParticleInference
+struct SMC{space,R} <: ParticleInference
     resampler::R
 end
 
@@ -29,15 +29,17 @@ Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler = AdvancedPS.ResampleWithESSThreshold(), space::Tuple = ())
-    return SMC{space, typeof(resampler)}(resampler)
+function SMC(resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=())
+    return SMC{space,typeof(resampler)}(resampler)
 end
 
 # Convenient constructors with ESS threshold
-function SMC(resampler, threshold::Real, space::Tuple = ())
+function SMC(resampler, threshold::Real, space::Tuple=())
     return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
-SMC(threshold::Real, space::Tuple = ()) = SMC(AdvancedPS.resample_systematic, threshold, space)
+function SMC(threshold::Real, space::Tuple=())
+    return SMC(AdvancedPS.resample_systematic, threshold, space)
+end
 
 # If only the space is defined
 SMC(space::Symbol...) = SMC(space)
@@ -62,7 +64,7 @@ function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
     return SMCTransition(theta, lp, weight)
 end
 
-metadata(t::SMCTransition) = (lp = t.lp, weight = t.weight)
+metadata(t::SMCTransition) = (lp=t.lp, weight=t.weight)
 
 DynamicPPL.getlogp(t::SMCTransition) = t.lp
 
@@ -86,18 +88,30 @@ function AbstractMCMC.sample(
     resume_from=nothing,
     initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
-    kwargs...
+    kwargs...,
 )
     if resume_from === nothing
-        return AbstractMCMC.mcmcsample(rng, model, sampler, N;
-                                       chain_type=chain_type,
-                                       progress=progress,
-                                       nparticles=N,
-                                       kwargs...)
+        return AbstractMCMC.mcmcsample(
+            rng,
+            model,
+            sampler,
+            N;
+            chain_type=chain_type,
+            progress=progress,
+            nparticles=N,
+            kwargs...,
+        )
     else
         return AbstractMCMC.mcmcsample(
-            rng, model, sampler, N; chain_type, initial_state, progress=progress, 
-            nparticles=N, kwargs...
+            rng,
+            model,
+            sampler,
+            N;
+            chain_type,
+            initial_state,
+            progress=progress,
+            nparticles=N,
+            kwargs...,
         )
     end
 end
@@ -108,7 +122,7 @@ function DynamicPPL.initialstep(
     spl::Sampler{<:SMC},
     vi::AbstractVarInfo;
     nparticles::Int,
-    kwargs...
+    kwargs...,
 )
     # Reset the VarInfo.
     reset_num_produce!(vi)
@@ -120,7 +134,7 @@ function DynamicPPL.initialstep(
     particles = AdvancedPS.ParticleContainer(
         [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
-        rng
+        rng,
     )
 
     # Perform particle sweep.
@@ -138,11 +152,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    ::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:SMC},
-    state::SMCState;
-    kwargs...
+    ::AbstractRNG, model::AbstractModel, spl::Sampler{<:SMC}, state::SMCState; kwargs...
 )
     # Extract the index of the current particle.
     index = state.particleindex
@@ -191,18 +201,16 @@ If the algorithm for the resampling step is not specified explicitly, systematic
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
 function PG(
-    nparticles::Int,
-    resampler = AdvancedPS.ResampleWithESSThreshold(),
-    space::Tuple = (),
+    nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=()
 )
-    return PG{space, typeof(resampler)}(nparticles, resampler)
+    return PG{space,typeof(resampler)}(nparticles, resampler)
 end
 
 # Convenient constructors with ESS threshold
-function PG(nparticles::Int, resampler, threshold::Real, space::Tuple = ())
+function PG(nparticles::Int, resampler, threshold::Real, space::Tuple=())
     return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
 end
-function PG(nparticles::Int, threshold::Real, space::Tuple = ())
+function PG(nparticles::Int, threshold::Real, space::Tuple=())
     return PG(nparticles, AdvancedPS.resample_systematic, threshold, space)
 end
 
@@ -238,7 +246,7 @@ function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     return PGTransition(theta, lp, logevidence)
 end
 
-metadata(t::PGTransition) = (lp = t.lp, logevidence = t.logevidence)
+metadata(t::PGTransition) = (lp=t.lp, logevidence=t.logevidence)
 
 DynamicPPL.getlogp(t::PGTransition) = t.lp
 
@@ -251,7 +259,7 @@ function DynamicPPL.initialstep(
     model::AbstractModel,
     spl::Sampler{<:PG},
     vi::AbstractVarInfo;
-    kwargs...
+    kwargs...,
 )
     # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
@@ -263,7 +271,7 @@ function DynamicPPL.initialstep(
     particles = AdvancedPS.ParticleContainer(
         [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:num_particles],
         AdvancedPS.TracedRNG(),
-        rng
+        rng,
     )
 
     # Perform a particle sweep.
@@ -282,11 +290,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:PG},
-    state::PGState;
-    kwargs...
+    rng::AbstractRNG, model::AbstractModel, spl::Sampler{<:PG}, state::PGState; kwargs...
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
@@ -325,14 +329,18 @@ function AbstractMCMC.step(
     return transition, PGState(_vi, newreference.rng)
 end
 
-DynamicPPL.use_threadsafe_eval(::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo) = false
+function DynamicPPL.use_threadsafe_eval(
+    ::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
+)
+    return false
+end
 
 function trace_local_varinfo_maybe(varinfo)
-    try 
+    try
         trace = AdvancedPS.current_trace()
         return trace.model.f.varinfo
     catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`. 
+        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
         if e == KeyError(:__trace) || current_task().storage isa Nothing
             return varinfo
         else
@@ -360,7 +368,7 @@ function DynamicPPL.assume(
     spl::Sampler{<:Union{PG,SMC}},
     dist::Distribution,
     vn::VarName,
-    _vi::AbstractVarInfo
+    _vi::AbstractVarInfo,
 )
     vi = trace_local_varinfo_maybe(_vi)
     trng = trace_local_rng_maybe(rng)
@@ -399,18 +407,14 @@ function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, v
 end
 
 function DynamicPPL.acclogp!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
-    varinfo::AbstractVarInfo,
-    logp
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
 )
     varinfo_trace = trace_local_varinfo_maybe(varinfo)
-    DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
+    return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
 end
 
 function DynamicPPL.acclogp_observe!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}},
-    varinfo::AbstractVarInfo,
-    logp
+    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
 )
     Libtask.produce(logp)
     return trace_local_varinfo_maybe(varinfo)
@@ -421,7 +425,7 @@ function AdvancedPS.Trace(
     model::Model,
     sampler::Sampler{<:Union{SMC,PG}},
     varinfo::AbstractVarInfo,
-    rng::AdvancedPS.TracedRNG
+    rng::AdvancedPS.TracedRNG,
 )
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
