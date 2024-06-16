@@ -227,11 +227,17 @@ has_dot_assume(::Model) = true
         end
 
         model = demo_gibbs_external()
-        sampler = Turing.Experimental.Gibbs(
-            @varname(m1) => externalsampler(AdvancedMH.RWMH(1)),
-            @varname(m2) => externalsampler(AdvancedMH.RWMH(1)),
-        )
-        chain = sample(model, sampler, 1000; discard_initial=1000, thinning=10)
-        check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol = 0.1)
+        samplers_inner = [
+            externalsampler(AdvancedMH.RWMH(1)),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32)),
+        ]
+        @testset "$(sampler_inner)" for sampler_inner in samplers_inner
+            sampler = Turing.Experimental.Gibbs(
+                @varname(m1) => sampler_inner,
+                @varname(m2) => sampler_inner,
+            )
+            chain = sample(model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0)
+            check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol=0.1)
+        end
     end
 end
