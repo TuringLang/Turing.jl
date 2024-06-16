@@ -24,8 +24,8 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::Model) = true
 
-@testset "Gibbs using `condition`" begin
-    @testset "Demo models" begin
+@timeit_testset "Gibbs using `condition`" begin
+    @timeit_testset "Demo models" begin
         @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             # Run one sampler on variables starting with `s` and another on variables starting with `m`.
@@ -137,7 +137,7 @@ has_dot_assume(::Model) = true
         end
     end
 
-    @testset "multiple varnames" begin
+    @timeit_testset "multiple varnames" begin
         rng = Random.default_rng()
 
         # With both `s` and `m` as random.
@@ -171,7 +171,7 @@ has_dot_assume(::Model) = true
         end
     end
 
-    @testset "CSMC + ESS" begin
+    @timeit_testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
         alg = Turing.Experimental.Gibbs(
@@ -193,7 +193,7 @@ has_dot_assume(::Model) = true
         check_MoGtest_default(chain, atol = 0.2)
     end
 
-    @testset "CSMC + ESS (usage of implicit varname)" begin
+    @timeit_testset "CSMC + ESS (usage of implicit varname)" begin
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
         alg = Turing.Experimental.Gibbs(
@@ -213,5 +213,25 @@ has_dot_assume(::Model) = true
         # Sample!
         chain = sample(model, alg, 1000; progress=false)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
+    end
+
+    @timeit_testset "externsalsampler" begin
+        @model function demo_gibbs_external()
+            m1 ~ Normal()
+            m2 ~ Normal()
+
+            -1 ~ Normal(m1, 1)
+            +1 ~ Normal(m1 + m2, 1)
+
+            return (; m1, m2)
+        end
+
+        model = demo_gibbs_external()
+        sampler = Turing.Experimental.Gibbs(
+            @varname(m1) => externalsampler(AdvancedMH.RWMH(1)),
+            @varname(m2) => externalsampler(AdvancedMH.RWMH(1)),
+        )
+        chain = sample(model, sampler, 1000; discard_initial=1000, thinning=10)
+        check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol = 0.1)
     end
 end
