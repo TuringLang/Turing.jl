@@ -7,6 +7,30 @@ using DynamicPPL
 using Random
 using Test
 using Turing
+using Turing.Inference: AdvancedHMC, AdvancedMH
+
+# FIXME: Remove once https://github.com/TuringLang/DynamicPPL.jl/pull/621 has gone through.
+# HACK: Have to provide the `context` explicitly, otherwise `model.context`
+# will be used, which itself can contain things like `ConditionContext`.
+# This in turn means that if we later do something like
+#
+#    Accessors.@set f.model = condition(model, x=new_value)
+#
+# will result in a `LogDensityFunction` which evaluates using _both_
+# the "new" `ConditionContext` with `x=new_value` and the original
+# `ConditionContext` containing the original value for `x`.
+# By specifying that we only want to respect the _leaf_ context, we will
+# only run into this issue if we do something like the above with a
+# leaf context (though it's really unclear if this would be desireable
+# to support).
+# TODO: Make the `LogDensityFunction` take `nothing` in place of the context
+# by default, in which case we simply defer the choice of context to `model.context`.
+function DynamicPPL.LogDensityFunction(model::DynamicPPL.Model)
+    return DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model))
+end
+function DynamicPPL.LogDensityFunction(model::DynamicPPL.Model, varinfo::DynamicPPL.AbstractVarInfo)
+    return DynamicPPL.LogDensityFunction(model, varinfo, DynamicPPL.leafcontext(model.context))
+end
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
