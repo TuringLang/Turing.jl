@@ -32,8 +32,8 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::Model) = true
 
-@timeit_testset "Gibbs using `condition`" begin
-    @timeit_testset "Demo models" begin
+@testset "Gibbs using `condition`" begin
+    @testset "Demo models" begin
         @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             # Run one sampler on variables starting with `s` and another on variables starting with `m`.
@@ -145,7 +145,7 @@ has_dot_assume(::Model) = true
         end
     end
 
-    @timeit_testset "multiple varnames" begin
+    @testset "multiple varnames" begin
         rng = Random.default_rng()
 
         # With both `s` and `m` as random.
@@ -179,7 +179,7 @@ has_dot_assume(::Model) = true
         end
     end
 
-    @timeit_testset "CSMC + ESS" begin
+    @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
         alg = Turing.Experimental.Gibbs(
@@ -201,7 +201,7 @@ has_dot_assume(::Model) = true
         check_MoGtest_default(chain, atol = 0.2)
     end
 
-    @timeit_testset "CSMC + ESS (usage of implicit varname)" begin
+    @testset "CSMC + ESS (usage of implicit varname)" begin
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
         alg = Turing.Experimental.Gibbs(
@@ -223,7 +223,7 @@ has_dot_assume(::Model) = true
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
 
-    @timeit_testset "externsalsampler" begin
+    @testset "externsalsampler" begin
         @model function demo_gibbs_external()
             m1 ~ Normal()
             m2 ~ Normal()
