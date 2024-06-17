@@ -1,5 +1,24 @@
+module MHTests
+
+import AdvancedMH
+using Distributions: Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal,
+    Normal, sample
+import DynamicPPL
+using DynamicPPL: Sampler
+using LinearAlgebra: I
+import Random
+using StableRNGs: StableRNG
+using Test: @test, @testset
+using Turing
+using Turing.Inference: Inference
+
+using ..Models: gdemo_default, MoGtest_default
+using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
+
+GKernel(var) = (x) -> Normal(x, sqrt.(var))
+
 @testset "mh.jl" begin
-    @turing_testset "mh constructor" begin
+    @testset "mh constructor" begin
         Random.seed!(10)
         N = 500
         s1 = MH(
@@ -26,7 +45,7 @@
         # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
         # c6 = sample(gdemo_default, s6, N)
     end
-    @numerical_testset "mh inference" begin
+    @testset "mh inference" begin
         Random.seed!(125)
         alg = MH()
         chain = sample(gdemo_default, alg, 10_000)
@@ -57,7 +76,7 @@
     end
 
     # Test MH shape passing.
-    @turing_testset "shape" begin
+    @testset "shape" begin
         @model function M(mu, sigma, observable)
             z ~ MvNormal(mu, sigma)
 
@@ -94,7 +113,7 @@
         @test chain isa MCMCChains.Chains
     end
 
-    @turing_testset "proposal matrix" begin
+    @testset "proposal matrix" begin
         Random.seed!(100)
         
         mat = [1.0 -0.05; -0.05 1.0]
@@ -117,7 +136,7 @@
         check_gdemo(chain2)
     end
 
-    @turing_testset "gibbs MH proposal matrix" begin
+    @testset "gibbs MH proposal matrix" begin
         # https://github.com/TuringLang/Turing.jl/issues/1556
 
         # generate data
@@ -167,7 +186,7 @@
     # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
     # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
     if VERSION ≥ v"1.8"
-        @turing_testset "vector of multivariate distributions" begin
+        @testset "vector of multivariate distributions" begin
             @model function test(k)
                 T = Vector{Vector{Float64}}(undef, k)
                 for i in 1:k
@@ -189,7 +208,7 @@
         end
     end
 
-    @turing_testset "MH link/invlink" begin
+    @testset "MH link/invlink" begin
         vi_base = DynamicPPL.VarInfo(gdemo_default)
 
         # Don't link when no proposals are given since we're using priors
@@ -229,7 +248,7 @@
         @test !DynamicPPL.islinked(vi, spl)
     end
 
-    @turing_testset "prior" begin
+    @testset "prior" begin
         # HACK: MH can be so bad for this prior model for some reason that it's difficult to
         # find a non-trivial `atol` where the tests will pass for all seeds. Hence we fix it :/
         rng = StableRNG(10)
@@ -241,7 +260,7 @@
         check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0], atol=0.3)
     end
 
-    @turing_testset "`filldist` proposal (issue #2180)" begin
+    @testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(
            demo_filldist_issue2180(),
@@ -250,4 +269,6 @@
         )
         check_numerical(chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0], atol=0.2)
     end
+end
+
 end

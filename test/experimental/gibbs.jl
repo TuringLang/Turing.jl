@@ -1,4 +1,12 @@
-using Test, Random, Turing, DynamicPPL
+module ExperimentalGibbsTests
+
+using ..Models: MoGtest_default, MoGtest_default_z_vector, gdemo
+using ..NumericalTests: check_MoGtest_default, check_MoGtest_default_z_vector, check_gdemo,
+    check_numerical, two_sample_test
+using DynamicPPL
+using Random
+using Test
+using Turing
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
@@ -75,7 +83,7 @@ has_dot_assume(::Model) = true
                 end
             end
 
-            @testset "comparison with (old) Gibbs" begin
+            @testset "comparison with 'gold-standard' samples" begin
                 num_iterations = 1_000
                 thinning = 10
                 num_chains = 4
@@ -124,14 +132,14 @@ has_dot_assume(::Model) = true
                 xs = Array(chain)
                 xs_true = Array(chain_true)
                 for i = 1:size(xs, 2)
-                    @test two_sample_ks_test(xs[:, i], xs_true[:, i])
+                    @test two_sample_test(xs[:, i], xs_true[:, i]; warn_on_fail=true)
                     # Let's make sure that the significance level is not too low by
                     # checking that the KS test fails for some simple transformations.
                     # TODO: Replace the heuristic below with closed-form implementations
                     # of the targets, once they are implemented in DynamicPPL.
-                    @test !two_sample_ks_test(0.9 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_ks_test(1.1 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_ks_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_test(0.9 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_test(1.1 .* xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
                 end
             end
         end
@@ -240,4 +248,6 @@ has_dot_assume(::Model) = true
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol=0.1)
         end
     end
+end
+
 end

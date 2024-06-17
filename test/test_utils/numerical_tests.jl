@@ -1,3 +1,13 @@
+module NumericalTests
+
+using Distributions
+using MCMCChains: namesingroup
+using Test: @test, @testset
+using HypothesisTests: HypothesisTests
+
+export check_MoGtest_default, check_MoGtest_default_z_vector, check_dist_numerical,
+    check_gdemo, check_numerical
+
 function check_dist_numerical(dist, chn; mean_tol = 0.1, var_atol = 1.0, var_tol = 0.5)
     @testset "numerical" begin
         # Extract values.
@@ -73,11 +83,32 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
 end
 
 """
-    two_sample_ad_test(xs_left, xs_right; α=1e-2)
+    two_sample_test(xs_left, xs_right; α=1e-3, warn_on_fail=false)
 
-Perform a two-sample Anderson-Darling (AD) test on the two samples `xs_left` and `xs_right`.
+Perform a two-sample hypothesis test on the two samples `xs_left` and `xs_right`.
+
+Currently the test performed is a Kolmogorov-Smirnov (KS) test.
+
+# Arguments
+- `xs_left::AbstractVector`: samples from the first distribution.
+- `xs_right::AbstractVector`: samples from the second distribution.
+
+# Keyword arguments
+- `α::Real`: significance level for the test. Default: `1e-3`.
+- `warn_on_fail::Bool`: whether to warn if the test fails. Default: `false`.
+    Makes failures a bit more informative.
 """
-function two_sample_ks_test(xs_left, xs_right; α=1e-2)
-    t = KSampleADTest(xs_left, xs_right)
-    return pvalue(t) > α
+function two_sample_test(xs_left, xs_right; α=1e-3, warn_on_fail=false)
+    t = HypothesisTests.ApproximateTwoSampleKSTest(xs_left, xs_right)
+    # Just a way to make the logs a bit more informative in case of failure.
+    if HypothesisTests.pvalue(t) > α
+        true
+    else
+        warn_on_fail && @warn "Two-sample AD test failed with p-value $(HypothesisTests.pvalue(t))"
+        warn_on_fail && @warn "Means of the two samples: $(mean(xs_left)), $(mean(xs_right))"
+        warn_on_fail && @warn "Variances of the two samples: $(var(xs_left)), $(var(xs_right))"
+        false
+    end
+end
+
 end

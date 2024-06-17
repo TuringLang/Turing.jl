@@ -1,3 +1,11 @@
+module Models
+
+export MoGtest, MoGtest_default, MoGtest_default_z_vector, MoGtest_z_vector, gdemo, gdemo_d,
+    gdemo_default
+
+using Distributions
+using Turing: @model
+
 # The old-gdemo model.
 @model function gdemo(x, y)
   s ~ InverseGamma(2, 3)
@@ -83,5 +91,4 @@ end
 
 MoGtest_default_z_vector = MoGtest_z_vector([1.0 1.0 4.0 4.0])
 
-# Declare empty model to make the Sampler constructor work.
-@model empty_model() = x = 1
+end
