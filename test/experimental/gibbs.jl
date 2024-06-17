@@ -172,34 +172,40 @@ has_dot_assume(::Model) = true
     @testset "multiple varnames" begin
         rng = Random.default_rng()
 
-        # With both `s` and `m` as random.
-        model = gdemo(1.5, 2.0)
-        vns = (@varname(s), @varname(m))
-        alg = Turing.Experimental.Gibbs(vns => MH())
+        @testset "with both `s` and `m` as random" begin
+            model = gdemo(1.5, 2.0)
+            vns = (@varname(s), @varname(m))
+            alg = Turing.Experimental.Gibbs(vns => MH())
 
-        # `step`
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
-        check_transition_varnames(transition, vns)
-        for _ = 1:5
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+            # `step`
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
             check_transition_varnames(transition, vns)
+            for _ in 1:5
+                transition, state = AbstractMCMC.step(
+                    rng, model, DynamicPPL.Sampler(alg), state
+                )
+                check_transition_varnames(transition, vns)
+            end
+
+            # `sample`
+            chain = sample(model, alg, 10_000; progress=false)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
 
-        # `sample`
-        chain = sample(model, alg, 10_000; progress=false)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6], atol = 0.4)
+        @testset "without `m` as random" begin
+            model = gdemo(1.5, 2.0) | (m=7 / 6,)
+            vns = (@varname(s),)
+            alg = Turing.Experimental.Gibbs(vns => MH())
 
-        # Without `m` as random.
-        model = gdemo(1.5, 2.0) | (m = 7 / 6,)
-        vns = (@varname(s),)
-        alg = Turing.Experimental.Gibbs(vns => MH())
-
-        # `step`
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
-        check_transition_varnames(transition, vns)
-        for _ = 1:5
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+            # `step`
+            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
             check_transition_varnames(transition, vns)
+            for _ in 1:5
+                transition, state = AbstractMCMC.step(
+                    rng, model, DynamicPPL.Sampler(alg), state
+                )
+                check_transition_varnames(transition, vns)
+            end
         end
     end
 
