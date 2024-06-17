@@ -5,8 +5,8 @@ using Distributions: logpdf
 using DynamicPPL: getlogp, getval
 using ForwardDiff
 using LinearAlgebra
-import LogDensityProblems
-import LogDensityProblemsAD
+using LogDensityProblems: LogDensityProblems
+using LogDensityProblemsAD: LogDensityProblemsAD
 using ReverseDiff
 using Test: @test, @testset
 using Turing
@@ -42,7 +42,9 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
         ℓ = LogDensityProblemsAD.ADgradient(
             Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag),
-            Turing.LogDensityFunction(vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()),
+            Turing.LogDensityFunction(
+                vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()
+            ),
         )
         l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
 
@@ -72,7 +74,7 @@ end
             lik_dist = Normal(m, sqrt(s))
             lp = logpdf(dist_s, s) + logpdf(Normal(0, sqrt(s)), m)
             lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
-            lp
+            return lp
         end
 
         # Call ForwardDiff's AD
@@ -81,14 +83,20 @@ end
         _x = [_m, _s]
         grad_FWAD = sort(g(_x))
 
-        ℓ = Turing.LogDensityFunction(vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext())
+        ℓ = Turing.LogDensityFunction(
+            vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext()
+        )
         x = map(x -> Float64(x), vi[SampleFromPrior()])
 
         trackerℓ = LogDensityProblemsAD.ADgradient(Turing.AutoTracker(), ℓ)
         if isdefined(Base, :get_extension)
-            @test trackerℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADTrackerExt).TrackerGradientLogDensity
+            @test trackerℓ isa
+                Base.get_extension(
+                LogDensityProblemsAD, :LogDensityProblemsADTrackerExt
+            ).TrackerGradientLogDensity
         else
-            @test trackerℓ isa LogDensityProblemsAD.LogDensityProblemsADTrackerExt.TrackerGradientLogDensity
+            @test trackerℓ isa
+                LogDensityProblemsAD.LogDensityProblemsADTrackerExt.TrackerGradientLogDensity
         end
         @test trackerℓ.ℓ === ℓ
         ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
@@ -96,9 +104,13 @@ end
 
         zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
         if isdefined(Base, :get_extension)
-            @test zygoteℓ isa Base.get_extension(LogDensityProblemsAD, :LogDensityProblemsADZygoteExt).ZygoteGradientLogDensity
+            @test zygoteℓ isa
+                Base.get_extension(
+                LogDensityProblemsAD, :LogDensityProblemsADZygoteExt
+            ).ZygoteGradientLogDensity
         else
-            @test zygoteℓ isa LogDensityProblemsAD.LogDensityProblemsADZygoteExt.ZygoteGradientLogDensity
+            @test zygoteℓ isa
+                LogDensityProblemsAD.LogDensityProblemsADZygoteExt.ZygoteGradientLogDensity
         end
         @test zygoteℓ.ℓ === ℓ
         ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
@@ -112,7 +124,9 @@ end
             s = x[2]
             m = x[1]
             lik_dist = Normal(m, sqrt(s))
-            lp = Turing.logpdf_with_trans(dist_s, s, false) + Turing.logpdf_with_trans(Normal(0, sqrt(s)), m, false)
+            lp =
+                Turing.logpdf_with_trans(dist_s, s, false) +
+                Turing.logpdf_with_trans(Normal(0, sqrt(s)), m, false)
             lp += logpdf(lik_dist, 1.5) + logpdf(lik_dist, 2.0)
             return lp
         end
@@ -122,7 +136,7 @@ end
         # Test Wishart AD.
         @model function wishart_ad()
             v ~ Wishart(7, [1 0.5; 0.5 1])
-            v
+            return v
         end
 
         # Hand-written logp
@@ -137,7 +151,7 @@ end
     end
     @testset "Simplex Tracker, Zygote and ReverseDiff (with and without caching) AD" begin
         @model function dir()
-            theta ~ Dirichlet(1 ./ fill(4, 4))
+            return theta ~ Dirichlet(1 ./ fill(4, 4))
         end
         sample(dir(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
         sample(dir(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
@@ -145,14 +159,14 @@ end
     end
     @testset "PDMatDistribution AD" begin
         @model function wishart()
-            theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
+            return theta ~ Wishart(4, Matrix{Float64}(I, 4, 4))
         end
 
         sample(wishart(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
         sample(wishart(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
 
         @model function invwishart()
-            theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
+            return theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
 
         sample(invwishart(), HMC(0.01, 1; adtype=AutoReverseDiff(false)), 1000)
@@ -163,7 +177,7 @@ end
             params = TV(undef, 2)
             @. params ~ Normal(0, 1)
 
-            x ~ MvNormal(params, I)
+            return x ~ MvNormal(params, I)
         end
 
         function make_logjoint(model::DynamicPPL.Model, ctx::DynamicPPL.AbstractContext)
@@ -180,7 +194,11 @@ end
                 if unlinked
                     varinfo_init = DynamicPPL.invlink!!(varinfo_init, spl, model)
                 end
-                varinfo = last(DynamicPPL.evaluate!!(model, varinfo, DynamicPPL.SamplingContext(spl, ctx)))
+                varinfo = last(
+                    DynamicPPL.evaluate!!(
+                        model, varinfo, DynamicPPL.SamplingContext(spl, ctx)
+                    ),
+                )
                 if unlinked
                     varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
                 end
@@ -195,7 +213,7 @@ end
         model = tst(data)
 
         likelihood = make_logjoint(model, DynamicPPL.LikelihoodContext())
-        target(x) = likelihood(x, unlinked=true)
+        target(x) = likelihood(x; unlinked=true)
 
         H_f = ForwardDiff.hessian(target, zeros(2))
         H_r = ReverseDiff.hessian(target, zeros(2))
@@ -204,10 +222,9 @@ end
     end
 
     @testset "memoization: issue #1393" begin
-
         @model function demo(data)
             sigma ~ Uniform(0.0, 20.0)
-            data ~ Normal(0, sigma)
+            return data ~ Normal(0, sigma)
         end
 
         N = 1000
@@ -217,7 +234,6 @@ end
             chn = sample(demo(data), NUTS(0.65; adtype=AutoReverseDiff(true)), 1000)
             @test mean(Array(chn[:sigma])) ≈ std(data) atol = 0.5
         end
-
     end
 
     @testset "ReverseDiff compiled without linking" begin
@@ -225,10 +241,14 @@ end
         θ = DynamicPPL.getparams(f)
 
         f_rd = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=false), f)
-        f_rd_compiled = LogDensityProblemsAD.ADgradient(Turing.AutoReverseDiff(; compile=true), f)
+        f_rd_compiled = LogDensityProblemsAD.ADgradient(
+            Turing.AutoReverseDiff(; compile=true), f
+        )
 
         ℓ, ℓ_grad = LogDensityProblems.logdensity_and_gradient(f_rd, θ)
-        ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(f_rd_compiled, θ)
+        ℓ_compiled, ℓ_grad_compiled = LogDensityProblems.logdensity_and_gradient(
+            f_rd_compiled, θ
+        )
 
         @test ℓ == ℓ_compiled
         @test ℓ_grad == ℓ_grad_compiled

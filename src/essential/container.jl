@@ -1,4 +1,5 @@
-struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
+struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
+       AdvancedPS.AbstractGenericModel
     model::M
     sampler::S
     varinfo::V
@@ -14,26 +15,24 @@ function TracedModel(
     context = SamplingContext(rng, sampler, DefaultContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
     if kwargs !== nothing && !isempty(kwargs)
-        error("Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.")
+        error(
+            "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
+        )
     end
     return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
-        model,
-        sampler,
-        varinfo,
-        (model.f, args...)
+        model, sampler, varinfo, (model.f, args...)
     )
 end
 
 function AdvancedPS.advance!(
-    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}},
-    isref::Bool=false
+    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
 )
     # Make sure we load/reset the rng in the new replaying mechanism
     DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
     if score === nothing
-        return
+        return nothing
     else
         return score + DynamicPPL.getlogp(trace.model.f.varinfo)
     end
@@ -54,7 +53,9 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return trace
 end
 
-function AdvancedPS.update_rng!(trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}})
+function AdvancedPS.update_rng!(
+    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}
+)
     # Extract the `args`.
     args = trace.model.ctask.args
     # From `args`, extract the `SamplingContext`, which contains the RNG.

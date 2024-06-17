@@ -27,11 +27,7 @@ ESS(space::Symbol) = ESS{(space,)}()
 
 # always accept in the first step
 function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:ESS},
-    vi::AbstractVarInfo;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
     # Sanity check
     vns = _getvns(vi, spl)
@@ -47,11 +43,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::Model,
-    spl::Sampler{<:ESS},
-    vi::AbstractVarInfo;
-    kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
     # obtain previous sample
     f = vi[spl]
@@ -64,7 +56,8 @@ function AbstractMCMC.step(
     sample, state = AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
-            ESSPrior(model, spl, vi), Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
+            ESSPrior(model, spl, vi),
+            Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
         ),
         EllipticalSliceSampling.ESS(),
         oldstate,
@@ -83,10 +76,10 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     sampler::S
     varinfo::V
     μ::T
-    
-    function ESSPrior{M,S,V}(model::M, sampler::S, varinfo::V) where {
-        M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo
-    }
+
+    function ESSPrior{M,S,V}(
+        model::M, sampler::S, varinfo::V
+    ) where {M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo}
         vns = _getvns(varinfo, sampler)
         μ = mapreduce(vcat, vns[1]) do vn
             dist = getdist(varinfo, vn)
@@ -99,9 +92,7 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
 end
 
 function ESSPrior(model::Model, sampler::Sampler{<:ESS}, varinfo::AbstractVarInfo)
-    return ESSPrior{typeof(model),typeof(sampler),typeof(varinfo)}(
-        model, sampler, varinfo,
-    )
+    return ESSPrior{typeof(model),typeof(sampler),typeof(varinfo)}(model, sampler, varinfo)
 end
 
 # Ensure that the prior is a Gaussian distribution (checked in the constructor)
@@ -124,7 +115,9 @@ end
 Distributions.mean(p::ESSPrior) = p.μ
 
 # Evaluate log-likelihood of proposals
-const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{V,M,<:DynamicPPL.SamplingContext{<:S}}
+const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{
+    V,M,<:DynamicPPL.SamplingContext{<:S}
+}
 
 function (ℓ::ESSLogLikelihood)(f::AbstractVector)
     sampler = DynamicPPL.getsampler(ℓ)
@@ -133,7 +126,9 @@ function (ℓ::ESSLogLikelihood)(f::AbstractVector)
     return getlogp(varinfo)
 end
 
-function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, vi)
+function DynamicPPL.tilde_assume(
+    rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, vi
+)
     return if inspace(vn, sampler)
         DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi)
     else
@@ -141,19 +136,33 @@ function DynamicPPL.tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, s
     end
 end
 
-function DynamicPPL.tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+function DynamicPPL.tilde_observe(
+    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
+)
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
 
-function DynamicPPL.dot_tilde_assume(rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vns, vi)
+function DynamicPPL.dot_tilde_assume(
+    rng::Random.AbstractRNG,
+    ctx::DefaultContext,
+    sampler::Sampler{<:ESS},
+    right,
+    left,
+    vns,
+    vi,
+)
     # TODO: Or should we do `all(Base.Fix2(inspace, sampler), vns)`?
     return if inspace(first(vns), sampler)
-        DynamicPPL.dot_tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi)
+        DynamicPPL.dot_tilde_assume(
+            rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi
+        )
     else
         DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, vi)
     end
 end
 
-function DynamicPPL.dot_tilde_observe(ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi)
+function DynamicPPL.dot_tilde_observe(
+    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
+)
     return DynamicPPL.dot_tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end

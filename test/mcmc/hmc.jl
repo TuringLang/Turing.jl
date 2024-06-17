@@ -308,7 +308,7 @@ using Turing
             initial_params=[0.5, 1.75, 1.0]
         )
         chain_prior = sample(model, Prior(), num_samples)
-        
+
         # Extract the `x` like this because running `generated_quantities` was how
         # the issue was discovered, hence we also want to make sure that it works.
         results = generated_quantities(model, chain)

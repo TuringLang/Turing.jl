@@ -26,6 +26,10 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" begin
+    @testset "Aqua" begin
+        @timeit_include("Aqua.jl")
+    end
+
     @testset "essential" begin
         @timeit_include("essential/ad.jl")
         @timeit_include("essential/container.jl")
@@ -37,7 +41,7 @@ end
         @timeit_include("mcmc/ess.jl")
         @timeit_include("mcmc/is.jl")
     end
-    
+
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" begin
             @timeit_include("mcmc/gibbs.jl")

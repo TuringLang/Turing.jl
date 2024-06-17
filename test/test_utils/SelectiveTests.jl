@@ -24,7 +24,7 @@ function parse_args(args)
     excluded_paths = Vector{String}()
     for (i, arg) in enumerate(args)
         if arg == "--skip"
-            append!(excluded_paths, args[i+1:end])
+            append!(excluded_paths, args[(i + 1):end])
             break
         else
             push!(included_paths, arg)

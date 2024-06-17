@@ -79,9 +79,9 @@ struct BinomialLogit{T<:Real,S<:Real} <: DiscreteUnivariateDistribution
     logitp::T
     logconstant::S
 
-    function BinomialLogit{T}(n::Int, logitp::T) where T
+    function BinomialLogit{T}(n::Int, logitp::T) where {T}
         n >= 0 || error("parameter `n` has to be non-negative")
-        logconstant = - (log1p(n) + n * StatsFuns.log1pexp(logitp))
+        logconstant = -(log1p(n) + n * StatsFuns.log1pexp(logitp))
         return new{T,typeof(logconstant)}(n, logitp, logconstant)
     end
 end
@@ -134,13 +134,13 @@ P(X = k) = \\begin{cases}
 ```
 where `K = length(c) + 1`.
 """
-struct OrderedLogistic{T1, T2<:AbstractVector} <: DiscreteUnivariateDistribution
+struct OrderedLogistic{T1,T2<:AbstractVector} <: DiscreteUnivariateDistribution
     η::T1
     cutpoints::T2
 
     function OrderedLogistic{T1,T2}(η::T1, cutpoints::T2) where {T1,T2}
         issorted(cutpoints) || error("cutpoints are not sorted")
-        return new{typeof(η), typeof(cutpoints)}(η, cutpoints)
+        return new{typeof(η),typeof(cutpoints)}(η, cutpoints)
     end
 end
 
@@ -193,10 +193,10 @@ function unsafe_logpdf_ordered_logistic(η, cutpoints, K, k::Int)
         logp = if k == 1
             -StatsFuns.log1pexp(η - cutpoints[k])
         elseif k < K
-            tmp = StatsFuns.log1pexp(cutpoints[k-1] - η)
+            tmp = StatsFuns.log1pexp(cutpoints[k - 1] - η)
             -tmp + StatsFuns.log1mexp(tmp - StatsFuns.log1pexp(cutpoints[k] - η))
         else
-            -StatsFuns.log1pexp(cutpoints[k-1] - η)
+            -StatsFuns.log1pexp(cutpoints[k - 1] - η)
         end
     end
     return logp
@@ -221,7 +221,7 @@ struct LogPoisson{T<:Real,S} <: DiscreteUnivariateDistribution
     logλ::T
     λ::S
 
-    function LogPoisson{T}(logλ::T) where T
+    function LogPoisson{T}(logλ::T) where {T}
         λ = exp(logλ)
         return new{T,typeof(λ)}(logλ, λ)
     end

@@ -1,7 +1,7 @@
 module RandomMeasuresTests
 
 using Distributions: Normal, sample
-import Random
+using Random: Random
 using Test: @test, @testset
 using Turing
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
@@ -31,37 +31,37 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
                 # Number of clusters.
                 K = maximum(z)
                 nk = Vector{Int}(map(k -> sum(z .== k), 1:K))
-        
+
                 # Draw the latent assignment.
                 z[i] ~ ChineseRestaurantProcess(rpm, nk)
-                
+
                 # Create a new cluster?
                 if z[i] > K
                     push!(μ, 0.0)
-        
+
                     # Draw location of new cluster.
                     μ[z[i]] ~ H
                 end
-                        
+
                 # Draw observation.
                 x[i] ~ Normal(μ[z[i]], 1.0)
             end
         end
-        
+
         # Generate some test data.
-        Random.seed!(1);
-        data = vcat(randn(10), randn(10) .- 5, randn(10) .+ 10);
-        data .-= mean(data);
-        data /= std(data);
-        
+        Random.seed!(1)
+        data = vcat(randn(10), randn(10) .- 5, randn(10) .+ 10)
+        data .-= mean(data)
+        data /= std(data)
+
         # MCMC sampling
-        Random.seed!(2);
-        iterations = 500;
-        model_fun = infiniteGMM(data);
-        chain = sample(model_fun, SMC(), iterations);
+        Random.seed!(2)
+        iterations = 500
+        model_fun = infiniteGMM(data)
+        chain = sample(model_fun, SMC(), iterations)
 
         @test chain isa MCMCChains.Chains
-        @test eltype(chain.value) === Union{Float64, Missing}
+        @test eltype(chain.value) === Union{Float64,Missing}
     end
     # partitions = [
     #     [[1, 2, 3, 4]],

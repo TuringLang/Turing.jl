@@ -1,0 +1,21 @@
+style="blue"
+format_markdown = true
+import_to_using = false
+# TODO
+# We ignore these files because when formatting was first put in place they were being worked on.
+# These ignores should be removed once the relevant PRs are merged/closed.
+ignore = [
+    # https://github.com/TuringLang/Turing.jl/pull/2231/files
+    "src/experimental/gibbs.jl",
+    "src/mcmc/abstractmcmc.jl",
+    "test/experimental/gibbs.jl",
+    "test/test_utils/numerical_tests.jl",
+    # https://github.com/TuringLang/Turing.jl/pull/2218/files 
+    "src/mcmc/Inference.jl",
+    "test/mcmc/Inference.jl",
+    # https://github.com/TuringLang/Turing.jl/pull/1887 # Enzyme PR
+    "test/mcmc/Inference.jl",
+    "test/mcmc/hmc.jl",
+    "test/mcmc/sghmc.jl",
+    "test/runtests.jl",
+]
