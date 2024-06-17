@@ -17,10 +17,26 @@ function transition_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, transit
     return transition_to_turing(parent(f), transition)
 end
 
+_getmodel(f::LogDensityProblemsAD.ADGradientWrapper) = _getmodel(parent(f))
+_getmodel(f::DynamicPPL.LogDensityFunction) = f.model
+
+# FIXME: We'll have to overload this for every AD backend since some of the AD backends
+# will cache certain parts of a given model, e.g. the tape, which results in a discrepancy
+# between the primal (forward) and dual (backward).
+function _setmodel(f::LogDensityProblemsAD.ADGradientWrapper, model::DynamicPPL.Model)
+    return Accessors.@set f.ℓ = _setmodel(f.ℓ, model)
+end
+function _setmodel(f::DynamicPPL.LogDensityFunction, model::DynamicPPL.Model)
+    return Accessors.@set f.model = model
+end
+
+_varinfo(f::LogDensityProblemsAD.ADGradientWrapper) = _varinfo(parent(f))
+_varinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
+
 function varinfo(state::TuringState)
-    θ = getparams(state.logdensity.model, state.state)
+    θ = getparams(_getmodel(state.logdensity), state.state)
     # TODO: Do we need to link here first?
-    return DynamicPPL.unflatten(state.logdensity.varinfo, θ)
+    return DynamicPPL.unflatten(_varinfo(state.logdensity), θ)
 end
 
 # NOTE: Only thing that depends on the underlying sampler.
@@ -48,14 +64,14 @@ end
 Recompute the log-probability of the `model` based on the given `state` and return the resulting state.
 """
 function recompute_logprob!!(
-    rng::Random.AbstractRNG,
+    rng::Random.AbstractRNG,  # TODO: Do we need the `rng` here?
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler{<:ExternalSampler},
     state
 )
-    # Re-using the log-density function from the `state` and updating only the `model` field.
-    f = state.logdensity
-    f = Accessors.@set f.model = model
+    # Re-using the log-density function from the `state` and updating only the `model` field,
+    # since the `model` might now contain different conditioning values.
+    f = _setmodel(state.logdensity, model)
     # Recompute the log-probability with the new `model`.
     state_inner = recompute_logprob!!(
         rng,
@@ -80,6 +96,16 @@ function recompute_logprob!!(
         state.transition.z.θ,
         state.transition.z.r,
     )
+end
+
+function recompute_logprob!!(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.LogDensityModel,
+    sampler::AdvancedMH.MetropolisHastings,
+    state::AdvancedMH.Transition,
+)
+    logdensity = model.logdensity
+    return Accessors.@set state.lp = LogDensityProblems.logdensity(logdensity, state.params)
 end
 
 # TODO: Do we also support `resume`, etc?
