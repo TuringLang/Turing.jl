@@ -127,6 +127,7 @@ has_dot_assume(::Model) = true
                     vns_s => sampler_inner,
                     vns_m => sampler_inner,
                 )
+                Random.seed!(42)
                 chain = sample(
                     model,
                     sampler,
@@ -141,6 +142,7 @@ has_dot_assume(::Model) = true
 
                 # "Ground truth" samples.
                 # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
+                Random.seed!(42)
                 chain_true = sample(
                     model,
                     NUTS(),
@@ -188,6 +190,7 @@ has_dot_assume(::Model) = true
             end
 
             # `sample`
+            Random.seed!(42)
             chain = sample(model, alg, 10_000; progress=false)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
@@ -227,6 +230,7 @@ has_dot_assume(::Model) = true
         end
 
         # Sample!
+        Random.seed!(42)
         chain = sample(MoGtest_default, alg, 1000; progress=false)
         check_MoGtest_default(chain, atol = 0.2)
     end
@@ -249,6 +253,7 @@ has_dot_assume(::Model) = true
         end
 
         # Sample!
+        Random.seed!(42)
         chain = sample(model, alg, 1000; progress=false)
         check_MoGtest_default_z_vector(chain, atol = 0.2)
     end
@@ -274,6 +279,7 @@ has_dot_assume(::Model) = true
                 @varname(m1) => sampler_inner,
                 @varname(m2) => sampler_inner,
             )
+            Random.seed!(42)
             chain = sample(model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0)
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol=0.1)
         end
