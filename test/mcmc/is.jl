@@ -46,7 +46,7 @@ using Turing
         ref = reference(n)
 
         Random.seed!(seed)
-        chain = sample(model, alg, n)
+        chain = sample(model, alg, n; check_model=false)
         sampled = get(chain, [:a, :b, :lp])
 
         @test vec(sampled.a) == ref.as
