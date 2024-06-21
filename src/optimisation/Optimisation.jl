@@ -275,12 +275,13 @@ StatsBase.loglikelihood(m::ModeResult) = m.lp
 
 """
     Base.get(m::ModeResult, var_symbol::Symbol)
-    Base.get(m::ModeResult, var_symbols::Vector{Symbol})
+    Base.get(m::ModeResult, var_symbols)
 
 Return the values of all the variables with the symbol(s) `var_symbol` in the mode result
-`m`. The return value is a `NamedTuple` with `var_symbols` as the key(s).
+`m`. The return value is a `NamedTuple` with `var_symbols` as the key(s). The second
+argument should be either a `Symbol` or an iterator of `Symbol`s.
 """
-function Base.get(m::ModeResult, var_symbols::Vector{Symbol})
+function Base.get(m::ModeResult, var_symbols)
     log_density = m.f
     # Get all the variable names in the model. This is the same as the list of keys in
     # m.values, but they are more convenient to filter when they are VarNames rather than
@@ -290,7 +291,8 @@ function Base.get(m::ModeResult, var_symbols::Vector{Symbol})
     )
     # For each symbol s in var_symbols, pick all the values from m.values for which the
     # variable name has that symbol.
-    value_vectors = []
+    et = eltype(m.values)
+    value_vectors = Array{et}[]
     for s in var_symbols
         push!(
             value_vectors,
@@ -300,7 +302,7 @@ function Base.get(m::ModeResult, var_symbols::Vector{Symbol})
     return (; zip(var_symbols, value_vectors)...)
 end
 
-Base.get(m::ModeResult, var_symbol::Symbol) = get(m, [var_symbol])
+Base.get(m::ModeResult, var_symbol::Symbol) = get(m, (var_symbol,))
 
 """
     ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)

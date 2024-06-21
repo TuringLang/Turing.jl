@@ -614,6 +614,7 @@ using Turing
         @assert keys(get_ab) == (:a, :b)
         @assert get_b[:b] == get_ab[:b]
         @assert vcat(get_a[:a], get_b[:b]) == result.values.array
+        @assert get(result, :c) == (; :c => Array{Float64}[])
     end
 end
 
