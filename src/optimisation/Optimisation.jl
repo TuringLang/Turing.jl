@@ -292,7 +292,7 @@ function Base.get(m::ModeResult, var_symbols)
     # For each symbol s in var_symbols, pick all the values from m.values for which the
     # variable name has that symbol.
     et = eltype(m.values)
-    value_vectors = Array{et}[]
+    value_vectors = Vector{et}[]
     for s in var_symbols
         push!(
             value_vectors,
