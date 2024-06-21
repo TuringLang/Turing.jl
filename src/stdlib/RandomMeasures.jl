@@ -19,7 +19,8 @@ abstract type AbstractRandomProbabilityMeasure end
 
 The *Size-Biased Sampling Process* for random probability measures `rpm` with a surplus mass of `surplus`.
 """
-struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractFloat} <: ContinuousUnivariateDistribution
+struct SizeBiasedSamplingProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractFloat} <:
+       ContinuousUnivariateDistribution
     rpm::T
     surplus::V
 end
@@ -34,7 +35,8 @@ maximum(d::SizeBiasedSamplingProcess) = d.surplus
 
 The *Stick-Breaking Process* for random probability measures `rpm`.
 """
-struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <: ContinuousUnivariateDistribution
+struct StickBreakingProcess{T<:AbstractRandomProbabilityMeasure} <:
+       ContinuousUnivariateDistribution
     rpm::T
 end
 
@@ -48,11 +50,12 @@ maximum(d::StickBreakingProcess) = 1.0
 
 The *Chinese Restaurant Process* for random probability measures `rpm` with counts `m`.
 """
-struct ChineseRestaurantProcess{T<:AbstractRandomProbabilityMeasure,V<:AbstractVector{Int}} <: DiscreteUnivariateDistribution
+struct ChineseRestaurantProcess{
+    T<:AbstractRandomProbabilityMeasure,V<:AbstractVector{Int}
+} <: DiscreteUnivariateDistribution
     rpm::T
     m::V
 end
-
 
 """
     _logpdf_table(d::AbstractRandomProbabilityMeasure, m::AbstractVector{Int})
@@ -81,7 +84,7 @@ function rand(rng::AbstractRNG, d::ChineseRestaurantProcess)
 end
 
 minimum(d::ChineseRestaurantProcess) = 1
-maximum(d::ChineseRestaurantProcess) = any(iszero, d.m) ? length(d.m) : length(d.m)+1
+maximum(d::ChineseRestaurantProcess) = any(iszero, d.m) ? length(d.m) : length(d.m) + 1
 
 ## ################# ##
 ## Random partitions ##
@@ -131,7 +134,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
 
     # construct the table
     first_zero = findfirst(iszero, m)
-    K = first_zero === nothing ? length(m)+1 : length(m)
+    K = first_zero === nothing ? length(m) + 1 : length(m)
     table = fill(T(-Inf), K)
 
     # exit if m is empty or contains only zeros
@@ -141,7 +144,7 @@ function _logpdf_table(d::DirichletProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     # compute logpdf for each occupied table
-    @inbounds for i in 1:(K-1)
+    @inbounds for i in 1:(K - 1)
         table[i] = T(log(m[i]))
     end
 
@@ -187,7 +190,7 @@ end
 function distribution(d::StickBreakingProcess{<:PitmanYorProcess})
     d_rpm = d.rpm
     d_rpm_d = d.rpm.d
-    return Beta(one(d_rpm_d)-d_rpm_d, d_rpm.θ + d_rpm.t*d_rpm_d)
+    return Beta(one(d_rpm_d) - d_rpm_d, d_rpm.θ + d_rpm.t * d_rpm_d)
 end
 
 @doc raw"""
@@ -216,14 +219,15 @@ function stickbreak(v)
     K = length(v) + 1
     cumprod_one_minus_v = cumprod(1 .- v)
 
-    eta = [if k == 1
-               v[1]
-           elseif k == K
-               cumprod_one_minus_v[K - 1]
-           else
-               v[k] * cumprod_one_minus_v[k - 1]
-           end
-           for k in 1:K]
+    eta = [
+        if k == 1
+            v[1]
+        elseif k == K
+            cumprod_one_minus_v[K - 1]
+        else
+            v[k] * cumprod_one_minus_v[k - 1]
+        end for k in 1:K
+    ]
 
     return eta
 end
@@ -231,7 +235,7 @@ end
 function distribution(d::SizeBiasedSamplingProcess{<:PitmanYorProcess})
     d_rpm = d.rpm
     d_rpm_d = d.rpm.d
-    dist = Beta(one(d_rpm_d)-d_rpm_d, d_rpm.θ + d_rpm.t*d_rpm_d)
+    dist = Beta(one(d_rpm_d) - d_rpm_d, d_rpm.θ + d_rpm.t * d_rpm_d)
     return LocationScale(zero(d_rpm_d), d.surplus, dist)
 end
 
@@ -241,7 +245,7 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
 
     # construct table
     first_zero = findfirst(iszero, m)
-    K = first_zero === nothing ? length(m)+1 : length(m)
+    K = first_zero === nothing ? length(m) + 1 : length(m)
     table = fill(T(-Inf), K)
 
     # exit if m is empty or contains only zeros
@@ -251,8 +255,8 @@ function _logpdf_table(d::PitmanYorProcess{T}, m::AbstractVector{Int}) where {T<
     end
 
     # compute logpdf for each occupied table
-    @inbounds for i in 1:(K-1)
-        !iszero(m[i]) && ( table[i] = T(log(m[i] - d.d)) )
+    @inbounds for i in 1:(K - 1)
+        !iszero(m[i]) && (table[i] = T(log(m[i] - d.d)))
     end
 
     # logpdf for new table
@@ -268,6 +272,5 @@ end
 
 export DirichletProcess, PitmanYorProcess
 export SizeBiasedSamplingProcess, StickBreakingProcess, ChineseRestaurantProcess
-
 
 end # end module

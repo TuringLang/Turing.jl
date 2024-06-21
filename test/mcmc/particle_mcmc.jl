@@ -1,5 +1,16 @@
+module ParticleMCMCTests
+
+using ..Models: gdemo_default
+#using ..Models: MoGtest, MoGtest_default
+using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using DynamicPPL: getspace
+using Random: Random
+using Test: @test, @test_throws, @testset
+using Turing
+
 @testset "SMC" begin
-    @turing_testset "constructor" begin
+    @testset "constructor" begin
         s = SMC()
         @test s.resampler == ResampleWithESSThreshold()
         @test getspace(s) === ()
@@ -45,32 +56,32 @@
         @test getspace(s) === (:x,)
     end
 
-    @turing_testset "models" begin
+    @testset "models" begin
         @model function normal()
-            a ~ Normal(4,5)
-            3 ~ Normal(a,2)
-            b ~ Normal(a,1)
-            1.5 ~ Normal(b,2)
-            a, b
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
+            1.5 ~ Normal(b, 2)
+            return a, b
         end
 
-        tested = sample(normal(), SMC(), 100);
+        tested = sample(normal(), SMC(), 100)
 
         # failing test
         @model function fail_smc()
-            a ~ Normal(4,5)
-            3 ~ Normal(a,2)
-            b ~ Normal(a,1)
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
             if a >= 4.0
-                1.5 ~ Normal(b,2)
+                1.5 ~ Normal(b, 2)
             end
-            a, b
+            return a, b
         end
 
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
     end
 
-    @turing_testset "logevidence" begin
+    @testset "logevidence" begin
         Random.seed!(100)
 
         @model function test()
@@ -80,7 +91,7 @@
             1 ~ Bernoulli(x / 2)
             c ~ Beta()
             0 ~ Bernoulli(x / 2)
-            x
+            return x
         end
 
         chains_smc = sample(test(), SMC(), 100)
@@ -91,7 +102,7 @@
 end
 
 @testset "PG" begin
-    @turing_testset "constructor" begin
+    @testset "constructor" begin
         s = PG(10)
         @test s.nparticles == 10
         @test s.resampler == ResampleWithESSThreshold()
@@ -148,7 +159,7 @@ end
         @test getspace(s) === (:x,)
     end
 
-    @turing_testset "logevidence" begin
+    @testset "logevidence" begin
         Random.seed!(100)
 
         @model function test()
@@ -158,7 +169,7 @@ end
             1 ~ Bernoulli(x / 2)
             c ~ Beta()
             0 ~ Bernoulli(x / 2)
-            x
+            return x
         end
 
         chains_pg = sample(test(), PG(10), 100)
@@ -168,21 +179,21 @@ end
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
-    @turing_testset "reference particle" begin
+    @testset "reference particle" begin
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007
-    @turing_testset "keyword arguments not supported" begin
-        @model kwarg_demo(; x = 2) = return x
+    @testset "keyword arguments not supported" begin
+        @model kwarg_demo(; x=2) = return x
         @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
     end
 end
 
 # @testset "pmmh.jl" begin
-#     @turing_testset "pmmh constructor" begin
+#     @testset "pmmh constructor" begin
 #         N = 2000
 #         s1 = PMMH(N, SMC(10, :s), MH(1,(:m, s -> Normal(s, sqrt(1)))))
 #         s2 = PMMH(N, SMC(10, :s), MH(1, :m))
@@ -218,7 +229,7 @@ end
 # end
 
 # @testset "ipmcmc.jl" begin
-#     @turing_testset "ipmcmc constructor" begin
+#     @testset "ipmcmc constructor" begin
 #         Random.seed!(125)
 #
 #         N = 50
@@ -239,3 +250,4 @@ end
 #     end
 # end
 
+end

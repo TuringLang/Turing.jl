@@ -1,6 +1,25 @@
+module SGHMCTests
+
+using ..Models: gdemo_default
+using ..NumericalTests: check_gdemo
+using Distributions: sample
+import Enzyme
+import ForwardDiff
+using LinearAlgebra: dot
+import ReverseDiff
+using StableRNGs: StableRNG
+using Test: @test, @testset
+using Turing
+
+# Disable Enzyme warnings
+Enzyme.API.typeWarning!(false)
+
+# Enable runtime activity (workaround)
+Enzyme.API.runtimeActivity!(true)
+
 # @testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
 @testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
-    @turing_testset "sghmc constructor" begin
+    @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
         @test alg isa SGHMC
         sampler = Turing.Sampler(alg)
@@ -16,7 +35,7 @@
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
     end
-    @numerical_testset "sghmc inference" begin
+    @testset "sghmc inference" begin
         rng = StableRNG(123)
 
         alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=adbackend)
@@ -27,7 +46,7 @@ end
 
 # @testset "Testing sgld.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
 @testset "Testing sgld.jl with $adbackend" for adbackend in (AutoEnzyme(),)
-    @turing_testset "sgld constructor" begin
+    @testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD
         sampler = Turing.Sampler(alg)
@@ -43,7 +62,7 @@ end
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGLD}
     end
-    @numerical_testset "sgld inference" begin
+    @testset "sgld inference" begin
         rng = StableRNG(1)
 
         chain = sample(rng, gdemo_default, SGLD(; stepsize = PolynomialStepsize(0.5)), 20_000)
@@ -56,4 +75,6 @@ end
         @test s_weighted ≈ 49/24 atol=0.2
         @test m_weighted ≈ 7/6 atol=0.2
     end
+end
+
 end

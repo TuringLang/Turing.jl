@@ -17,18 +17,18 @@ std = ones(θ_dim)
 θ = randn(θ_dim)
 lj = lj_func(θ)
 
-chn = Dict(:θ=>Vector{Vector{Float64}}(), :logϵ=>Vector{Float64}())
+chn = Dict(:θ => Vector{Vector{Float64}}(), :logϵ => Vector{Float64}())
 accept_num = 0
 
 function dummy_print(args...)
-  nothing
+    return nothing
 end
 
 totla_num = 5000
-for iter = 1:totla_num
-  push!(chn[:θ], θ)
-  θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, std)
-  accept_num += is_accept
+for iter in 1:totla_num
+    push!(chn[:θ], θ)
+    θ, lj, is_accept, τ_valid, α = _hmc_step(θ, lj, lj_func, grad_func, 5, 0.05, std)
+    accept_num += is_accept
 end
 
 @show lj

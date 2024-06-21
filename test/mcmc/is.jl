@@ -1,4 +1,13 @@
-@turing_testset "is.jl" begin
+module ISTests
+
+using Distributions: Normal, sample
+using DynamicPPL: logpdf
+using Random: Random
+using StatsFuns: logsumexp
+using Test: @test, @testset
+using Turing
+
+@testset "is.jl" begin
     function reference(n)
         as = Vector{Float64}(undef, n)
         bs = Vector{Float64}(undef, n)
@@ -9,22 +18,22 @@
         end
         logevidence = logsumexp(logps) - log(n)
 
-        return (as = as, bs = bs, logps = logps, logevidence = logevidence)
+        return (as=as, bs=bs, logps=logps, logevidence=logevidence)
     end
 
     function reference()
-        x = rand(Normal(4,5))
-        y = rand(Normal(x,1))
-        loglik = logpdf(Normal(x,2), 3) + logpdf(Normal(y,2), 1.5)
+        x = rand(Normal(4, 5))
+        y = rand(Normal(x, 1))
+        loglik = logpdf(Normal(x, 2), 3) + logpdf(Normal(y, 2), 1.5)
         return x, y, loglik
     end
 
     @model function normal()
-        a ~ Normal(4,5)
-        3 ~ Normal(a,2)
-        b ~ Normal(a,1)
-        1.5 ~ Normal(b,2)
-        a, b
+        a ~ Normal(4, 5)
+        3 ~ Normal(a, 2)
+        b ~ Normal(a, 1)
+        1.5 ~ Normal(b, 2)
+        return a, b
     end
 
     alg = IS()
@@ -46,7 +55,7 @@
         @test chain.logevidence == ref.logevidence
     end
 
-    @turing_testset "logevidence" begin
+    @testset "logevidence" begin
         Random.seed!(100)
 
         @model function test()
@@ -56,12 +65,14 @@
             1 ~ Bernoulli(x / 2)
             c ~ Beta()
             0 ~ Bernoulli(x / 2)
-            x
+            return x
         end
 
         chains = sample(test(), IS(), 10000)
 
         @test all(isone, chains[:x])
-        @test chains.logevidence ≈ - 2 * log(2)
+        @test chains.logevidence ≈ -2 * log(2)
     end
+end
+
 end
