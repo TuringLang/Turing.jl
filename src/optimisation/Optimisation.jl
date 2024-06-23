@@ -274,6 +274,37 @@ StatsBase.vcov(m::ModeResult) = inv(StatsBase.informationmatrix(m))
 StatsBase.loglikelihood(m::ModeResult) = m.lp
 
 """
+    Base.get(m::ModeResult, var_symbol::Symbol)
+    Base.get(m::ModeResult, var_symbols)
+
+Return the values of all the variables with the symbol(s) `var_symbol` in the mode result
+`m`. The return value is a `NamedTuple` with `var_symbols` as the key(s). The second
+argument should be either a `Symbol` or an iterator of `Symbol`s.
+"""
+function Base.get(m::ModeResult, var_symbols)
+    log_density = m.f
+    # Get all the variable names in the model. This is the same as the list of keys in
+    # m.values, but they are more convenient to filter when they are VarNames rather than
+    # Symbols.
+    varnames = collect(
+        map(first, Turing.Inference.getparams(log_density.model, log_density.varinfo))
+    )
+    # For each symbol s in var_symbols, pick all the values from m.values for which the
+    # variable name has that symbol.
+    et = eltype(m.values)
+    value_vectors = Vector{et}[]
+    for s in var_symbols
+        push!(
+            value_vectors,
+            [m.values[Symbol(vn)] for vn in varnames if DynamicPPL.getsym(vn) == s],
+        )
+    end
+    return (; zip(var_symbols, value_vectors)...)
+end
+
+Base.get(m::ModeResult, var_symbol::Symbol) = get(m, (var_symbol,))
+
+"""
     ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
 
 Create a `ModeResult` for a given `log_density` objective and a `solution` given by `solve`.
