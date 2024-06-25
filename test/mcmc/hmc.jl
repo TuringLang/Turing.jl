@@ -16,7 +16,7 @@ using StatsFuns: logistic
 using Test: @test, @test_logs, @testset
 using Turing
 
-@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin
