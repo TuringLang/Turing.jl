@@ -271,7 +271,7 @@ function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
 
     x_old, lj_old = vi[sampler], getlogp(vi)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.getcontext(f)))
     lj = getlogp(vi_new)
 
     # Reset old `vi`.
