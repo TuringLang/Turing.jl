@@ -10,7 +10,7 @@ using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
 
-@testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
     @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
         @test alg isa SGHMC
@@ -36,7 +36,7 @@ using Turing
     end
 end
 
-@testset "Testing sgld.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing sgld.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
     @testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD

@@ -84,5 +84,5 @@ BenchmarkSuite["mnormal"]["forwarddiff"] = @benchmarkable sample(
 
 # ReverseDiff
 BenchmarkSuite["mnormal"]["reversediff"] = @benchmarkable sample(
-    $(mdemo(d, 1)), $(HMC(0.1, 5; adtype=AutoReverseDiff(false))), 5000
+    $(mdemo(d, 1)), $(HMC(0.1, 5; adtype=AutoReverseDiff(; compile=false))), 5000
 )

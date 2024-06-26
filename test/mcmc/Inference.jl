@@ -14,7 +14,7 @@ import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
