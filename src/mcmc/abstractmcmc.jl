@@ -48,12 +48,12 @@ end
 function varinfo_from_logdensityfn(f::LogDensityProblemsAD.ADGradientWrapper)
     return varinfo_from_logdensityfn(parent(f))
 end
-_varinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
+varinfo_from_logdensityfn(f::DynamicPPL.LogDensityFunction) = f.varinfo
 
 function varinfo(state::TuringState)
     θ = getparams(getmodel(state.logdensity), state.state)
     # TODO: Do we need to link here first?
-    return DynamicPPL.unflatten(_varinfo(state.logdensity), θ)
+    return DynamicPPL.unflatten(varinfo_from_logdensityfn(state.logdensity), θ)
 end
 
 # NOTE: Only thing that depends on the underlying sampler.
