@@ -142,7 +142,9 @@ required by Optimization.jl.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
-    return -DynamicPPL.getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
+    return -DynamicPPL.getlogp(
+        last(DynamicPPL.evaluate!!(f.model, varinfo, DynamicPPL.getcontext(f)))
+    )
 end
 
 (f::OptimLogDensity)(z, _) = f(z)
