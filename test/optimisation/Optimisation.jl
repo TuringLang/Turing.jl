@@ -4,13 +4,14 @@ using ..Models: gdemo, gdemo_default
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
-using LinearAlgebra: I
+using LinearAlgebra: Diagonal, I
 using Random: Random
 using Optimization
 using Optimization: Optimization
 using OptimizationBBO: OptimizationBBO
 using OptimizationNLopt: OptimizationNLopt
 using OptimizationOptimJL: OptimizationOptimJL
+using ReverseDiff: ReverseDiff
 using StatsBase: StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
 using Test: @test, @testset, @test_throws
@@ -590,6 +591,30 @@ using Turing
         result = maximum_a_posteriori(model)
         @test result.values[:x] ≈ 0 atol = 1e-1
         @test result.values[:y] ≈ 100 atol = 1e-1
+    end
+
+    @testset "get ModeResult" begin
+        @model function demo_model(N)
+            half_N = N ÷ 2
+            a ~ arraydist(LogNormal.(fill(0, half_N), 1))
+            b ~ arraydist(LogNormal.(fill(0, N - half_N), 1))
+            covariance_matrix = Diagonal(vcat(a, b))
+            x ~ MvNormal(covariance_matrix)
+            return nothing
+        end
+
+        N = 12
+        m = demo_model(N) | (x=randn(N),)
+        result = maximum_a_posteriori(m)
+        get_a = get(result, :a)
+        get_b = get(result, :b)
+        get_ab = get(result, [:a, :b])
+        @assert keys(get_a) == (:a,)
+        @assert keys(get_b) == (:b,)
+        @assert keys(get_ab) == (:a, :b)
+        @assert get_b[:b] == get_ab[:b]
+        @assert vcat(get_a[:a], get_b[:b]) == result.values.array
+        @assert get(result, :c) == (; :c => Array{Float64}[])
     end
 end
 

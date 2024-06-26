@@ -13,7 +13,7 @@ using Turing: Inference
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in (
-    AutoForwardDiff(; chunksize=0), AutoReverseDiff(false)
+    AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false)
 )
     @testset "gibbs constructor" begin
         N = 500
