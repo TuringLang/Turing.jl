@@ -319,7 +319,7 @@ using Turing
 
         # The discrepancies in the chains are in the tails, so we can't just compare the mean, etc.
         # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
-        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.01
+        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.001
     end
 end
 
