@@ -17,10 +17,52 @@ function transition_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, transit
     return transition_to_turing(parent(f), transition)
 end
 
+"""
+    getmodel(f)
+
+Return the `DynamicPPL.Model` wrapped in the given log-density function `f`.
+"""
+getmodel(f::LogDensityProblemsAD.ADGradientWrapper) = getmodel(parent(f))
+getmodel(f::DynamicPPL.LogDensityFunction) = f.model
+
+# FIXME: We'll have to overload this for every AD backend since some of the AD backends
+# will cache certain parts of a given model, e.g. the tape, which results in a discrepancy
+# between the primal (forward) and dual (backward).
+"""
+    setmodel(f, model)
+
+Set the `DynamicPPL.Model` in the given log-density function `f` to `model`.
+
+!!! warning
+    Note that if `f` is a `LogDensityProblemsAD.ADGradientWrapper` wrapping a
+    `DynamicPPL.LogDensityFunction`, performing an update of the `model` in `f`
+    might require recompilation of the gradient tape, depending on the AD backend.
+"""
+function setmodel(f::LogDensityProblemsAD.ADGradientWrapper, model::DynamicPPL.Model)
+    return Accessors.@set f.ℓ = setmodel(f.ℓ, model)
+end
+function setmodel(f::DynamicPPL.LogDensityFunction, model::DynamicPPL.Model)
+    return Accessors.@set f.model = model
+end
+
+function varinfo_from_logdensityfn(f::LogDensityProblemsAD.ADGradientWrapper)
+    return varinfo_from_logdensityfn(parent(f))
+end
+varinfo_from_logdensityfn(f::DynamicPPL.LogDensityFunction) = f.varinfo
+
+function varinfo(state::TuringState)
+    θ = getparams(getmodel(state.logdensity), state.state)
+    # TODO: Do we need to link here first?
+    return DynamicPPL.unflatten(varinfo_from_logdensityfn(state.logdensity), θ)
+end
+
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
 getparams(::DynamicPPL.Model, transition::AdvancedHMC.Transition) = transition.z.θ
+function getparams(model::DynamicPPL.Model, state::AdvancedHMC.HMCState)
+    return getparams(model, state.transition)
+end
 getstats(transition::AdvancedHMC.Transition) = transition.stat
 
 getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
@@ -33,13 +75,59 @@ function setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo)
     return Accessors.@set f.ℓ = setvarinfo(f.ℓ, varinfo)
 end
 
+"""
+    recompute_logprob!!(rng, model, sampler, state)
+
+Recompute the log-probability of the `model` based on the given `state` and return the resulting state.
+"""
+function recompute_logprob!!(
+    rng::Random.AbstractRNG,  # TODO: Do we need the `rng` here?
+    model::DynamicPPL.Model,
+    sampler::DynamicPPL.Sampler{<:ExternalSampler},
+    state,
+)
+    # Re-using the log-density function from the `state` and updating only the `model` field,
+    # since the `model` might now contain different conditioning values.
+    f = setmodel(state.logdensity, model)
+    # Recompute the log-probability with the new `model`.
+    state_inner = recompute_logprob!!(
+        rng, AbstractMCMC.LogDensityModel(f), sampler.alg.sampler, state.state
+    )
+    return state_to_turing(f, state_inner)
+end
+
+function recompute_logprob!!(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.LogDensityModel,
+    sampler::AdvancedHMC.AbstractHMCSampler,
+    state::AdvancedHMC.HMCState,
+)
+    # Construct hamiltionian.
+    hamiltonian = AdvancedHMC.Hamiltonian(state.metric, model)
+    # Re-compute the log-probability and gradient.
+    return Accessors.@set state.transition.z = AdvancedHMC.phasepoint(
+        hamiltonian, state.transition.z.θ, state.transition.z.r
+    )
+end
+
+function recompute_logprob!!(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.LogDensityModel,
+    sampler::AdvancedMH.MetropolisHastings,
+    state::AdvancedMH.Transition,
+)
+    logdensity = model.logdensity
+    return Accessors.@set state.lp = LogDensityProblems.logdensity(logdensity, state.params)
+end
+
+# TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler_wrapper::Sampler{<:ExternalSampler};
     initial_state=nothing,
     initial_params=nothing,
-    kwargs...
+    kwargs...,
 )
     alg = sampler_wrapper.alg
     sampler = alg.sampler
@@ -69,7 +157,12 @@ function AbstractMCMC.step(
         )
     else
         transition_inner, state_inner = AbstractMCMC.step(
-            rng, AbstractMCMC.LogDensityModel(f), sampler, initial_state; initial_params, kwargs...
+            rng,
+            AbstractMCMC.LogDensityModel(f),
+            sampler,
+            initial_state;
+            initial_params,
+            kwargs...,
         )
     end
     # Update the `state`
@@ -81,7 +174,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::Sampler{<:ExternalSampler},
     state::TuringState;
-    kwargs...
+    kwargs...,
 )
     sampler = sampler_wrapper.alg.sampler
     f = state.logdensity
