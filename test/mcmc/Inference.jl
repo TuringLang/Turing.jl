@@ -15,13 +15,12 @@ import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
 
-# Disable Enzyme warnings
 Enzyme.API.typeWarning!(false)
 
 # Enable runtime activity (workaround)
 Enzyme.API.runtimeActivity!(true)
 
-# @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+# @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
 @testset "Testing inference.jl with $adbackend" for adbackend in (AutoEnzyme(),)
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
@@ -569,6 +568,28 @@ Enzyme.API.runtimeActivity!(true)
         ])
         @test all(xs[:, 1] .=== [1, missing, 3])
         @test all(xs[:, 2] .=== [missing, 2, 4])
+    end
+
+    @testset "check model" begin
+        @model function demo_repeated_varname()
+            x ~ Normal(0, 1)
+            x ~ Normal(x, 1)
+        end
+
+        @test_throws ErrorException sample(
+            demo_repeated_varname(), NUTS(), 1000; check_model=true
+        )
+        # Make sure that disabling the check also works.
+        @test (sample(
+            demo_repeated_varname(), Prior(), 10; check_model=false
+        ); true)
+
+        @model function demo_incorrect_missing(y)
+            y[1:1] ~ MvNormal(zeros(1), 1)
+        end
+        @test_throws ErrorException sample(
+            demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
+        )
     end
 end
 

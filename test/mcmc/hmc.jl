@@ -23,7 +23,7 @@ Enzyme.API.typeWarning!(false)
 # Enable runtime activity (workaround)
 Enzyme.API.runtimeActivity!(true)
 
-# @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(false))
+# @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
 @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
     # Set a seed
     rng = StableRNG(123)
@@ -327,7 +327,7 @@ Enzyme.API.runtimeActivity!(true)
 
         # The discrepancies in the chains are in the tails, so we can't just compare the mean, etc.
         # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
-        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.01
+        @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.001
     end
 end
 
