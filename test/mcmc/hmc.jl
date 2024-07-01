@@ -6,6 +6,7 @@ using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
+import Enzyme
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -16,7 +17,14 @@ using StatsFuns: logistic
 using Test: @test, @test_logs, @testset
 using Turing
 
-@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
+# Disable Enzyme warnings
+Enzyme.API.typeWarning!(false)
+
+# Enable runtime activity (workaround)
+Enzyme.API.runtimeActivity!(true)
+
+# @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
+@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin
@@ -103,7 +111,7 @@ using Turing
         alpha = 0.16                  # regularizatin term
         var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
-        @model function bnn(ts)
+        @model function bnn(ts, var_prior)
             b1 ~ MvNormal([0. ;0.; 0.],
                 [var_prior 0. 0.; 0. var_prior 0.; 0. 0. var_prior])
             w11 ~ MvNormal([0.; 0.], [var_prior 0.; 0. var_prior])
@@ -121,7 +129,7 @@ using Turing
         end
 
         # Sampling
-        chain = sample(rng, bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
+        chain = sample(rng, bnn(ts, var_prior), HMC(0.1, 5; adtype=adbackend), 10)
     end
 
     @testset "hmcda inference" begin
