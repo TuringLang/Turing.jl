@@ -10,7 +10,7 @@ ignore = [
     "src/mcmc/abstractmcmc.jl",
     "test/experimental/gibbs.jl",
     "test/test_utils/numerical_tests.jl",
-    # https://github.com/TuringLang/Turing.jl/pull/2218/files 
+    # https://github.com/TuringLang/Turing.jl/pull/2218/files
     "src/mcmc/Inference.jl",
     "test/mcmc/Inference.jl",
     # https://github.com/TuringLang/Turing.jl/pull/1887 # Enzyme PR
