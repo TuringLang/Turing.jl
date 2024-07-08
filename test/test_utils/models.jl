@@ -96,4 +96,10 @@ end
 
 MoGtest_default_z_vector = MoGtest_z_vector([1.0 1.0 4.0 4.0])
 
+@model function lognormal(y, min_obs = minimum(y))
+    μ ~ Normal(-1, 2)
+    σ ~ truncated(Normal(.8, 2), 0, Inf)
+    τ ~ Uniform(0, min_obs)
+    y ~ LogNormal(μ, σ) + τ
+end
 end

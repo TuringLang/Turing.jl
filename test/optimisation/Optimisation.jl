@@ -1,6 +1,6 @@
 module OptimisationTests
 
-using ..Models: gdemo, gdemo_default
+using ..Models: gdemo, gdemo_default, lognormal
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
@@ -434,6 +434,45 @@ using Turing
             )
             @test_throws expected_error maximum_a_posteriori(gdemo_default; cons_args...)
         end
+    end
+
+    @testset "MLE with multiple trys" begin    
+        Random.seed!(8454)
+        y = rand(LogNormal(-1, 1), 50) .+ .3
+    
+        lb = [-10,0, 0]
+        ub = [10, 10, minimum(y)]
+        
+        Random.seed!(80)
+        mle = maximum_likelihood(lognormal(y); lb, ub, n_trys = 20)
+        
+        # # Generate a MLE estimate.
+        # #initial_params = round.(rand(Uniform(0, 900), 2), digits = 2)
+        # mle_estimate = maximum_likelihood(inverse_guassian(y); lb, ub, initial_params = [28.97,489.41])
+        Random.seed!(80)
+        lps = map(_ -> maximum_likelihood(lognormal(y); lb, ub).lp, 1:20)
+    
+        # test whether there is significant variation in lp 
+        @test var(lps) ≥ 1  
+        @test mle.lp ≈ maximum(lps)
+    end
+
+    @testset "MAP with multiple trys" begin
+        Random.seed!(8454)
+        y = rand(LogNormal(-1, 1), 50) .+ .3
+    
+        lb = [-10,0, 0]
+        ub = [10, 10, minimum(y)]
+        
+        Random.seed!(80)
+        result = maximum_a_posteriori(lognormal(y); lb, ub, n_trys = 20)
+        
+        Random.seed!(80)
+        lps = map(_ -> maximum_a_posteriori(lognormal(y); lb, ub).lp, 1:20)
+    
+        # test whether there is significant variation in lp 
+        @test var(lps) ≥ 1  
+        @test result.lp ≈ maximum(lps)
     end
 
     @testset "StatsBase integration" begin
