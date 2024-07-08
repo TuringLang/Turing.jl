@@ -506,19 +506,19 @@ end
     maximum_a_posteriori(
         model::DynamicPPL.Model,
         [solver];
-        n_trys = 1,
+        n_tries = 1,
         kwargs...
     )
 
 Find the maximum a posteriori estimate of a model.
 
-This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator. The keyword `n_trys = 1`
+This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator. The keyword `n_tries = 1`
 determines the number of times the mode is estimated from different starting points, which can mitigate the problems with local maxima. The result with the maximum lp is selected from multiple attempts. Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
 details.
 """
-function maximum_a_posteriori(model::DynamicPPL.Model, args...; n_trys = 1, kwargs...)
+function maximum_a_posteriori(model::DynamicPPL.Model, args...; n_tries = 1, kwargs...)
     result = estimate_mode(model, MAP(), args...; kwargs...)
-    for _ in 2:n_trys 
+    for _ in 2:n_tries 
         _result = estimate_mode(model, MAP(), args...; kwargs...)
         result = _result.lp > result.lp ? _result : result 
     end
@@ -529,19 +529,19 @@ end
     maximum_likelihood(
         model::DynamicPPL.Model,
         [solver];
-        n_trys = 1,
+        n_tries = 1,
         kwargs...
     )
 
 Find the maximum likelihood estimate of a model.
 
-This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator. The keyword `n_trys = 1`
+This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator. The keyword `n_tries = 1`
 determines the number of times the mode is estimated from different starting points, which can mitigate problems with local maxima. The result with the maximum lp is selected from multiple attempts. Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
 details.
 """
-function maximum_likelihood(model::DynamicPPL.Model, args...; n_trys = 1, kwargs...)
+function maximum_likelihood(model::DynamicPPL.Model, args...; n_tries = 1, kwargs...)
     mle = estimate_mode(model, MLE(), args...; kwargs...)
-    for _ in 2:n_trys 
+    for _ in 2:n_tries 
         _mle = estimate_mode(model, MLE(), args...; kwargs...)
         mle = _mle.lp > mle.lp ? _mle : mle 
     end

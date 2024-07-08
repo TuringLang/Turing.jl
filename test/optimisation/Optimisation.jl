@@ -444,7 +444,7 @@ using Turing
         ub = [10, 10, minimum(y)]
         
         Random.seed!(80)
-        mle = maximum_likelihood(lognormal(y); lb, ub, n_trys = 20)
+        mle = maximum_likelihood(lognormal(y); lb, ub, n_tries = 20)
         
         # # Generate a MLE estimate.
         # #initial_params = round.(rand(Uniform(0, 900), 2), digits = 2)
@@ -465,7 +465,7 @@ using Turing
         ub = [10, 10, minimum(y)]
         
         Random.seed!(80)
-        result = maximum_a_posteriori(lognormal(y); lb, ub, n_trys = 20)
+        result = maximum_a_posteriori(lognormal(y); lb, ub, n_tries = 20)
         
         Random.seed!(80)
         lps = map(_ -> maximum_a_posteriori(lognormal(y); lb, ub).lp, 1:20)
