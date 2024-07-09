@@ -1,6 +1,3 @@
-import Pkg
-Pkg.add(Pkg.PackageSpec(; url="https://github.com/simsurace/Enzyme.jl.git"))
-
 include("test_utils/SelectiveTests.jl")
 using .SelectiveTests: isincluded, parse_args
 using Pkg
