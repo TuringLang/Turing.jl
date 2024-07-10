@@ -69,6 +69,7 @@ jobs:
           echo "Test arguments: ${{ matrix.test-args }}"
       - name: (De)activate coverage analysis
         run: echo "COVERAGE=${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2 }}" >> "$GITHUB_ENV"
+        shell: bash
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
