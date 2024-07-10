@@ -308,7 +308,7 @@ function DynamicPPL.initialstep(
     varinfos = map(last, states_and_varinfos)
 
     # Update the base varinfo from the first varinfo and replace it.
-    varinfos_new = DynamicPPL.setindex!!(varinfos, vi_base, 1)
+    varinfos_new = DynamicPPL.setindex!!(varinfos, merge(vi_base, first(varinfos)), 1)
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
         reduce(merge, varinfos_new),
