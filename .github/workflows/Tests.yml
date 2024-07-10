@@ -67,6 +67,8 @@ jobs:
           echo "Julia version: ${{ matrix.version }}"
           echo "Number of threads: ${{ matrix.num_threads }}"
           echo "Test arguments: ${{ matrix.test-args }}"
+      - name: (De)activate coverage analysis
+        run: echo "COVERAGE=${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2 }}" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
@@ -79,18 +81,16 @@ jobs:
       # Ref https://github.com/julia-actions/julia-runtest/pull/73  
       - name: Call Pkg.test
         run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test-args }}
-        env:
-          COVERAGE: ${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2 }}
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2
+        if: ${{ env.COVERAGE }}
       - uses: codecov/codecov-action@v4
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2
+        if: ${{ env.COVERAGE }}
         with:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
           file: lcov.info
       - uses: coverallsapp/github-action@v2
-        if: matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2
+        if: ${{ env.COVERAGE }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: lcov.info
