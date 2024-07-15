@@ -8,6 +8,8 @@ using Random
 using Test
 using Turing
 using Turing.Inference: AdvancedHMC, AdvancedMH
+using ForwardDiff: ForwardDiff
+using ReverseDiff: ReverseDiff
 
 function check_transition_varnames(
     transition::Turing.Inference.Transition,
@@ -249,7 +251,9 @@ has_dot_assume(::Model) = true
         model = demo_gibbs_external()
         samplers_inner = [
             externalsampler(AdvancedMH.RWMH(1)),
-            externalsampler(AdvancedHMC.HMC(1e-1, 32)),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoForwardDiff()),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoReverseDiff()),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoReverseDiff(compile=true)),
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
             sampler = Turing.Experimental.Gibbs(
