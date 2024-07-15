@@ -559,6 +559,28 @@ using Turing
         @test all(xs[:, 1] .=== [1, missing, 3])
         @test all(xs[:, 2] .=== [missing, 2, 4])
     end
+
+    @testset "check model" begin
+        @model function demo_repeated_varname()
+            x ~ Normal(0, 1)
+            x ~ Normal(x, 1)
+        end
+
+        @test_throws ErrorException sample(
+            demo_repeated_varname(), NUTS(), 1000; check_model=true
+        )
+        # Make sure that disabling the check also works.
+        @test (sample(
+            demo_repeated_varname(), Prior(), 10; check_model=false
+        ); true)
+
+        @model function demo_incorrect_missing(y)
+            y[1:1] ~ MvNormal(zeros(1), 1)
+        end
+        @test_throws ErrorException sample(
+            demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
+        )
+    end
 end
 
 end

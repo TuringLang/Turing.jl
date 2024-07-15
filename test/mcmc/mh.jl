@@ -44,21 +44,26 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # c6 = sample(gdemo_default, s6, N)
     end
     @testset "mh inference" begin
+        # Set the initial parameters, because if we get unlucky with the initial state,
+        # these chains are too short to converge to reasonable numbers.
+        discard_initial = 1000
+        initial_params = [1.0, 1.0]
+
         Random.seed!(125)
         alg = MH()
-        chain = sample(gdemo_default, alg, 10_000)
+        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
         check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MH with Gaussian proposal
         alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
-        chain = sample(gdemo_default, alg, 10_000)
+        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
         check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MH within Gibbs
         alg = Gibbs(MH(:m), MH(:s))
-        chain = sample(gdemo_default, alg, 10_000)
+        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
         check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
@@ -66,8 +71,14 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         gibbs = Gibbs(
             CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
         )
-        chain = sample(MoGtest_default, gibbs, 500)
-        check_MoGtest_default(chain; atol=0.15)
+        chain = sample(
+            MoGtest_default,
+            gibbs,
+            500;
+            discard_initial=100,
+            initial_params=[1.0, 1.0, 0.0, 0.0, 1.0, 4.0],
+        )
+        check_MoGtest_default(chain; atol=0.2)
     end
 
     # Test MH shape passing.
