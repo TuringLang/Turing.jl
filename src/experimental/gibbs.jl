@@ -78,7 +78,7 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        return value, broadcast_logpdf(right, values), vi
+        return value, broadcast_logpdf(right, value), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -90,8 +90,8 @@ function DynamicPPL.dot_tilde_assume(
 )
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vns)
-        values = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        return values, broadcast_logpdf(right, values), vi
+        value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        return value, broadcast_logpdf(right, value), vi
     end
 
     # Otherwise, falls back to the default behavior.
@@ -144,14 +144,14 @@ end
 Return a `GibbsContext` with the values extracted from the given `varinfos` treated as conditioned.
 """
 function condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
-    return DynamicPPL.condition(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
+    return condition_gibbs(context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo)))
 end
-function DynamicPPL.condition(
+function condition_gibbs(
     context::DynamicPPL.AbstractContext,
     varinfo::DynamicPPL.AbstractVarInfo,
     varinfos::DynamicPPL.AbstractVarInfo...
 )
-    return DynamicPPL.condition(DynamicPPL.condition(context, varinfo), varinfos...)
+    return condition_gibbs(condition_gibbs(context, varinfo), varinfos...)
 end
 # Allow calling this on a `DynamicPPL.Model` directly.
 function condition_gibbs(model::DynamicPPL.Model, values...)
@@ -238,6 +238,9 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
 
+# TODO: Remove when no longer needed.
+DynamicPPL.getspace(::Gibbs) = ()
+
 struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     vi::V
     states::S
@@ -252,6 +255,7 @@ function DynamicPPL.initialstep(
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:Gibbs},
     vi_base::DynamicPPL.AbstractVarInfo;
+    initial_params=nothing,
     kwargs...,
 )
     alg = spl.alg
@@ -260,15 +264,35 @@ function DynamicPPL.initialstep(
 
     # 1. Run the model once to get the varnames present + initial values to condition on.
     vi_base = DynamicPPL.VarInfo(model)
+
+    # Simple way of setting the initial parameters: set them in the `vi_base`
+    # if they are given so they propagate to the subset varinfos used by each sampler.
+    if initial_params !== nothing
+        vi_base = DynamicPPL.unflatten(vi_base, initial_params)
+    end
+
+    # Create the varinfos for each sampler.
     varinfos = map(Base.Fix1(DynamicPPL.subset, vi_base) ∘ _maybevec, varnames)
+    initial_params_all = if initial_params === nothing
+        fill(nothing, length(varnames))
+    else
+        # Extract from the `vi_base`, which should have the values set correctly from above.
+        map(vi -> vi[:], varinfos)
+    end
 
     # 2. Construct a varinfo for every vn + sampler combo.
-    states_and_varinfos = map(samplers, varinfos) do sampler_local, varinfo_local
+    states_and_varinfos = map(samplers, varinfos, initial_params_all) do sampler_local, varinfo_local, initial_params_local
         # Construct the conditional model.
         model_local = make_conditional(model, varinfo_local, varinfos)
 
         # Take initial step.
-        new_state_local = last(AbstractMCMC.step(rng, model_local, sampler_local; kwargs...))
+        new_state_local = last(AbstractMCMC.step(
+            rng, model_local, sampler_local;
+            # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
+            # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
+            initial_params=initial_params_local,
+            kwargs...
+        ))
 
         # Return the new state and the invlinked `varinfo`.
         vi_local_state = Turing.Inference.varinfo(new_state_local)
@@ -284,7 +308,7 @@ function DynamicPPL.initialstep(
     varinfos = map(last, states_and_varinfos)
 
     # Update the base varinfo from the first varinfo and replace it.
-    varinfos_new = DynamicPPL.setindex!!(varinfos, vi_base, 1)
+    varinfos_new = DynamicPPL.setindex!!(varinfos, merge(vi_base, first(varinfos)), 1)
     # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
     vi = DynamicPPL.setlogp!!(
         reduce(merge, varinfos_new),
@@ -365,12 +389,7 @@ function gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, s
 end
 
 # TODO: Remove `rng`?
-"""
-    recompute_logprob!!(rng, model, sampler, state)
-
-Recompute the log-probability of the `model` based on the given `state` and return the resulting state.
-"""
-function recompute_logprob!!(
+function Turing.Inference.recompute_logprob!!(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler,
@@ -436,7 +455,7 @@ function gibbs_step_inner(
         state_local,
         state_previous
     )
-        current_state_local = recompute_logprob!!(
+        state_local = Turing.Inference.recompute_logprob!!(
             rng,
             model_local,
             sampler_local,
@@ -450,7 +469,7 @@ function gibbs_step_inner(
             rng,
             model_local,
             sampler_local,
-            current_state_local;
+            state_local;
             kwargs...,
         ),
     )
