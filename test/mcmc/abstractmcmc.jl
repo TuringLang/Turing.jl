@@ -1,5 +1,6 @@
 module AbstractMCMCTests
 
+using ..ADUtils: adbackends
 using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
@@ -11,6 +12,7 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
+import Tapir
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
@@ -112,8 +114,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        # Try a few different AD backends.
-        @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
+        @testset "adtype=$adtype" for adtype in adbackends
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
