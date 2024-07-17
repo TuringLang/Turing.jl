@@ -11,7 +11,7 @@ adbackends = [
 ]
 
 # Tapir isn't supported for older Julia versions, hence the check.
-install_tapir = isdefined(Turing.AutoTapir)
+install_tapir = isdefined(Turing, :AutoTapir)
 if install_tapir
     # TODO(mhauru) Is there a better way to install optional dependencies like this?
     Pkg.add("Tapir")
