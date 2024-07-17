@@ -2,17 +2,18 @@ module SGHMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
-using ..ADUtils: adbackends
+import ..ADUtils
 using Distributions: sample
 import ForwardDiff
 using LinearAlgebra: dot
 import ReverseDiff
 using StableRNGs: StableRNG
-import Tapir
 using Test: @test, @testset
 using Turing
 
-@testset "Testing sghmc.jl with $adbackend" for adbackend in adbackends
+ADUtils.install_tapir && import Tapir
+
+@testset "Testing sghmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
         @test alg isa SGHMC
@@ -38,7 +39,7 @@ using Turing
     end
 end
 
-@testset "Testing sgld.jl with $adbackend" for adbackend in adbackends
+@testset "Testing sgld.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD

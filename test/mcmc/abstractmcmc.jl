@@ -1,6 +1,6 @@
 module AbstractMCMCTests
 
-using ..ADUtils: adbackends
+import ..ADUtils
 using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
@@ -12,10 +12,11 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
-import Tapir
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
+
+ADUtils.install_tapir && import Tapir
 
 function initialize_nuts(model::Turing.Model)
     # Create a log-density function with an implementation of the
@@ -114,7 +115,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        @testset "adtype=$adtype" for adtype in adbackends
+        @testset "adtype=$adtype" for adtype in ADUtils.adbackends
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
