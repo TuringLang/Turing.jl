@@ -7,7 +7,7 @@ import Turing
 All the ADTypes on which we want to run the tests.
 """
 adbackends = [
-    Turing.AutoForwardDiff(; chunksize=0), Turing.AutoReverseDiff{false}()
+    Turing.AutoForwardDiff(; chunksize=0), Turing.AutoReverseDiff(; compile=false)
 ]
 
 # Tapir isn't supported for older Julia versions, hence the check.
