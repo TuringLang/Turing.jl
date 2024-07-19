@@ -623,6 +623,7 @@ using Turing
             m = DynamicPPL.contextualize(
                 gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
             )
+            # These will error if the adbackend being used is not the one set.
             maximum_likelihood(m; adtype=adbackend)
             maximum_a_posteriori(m; adtype=adbackend)
         end
