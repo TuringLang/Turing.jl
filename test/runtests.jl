@@ -7,6 +7,7 @@ import Turing
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
 include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
+include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
 
 Turing.setprogress!(false)
 

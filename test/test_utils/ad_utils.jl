@@ -96,7 +96,7 @@ end
 """
     valid_eltypes(context::ADTypeCheckContext)
 
-Return the element types that are valid for the ADType of `context`.
+Return the element types that are valid for the ADType of `context` as a tuple.
 """
 function valid_eltypes(context::ADTypeCheckContext)
     context_at = adtype(context)
@@ -116,7 +116,7 @@ Check that the element types in `vi` are compatible with the ADType of `context`
 
 Throw an `IncompatibleADTypeError` if an incompatible element type is encountered.
 """
-function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.VarInfo)
+function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInfo)
     valids = valid_eltypes(context)
     for val in vi[:]
         valtype = typeof(val)
@@ -182,6 +182,14 @@ end
 function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, right, left, vi)
     logp, vi = DynamicPPL.dot_tilde_observe(
         DynamicPPL.childcontext(context), right, left, vi
+    )
+    check_adtype(context, vi)
+    return logp, vi
+end
+
+function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
+    logp, vi = DynamicPPL.dot_tilde_observe(
+        DynamicPPL.childcontext(context), sampler, right, left, vi
     )
     check_adtype(context, vi)
     return logp, vi
