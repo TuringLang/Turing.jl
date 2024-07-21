@@ -114,6 +114,8 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     end
 end
 
+DynamicPPL.getspace(::ExternalSampler) = ()
+
 """
     requires_unconstrained_space(sampler::ExternalSampler)
 
