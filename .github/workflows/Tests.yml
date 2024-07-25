@@ -26,15 +26,15 @@ jobs:
           - "mcmc/ess.jl"
           - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
         version:
-          #- '1.7'  TODO(mhauru): Temporarily disabled for Enzyme
+          - '1.7'
           - '1'
         os:
           - ubuntu-latest
-          #- windows-latest  TODO(mhauru): Temporarily disabled for Enzyme
-          #- macOS-latest  TODO(mhauru): Temporarily disabled for Enzyme
+          - windows-latest
+          - macOS-latest
         arch:
           - x64
-          #- x86  TODO(mhauru): Temporarily disabled for Enzyme
+          - x86
         num_threads:
           - 1
           - 2
