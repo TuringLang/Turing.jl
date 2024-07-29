@@ -19,6 +19,13 @@ concurrency:
 jobs:
   format:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      checks: write
+      issues: write
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
