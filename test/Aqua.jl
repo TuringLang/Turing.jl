@@ -8,5 +8,4 @@ using Turing
 Aqua.test_ambiguities([Turing])
 Aqua.test_all(Turing; ambiguities=false)
 
-
 end
