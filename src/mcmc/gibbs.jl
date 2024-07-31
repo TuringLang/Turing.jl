@@ -66,9 +66,7 @@ function Gibbs(alg1::TGIBBS, algrest::Vararg{TGIBBS,N}) where {N}
     return Gibbs{space,N + 1,typeof(algs),typeof(iterations)}(algs, iterations)
 end
 
-function Gibbs(
-    arg1::Tuple{<:TGIBBS,Int}, argrest::Vararg{Tuple{<:TGIBBS,Int},N}
-) where {N}
+function Gibbs(arg1::Tuple{<:TGIBBS,Int}, argrest::Vararg{Tuple{<:TGIBBS,Int},N}) where {N}
     allargs = (arg1, argrest...)
     algs = map(first, allargs)
     iterations = map(last, allargs)
