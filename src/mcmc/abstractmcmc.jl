@@ -126,7 +126,7 @@ function AbstractMCMC.step(
             varinfo = DynamicPPL.link(varinfo, model)
         end
     end
-    f = setvarinfo(f, varinfo, sampler.alg.adtype)
+    f = setvarinfo(f, varinfo, alg.adtype)
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     if initial_state === nothing
