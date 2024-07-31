@@ -25,7 +25,9 @@ function initialize_nuts(model::Turing.Model)
 
     # Link the varinfo.
     f = Turing.Inference.setvarinfo(
-        f, DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model)
+        f,
+        DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model),
+        getADType(DynamicPPL.getcontext(f)),
     )
 
     # Choose parameter dimensionality and initial parameter value
