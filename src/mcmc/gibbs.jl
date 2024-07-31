@@ -67,7 +67,7 @@ function Gibbs(alg1::TGIBBS, algrest::Vararg{TGIBBS,N}) where {N}
 end
 
 function Gibbs(
-    arg1::Tuple{<:TGIBBS,Int}, argrest::Vararg{<:Tuple{<:TGIBBS,Int},N}
+    arg1::Tuple{<:TGIBBS,Int}, argrest::Vararg{Tuple{<:TGIBBS,Int},N}
 ) where {N}
     allargs = (arg1, argrest...)
     algs = map(first, allargs)
