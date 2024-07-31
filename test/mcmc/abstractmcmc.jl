@@ -27,7 +27,7 @@ function initialize_nuts(model::Turing.Model)
     f = Turing.Inference.setvarinfo(
         f,
         DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model),
-        getADType(DynamicPPL.getcontext(LogDensityProblemsAD.parent(f))),
+        Turing.getADType(DynamicPPL.getcontext(LogDensityProblemsAD.parent(f))),
     )
 
     # Choose parameter dimensionality and initial parameter value
