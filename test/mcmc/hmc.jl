@@ -3,6 +3,7 @@ module HMCTests
 using ..Models: gdemo_default
 #using ..Models: gdemo
 using ..NumericalTests: check_gdemo, check_numerical
+import ..ADUtils
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
@@ -16,7 +17,9 @@ using StatsFuns: logistic
 using Test: @test, @test_logs, @testset
 using Turing
 
-@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
+ADUtils.install_tapir && import Tapir
+
+@testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin

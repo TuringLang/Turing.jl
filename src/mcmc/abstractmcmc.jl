@@ -40,11 +40,17 @@ getstats(transition::AdvancedHMC.Transition) = transition.stat
 getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
 
 getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
-getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper) = getvarinfo(parent(f))
+function getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper)
+    return getvarinfo(LogDensityProblemsAD.parent(f))
+end
 
 setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Accessors.@set f.varinfo = varinfo
-function setvarinfo(f::LogDensityProblemsAD.ADGradientWrapper, varinfo)
-    return Accessors.@set f.ℓ = setvarinfo(f.ℓ, varinfo)
+function setvarinfo(
+    f::LogDensityProblemsAD.ADGradientWrapper, varinfo, adtype::ADTypes.AbstractADType
+)
+    return LogDensityProblemsAD.ADgradient(
+        adtype, setvarinfo(LogDensityProblemsAD.parent(f), varinfo)
+    )
 end
 
 """
@@ -120,7 +126,7 @@ function AbstractMCMC.step(
             varinfo = DynamicPPL.link(varinfo, model)
         end
     end
-    f = setvarinfo(f, varinfo)
+    f = setvarinfo(f, varinfo, alg.adtype)
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     if initial_state === nothing
