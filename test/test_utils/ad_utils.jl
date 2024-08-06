@@ -25,8 +25,8 @@ const eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
-    # TODO(mhauru) Zygote.Dual is actually the same as ForwardDiff.Dual, so can't
-    # distinguish between the two.
+    # Zygote.Dual is actually the same as ForwardDiff.Dual, so can't distinguish between the
+    # two by element type. However, we have other checks for Zygote, see check_adtype.
     Turing.AutoZygote => (Zygote.Dual,),
     Turing.AutoTracker => (
         Tracker.Tracked,
@@ -40,11 +40,34 @@ const eltypes_by_adtype = Dict(
 )
 
 """
+    AbstractWrongADBackendError
+
+An abstract error thrown when we seem to be using a different AD backend than expected.
+"""
+abstract type AbstractWrongADBackendError <: Exception end
+
+"""
+    WrongADBackendError
+
+An error thrown when we seem to be using a different AD backend than expected.
+"""
+struct WrongADBackendError <: AbstractWrongADBackendError
+    actual_adtype::Type
+    expected_adtype::Type
+end
+
+function Base.showerror(io::IO, e::WrongADBackendError)
+    return print(
+        io, "Expected to use $(e.expected_adtype), but using $(e.actual_adtype) instead."
+    )
+end
+
+"""
     IncompatibleADTypeError
 
 An error thrown when an element type is encountered that is unexpected for the given ADType.
 """
-struct IncompatibleADTypeError <: Exception
+struct IncompatibleADTypeError <: AbstractWrongADBackendError
     valtype::Type
     adtype::Type
 end
@@ -78,7 +101,7 @@ struct ADTypeCheckContext{ADType,ChildContext<:DynamicPPL.AbstractContext} <:
 
     function ADTypeCheckContext(adbackend, child)
         adtype = adbackend isa Type ? adbackend : typeof(adbackend)
-        if !any(adtype .<: keys(eltypes_by_adtype))
+        if !any(adtype <: k for k in keys(eltypes_by_adtype))
             throw(ArgumentError("Unsupported ADType: $adtype"))
         end
         return new{adtype,typeof(child)}(child)
@@ -114,9 +137,21 @@ end
 
 Check that the element types in `vi` are compatible with the ADType of `context`.
 
-Throw an `IncompatibleADTypeError` if an incompatible element type is encountered.
+When Zygote is being used, we also more explicitly check that `adtype(context)` is
+`AutoZygote`. This is because Zygote uses the same element type as ForwardDiff, so we can't
+discriminate between the two based on element type alone. This function will still fail to
+catch cases where Zygote is supposed to be used, but ForwardDiff is used instead.
+
+Throw an `IncompatibleADTypeError` if an incompatible element type is encountered, or
+`WrongADBackendError` if Zygote is used unexpectedly.
 """
 function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInfo)
+    Zygote.hook(vi) do _
+        if !(adtype(context) <: Turing.AutoZygote)
+            throw(WrongADBackendError(Turing.AutoZygote, adtype(context)))
+        end
+    end
+
     valids = valid_eltypes(context)
     for val in vi[:]
         valtype = typeof(val)
@@ -199,15 +234,37 @@ end
 Test.@testset "ADTypeCheckContext" begin
     Turing.@model test_model() = x ~ Turing.Normal(0, 1)
     tm = test_model()
-    contextualised_tm = DynamicPPL.contextualize(
-        tm, ADTypeCheckContext(Turing.AutoForwardDiff(), tm.context)
+    adtypes = (
+        Turing.AutoForwardDiff(),
+        Turing.AutoReverseDiff(),
+        Turing.AutoZygote(),
+        Turing.AutoTracker(),
     )
-    # This should not throw an error since we are using ForwardDiff as expected.
-    Turing.sample(contextualised_tm, Turing.NUTS(; adtype=Turing.AutoForwardDiff()), 100)
-    # Using ReverseDiff when ForwardDiff is expected should throw an error.
-    Test.@test_throws IncompatibleADTypeError Turing.sample(
-        contextualised_tm, Turing.NUTS(; adtype=Turing.AutoReverseDiff()), 100
-    )
+    for actual_adtype in adtypes
+        sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
+        for expected_adtype in adtypes
+            if (
+                actual_adtype == Turing.AutoForwardDiff() &&
+                expected_adtype == Turing.AutoZygote()
+            )
+                # TODO(mhauru) We are currently unable to check this case.
+                continue
+            end
+            contextualised_tm = DynamicPPL.contextualize(
+                tm, ADTypeCheckContext(expected_adtype, tm.context)
+            )
+            Test.@testset "Expected: $expected_adtype, Actual: $actual_adtype" begin
+                if actual_adtype == expected_adtype
+                    # Check that this does not throw an error.
+                    Turing.sample(contextualised_tm, sampler, 2)
+                else
+                    Test.@test_throws AbstractWrongADBackendError Turing.sample(
+                        contextualised_tm, sampler, 2
+                    )
+                end
+            end
+        end
+    end
 end
 
 end
