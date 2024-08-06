@@ -1,12 +1,12 @@
 module ADUtils
 
-import ForwardDiff
-import ReverseDiff
-import Test
-import Tracker
-import Turing
-import Turing: DynamicPPL
-import Zygote
+using ForwardDiff: ForwardDiff
+using ReverseDiff: ReverseDiff
+using Test: Test
+using Tracker: Tracker
+using Turing: Turing
+using Turing: DynamicPPL
+using Zygote: Zygote
 
 export ADTypeCheckContext
 
