@@ -1,6 +1,7 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
+using ..ADUtils: ADTypeCheckContext
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
@@ -140,7 +141,6 @@ using Turing
                 gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
             )
             m3 = maximum_likelihood(gdemo_default, OptimizationOptimJL.Newton())
-            # TODO(mhauru) How can we check that the adtype is actually AutoReverseDiff?
             m4 = maximum_likelihood(
                 gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
             )
@@ -615,6 +615,18 @@ using Turing
         @assert get_b[:b] == get_ab[:b]
         @assert vcat(get_a[:a], get_b[:b]) == result.values.array
         @assert get(result, :c) == (; :c => Array{Float64}[])
+    end
+
+    @testset "ADType" begin
+        Random.seed!(222)
+        for adbackend in (AutoReverseDiff(), AutoForwardDiff(), AutoTracker())
+            m = DynamicPPL.contextualize(
+                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
+            )
+            # These will error if the adbackend being used is not the one set.
+            maximum_likelihood(m; adtype=adbackend)
+            maximum_a_posteriori(m; adtype=adbackend)
+        end
     end
 end
 
