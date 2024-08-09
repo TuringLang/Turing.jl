@@ -1,6 +1,7 @@
 module ADUtils
 
 using ForwardDiff: ForwardDiff
+using Random: Random
 using ReverseDiff: ReverseDiff
 using Test: Test
 using Tracker: Tracker
@@ -174,7 +175,9 @@ function DynamicPPL.tilde_assume(context::ADTypeCheckContext, right, vn, vi)
     return value, logp, vi
 end
 
-function DynamicPPL.tilde_assume(rng, context::ADTypeCheckContext, sampler, right, vn, vi)
+function DynamicPPL.tilde_assume(
+    rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, vn, vi
+)
     value, logp, vi = DynamicPPL.tilde_assume(
         rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
     )
@@ -205,7 +208,7 @@ function DynamicPPL.dot_tilde_assume(context::ADTypeCheckContext, right, left, v
 end
 
 function DynamicPPL.dot_tilde_assume(
-    rng, context::ADTypeCheckContext, sampler, right, left, vn, vi
+    rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, left, vn, vi
 )
     value, logp, vi = DynamicPPL.dot_tilde_assume(
         rng, DynamicPPL.childcontext(context), sampler, right, left, vn, vi
