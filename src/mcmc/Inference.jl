@@ -213,7 +213,9 @@ end
 # Extended in contrib/inference/abstractmcmc.jl
 getstats(t) = nothing
 
-struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}}
+abstract type AbstractTransition end
+
+struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}} <: AbstractTransition
     θ     :: T
     lp    :: F # TODO: merge `lp` with `stat`
     stat  :: S
@@ -409,7 +411,7 @@ getlogevidence(transitions, sampler, state) = missing
 # Default MCMCChains.Chains constructor.
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector,
+    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     state,
@@ -472,7 +474,7 @@ end
 
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector,
+    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     state,
