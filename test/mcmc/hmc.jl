@@ -15,7 +15,7 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-using Test: @test, @test_logs, @testset
+using Test: @test, @test_broken, @test_logs, @testset
 using Turing
 
 # Disable Enzyme warnings
