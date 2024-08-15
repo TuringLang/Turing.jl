@@ -20,8 +20,7 @@ Enzyme.API.typeWarning!(false)
 # Enable runtime activity (workaround)
 Enzyme.API.runtimeActivity!(true)
 
-# @testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoEnzyme(),)
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -374,8 +373,6 @@ Enzyme.API.runtimeActivity!(true)
         alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
         chn = sample(gdemo_default, alg, 1000)
     end
-    # Type unstable getfield of tuple not supported in Enzyme yet
-    if adbackend != AutoEnzyme()
     @testset "vectorization @." begin
         # https://github.com/FluxML/Tracker.jl/issues/119
         @model function vdemo1(x)
@@ -407,6 +404,8 @@ Enzyme.API.runtimeActivity!(true)
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
+        # Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
@@ -452,6 +451,7 @@ Enzyme.API.runtimeActivity!(true)
         end
 
         sample(vdemo7(), alg, 1000)
+        end
     end
     @testset "vectorization .~" begin
         @model function vdemo1(x)
@@ -474,6 +474,8 @@ Enzyme.API.runtimeActivity!(true)
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
+        # Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
@@ -518,6 +520,7 @@ Enzyme.API.runtimeActivity!(true)
         end
 
         sample(vdemo7(), alg, 1000)
+        end
     end
     @testset "Type parameters" begin
         N = 10
@@ -557,7 +560,6 @@ Enzyme.API.runtimeActivity!(true)
 
         vdemo3kw(; T) = vdemo3(T)
         sample(vdemo3kw(; T=DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 250)
-    end
     end
 
     @testset "names_values" begin

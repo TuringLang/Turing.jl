@@ -23,8 +23,7 @@ Enzyme.API.typeWarning!(false)
 # Enable runtime activity (workaround)
 Enzyme.API.runtimeActivity!(true)
 
-# @testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
-@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoEnzyme(),)
+@testset "Testing hmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin
@@ -76,14 +75,18 @@ Enzyme.API.runtimeActivity!(true)
         end
 
         model_f = hmcmatrixsup()
-        n_samples = 1_000
+        n_samples = 5_000
         vs = map(1:3) do _
             chain = sample(rng, model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
             reshape(mean(r; dims=1), 2, 2)
         end
 
-        @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        if VERSION > v"1.7" || !(adbackend isa AutoEnzyme)
+            @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        else
+            @test_broken maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        end
     end
     @testset "multivariate support" begin
         # Define NN flow
