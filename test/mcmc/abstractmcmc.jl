@@ -117,7 +117,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        @testset "adtype=$adtype" for adtype in ADUtils.adbackends
+        @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
