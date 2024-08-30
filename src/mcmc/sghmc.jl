@@ -193,7 +193,7 @@ function SGLD(
     return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
 end
 
-struct SGLDTransition{T,F<:Real}
+struct SGLDTransition{T,F<:Real} <: AbstractTransition
     "The parameters for any given sample."
     θ::T
     "The joint log probability of the sample."
