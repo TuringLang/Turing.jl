@@ -45,7 +45,7 @@ end
 SMC(space::Symbol...) = SMC(space)
 SMC(space::Tuple) = SMC(AdvancedPS.ResampleWithESSThreshold(), space)
 
-struct SMCTransition{T,F<:AbstractFloat}
+struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
     "The parameters for any given sample."
     θ::T
     "The joint log probability of the sample (NOTE: does not work, always set to zero)."
@@ -222,7 +222,7 @@ end
 
 const CSMC = PG # type alias of PG as Conditional SMC
 
-struct PGTransition{T,F<:AbstractFloat}
+struct PGTransition{T,F<:AbstractFloat} <: AbstractTransition
     "The parameters for any given sample."
     θ::T
     "The joint log probability of the sample (NOTE: does not work, always set to zero)."

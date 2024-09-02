@@ -1,6 +1,7 @@
 module HMCTests
 
 using ..Models: gdemo_default
+using ..ADUtils: ADTypeCheckContext
 #using ..Models: gdemo
 using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
@@ -323,6 +324,15 @@ ADUtils.install_tapir && import Tapir
         # The discrepancies in the chains are in the tails, so we can't just compare the mean, etc.
         # KS will compare the empirical CDFs, which seems like a reasonable thing to do here.
         @test pvalue(ApproximateTwoSampleKSTest(vec(results), vec(results_prior))) > 0.001
+    end
+
+    @testset "Check ADType" begin
+        alg = HMC(0.1, 10; adtype=adbackend)
+        m = DynamicPPL.contextualize(
+            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
+        )
+        # These will error if the adbackend being used is not the one set.
+        sample(rng, m, alg, 10)
     end
 end
 
