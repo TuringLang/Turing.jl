@@ -117,6 +117,9 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
+        # TODO(mhauru) The below tests fail with Tapir, see
+        # https://github.com/TuringLang/Turing.jl/pull/2289.
+        # Once that is fixed, this should say `for adtype in ADUtils.adbackends`.
         @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
