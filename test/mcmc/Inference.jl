@@ -6,6 +6,7 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
 using DynamicPPL: Sampler, getlogp
+import Enzyme
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
@@ -14,7 +15,12 @@ import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
+Enzyme.API.typeWarning!(false)
+
+# Enable runtime activity (workaround)
+Enzyme.API.runtimeActivity!(true)
+
+@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -398,6 +404,8 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
+        # Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
@@ -443,6 +451,7 @@ using Turing
         end
 
         sample(vdemo7(), alg, 1000)
+        end
     end
     @testset "vectorization .~" begin
         @model function vdemo1(x)
@@ -465,6 +474,8 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
+        # Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
@@ -509,6 +520,7 @@ using Turing
         end
 
         sample(vdemo7(), alg, 1000)
+        end
     end
     @testset "Type parameters" begin
         N = 10
