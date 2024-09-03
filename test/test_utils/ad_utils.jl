@@ -1,6 +1,7 @@
 module ADUtils
 
 using ForwardDiff: ForwardDiff
+using Pkg: Pkg
 using Random: Random
 using ReverseDiff: ReverseDiff
 using Test: Test
@@ -9,7 +10,10 @@ using Turing: Turing
 using Turing: DynamicPPL
 using Zygote: Zygote
 
-export ADTypeCheckContext
+export ADTypeCheckContext, adbackends
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Stuff for checking that the right AD backend is being used.
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -268,6 +272,26 @@ Test.@testset "ADTypeCheckContext" begin
             end
         end
     end
+end
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# List of AD backends to test.
+
+"""
+All the ADTypes on which we want to run the tests.
+"""
+adbackends = [
+    Turing.AutoForwardDiff(; chunksize=0), Turing.AutoReverseDiff(; compile=false)
+]
+
+# Tapir isn't supported for older Julia versions, hence the check.
+install_tapir = isdefined(Turing, :AutoTapir)
+if install_tapir
+    # TODO(mhauru) Is there a better way to install optional dependencies like this?
+    Pkg.add("Tapir")
+    using Tapir
+    push!(adbackends, Turing.AutoTapir(false))
+    push!(eltypes_by_adtype, Turing.AutoTapir => (Tapir.CoDual,))
 end
 
 end

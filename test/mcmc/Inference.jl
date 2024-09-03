@@ -2,6 +2,7 @@ module InferenceTests
 
 using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
+import ..ADUtils
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
@@ -14,7 +15,9 @@ import ReverseDiff
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false))
+ADUtils.install_tapir && import Tapir
+
+@testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
