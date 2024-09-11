@@ -288,7 +288,7 @@ adbackends = [
 install_tapir = isdefined(Turing, :AutoTapir)
 if install_tapir
     # TODO(mhauru) Is there a better way to install optional dependencies like this?
-    Pkg.add("Tapir")
+    Pkg.add(name="Tapir", version="0.2.64")
     using Tapir
     push!(adbackends, Turing.AutoTapir(false))
     push!(eltypes_by_adtype, Turing.AutoTapir => (Tapir.CoDual,))
