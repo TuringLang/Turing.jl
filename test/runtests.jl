@@ -46,7 +46,6 @@ end
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" begin
             @timeit_include("mcmc/gibbs.jl")
-            @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
             @timeit_include("mcmc/Inference.jl")
             @timeit_include("mcmc/sghmc.jl")
@@ -63,10 +62,6 @@ end
             @timeit_include("optimisation/Optimisation.jl")
             @timeit_include("ext/OptimInterface.jl")
         end
-    end
-
-    @testset "experimental" begin
-        @timeit_include("experimental/gibbs.jl")
     end
 
     @testset "variational optimisers" begin

@@ -32,7 +32,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         c2 = sample(gdemo_default, s2, N)
         c3 = sample(gdemo_default, s3, N)
 
-        s4 = Gibbs(MH(:m), MH(:s))
+        s4 = Gibbs(; m=MH(), s=MH())
         c4 = sample(gdemo_default, s4, N)
 
         # s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
@@ -62,14 +62,16 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
         Random.seed!(125)
         # MH within Gibbs
-        alg = Gibbs(MH(:m), MH(:s))
+        alg = Gibbs(; m=MH(), s=MH())
         chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
         check_gdemo(chain; atol=0.1)
 
         Random.seed!(125)
         # MoGtest
         gibbs = Gibbs(
-            CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
+            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
+            @varname(mu1) => MH((:mu1, GKernel(1))),
+            @varname(mu2) => MH((:mu2, GKernel(1))),
         )
         chain = sample(
             MoGtest_default,
@@ -167,7 +169,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         vc_μ = convert(Array, 1e-4 * I(2))
         vc_σ = convert(Array, 1e-4 * I(2))
 
-        alg = Gibbs(MH((:μ, vc_μ)), MH((:σ, vc_σ)))
+        alg = Gibbs(; μ=MH((:μ, vc_μ)), σ=MH((:σ, vc_σ)))
 
         chn = sample(
             mod,

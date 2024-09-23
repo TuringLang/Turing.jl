@@ -38,7 +38,7 @@ using Turing
         c3 = sample(demodot_default, s1, N)
         c4 = sample(demodot_default, s2, N)
 
-        s3 = Gibbs(ESS(:m), MH(:s))
+        s3 = Gibbs(; m=ESS(), s=MH())
         c5 = sample(gdemo_default, s3, N)
     end
 
@@ -52,13 +52,17 @@ using Turing
         check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
 
         Random.seed!(100)
-        alg = Gibbs(CSMC(15, :s), ESS(:m))
+        alg = Gibbs(; s=CSMC(15), m=ESS())
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
         # MoGtest
         Random.seed!(125)
-        alg = Gibbs(CSMC(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
+        alg = Gibbs(
+            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
+            @varname(mu1) => ESS(),
+            @varname(m2) => ESS(),
+        )
         chain = sample(MoGtest_default, alg, 6000)
         check_MoGtest_default(chain; atol=0.1)
 
