@@ -61,7 +61,7 @@ using Turing
         alg = Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
             @varname(mu1) => ESS(),
-            @varname(m2) => ESS(),
+            @varname(mu2) => ESS(),
         )
         chain = sample(MoGtest_default, alg, 6000)
         check_MoGtest_default(chain; atol=0.1)
