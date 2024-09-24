@@ -279,6 +279,26 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
 
+# The below constructor only serves to provide backwards compatibility with the constructor
+# of the old Gibbs sampler. It is deprecated and will be removed in the future.
+function Gibbs(algs::InferenceAlgorithm...)
+    alg_dict = Dict{Any,InferenceAlgorithm}()
+    for alg in algs
+        space = getspace(alg)
+        space_vns = if (space isa Symbol || space isa VarName)
+            space
+        else
+            tuple((s isa Symbol ? VarName{s}() : s for s in space)...)
+        end
+        alg_dict[space_vns] = alg
+    end
+    Base.depwarn(
+        "Specifying which sampler to use with which variable using syntax like `Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. Please use `Gibbs(; x=NUTS(), y=MH())` instead.",
+        :Gibbs,
+    )
+    return Gibbs(alg_dict)
+end
+
 # TODO: Remove when no longer needed.
 DynamicPPL.getspace(::Gibbs) = ()
 

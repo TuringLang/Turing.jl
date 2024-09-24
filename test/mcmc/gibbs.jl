@@ -14,7 +14,7 @@ using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
-using Test: @test, @testset
+using Test: @test, @test_deprecated, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -44,16 +44,34 @@ has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @testset "gibbs constructor" begin
-        N = 500
-        s1 = begin
-            alg = HMC(0.1, 5, :s, :m; adtype=adbackend)
-            Gibbs(; s=alg, m=alg)
+    @testset "Deprecated Gibbs constructors" begin
+        N = 10
+        @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
+        @test_deprecated s2 = Gibbs(PG(10, :s, :m))
+        @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
+        for s in (s1, s2, s3, s4, s5, s6)
+            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
         end
-        s2 = begin
-            alg = PG(10)
-            Gibbs(@varname(s) => alg, @varname(m) => alg)
-        end
+
+        # Check that the samplers work despite using the deprecated constructor.
+        sample(gdemo_default, s1, N)
+        sample(gdemo_default, s2, N)
+        sample(gdemo_default, s3, N)
+        sample(gdemo_default, s4, N)
+        sample(gdemo_default, s5, N)
+        sample(gdemo_default, s6, N)
+
+        g = Turing.Sampler(s3, gdemo_default)
+        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
+    end
+
+    @testset "Gibbs constructors" begin
+        N = 10
+        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5, :s, :m; adtype=adbackend))
+        s2 = Gibbs((@varname(s), @varname(m)) => PG(10))
         s3 = Gibbs((; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)))
         s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
         s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
