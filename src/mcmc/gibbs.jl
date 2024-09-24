@@ -339,7 +339,7 @@ function DynamicPPL.initialstep(
     samplers = alg.samplers
 
     # 1. Run the model once to get the varnames present + initial values to condition on.
-    vi_base = DynamicPPL.VarInfo(model)
+    vi_base = DynamicPPL.VarInfo(rng, model)
 
     # Simple way of setting the initial parameters: set them in the `vi_base`
     # if they are given so they propagate to the subset varinfos used by each sampler.
