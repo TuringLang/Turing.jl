@@ -279,24 +279,39 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
 end
 
-# The below constructor only serves to provide backwards compatibility with the constructor
-# of the old Gibbs sampler. It is deprecated and will be removed in the future.
+# The below two constructors only provide backwards compatibility with the constructor of
+# the old Gibbs sampler. They are deprecated and will be removed in the future.
 function Gibbs(algs::InferenceAlgorithm...)
-    alg_dict = Dict{Any,InferenceAlgorithm}()
-    for alg in algs
+    varnames = map(algs) do alg
         space = getspace(alg)
-        space_vns = if (space isa Symbol || space isa VarName)
+        if (space isa VarName)
             space
+        elseif (space isa Symbol)
+            VarName{space}()
         else
             tuple((s isa Symbol ? VarName{s}() : s for s in space)...)
         end
-        alg_dict[space_vns] = alg
     end
-    Base.depwarn(
-        "Specifying which sampler to use with which variable using syntax like `Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. Please use `Gibbs(; x=NUTS(), y=MH())` instead.",
-        :Gibbs,
+    msg = (
+        "Specifying which sampler to use with which variable using syntax like " *
+        "`Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. " *
+        "Please use `Gibbs(; x=NUTS(), y=MH())` instead. If you want different iteration " *
+        "counts for different subsamplers, use e.g. " *
+        "`Gibbs(@varname(x) => NUTS(), @varname(x) => NUTS(), @varname(y) => MH())`"
     )
-    return Gibbs(alg_dict)
+    Base.depwarn(msg, :Gibbs)
+    return Gibbs(varnames, map(wrap_algorithm_maybe, algs))
+end
+
+function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
+    algs = Iterators.map(first, algs_with_iters)
+    iters = Iterators.map(last, algs_with_iters)
+    algs_duplicated = Iterators.flatten((
+        Iterators.repeated(alg, iter) for (alg, iter) in zip(algs, iters)
+    ))
+    # This calls the other deprecated constructor from above, hence no need for a depwarn
+    # here.
+    return Gibbs(algs_duplicated...)
 end
 
 # TODO: Remove when no longer needed.

@@ -52,7 +52,8 @@ has_dot_assume(::DynamicPPL.Model) = true
         @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
         @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
         @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
-        for s in (s1, s2, s3, s4, s5, s6)
+        @test_deprecated s7 = Gibbs((HMC(0.1, 5, :s; adtype=adbackend), 2), (ESS(:m), 3))
+        for s in (s1, s2, s3, s4, s5, s6, s7)
             @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
         end
 
@@ -63,6 +64,7 @@ has_dot_assume(::DynamicPPL.Model) = true
         sample(gdemo_default, s4, N)
         sample(gdemo_default, s5, N)
         sample(gdemo_default, s6, N)
+        sample(gdemo_default, s7, N)
 
         g = Turing.Sampler(s3, gdemo_default)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
