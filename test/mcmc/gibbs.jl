@@ -79,17 +79,25 @@ has_dot_assume(::DynamicPPL.Model) = true
         s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
         s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
         s7 = Gibbs((@varname(s), @varname(m)) => PG(10))
-        for s in (s1, s2, s3, s4, s5, s6, s7)
+        s8 = begin
+            hmc = HMC(0.1, 5; adtype=adbackend)
+            pg = PG(10)
+            vns = @varname(s)
+            vnm = @varname(m)
+            Gibbs(vns => hmc, vns => hmc, vns => hmc, vnm => pg, vnm => pg)
+        end
+        for s in (s1, s2, s3, s4, s5, s6, s7, s8)
             @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
         end
 
-        c1 = sample(gdemo_default, s1, N)
-        c2 = sample(gdemo_default, s2, N)
-        c3 = sample(gdemo_default, s3, N)
-        c4 = sample(gdemo_default, s4, N)
-        c5 = sample(gdemo_default, s5, N)
-        c6 = sample(gdemo_default, s6, N)
-        c7 = sample(gdemo_default, s7, N)
+        sample(gdemo_default, s1, N)
+        sample(gdemo_default, s2, N)
+        sample(gdemo_default, s3, N)
+        sample(gdemo_default, s4, N)
+        sample(gdemo_default, s5, N)
+        sample(gdemo_default, s6, N)
+        sample(gdemo_default, s7, N)
+        sample(gdemo_default, s8, N)
 
         g = Turing.Sampler(s3, gdemo_default)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
