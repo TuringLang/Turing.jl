@@ -22,10 +22,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "API" => "api.md",
-        "Submodule APIs" => [
-            "Inference" => "api/Inference.md",
-            "Optimisation" => "api/Optimisation.md",
-        ]
+        "Submodule APIs" =>
+            ["Inference" => "api/Inference.md", "Optimisation" => "api/Optimisation.md"],
     ],
     checkdocs=:exports,
     # checkdocs_ignored_modules=[Turing, Distributions, DynamicPPL, AbstractPPL, Bijectors],

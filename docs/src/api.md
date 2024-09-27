@@ -1,13 +1,14 @@
 # API
+
 ## Module-wide re-exports
 
 Turing.jl directly re-exports the entire public API of the following packages:
 
- - [Distributions.jl](https://juliastats.org/Distributions.jl)
- - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
- - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
- - [Bijectors.jl](https://turinglang.org/Bijectors.jl)
- - [Libtask.jl](https://github.com/TuringLang/Libtask.jl)
+  - [Distributions.jl](https://juliastats.org/Distributions.jl)
+  - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
+  - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
+  - [Bijectors.jl](https://turinglang.org/Bijectors.jl)
+  - [Libtask.jl](https://github.com/TuringLang/Libtask.jl)
 
 Please see the individual packages for their documentation.
 
@@ -19,7 +20,7 @@ That means, for example, you can just write
 ```julia
 using Turing
 
-@model function my_model(...)
+@model function my_model() end
 
 sample(my_model(), Prior(), 100)
 ```
@@ -35,7 +36,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 ### Modelling
 
 | Exported symbol | Documentation                     | Description                                  |
-| ---             | ---                               | ---                                          |
+|:--------------- |:--------------------------------- |:-------------------------------------------- |
 | `@model`        | [`DynamicPPL.@model`](@extref)    | Define a probabilistic model                 |
 | `@varname`      | [`AbstractPPL.@varname`](@extref) | Generate a `VarName` from a Julia expression |
 | `@submodel`     | [`DynamicPPL.@submodel`](@extref) | Define a submodel                            |
@@ -43,30 +44,30 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 ### Inference
 
 | Exported symbol | Documentation                                                                                    | Description         |
-| ---             | ---                                                                                              | ---                 |
+|:--------------- |:------------------------------------------------------------------------------------------------ |:------------------- |
 | `sample`        | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model |
 
 ### Samplers
 
-| Exported symbol      | Documentation                                 | Description                                                      |
-| ---                  | ---                                           | ---                                                              |
-| `Prior`              | [`Turing.Inference.Prior`](@ref)              | Sample from the prior distribution                               |
-| `MH`                 | [`Turing.Inference.MH`](@ref)                 | Metropolis–Hastings                                              |
-| `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                |
-| `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                        |
-| `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                   |
-| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | A "pseudo-sampler" to provide analytical conditionals to `Gibbs` |
-| `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                          |
-| `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                            |
-| `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                      |
-| `HMCDA`              | [`Turing.Inference.HMCDA`](@ref)              | Hamiltonian Monte Carlo with dual averaging                      |
-| `NUTS`               | [`Turing.Inference.NUTS`](@ref)               | No-U-Turn Sampler                                                |
-| `PolynomialStepsize` | [`Turing.Inference.PolynomialStepsize`](@ref) | A function to generate a polynomially decaying step size         |
-| `IS`                 | [`Turing.Inference.IS`](@ref)                 | Importance sampling                                              |
-| `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                           |
-| `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                   |
-| `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                   |
-| `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                       |
+| Exported symbol      | Documentation                                 | Description                                                         |
+|:-------------------- |:--------------------------------------------- |:------------------------------------------------------------------- |
+| `Prior`              | [`Turing.Inference.Prior`](@ref)              | Sample from the prior distribution                                  |
+| `MH`                 | [`Turing.Inference.MH`](@ref)                 | Metropolis–Hastings                                                 |
+| `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                   |
+| `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                           |
+| `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                      |
+| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | A "pseudo-sampler" to provide analytical conditionals to `Gibbs`    |
+| `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                             |
+| `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                               |
+| `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                         |
+| `PolynomialStepsize` | [`Turing.Inference.PolynomialStepsize`](@ref) | Returns a function which generates polynomially decaying step sizes |
+| `HMCDA`              | [`Turing.Inference.HMCDA`](@ref)              | Hamiltonian Monte Carlo with dual averaging                         |
+| `NUTS`               | [`Turing.Inference.NUTS`](@ref)               | No-U-Turn Sampler                                                   |
+| `IS`                 | [`Turing.Inference.IS`](@ref)                 | Importance sampling                                                 |
+| `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
+| `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
+| `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
+| `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
 
 ### Variational inference
 
@@ -76,7 +77,7 @@ Please see the [variational inference tutorial](https://turinglang.org/docs/tuto
 TODO: Generate docs for AdvancedVI 0.2, update the InterLinks object.inv, and update the table below to include `@extref`.
 
 | Exported symbol | Documentation     | Description                             |
-| ---             | ---               | ---                                     |
+|:--------------- |:----------------- |:--------------------------------------- |
 | `vi`            | `AdvancedVI.vi`   | Perform variational inference           |
 | `ADVI`          | `AdvancedVI.ADVI` | Construct an instance of a VI algorithm |
 
@@ -85,7 +86,7 @@ TODO: Generate docs for AdvancedVI 0.2, update the InterLinks object.inv, and up
 These are used to specify the automatic differentiation backend to use.
 
 | Exported symbol   | Documentation                        | Description                               |
-| ---               | ---                                  | ---                                       |
+|:----------------- |:------------------------------------ |:----------------------------------------- |
 | `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend                    |
 | `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend                    |
 | `AutoZygote`      | [`ADTypes.AutoZygote`](@extref)      | Zygote.jl backend                         |
@@ -122,7 +123,7 @@ Distributions.BernoulliLogit
 TODO: DistributionsAD needs docs
 
 | Exported symbol | Documentation                     | Description                                                    |
-| ---             | ---                               | ---                                                            |
+|:--------------- |:--------------------------------- |:-------------------------------------------------------------- |
 | `filldist`      | `DistributionsAD.filldist`        | Create a product distribution from a distribution and integers |
 | `arraydist`     | `DistributionsAD.arraydist`       | Create a product distribution from an array of distributions   |
 | `NamedDist`     | [`DynamicPPL.NamedDist`](@extref) | A distribution that carries the name of the variable           |
@@ -136,7 +137,7 @@ predict
 ### Re-exports from DynamicPPL / AbstractPPL
 
 | Exported symbol            | Documentation                                                                                                                     | Description                                                     |
-| ---                        | ---                                                                                                                               | ---                                                             |
+|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:--------------------------------------------------------------- |
 | `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain              |
 | `generated_quantities`     | [`DynamicPPL.generated_quantities`](@extref)                                                                                      | Calculate additional quantities defined in a model              |
 | `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                                   |
@@ -160,9 +161,8 @@ Bijectors.ordered
 ### Point estimates
 
 | Exported symbol        | Documentation                                      | Description                                  |
-| ---                    | ---                                                | ---                                          |
+|:---------------------- |:-------------------------------------------------- |:-------------------------------------------- |
 | `maximum_a_posteriori` | [`Turing.Optimisation.maximum_a_posteriori`](@ref) | Find a MAP estimate for a model              |
 | `maximum_likelihood`   | [`Turing.Optimisation.maximum_likelihood`](@ref)   | Find a MLE estimate for a model              |
 | `MAP`                  | [`Turing.Optimisation.MAP`](@ref)                  | Type to use with Optim.jl for MAP estimation |
 | `MLE`                  | [`Turing.Optimisation.MLE`](@ref)                  | Type to use with Optim.jl for MLE estimation |
-
