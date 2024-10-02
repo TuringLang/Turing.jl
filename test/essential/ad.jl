@@ -2,7 +2,7 @@ module AdTests
 
 using ..Models: gdemo_default
 using Distributions: logpdf
-using DynamicPPL: getlogp, getval
+using DynamicPPL: getlogp, getindex_internal
 using ForwardDiff
 using LinearAlgebra
 using LogDensityProblems: LogDensityProblems
@@ -24,7 +24,7 @@ function test_model_ad(model, f, syms::Vector{Symbol})
         s = syms[i]
         vnms[i] = getfield(vi.metadata, s).vns[1]
 
-        vals = getval(vi, vnms[i])
+        vals = getindex_internal(vi, vnms[i])
         for i in eachindex(vals)
             push!(vnvals, vals[i])
         end
@@ -61,8 +61,8 @@ end
         ad_test_f(vi, SampleFromPrior())
         svn = vi.metadata.s.vns[1]
         mvn = vi.metadata.m.vns[1]
-        _s = getval(vi, svn)[1]
-        _m = getval(vi, mvn)[1]
+        _s = getindex_internal(vi, svn)[1]
+        _m = getindex_internal(vi, mvn)[1]
 
         dist_s = InverseGamma(2, 3)
 
