@@ -36,6 +36,7 @@ jobs:
           - name: "everything else"
             args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
         version:
+          - '1.9'
           - '1'
         os:
           - ubuntu-latest
@@ -51,6 +52,10 @@ jobs:
           # With Windows and macOS, only run x64, 2 threads. We just want to see
           # some combination work on OSes other than Ubuntu.
           - os: windows-latest
+            version: '1'
+          - os: macOS-latest
+            version: '1'
+          - os: windows-latest
             arch: x86
           - os: macOS-latest
             arch: x86
@@ -58,9 +63,11 @@ jobs:
             num_threads: 1
           - os: macOS-latest
             num_threads: 1
-          # It's sufficient to test x86 with one thread.
-          - num_threads: 2
-            arch: x86
+          # It's sufficient to test x86 with only Julia 1.9 and 1 thread.
+          - arch: x86
+            version: '1'
+          - arch: x86
+            num_threads: 2
 
     steps:
       - name: Print matrix variables
