@@ -17,16 +17,6 @@ struct HMCState{
     adaptor::TAdapt
 end
 
-##########################
-# Hamiltonian Transition #
-##########################
-
-function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t::AHMC.Transition)
-    theta = getparams(model, vi)
-    lp = getlogp(vi)
-    return Transition(theta, lp, t.stat)
-end
-
 ###
 ### Hamiltonian Monte Carlo samplers.
 ###
