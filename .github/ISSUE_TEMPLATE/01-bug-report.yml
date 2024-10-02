@@ -32,8 +32,14 @@ body:
     id: versioninfo
     attributes:
       label: Julia version info
-      description: Paste the output of `versioninfo()` here
-      render: julia
+      description: Paste the output of `versioninfo()` between the triple backticks
+      value: |
+        <details><summary>versioninfo()</summary>
+        
+        ```
+        (Paste here)
+        ```
+        </details>
     validations:
       required: true
 
@@ -41,7 +47,13 @@ body:
     id: manifest
     attributes:
       label: Manifest
-      description: Paste the output of `]st --manifest` here
-      render: julia
+      description: Paste the output of `]st --manifest` between the triple backticks.
+      value: |
+        <details><summary>]st --manifest</summary>
+        
+        ```
+        (Paste here)
+        ```
+        </details>
     validations:
       required: true
