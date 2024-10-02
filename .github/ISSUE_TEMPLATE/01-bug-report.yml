@@ -1,0 +1,59 @@
+name: Bug Report
+description: File a bug report.
+labels: ["bug"]
+projects: ["TuringLang/3"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting a bug report to Turing.jl!
+        
+        To make sure we can pinpoint the issue and fix it as quickly as possible, we ask you to provide some information about the bug you encountered. Please fill out the form below.
+
+  - type: textarea
+    id: mwe
+    attributes:
+      label: Minimal working example
+      description: Paste the code that led to the bug here. Ideally, simplify it as much as possible. This will be formatted as Julia code, so no need for backticks.
+      render: julia
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the bug you encountered – what happened, and what did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: versioninfo
+    attributes:
+      label: Julia version info
+      description: Paste the output of `versioninfo()` between the triple backticks
+      value: |
+        <details><summary>versioninfo()</summary>
+        
+        ```
+        (Paste here)
+        ```
+        </details>
+    validations:
+      required: true
+
+  - type: textarea
+    id: manifest
+    attributes:
+      label: Manifest
+      description: Paste the output of `]st --manifest` between the triple backticks.
+      value: |
+        <details><summary>]st --manifest</summary>
+        
+        ```
+        (Paste here)
+        ```
+        </details>
+    validations:
+      required: true
