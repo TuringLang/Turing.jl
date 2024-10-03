@@ -22,9 +22,8 @@ jobs:
           - "mcmc/hmc.jl"
           - "mcmc/abstractmcmc.jl"
           - "mcmc/Inference.jl"
-          - "experimental/gibbs.jl"
           - "mcmc/ess.jl"
-          - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
+          - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
         version:
           - '1.7'
           - '1'
@@ -79,7 +78,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       # TODO: Use julia-actions/julia-runtest when test_args are supported
       # Custom calls of Pkg.test tend to miss features such as e.g. adjustments for CompatHelper PRs
-      # Ref https://github.com/julia-actions/julia-runtest/pull/73  
+      # Ref https://github.com/julia-actions/julia-runtest/pull/73
       - name: Call Pkg.test
         run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test-args }}
       - uses: julia-actions/julia-processcoverage@v1

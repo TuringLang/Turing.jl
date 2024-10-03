@@ -12,7 +12,7 @@ end
 mf = test_ex_rt()
 
 for alg in
-    [HMC(0.2, 3), PG(20, 2000), SMC(), IS(10000), Gibbs(PG(20, 1, :x), HMC(0.2, 3, :y))]
+    [HMC(0.2, 3), PG(20, 2000), SMC(), IS(10000), Gibbs(; x=PG(20, 1), y=HMC(0.2, 3))]
     chn = sample(mf, alg)
     @test mean(chn[:x]) ≈ 10.0 atol = 0.2
     @test mean(chn[:y]) ≈ 5.0 atol = 0.2

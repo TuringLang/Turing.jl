@@ -6,9 +6,7 @@ import_to_using = false
 # These ignores should be removed once the relevant PRs are merged/closed.
 ignore = [
     # https://github.com/TuringLang/Turing.jl/pull/2231/files
-    "src/experimental/gibbs.jl",
     "src/mcmc/abstractmcmc.jl",
-    "test/experimental/gibbs.jl",
     "test/test_utils/numerical_tests.jl",
     # https://github.com/TuringLang/Turing.jl/pull/2218/files
     "src/mcmc/Inference.jl",
