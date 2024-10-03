@@ -285,10 +285,8 @@ end
 unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
 # possibly unpack and reshape samples according to the prior distribution
-reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
-function reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector)
-    return val
-end
+reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.from_vec_transform(dist)(val)
+reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector) = val
 function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::AbstractVector)
     offset = 0
     return map(dist) do d
@@ -322,7 +320,7 @@ end
         :(
             $name = reconstruct(
                 unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
-                DynamicPPL.getval(vi, vns.$name),
+                DynamicPPL.getindex_internal(vi, vns.$name),
             )
         ) for name in names
     ]
