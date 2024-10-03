@@ -11,7 +11,8 @@ using Bijectors: PDMatDistribution
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using ADTypes: ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote, AutoMooncake
+using ADTypes:
+    ADTypes, AutoForwardDiff, AutoTracker, AutoReverseDiff, AutoZygote, AutoMooncake
 
 using AdvancedPS: AdvancedPS
 
