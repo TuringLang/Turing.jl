@@ -212,43 +212,20 @@ end
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 """
 function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTuple)
-    # TODO: Replace this with something like
-    # for vn in keys(vi)
-    #     vi = DynamicPPL.setindex!!(vi, get(nt, vn))
-    # end
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
-        nvns = length(vns)
-
-        # if there is a single variable only
-        if nvns == 1
-            # assign the unpacked values
-            if length(vals) == 1
-                vi[vns[1]] = [vals[1];]
-                # otherwise just assign the values
-            else
-                vi[vns[1]] = [vals;]
-            end
-            # if there are multiple variables
-        elseif vals isa AbstractArray
-            nvals = length(vals)
-            # if values are provided as an array with a single element
-            if nvals == 1
-                # iterate over variables and unpacked values
-                for (vn, val) in zip(vns, vals[1])
-                    vi[vn] = [val;]
-                end
-                # otherwise number of variables and number of values have to be equal
-            elseif nvals == nvns
-                # iterate over variables and values
-                for (vn, val) in zip(vns, vals)
-                    vi[vn] = [val;]
-                end
-            else
-                error("Cannot assign `NamedTuple` to `VarInfo`")
-            end
+        if vals isa AbstractVector
+            vals = unvectorize(vals)
+        end
+        if length(vns) == 1
+            # Only one variable, assign the values to it
+            DynamicPPL.setindex!(vi, vals, vns[1])
         else
-            error("Cannot assign `NamedTuple` to `VarInfo`")
+            # Spread the values across the variables
+            length(vns) == length(vals) || error("Unequal number of variables and values")
+            for (vn, val) in zip(vns, vals)
+                DynamicPPL.setindex!(vi, val, vn)
+            end
         end
     end
 end
