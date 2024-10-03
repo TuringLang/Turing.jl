@@ -285,7 +285,9 @@ end
 unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
 # possibly unpack and reshape samples according to the prior distribution
-reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.from_vec_transform(dist)(val)
+function reconstruct(dist::Distribution, val::AbstractVector)
+    return DynamicPPL.from_vec_transform(dist)(val)
+end
 reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector) = val
 function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::AbstractVector)
     offset = 0
