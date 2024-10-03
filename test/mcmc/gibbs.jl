@@ -8,12 +8,11 @@ using Distributions: sample
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
+import Tapir
 using Test: @test, @testset
 using Turing
 using Turing: Inference
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "gibbs constructor" begin

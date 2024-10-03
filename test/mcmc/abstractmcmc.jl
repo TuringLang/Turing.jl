@@ -12,11 +12,10 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
+import Tapir
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
-
-ADUtils.install_tapir && import Tapir
 
 function initialize_nuts(model::Turing.Model)
     # Create a log-density function with an implementation of the

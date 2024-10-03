@@ -12,10 +12,9 @@ using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: counts
 using StatsFuns: StatsFuns
+import Tapir
 using Test: @test, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in ADUtils.adbackends
     Random.seed!(1000)

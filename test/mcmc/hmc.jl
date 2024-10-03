@@ -2,7 +2,6 @@ module HMCTests
 
 using ..Models: gdemo_default
 using ..ADUtils: ADTypeCheckContext
-#using ..Models: gdemo
 using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
@@ -15,10 +14,9 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
+import Tapir
 using Test: @test, @test_logs, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Set a seed

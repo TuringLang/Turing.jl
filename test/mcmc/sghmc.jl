@@ -8,10 +8,9 @@ import ForwardDiff
 using LinearAlgebra: dot
 import ReverseDiff
 using StableRNGs: StableRNG
+import Tapir
 using Test: @test, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing sghmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "sghmc constructor" begin

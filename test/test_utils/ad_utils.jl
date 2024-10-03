@@ -4,6 +4,7 @@ using ForwardDiff: ForwardDiff
 using Pkg: Pkg
 using Random: Random
 using ReverseDiff: ReverseDiff
+using Tapir: Tapir
 using Test: Test
 using Tracker: Tracker
 using Turing: Turing
@@ -42,6 +43,7 @@ const eltypes_by_adtype = Dict(
         Tracker.TrackedVecOrMat,
         Tracker.TrackedVector,
     ),
+    Turing.AutoTapir => (Tapir.CoDual,),
 )
 
 """
@@ -281,17 +283,9 @@ end
 All the ADTypes on which we want to run the tests.
 """
 adbackends = [
-    Turing.AutoForwardDiff(; chunksize=0), Turing.AutoReverseDiff(; compile=false)
+    Turing.AutoForwardDiff(; chunksize=0),
+    Turing.AutoReverseDiff(; compile=false),
+    Turing.AutoTapir(false),
 ]
-
-# Tapir isn't supported for older Julia versions, hence the check.
-install_tapir = isdefined(Turing, :AutoTapir)
-if install_tapir
-    # TODO(mhauru) Is there a better way to install optional dependencies like this?
-    Pkg.add("Tapir")
-    using Tapir
-    push!(adbackends, Turing.AutoTapir(false))
-    push!(eltypes_by_adtype, Turing.AutoTapir => (Tapir.CoDual,))
-end
 
 end

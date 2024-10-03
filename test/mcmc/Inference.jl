@@ -12,10 +12,9 @@ using LinearAlgebra: I
 import MCMCChains
 import Random
 import ReverseDiff
+import Tapir
 using Test: @test, @test_throws, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Only test threading if 1.3+.
