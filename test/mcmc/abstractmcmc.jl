@@ -12,7 +12,7 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
-import Tapir
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
@@ -116,7 +116,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        # TODO(mhauru) The below tests fail with Tapir, see
+        # TODO(mhauru) The below tests fail with Mooncake, see
         # https://github.com/TuringLang/Turing.jl/pull/2289.
         # Once that is fixed, this should say `for adtype in ADUtils.adbackends`.
         @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]

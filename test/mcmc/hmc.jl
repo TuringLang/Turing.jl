@@ -14,7 +14,7 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-import Tapir
+import Mooncake
 using Test: @test, @test_logs, @testset
 using Turing
 

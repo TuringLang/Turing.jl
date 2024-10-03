@@ -12,7 +12,7 @@ using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: counts
 using StatsFuns: StatsFuns
-import Tapir
+import Mooncake
 using Test: @test, @testset
 using Turing
 

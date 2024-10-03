@@ -4,7 +4,7 @@ using ForwardDiff: ForwardDiff
 using Pkg: Pkg
 using Random: Random
 using ReverseDiff: ReverseDiff
-using Tapir: Tapir
+using Mooncake: Mooncake
 using Test: Test
 using Tracker: Tracker
 using Turing: Turing
@@ -43,7 +43,7 @@ const eltypes_by_adtype = Dict(
         Tracker.TrackedVecOrMat,
         Tracker.TrackedVector,
     ),
-    Turing.AutoTapir => (Tapir.CoDual,),
+    Turing.AutoMooncake => (Mooncake.CoDual,),
 )
 
 """
@@ -285,7 +285,7 @@ All the ADTypes on which we want to run the tests.
 adbackends = [
     Turing.AutoForwardDiff(; chunksize=0),
     Turing.AutoReverseDiff(; compile=false),
-    Turing.AutoTapir(false),
+    Turing.AutoMooncake(; config=Mooncake.Config()),
 ]
 
 end

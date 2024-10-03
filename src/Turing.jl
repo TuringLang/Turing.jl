@@ -107,7 +107,7 @@ export @model,                 # modelling
     AutoReverseDiff,
     AutoZygote,
     AutoTracker,
-    AutoTapir,
+    AutoMooncake,
     setprogress!,           # debugging
     Flat,
     FlatPos,

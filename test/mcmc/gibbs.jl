@@ -8,7 +8,7 @@ using Distributions: sample
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
-import Tapir
+import Mooncake
 using Test: @test, @testset
 using Turing
 using Turing: Inference

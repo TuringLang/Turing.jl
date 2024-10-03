@@ -12,7 +12,7 @@ using LinearAlgebra: I
 import MCMCChains
 import Random
 import ReverseDiff
-import Tapir
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 
