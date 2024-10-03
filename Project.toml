@@ -48,7 +48,7 @@ TuringDynamicHMCExt = "DynamicHMC"
 TuringOptimExt = "Optim"
 
 [compat]
-ADTypes = "0.2, 1"
+ADTypes = "1.9"
 AbstractMCMC = "5.2"
 Accessors = "0.1"
 AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6"
