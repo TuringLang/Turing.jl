@@ -578,7 +578,7 @@ ADUtils.install_tapir && import Tapir
         ); true)
 
         @model function demo_incorrect_missing(y)
-            y[1:1] ~ MvNormal(zeros(1), 1)
+            y[1:1] ~ MvNormal(zeros(1), I)
         end
         @test_throws ErrorException sample(
             demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
