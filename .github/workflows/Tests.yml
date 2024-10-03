@@ -36,7 +36,7 @@ jobs:
           - name: "everything else"
             args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
         version:
-          - '1.9'
+          - '1.10'
           - '1'
         os:
           - ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
             num_threads: 1
           - os: macOS-latest
             num_threads: 1
-          # It's sufficient to test x86 with only Julia 1.9 and 1 thread.
+          # It's sufficient to test x86 with only Julia 1.10 and 1 thread.
           - arch: x86
             version: '1'
           - arch: x86
