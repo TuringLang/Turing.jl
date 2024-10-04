@@ -71,15 +71,12 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Variational inference
 
-These functions are not (yet) formally documented.
 Please see the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a walkthrough on how to use these.
 
-TODO: Generate docs for AdvancedVI 0.2, update the InterLinks object.inv, and update the table below to include `@extref`.
-
-| Exported symbol | Documentation     | Description                             |
-|:--------------- |:----------------- |:--------------------------------------- |
-| `vi`            | `AdvancedVI.vi`   | Perform variational inference           |
-| `ADVI`          | `AdvancedVI.ADVI` | Construct an instance of a VI algorithm |
+| Exported symbol  | Documentation                | Description                              |
+| :--------------- | :-----------------           | :--------------------------------------- |
+| `vi`             | [`AdvancedVI.vi`](@extref)   | Perform variational inference            |
+| `ADVI`           | [`AdvancedVI.ADVI`](@extref) | Construct an instance of a VI algorithm  |
 
 ### Automatic differentiation types
 

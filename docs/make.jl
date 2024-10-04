@@ -11,6 +11,7 @@ links = InterLinks(
     "DynamicPPL" => "https://turinglang.org/DynamicPPL.jl/stable/objects.inv",
     "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/dev/objects.inv",
     "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/objects.inv",
+    "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/v0.2.8/objects.inv",
 )
 
 # Doctest setup
