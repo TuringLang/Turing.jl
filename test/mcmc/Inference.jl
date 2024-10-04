@@ -69,7 +69,9 @@ using Turing
 
             # Smoke test for default sample call.
             Random.seed!(100)
-            chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4)
+            chain = sample(
+                gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4
+            )
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
@@ -113,7 +115,7 @@ using Turing
             a ~ Beta()
             lp1 = getlogp(__varinfo__)
             x[1] ~ Bernoulli(a)
-            global loglike = getlogp(__varinfo__) - lp1
+            return global loglike = getlogp(__varinfo__) - lp1
         end
         model = testmodel1([1.0])
         varinfo = Turing.VarInfo(model)
@@ -123,13 +125,17 @@ using Turing
         # Test MiniBatchContext
         @model function testmodel2(x)
             a ~ Beta()
-            x[1] ~ Bernoulli(a)
+            return x[1] ~ Bernoulli(a)
         end
         model = testmodel2([1.0])
         varinfo1 = Turing.VarInfo(model)
         varinfo2 = deepcopy(varinfo1)
         model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
-        model(varinfo2, Turing.SampleFromPrior(), Turing.MiniBatchContext(Turing.LikelihoodContext(), 10))
+        model(
+            varinfo2,
+            Turing.SampleFromPrior(),
+            Turing.MiniBatchContext(Turing.LikelihoodContext(), 10),
+        )
         @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
     end
     @testset "Prior" begin
@@ -140,24 +146,24 @@ using Turing
         chains = sample(gdemo_d(), Prior(), N)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 1)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
         chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N; chain_type = Vector{NamedTuple})
+        chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
         @test chains isa Vector{<:NamedTuple}
         @test length(chains) == N
         @test all(length(x) == 3 for x in chains)
         @test all(haskey(x, :lp) for x in chains)
-        @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
-        @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+        @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
+        @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
 
         @testset "#2169" begin
             # Not exactly the same as the issue, but similar.
@@ -177,10 +183,10 @@ using Turing
 
     @testset "chain ordering" begin
         for alg in (Prior(), Emcee(10, 2.0))
-            chain_sorted = sample(gdemo_default, alg, 1, sort_chain=true)
+            chain_sorted = sample(gdemo_default, alg, 1; sort_chain=true)
             @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
 
-            chain_unsorted = sample(gdemo_default, alg, 1, sort_chain=false)
+            chain_unsorted = sample(gdemo_default, alg, 1; sort_chain=false)
             @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
         end
     end
@@ -292,8 +298,12 @@ using Turing
         @test_throws ErrorException chain = sample(gauss2(; x=x), PG(10), 10)
         @test_throws ErrorException chain = sample(gauss2(; x=x), SMC(), 10)
 
-        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10)
-        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(
+            gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10
+        )
+        @test_throws ErrorException chain = sample(
+            gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10
+        )
 
         @model function gauss3(x, ::Type{TV}=Vector{Float64}) where {TV}
             priors = TV(undef, 2)
@@ -323,7 +333,9 @@ using Turing
         end
 
         sample(
-            newinterface(obs), HMC(0.75, 3, :p, :x; adtype = Turing.AutoForwardDiff(; chunksize=2)), 100
+            newinterface(obs),
+            HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
+            100,
         )
     end
     @testset "no return" begin
@@ -527,7 +539,9 @@ using Turing
         t_loop = @elapsed res = sample(vdemo1(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo1kw(; T) = vdemo1(T)
-        t_loop = @elapsed res = sample(vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        t_loop = @elapsed res = sample(
+            vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
+        )
 
         @model function vdemo2(::Type{T}=Float64) where {T<:Real}
             x = Vector{T}(undef, N)
@@ -538,7 +552,9 @@ using Turing
         t_vec = @elapsed res = sample(vdemo2(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo2kw(; T) = vdemo2(T)
-        t_vec = @elapsed res = sample(vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        t_vec = @elapsed res = sample(
+            vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
+        )
 
         @model function vdemo3(::Type{TV}=Vector{Float64}) where {TV<:AbstractVector}
             x = TV(undef, N)
@@ -553,11 +569,7 @@ using Turing
     end
 
     @testset "names_values" begin
-        ks, xs = Turing.Inference.names_values([
-            (a=1,),
-            (b=2,),
-            (a=3, b=4)
-        ])
+        ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
         @test all(xs[:, 1] .=== [1, missing, 3])
         @test all(xs[:, 2] .=== [missing, 2, 4])
     end
@@ -565,19 +577,18 @@ using Turing
     @testset "check model" begin
         @model function demo_repeated_varname()
             x ~ Normal(0, 1)
-            x ~ Normal(x, 1)
+            return x ~ Normal(x, 1)
         end
 
         @test_throws ErrorException sample(
             demo_repeated_varname(), NUTS(), 1000; check_model=true
         )
         # Make sure that disabling the check also works.
-        @test (sample(
-            demo_repeated_varname(), Prior(), 10; check_model=false
-        ); true)
+        @test (sample(demo_repeated_varname(), Prior(), 10; check_model=false);
+        true)
 
         @model function demo_incorrect_missing(y)
-            y[1:1] ~ MvNormal(zeros(1), I)
+            return y[1:1] ~ MvNormal(zeros(1), I)
         end
         @test_throws ErrorException sample(
             demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true

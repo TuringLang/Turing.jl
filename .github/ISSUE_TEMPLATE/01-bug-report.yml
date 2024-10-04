@@ -8,7 +8,7 @@ body:
     attributes:
       value: |
         Thank you for submitting a bug report to Turing.jl!
-        
+
         To make sure we can pinpoint the issue and fix it as quickly as possible, we ask you to provide some information about the bug you encountered. Please fill out the form below.
 
   - type: textarea
@@ -35,7 +35,7 @@ body:
       description: Paste the output of `versioninfo()` between the triple backticks
       value: |
         <details><summary>versioninfo()</summary>
-        
+
         ```
         (Paste here)
         ```
@@ -50,7 +50,7 @@ body:
       description: Paste the output of `]st --manifest` between the triple backticks.
       value: |
         <details><summary>]st --manifest</summary>
-        
+
         ```
         (Paste here)
         ```
