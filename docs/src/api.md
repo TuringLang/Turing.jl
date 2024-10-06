@@ -71,7 +71,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Variational inference
 
-Please see the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a walkthrough on how to use these.
+See the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a walkthrough on how to use these.
 
 | Exported symbol | Documentation                | Description                             |
 |:--------------- |:---------------------------- |:--------------------------------------- |
@@ -81,6 +81,7 @@ Please see the [variational inference tutorial](https://turinglang.org/docs/tuto
 ### Automatic differentiation types
 
 These are used to specify the automatic differentiation backend to use.
+See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-autodiff/) for more information.
 
 | Exported symbol   | Documentation                        | Description                               |
 |:----------------- |:------------------------------------ |:----------------------------------------- |
@@ -131,12 +132,14 @@ TODO: DistributionsAD needs docs
 predict
 ```
 
-### Re-exports from DynamicPPL / AbstractPPL
+### Querying model probabilities and quantities
+
+Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
 | Exported symbol            | Documentation                                                                                                                     | Description                                                     |
 |:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:--------------------------------------------------------------- |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain              |
 | `generated_quantities`     | [`DynamicPPL.generated_quantities`](@extref)                                                                                      | Calculate additional quantities defined in a model              |
+| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain              |
 | `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                                   |
 | `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                                   |
 | `LogDensityFunction`       | [`DynamicPPL.LogDensityFunction`](@extref)                                                                                        | Wrap a Turing model to satisfy LogDensityFunctions.jl interface |
@@ -156,6 +159,8 @@ Bijectors.ordered
 ```
 
 ### Point estimates
+
+See the [mode estimation tutorial](https://turinglang.org/docs/tutorials/docs-17-mode-estimation/) for more information.
 
 | Exported symbol        | Documentation                                      | Description                                  |
 |:---------------------- |:-------------------------------------------------- |:-------------------------------------------- |
