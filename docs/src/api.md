@@ -28,10 +28,12 @@ sample(my_model(), Prior(), 100)
 instead of
 
 ```julia
-sample(model, Turing.Inference.Prior(), 100)
+DynamicPPL.@model function my_model() end
+
+sample(my_model(), Turing.Inference.Prior(), 100)
 ```
 
-even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` module.
+even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` module and [`@model`](@ref) in the `DynamicPPL` package.
 
 ### Modelling
 
