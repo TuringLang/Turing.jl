@@ -206,6 +206,23 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
     end
 
+    @testset "LKJCholesky" begin
+        for uplo in ['L', 'U']
+            @model f() = x ~ LKJCholesky(2, 1, uplo)
+            Random.seed!(100)
+            chain = sample(f(), MH(), 5_000)
+            indices = [(1, 1), (2, 1), (2, 2)]
+            values = [1, 0, 0.785]
+            for ((i, j), v) in zip(indices, values)
+                if uplo == 'U'  # Transpose
+                    @test mean(chain, "x.$uplo[$j, $i]") ≈ v atol = 0.01
+                else
+                    @test mean(chain, "x.$uplo[$i, $j]") ≈ v atol = 0.01
+                end
+            end
+        end
+    end
+
     @testset "MH link/invlink" begin
         vi_base = DynamicPPL.VarInfo(gdemo_default)
 
