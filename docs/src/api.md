@@ -120,13 +120,11 @@ Distributions.BernoulliLogit
 
 ### Tools to work with distributions
 
-TODO: DistributionsAD needs docs
-
-| Exported symbol | Documentation                     | Description                                                    |
-|:--------------- |:--------------------------------- |:-------------------------------------------------------------- |
-| `filldist`      | `DistributionsAD.filldist`        | Create a product distribution from a distribution and integers |
-| `arraydist`     | `DistributionsAD.arraydist`       | Create a product distribution from an array of distributions   |
-| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref) | A distribution that carries the name of the variable           |
+| Exported symbol | Documentation                          | Description                                                    |
+|:--------------- |:-------------------------------------- |:-------------------------------------------------------------- |
+| `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
+| `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
+| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |
 
 ### Predictions
 
