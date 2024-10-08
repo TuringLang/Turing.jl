@@ -15,7 +15,7 @@ struct GibbsContext{Values,Ctx<:DynamicPPL.AbstractContext} <: DynamicPPL.Abstra
     context::Ctx
 end
 
-Gibbscontext(values) = GibbsContext(values, DynamicPPL.DefaultContext())
+GibbsContext(values) = GibbsContext(values, DynamicPPL.DefaultContext())
 
 DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
