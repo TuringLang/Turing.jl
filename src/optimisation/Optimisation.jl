@@ -25,10 +25,22 @@ export MAP, MLE
     ModeEstimator
 
 An abstract type to mark whether mode estimation is to be done with maximum a posteriori
-(MAP) or maximum likelihood estimation (MLE).
+(MAP) or maximum likelihood estimation (MLE). This is only needed for the Optim.jl interface.
 """
 abstract type ModeEstimator end
+
+"""
+    MLE <: ModeEstimator
+
+Concrete type for maximum likelihood estimation. Only used for the Optim.jl interface.
+"""
 struct MLE <: ModeEstimator end
+
+"""
+    MAP <: ModeEstimator
+
+Concrete type for maximum a posteriori estimation. Only used for the Optim.jl interface.
+"""
 struct MAP <: ModeEstimator end
 
 """

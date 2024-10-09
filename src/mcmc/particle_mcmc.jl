@@ -220,6 +220,11 @@ function PG(nparticles::Int, space::Tuple)
     return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(), space)
 end
 
+"""
+    CSMC(...)
+
+Equivalent to [`PG`](@ref).
+"""
 const CSMC = PG # type alias of PG as Conditional SMC
 
 struct PGTransition{T,F<:AbstractFloat} <: AbstractTransition
