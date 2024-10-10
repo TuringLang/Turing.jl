@@ -1,7 +1,7 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
-using ..ADUtils: ADTypeCheckContext
+using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
@@ -617,16 +617,14 @@ using Turing
         @assert get(result, :c) == (; :c => Array{Float64}[])
     end
 
-    @testset "ADType" begin
+    @testset "ADType" for adbackend in ADUtils.adbackends
         Random.seed!(222)
-        for adbackend in (AutoReverseDiff(), AutoForwardDiff(), AutoTracker())
-            m = DynamicPPL.contextualize(
-                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-            )
-            # These will error if the adbackend being used is not the one set.
-            maximum_likelihood(m; adtype=adbackend)
-            maximum_a_posteriori(m; adtype=adbackend)
-        end
+        m = DynamicPPL.contextualize(
+            gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
+        )
+        # These will error if the adbackend being used is not the one set.
+        maximum_likelihood(m; adtype=adbackend)
+        maximum_a_posteriori(m; adtype=adbackend)
     end
 end
 

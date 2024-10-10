@@ -88,20 +88,6 @@ end
         )
         x = map(x -> Float64(x), vi[SampleFromPrior()])
 
-        trackerℓ = LogDensityProblemsAD.ADgradient(Turing.AutoTracker(), ℓ)
-        if isdefined(Base, :get_extension)
-            @test trackerℓ isa
-                Base.get_extension(
-                LogDensityProblemsAD, :LogDensityProblemsADTrackerExt
-            ).TrackerGradientLogDensity
-        else
-            @test trackerℓ isa
-                LogDensityProblemsAD.LogDensityProblemsADTrackerExt.TrackerGradientLogDensity
-        end
-        @test trackerℓ.ℓ === ℓ
-        ∇E1 = LogDensityProblems.logdensity_and_gradient(trackerℓ, x)[2]
-        @test sort(∇E1) ≈ grad_FWAD atol = 1e-9
-
         zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
         if isdefined(Base, :get_extension)
             @test zygoteℓ isa
@@ -149,7 +135,7 @@ end
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
-    @testset "Simplex Tracker, Zygote and ReverseDiff (with and without caching) AD" begin
+    @testset "Simplex Zygote and ReverseDiff (with and without caching) AD" begin
         @model function dir()
             return theta ~ Dirichlet(1 ./ fill(4, 4))
         end

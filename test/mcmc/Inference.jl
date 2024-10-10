@@ -382,7 +382,6 @@ using Turing
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
-        # https://github.com/FluxML/Tracker.jl/issues/119
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
