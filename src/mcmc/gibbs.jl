@@ -173,42 +173,14 @@ function condition_gibbs(model::DynamicPPL.Model, values...)
     return DynamicPPL.contextualize(model, condition_gibbs(model.context, values...))
 end
 
-"""
-    make_conditional_model(model, varinfo, varinfos)
-
-Construct a conditional model from `model` conditioned `varinfos`, excluding `varinfo` if present.
-
-# Examples
-```julia-repl
-julia> model = DynamicPPL.TestUtils.demo_assume_dot_observe();
-
-julia> # A separate varinfo for each variable in `model`.
-       varinfos = (DynamicPPL.SimpleVarInfo(s=1.0), DynamicPPL.SimpleVarInfo(m=10.0));
-
-julia> # The varinfo we want to NOT condition on.
-       target_varinfo = first(varinfos);
-
-julia> # Results in a model with only `m` conditioned.
-       conditioned_model = make_conditional(model, target_varinfo, varinfos);
-
-julia> result = conditioned_model();
-
-julia> result.m == 10.0  # we conditioned on varinfo with `m = 10.0`
-true
-
-julia> result.s != 1.0  # we did NOT want to condition on varinfo with `s = 1.0`
-true
-```
-"""
 function make_conditional(
-    model::DynamicPPL.Model, target_varinfo::DynamicPPL.AbstractVarInfo, varinfos
+    model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
 )
-    # TODO: Check if this is known at compile-time if `varinfos isa Tuple`.
-    return condition_gibbs(model, filter(Base.Fix1(!==, target_varinfo), varinfos)...)
-end
-# Assumes the ones given are the ones to condition on.
-function make_conditional(model::DynamicPPL.Model, varinfos)
-    return condition_gibbs(model, varinfos...)
+    not_target_variables = filter(
+        x -> !(any(Iterators.map(vn -> subsumes(vn, x), target_variables))), keys(varinfo)
+    )
+    vi_filtered = subset(varinfo, not_target_variables)
+    return condition_gibbs(model, vi_filtered)
 end
 
 # HACK: Allows us to support either passing in an implementation of `AbstractMCMC.AbstractSampler`
@@ -219,13 +191,15 @@ wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 """
     gibbs_state(model, sampler, state, varinfo)
 
-Return an updated state, taking into account the variables sampled by other Gibbs components.
+Return an updated state for a component sampler.
+
+This takes into account changes caused by other Gibbs components.
 
 # Arguments
 - `model`: model targeted by the Gibbs sampler.
 - `sampler`: the sampler for this Gibbs component.
 - `state`: the state of `sampler` computed in the previous iteration.
-- `varinfo`: the variables, including the ones sampled by other Gibbs components.
+- `varinfo`: the current values of the variables relevant for this sampler.
 """
 gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
 function gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo)
@@ -237,12 +211,13 @@ function gibbs_state(
     model::Model, spl::Sampler{<:Hamiltonian}, state::HMCState, varinfo::AbstractVarInfo
 )
     # Update hamiltonian
-    θ_old = varinfo[spl]
-    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_old))
+    θ_new = varinfo[:]
+    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_new))
 
+    # Update the parameter values in `state.z`.
     # TODO: Avoid mutation
-    resize!(state.z.θ, length(θ_old))
-    state.z.θ .= θ_old
+    resize!(state.z.θ, length(θ_new))
+    state.z.θ .= θ_new
     z = state.z
 
     return HMCState(varinfo, state.i, state.kernel, hamiltonian, z, state.adaptor)
@@ -348,55 +323,41 @@ function DynamicPPL.initialstep(
     end
 
     # Create the varinfos for each sampler.
-    varinfos = map(Base.Fix1(DynamicPPL.subset, vi_base) ∘ _maybevec, varnames)
+    local_varinfos = map(Base.Fix1(DynamicPPL.subset, vi_base) ∘ _maybevec, varnames)
     initial_params_all = if initial_params === nothing
         fill(nothing, length(varnames))
     else
         # Extract from the `vi_base`, which should have the values set correctly from above.
-        map(vi -> vi[:], varinfos)
+        map(vi -> vi[:], local_varinfos)
     end
 
     # 2. Construct a varinfo for every vn + sampler combo.
-    states_and_varinfos = map(
-        samplers, varinfos, initial_params_all
-    ) do sampler_local, varinfo_local, initial_params_local
+    states = []
+    for (varnames_local, sampler_local, initial_params_local) in
+        zip(varnames, samplers, initial_params_all)
         # Construct the conditional model.
-        model_local = make_conditional(model, varinfo_local, varinfos)
+        model_local = make_conditional(model, _maybevec(varnames_local), vi_base)
 
         # Take initial step.
-        new_state_local = last(
-            AbstractMCMC.step(
-                rng,
-                model_local,
-                sampler_local;
-                # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
-                # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
-                initial_params=initial_params_local,
-                kwargs...,
-            ),
+        _, new_state_local = AbstractMCMC.step(
+            rng,
+            model_local,
+            sampler_local;
+            # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
+            # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
+            initial_params=initial_params_local,
+            kwargs...,
         )
-
-        # Return the new state and the invlinked `varinfo`.
-        vi_local_state = varinfo(new_state_local)
-        vi_local_state_linked = if DynamicPPL.istrans(vi_local_state)
-            DynamicPPL.invlink(vi_local_state, sampler_local, model_local)
+        vi_local = varinfo(new_state_local)
+        vi_local = if DynamicPPL.istrans(vi_local)
+            DynamicPPL.invlink(vi_local, sampler_local, model_local)
         else
-            vi_local_state
+            vi_local
         end
-        return (new_state_local, vi_local_state_linked)
+        vi_base = merge(vi_base, vi_local)
+        push!(states, new_state_local)
     end
-
-    states = map(first, states_and_varinfos)
-    varinfos = map(last, states_and_varinfos)
-
-    # Update the base varinfo from the first varinfo and replace it.
-    varinfos_new = DynamicPPL.setindex!!(varinfos, merge(vi_base, first(varinfos)), 1)
-    # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
-    vi = DynamicPPL.setlogp!!(
-        reduce(merge, varinfos_new), DynamicPPL.getlogp(last(varinfos))
-    )
-
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi_base), GibbsState(vi_base, states)
 end
 
 function AbstractMCMC.step(
@@ -406,37 +367,23 @@ function AbstractMCMC.step(
     state::GibbsState;
     kwargs...,
 )
+    vi = varinfo(state)
     alg = spl.alg
+    varnames = alg.varnames
     samplers = alg.samplers
     states = state.states
-    varinfos = map(varinfo, state.states)
     @assert length(samplers) == length(state.states)
 
     # TODO: move this into a recursive function so we can unroll when reasonable?
     for index in 1:length(samplers)
         # Take the inner step.
-        new_state_local, new_varinfo_local = gibbs_step_inner(
-            rng, model, samplers, states, varinfos, index; kwargs...
+        vi, new_state_local = gibbs_step_inner(
+            rng, model, varnames, samplers, states, vi, index; kwargs...
         )
 
-        # Update the `states` and `varinfos`.
+        # Update the `states`
         states = Accessors.setindex(states, new_state_local, index)
-        varinfos = Accessors.setindex(varinfos, new_varinfo_local, index)
     end
-
-    # Combine the resulting varinfo objects.
-    # The last varinfo holds the correctly computed logp.
-    vi_base = state.vi
-
-    # Update the base varinfo from the first varinfo and replace it.
-    varinfos_new = DynamicPPL.setindex!!(
-        varinfos, merge(vi_base, first(varinfos)), firstindex(varinfos)
-    )
-    # Merge the updated initial varinfo with the rest of the varinfos + update the logp.
-    vi = DynamicPPL.setlogp!!(
-        reduce(merge, varinfos_new), DynamicPPL.getlogp(last(varinfos))
-    )
-
     return Transition(model, vi), GibbsState(vi, states)
 end
 
@@ -486,40 +433,50 @@ function recompute_logprob!!(
     return gibbs_state(model, sampler, state, vi_new)
 end
 
+AbstractMCMC.setparams!!(::VarInfo, vi::VarInfo) = vi
+function AbstractMCMC.setparams!!(state, vi::VarInfo)
+    # In the fallback implementation we guess that `state` has a field called `vi` we can
+    # set. Fingers crossed!
+    try
+        return Accessors.set(state, Accessors.PropertyLens{:vi}(), vi)
+    catch
+        error(
+            "Unable to set `state.vi` for a $(typeof(state)). " *
+            "Consider writing a method for setparams!! for this type.",
+        )
+    end
+end
+
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
+    varnames,
     samplers,
     states,
-    varinfos,
+    vi,
     index;
     kwargs...,
 )
     # Needs to do a a few things.
     sampler_local = samplers[index]
     state_local = states[index]
-    varinfo_local = varinfos[index]
+    varnames_local = _maybevec(varnames[index])
 
-    # Make sure that all `varinfos` are linked.
-    varinfos_invlinked = map(varinfos) do vi
-        # NOTE: This is immutable linking!
-        # TODO: Do we need the `istrans` check here or should we just always use `invlink`?
-        # FIXME: Suffers from https://github.com/TuringLang/Turing.jl/issues/2195
-        DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
-    end
-    varinfo_local_invlinked = varinfos_invlinked[index]
+    vi = DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
 
     # 1. Create conditional model.
     # Construct the conditional model.
     # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
     # otherwise we're conditioning on values which are not in the support of the
     # distributions.
-    model_local = make_conditional(model, varinfo_local_invlinked, varinfos_invlinked)
+    model_local = make_conditional(model, varnames_local, vi)
+    varinfo_local = subset(vi, varnames_local)
 
     # Extract the previous sampler and state.
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
     state_previous = states[index == 1 ? length(states) : index - 1]
 
+    state_local = AbstractMCMC.setparams!!(state_local, varinfo_local)
     # 1. Re-run the sampler if needed.
     if gibbs_requires_recompute_logprob(
         model_local, sampler_local, sampler_previous, state_local, state_previous
@@ -532,15 +489,6 @@ function gibbs_step_inner(
         AbstractMCMC.step(rng, model_local, sampler_local, state_local; kwargs...)
     )
 
-    # 3. Extract the new varinfo.
-    # Return the resulting state and invlinked `varinfo`.
-    varinfo_local_state = varinfo(new_state_local)
-    varinfo_local_state_invlinked = if DynamicPPL.istrans(varinfo_local_state)
-        DynamicPPL.invlink(varinfo_local_state, sampler_local, model_local)
-    else
-        varinfo_local_state
-    end
-
-    # TODO: alternatively, we can return `states_new, varinfos_new, index_new`
-    return (new_state_local, varinfo_local_state_invlinked)
+    new_vi = merge(vi, varinfo(new_state_local))
+    return new_vi, new_state_local
 end
