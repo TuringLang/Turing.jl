@@ -31,7 +31,6 @@ varinfo(state::AbstractVarInfo) = state
 # TODO(mhauru) Could we have a type bound on the argument below, for documentation purposes?
 varinfo(state) = state.vi
 
-
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
 # https://github.com/TuringLang/AbstractMCMC.jl/pull/86
