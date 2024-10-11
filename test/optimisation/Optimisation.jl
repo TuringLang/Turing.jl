@@ -5,7 +5,9 @@ using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
+using Mooncake: Mooncake
 using Random: Random
 using Optimization
 using Optimization: Optimization
