@@ -27,7 +27,7 @@ The arguments `space` can be
 
 # Examples
 
-The default `MH` will use propose samples from the prior distribution using `AdvancedMH.StaticProposal`.
+The default `MH` will draw proposal samples from the prior distribution using `AdvancedMH.StaticProposal`.
 
 ```julia
 @model function gdemo(x, y)
@@ -45,34 +45,21 @@ Alternatively, you can specify particular parameters to sample if you want to co
 from multiple samplers:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Samples s with MH and m with PG
-chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s), PG(10, :m)), 1_000)
+# Samples s² with MH and m with PG
+chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s²), PG(10, :m)), 1_000)
 mean(chain)
 ```
 
-Using custom distributions defaults to using static MH:
+Specifying a single distribution implies the use of static MH:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Use a static proposal for s and random walk with proposal
-# standard deviation of 0.25 for m.
+# Use a static proposal for s² (which happens to be the same
+# as the prior) and a static proposal for m (note that this 
+# isn't a random walk proposal).
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => InverseGamma(2, 3),
+        :s² => InverseGamma(2, 3),
         :m => Normal(0, 1)
     ),
     1_000
@@ -83,19 +70,12 @@ mean(chain)
 Specifying explicit proposals using the `AdvancedMH` interface:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Use a static proposal for s and random walk with proposal
+# Use a static proposal for s² and random walk with proposal
 # standard deviation of 0.25 for m.
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => AdvancedMH.StaticProposal(InverseGamma(2,3)),
+        :s² => AdvancedMH.StaticProposal(InverseGamma(2,3)),
         :m => AdvancedMH.RandomWalkProposal(Normal(0, 0.25))
     ),
     1_000
@@ -106,19 +86,12 @@ mean(chain)
 Using a custom function to specify a conditional distribution:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
 # Use a static proposal for s and and a conditional proposal for m,
 # where the proposal is centered around the current sample.
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => InverseGamma(2, 3),
+        :s² => InverseGamma(2, 3),
         :m => x -> Normal(x, 1)
     ),
     1_000
@@ -128,16 +101,10 @@ mean(chain)
 
 Providing a covariance matrix will cause `MH` to perform random-walk
 sampling in the transformed space with proposals drawn from a multivariate
-normal distribution. The provided matrix must be positive semi-definite and square. Usage:
+normal distribution. The provided matrix must be positive semi-definite and
+square:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
 # Providing a custom variance-covariance matrix
 chain = sample(
     gdemo(1.5, 2.0),
