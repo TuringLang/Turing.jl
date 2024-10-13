@@ -185,27 +185,40 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # @test v1 < v2
     end
 
-    # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
-    # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
-    if VERSION ≥ v"1.8"
-        @testset "vector of multivariate distributions" begin
-            @model function test(k)
-                T = Vector{Vector{Float64}}(undef, k)
-                for i in 1:k
-                    T[i] ~ Dirichlet(5, 1.0)
+    @testset "vector of multivariate distributions" begin
+        @model function test(k)
+            T = Vector{Vector{Float64}}(undef, k)
+            for i in 1:k
+                T[i] ~ Dirichlet(5, 1.0)
+            end
+        end
+
+        Random.seed!(100)
+        chain = sample(test(1), MH(), 5_000)
+        for i in 1:5
+            @test mean(chain, "T[1][$i]") ≈ 0.2 atol = 0.01
+        end
+
+        Random.seed!(100)
+        chain = sample(test(10), MH(), 5_000)
+        for j in 1:10, i in 1:5
+            @test mean(chain, "T[$j][$i]") ≈ 0.2 atol = 0.01
+        end
+    end
+
+    @testset "LKJCholesky" begin
+        for uplo in ['L', 'U']
+            @model f() = x ~ LKJCholesky(2, 1, uplo)
+            Random.seed!(100)
+            chain = sample(f(), MH(), 5_000)
+            indices = [(1, 1), (2, 1), (2, 2)]
+            values = [1, 0, 0.785]
+            for ((i, j), v) in zip(indices, values)
+                if uplo == 'U'  # Transpose
+                    @test mean(chain, "x.$uplo[$j, $i]") ≈ v atol = 0.01
+                else
+                    @test mean(chain, "x.$uplo[$i, $j]") ≈ v atol = 0.01
                 end
-            end
-
-            Random.seed!(100)
-            chain = sample(test(1), MH(), 5_000)
-            for i in 1:5
-                @test mean(chain, "T[1][$i]") ≈ 0.2 atol = 0.01
-            end
-
-            Random.seed!(100)
-            chain = sample(test(10), MH(), 5_000)
-            for j in 1:10, i in 1:5
-                @test mean(chain, "T[$j][$i]") ≈ 0.2 atol = 0.01
             end
         end
     end

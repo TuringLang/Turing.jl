@@ -112,7 +112,8 @@ using Turing
         @test isapprox(map1.values.array, map2.values.array)
     end
 
-    # FIXME: Some models doesn't work for Tracker and ReverseDiff.
+    # FIXME: Some models don't work for ReverseDiff.
+    # TODO: Check if above statement is still correct
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 

@@ -385,7 +385,7 @@ function DynamicPPL.assume(
         elseif is_flagged(vi, vn, "del")
             unset_flag!(vi, vn, "del") # Reference particle parent
             r = rand(trng, dist)
-            vi[vn] = vectorize(dist, r)
+            vi[vn] = DynamicPPL.tovec(r)
             DynamicPPL.setgid!(vi, spl.selector, vn)
             setorder!(vi, vn, get_num_produce(vi))
         else

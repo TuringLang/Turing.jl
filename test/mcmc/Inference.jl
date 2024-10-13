@@ -12,10 +12,9 @@ using LinearAlgebra: I
 import MCMCChains
 import Random
 import ReverseDiff
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Only test threading if 1.3+.
@@ -383,7 +382,6 @@ ADUtils.install_tapir && import Tapir
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
-        # https://github.com/FluxML/Tracker.jl/issues/119
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -589,7 +587,7 @@ ADUtils.install_tapir && import Tapir
         true)
 
         @model function demo_incorrect_missing(y)
-            return y[1:1] ~ MvNormal(zeros(1), 1)
+            return y[1:1] ~ MvNormal(zeros(1), I)
         end
         @test_throws ErrorException sample(
             demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
