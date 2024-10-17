@@ -65,7 +65,7 @@ function recompute_logprob!!(
     rng::Random.AbstractRNG,  # TODO: Do we need the `rng` here?
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler{<:ExternalSampler},
-    state,
+    state,  # TODO(mhauru) Could we type constrain this to TuringState?
 )
     # Re-using the log-density function from the `state` and updating only the `model` field,
     # since the `model` might now contain different conditioning values.

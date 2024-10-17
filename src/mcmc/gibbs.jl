@@ -127,52 +127,33 @@ function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
 end
 
 """
-    condition_gibbs(context::DynamicPPL.AbstractContext, values::Union{NamedTuple,AbstractDict}...)
+    condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
 
-Return a `GibbsContext` with the given values treated as conditioned.
-
-# Arguments
-- `context::DynamicPPL.AbstractContext`: The context to condition.
-- `values::Union{NamedTuple,AbstractDict}...`: The values to condition on.
-    If multiple values are provided, we recursively condition on each of them.
-"""
-condition_gibbs(context::DynamicPPL.AbstractContext) = context
-# For `NamedTuple` and `AbstractDict` we just construct the context.
-function condition_gibbs(
-    context::DynamicPPL.AbstractContext, values::Union{NamedTuple,AbstractDict}
-)
-    return GibbsContext(values, context)
-end
-# If we get more than one argument, we just recurse.
-function condition_gibbs(context::DynamicPPL.AbstractContext, value, values...)
-    return condition_gibbs(condition_gibbs(context, value), values...)
-end
-
-# For `DynamicPPL.AbstractVarInfo` we just extract the values.
-"""
-    condition_gibbs(context::DynamicPPL.AbstractContext, varinfos::DynamicPPL.AbstractVarInfo...)
-
-Return a `GibbsContext` with the values extracted from the given `varinfos` treated as conditioned.
+Return a `GibbsContext` with the values extracted from the given `varinfo` treated as
+conditioned.
 """
 function condition_gibbs(
     context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo
 )
-    return condition_gibbs(
-        context, DynamicPPL.values_as(varinfo, preferred_value_type(varinfo))
-    )
-end
-function condition_gibbs(
-    context::DynamicPPL.AbstractContext,
-    varinfo::DynamicPPL.AbstractVarInfo,
-    varinfos::DynamicPPL.AbstractVarInfo...,
-)
-    return condition_gibbs(condition_gibbs(context, varinfo), varinfos...)
-end
-# Allow calling this on a `DynamicPPL.Model` directly.
-function condition_gibbs(model::DynamicPPL.Model, values...)
-    return DynamicPPL.contextualize(model, condition_gibbs(model.context, values...))
+    # TODO(mhauru) Maybe use preferred_value_type to return NamedTuples in some cases.
+    # If not, then remove preferred_value_type.
+    vals = DynamicPPL.OrderedDict(k => varinfo[k] for k in keys(varinfo))
+    return GibbsContext(vals, context)
 end
 
+"""
+    make_conditional(model, target_variables, varinfo)
+
+Return a new, conditioned model for a component of a Gibbs sampler.
+
+# Arguments
+- `model::DynamicPPL.Model`: The model to condition.
+- `target_variables::AbstractVector{<:VarName}`: The target variables of the component
+sampler. These will _not_ conditioned.
+- `varinfo::DynamicPPL.AbstractVarInfo`: Values for all variables in the model. All the
+values in `varinfo` but not in `target_variables` will be conditioned to the values they
+have in `varinfo`.
+"""
 function make_conditional(
     model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
 )
@@ -180,48 +161,14 @@ function make_conditional(
         x -> !(any(Iterators.map(vn -> subsumes(vn, x), target_variables))), keys(varinfo)
     )
     vi_filtered = subset(varinfo, not_target_variables)
-    return condition_gibbs(model, vi_filtered)
+    gibbs_context = condition_gibbs(model.context, vi_filtered)
+    return DynamicPPL.contextualize(model, gibbs_context)
 end
 
 # HACK: Allows us to support either passing in an implementation of `AbstractMCMC.AbstractSampler`
 # or an `AbstractInferenceAlgorithm`.
 wrap_algorithm_maybe(x) = x
 wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
-
-"""
-    gibbs_state(model, sampler, state, varinfo)
-
-Return an updated state for a component sampler.
-
-This takes into account changes caused by other Gibbs components.
-
-# Arguments
-- `model`: model targeted by the Gibbs sampler.
-- `sampler`: the sampler for this Gibbs component.
-- `state`: the state of `sampler` computed in the previous iteration.
-- `varinfo`: the current values of the variables relevant for this sampler.
-"""
-gibbs_state(model, sampler, state::AbstractVarInfo, varinfo::AbstractVarInfo) = varinfo
-function gibbs_state(model, sampler, state::PGState, varinfo::AbstractVarInfo)
-    return PGState(varinfo, state.rng)
-end
-
-# Update state in Gibbs sampling
-function gibbs_state(
-    model::Model, spl::Sampler{<:Hamiltonian}, state::HMCState, varinfo::AbstractVarInfo
-)
-    # Update hamiltonian
-    θ_new = varinfo[:]
-    hamiltonian = get_hamiltonian(model, spl, varinfo, state, length(θ_new))
-
-    # Update the parameter values in `state.z`.
-    # TODO: Avoid mutation
-    resize!(state.z.θ, length(θ_new))
-    state.z.θ .= θ_new
-    z = state.z
-
-    return HMCState(varinfo, state.i, state.kernel, hamiltonian, z, state.adaptor)
-end
 
 """
     Gibbs
@@ -349,6 +296,7 @@ function DynamicPPL.initialstep(
             kwargs...,
         )
         vi_local = varinfo(new_state_local)
+        # TODO(mhauru) Can we remove the invlinking?
         vi_local = if DynamicPPL.istrans(vi_local)
             DynamicPPL.invlink(vi_local, sampler_local, model_local)
         else
@@ -428,23 +376,157 @@ function recompute_logprob!!(
             DynamicPPL.SamplingContext(rng, sampler_rerun),
         )
     )
-    # Update the state we're about to use if need be.
-    # NOTE: If the sampler requires a linked varinfo, this should be done in `gibbs_state`.
-    return gibbs_state(model, sampler, state, vi_new)
+    return setlogp!!(state, vi_new.logp[])
 end
 
-AbstractMCMC.setparams!!(::VarInfo, vi::VarInfo) = vi
-function AbstractMCMC.setparams!!(state, vi::VarInfo)
-    # In the fallback implementation we guess that `state` has a field called `vi` we can
-    # set. Fingers crossed!
+# TODO(mhauru) Would really like to type constraint this to something like AbstractMCMCState
+# if such a thing existed.
+function DynamicPPL.setlogp!!(state, logp)
     try
-        return Accessors.set(state, Accessors.PropertyLens{:vi}(), vi)
+        new_vi = setlogp!!(state.vi, logp)
+        if new_vi !== state.vi
+            return Accessors.set(state, Accessors.PropertyLens{:vi}(), new_vi)
+        else
+            return state
+        end
     catch
         error(
             "Unable to set `state.vi` for a $(typeof(state)). " *
-            "Consider writing a method for setparams!! for this type.",
+            "Consider writing a method for `setlogp!!` for this type.",
         )
     end
+end
+
+function DynamicPPL.setlogp!!(state::TuringState, logp)
+    return TuringState(setlogp!!(state.state, logp), logp)
+end
+
+# TODO(mhauru) In the general case, which arguments are really needed for reset_state!!?
+# The current list is a guess, but I think some might be unnecessary.
+"""
+    reset_state!!(rng, model, sampler, state, varinfo, sampler_previous, state_previous)
+
+Return an updated state for a component sampler.
+
+This takes into account changes caused by other Gibbs components. The default implementation
+is to try to set the `vi` field of `state` to `varinfo`. If this is not the right thing to
+do, a method should be implemented for the specific type of `state`.
+
+# Arguments
+- `model::DynamicPPL.Model`: The model as seen by this component sampler. Variables not
+sampled by this component sampler have been conditioned with a `GibbsContext`.
+- `sampler::DynamicPPL.Sampler`: The current component sampler.
+- `state`: The state of this component sampler from its previous iteration.
+- `varinfo::DynamicPPL.AbstractVarInfo`: The current `VarInfo`, subsetted to the variables
+sampled by this component sampler.
+- `sampler_previous::DynamicPPL.Sampler`: The previous sampler in the Gibbs chain.
+- `state_previous`: The state returned by the previous sampler.
+
+# Returns
+An updated state of the same type as `state`. It should have variables set to the values in
+`varinfo`, and any other relevant updates done.
+"""
+function reset_state!!(
+    model, sampler, state, varinfo::AbstractVarInfo, sampler_previous, state_previous
+)
+    # In the fallback implementation we guess that `state` has a field called `vi` we can
+    # set. Fingers crossed!
+    try
+        return Accessors.set(state, Accessors.PropertyLens{:vi}(), varinfo)
+    catch
+        error(
+            "Unable to set `state.vi` for a $(typeof(state)). " *
+            "Consider writing a method for reset_state!! for this type.",
+        )
+    end
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::AbstractVarInfo,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    return varinfo
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::TuringState,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    new_inner_state = reset_state!!(
+        model, sampler, state.state, varinfo, sampler_previous, state_previous
+    )
+    return TuringState(new_inner_state, state.logdensity)
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::HMCState,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    θ_new = varinfo[:]
+    hamiltonian = get_hamiltonian(model, sampler, varinfo, state, length(θ_new))
+
+    # Update the parameter values in `state.z`.
+    # TODO: Avoid mutation
+    z = state.z
+    resize!(z.θ, length(θ_new))
+    z.θ .= θ_new
+    return HMCState(varinfo, state.i, state.kernel, hamiltonian, z, state.adaptor)
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::AdvancedHMC.HMCState,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    hamiltonian = AdvancedHMC.Hamiltonian(
+        state.metric, DynamicPPL.LogDensityFunction(model)
+    )
+    θ_new = varinfo[:]
+    # Set the momentum to zero, since we have no idea what it should be at the new parameter
+    # values.
+    return Accessors.@set state.transition.z = AdvancedHMC.phasepoint(
+        hamiltonian, θ_new, zero(θ_new)
+    )
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::AdvancedMH.Transition,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    # TODO(mhauru) Setting the last argument like this seems a bit suspect, since the
+    # current values for the parameters might not have come from this sampler at all.
+    # I don't see a better way though.
+    return AdvancedMH.Transition(varinfo[:], varinfo.logp[], state.accepted)
+end
+
+function reset_state!!(
+    model,
+    sampler,
+    state::PGState,
+    varinfo::AbstractVarInfo,
+    sampler_previous,
+    state_previous,
+)
+    return PGState(varinfo, state.rng)
 end
 
 function gibbs_step_inner(
@@ -462,6 +544,7 @@ function gibbs_step_inner(
     state_local = states[index]
     varnames_local = _maybevec(varnames[index])
 
+    # TODO(mhauru) Can we remove the invlinking?
     vi = DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
 
     # 1. Create conditional model.
@@ -471,13 +554,24 @@ function gibbs_step_inner(
     # distributions.
     model_local = make_conditional(model, varnames_local, vi)
     varinfo_local = subset(vi, varnames_local)
+    # If the varinfo of the previous state from this sampler is linked, we should link the
+    # new varinfo too.
+    if DynamicPPL.istrans(varinfo(state_local))
+        varinfo_local = DynamicPPL.link(varinfo_local, sampler_local, model_local)
+    end
 
     # Extract the previous sampler and state.
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
     state_previous = states[index == 1 ? length(states) : index - 1]
 
-    state_local = AbstractMCMC.setparams!!(state_local, varinfo_local)
-    # 1. Re-run the sampler if needed.
+    state_local = reset_state!!(
+        model_local,
+        sampler_local,
+        state_local,
+        varinfo_local,
+        sampler_previous,
+        state_previous,
+    )
     if gibbs_requires_recompute_logprob(
         model_local, sampler_local, sampler_previous, state_local, state_previous
     )
@@ -489,6 +583,8 @@ function gibbs_step_inner(
         AbstractMCMC.step(rng, model_local, sampler_local, state_local; kwargs...)
     )
 
-    new_vi = merge(vi, varinfo(new_state_local))
+    new_vi_local = varinfo(new_state_local)
+    new_vi = merge(vi, new_vi_local)
+    new_vi = setlogp!!(new_vi, new_vi_local.logp[])
     return new_vi, new_state_local
 end
