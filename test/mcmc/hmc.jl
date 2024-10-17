@@ -130,9 +130,9 @@ ADUtils.install_tapir && import Tapir
 
     @testset "hmcda inference" begin
         alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
-        # alg2 = Gibbs(HMCDA(200, 0.8, 0.35, :m; adtype=adbackend), HMC(0.25, 3, :s; adtype=adbackend))
+        # alg2 = Gibbs(; m=HMCDA(200, 0.8, 0.35; adtype=adbackend), s=HMC(0.25, 3; adtype=adbackend))
 
-        # alg3 = Gibbs(HMC(0.25, 3, :m; adtype=adbackend), PG(30, 3, :s))
+        # alg3 = Gibbs(; m=HMC(0.25, 3; adtype=adbackend), s=PG(30, 3))
         # alg3 = PG(50, 2000)
 
         res1 = sample(rng, gdemo_default, alg1, 3000)
@@ -147,7 +147,7 @@ ADUtils.install_tapir && import Tapir
     @testset "hmcda+gibbs inference" begin
         rng = StableRNG(123)
         Random.seed!(12345) # particle samplers do not support user-provided `rng` yet
-        alg3 = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, :m; init_ϵ=0.05, adtype=adbackend))
+        alg3 = Gibbs(; s=PG(20), m=HMCDA(500, 0.8, 0.25; init_ϵ=0.05, adtype=adbackend))
 
         res3 = sample(rng, gdemo_default, alg3, 3000, discard_initial=1000)
         check_gdemo(res3)
@@ -200,9 +200,9 @@ ADUtils.install_tapir && import Tapir
         @test size(c2, 1) == 500
     end
     @testset "AHMC resize" begin
-        alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s; adtype=adbackend))
-        alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s; adtype=adbackend))
-        alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s; adtype=adbackend))
+        alg1 = Gibbs(; m=PG(10), s=NUTS(100, 0.65; adtype=adbackend))
+        alg2 = Gibbs(; m=PG(10), s=HMC(0.1, 3; adtype=adbackend))
+        alg3 = Gibbs(; m=PG(10), s=HMCDA(100, 0.65, 0.3; adtype=adbackend))
         @test sample(rng, gdemo_default, alg1, 300) isa Chains
         @test sample(rng, gdemo_default, alg2, 300) isa Chains
         @test sample(rng, gdemo_default, alg3, 300) isa Chains

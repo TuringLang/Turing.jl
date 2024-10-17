@@ -27,6 +27,9 @@ function varinfo(state::TuringState)
     # TODO: Do we need to link here first?
     return DynamicPPL.unflatten(varinfo_from_logdensityfn(state.logdensity), θ)
 end
+varinfo(state::AbstractVarInfo) = state
+# TODO(mhauru) Could we have a type bound on the argument below, for documentation purposes?
+varinfo(state) = state.vi
 
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
@@ -62,7 +65,7 @@ function recompute_logprob!!(
     rng::Random.AbstractRNG,  # TODO: Do we need the `rng` here?
     model::DynamicPPL.Model,
     sampler::DynamicPPL.Sampler{<:ExternalSampler},
-    state,
+    state,  # TODO(mhauru) Could we type constrain this to TuringState?
 )
     # Re-using the log-density function from the `state` and updating only the `model` field,
     # since the `model` might now contain different conditioning values.

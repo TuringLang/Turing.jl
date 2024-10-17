@@ -65,7 +65,6 @@ export InferenceAlgorithm,
     ESS,
     Emcee,
     Gibbs,      # classic sampling
-    GibbsConditional,
     HMC,
     SGLD,
     PolynomialStepsize,
@@ -82,7 +81,6 @@ export InferenceAlgorithm,
     observe,
     dot_observe,
     predict,
-    isgibbscomponent,
     externalsampler
 
 #######################
@@ -563,22 +561,21 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("abstractmcmc.jl")
 include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("particle_mcmc.jl")
-include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
-include("abstractmcmc.jl")
 
 ################
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)

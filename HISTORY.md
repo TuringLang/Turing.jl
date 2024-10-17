@@ -1,3 +1,19 @@
+# Release 0.35.0
+
+## Breaking changes
+
+0.35.0 introduces a new Gibbs sampler. It's been included in several previous releases as `Turing.Experimental.Gibbs`, but now takes over the old Gibbs sampler, which gets removed completely.
+
+The new Gibbs sampler supports the same user-facing interface as the old one. However, given
+that the internals of it having been completely rewritten in a very different manner, there
+may be accidental breakage that we haven't anticipated. Please report any you find.
+
+`GibbsConditional` has also been removed. It was never very user-facing, but it was exported, so technically this is breaking.
+
+The old Gibbs constructor relied on being called with several subsamplers, and each of the constructors of the subsamplers would take as arguments the symbols for the variables that they are to sample, e.g. `Gibbs(HMC(:x), MH(:y))`. This constructor has been deprecated, and will be removed in the future. The new constructor works by assigning samplers to either symbols or `VarNames`, e.g. `Gibbs(; x=HMC(), y=MH())` or `Gibbs(@varname(x) => HMC(), @varname(y) => MH())`. This allows more granular specification of which sampler to use for which variable.
+
+Likewise, the old constructor for calling one subsampler more often than another, `Gibbs((HMC(:x), 2), (MH(:y), 1))` has been deprecated. The new way to achieve this effect is to list the same sampler multiple times, e.g. as `hmc = HMC(); mh = MH(); Gibbs(@varname(x) => hmc, @varname(x) => hmc, @varname(y) => mh)`.
+
 # Release 0.33.0
 
 ## Breaking changes

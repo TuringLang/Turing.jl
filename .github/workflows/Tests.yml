@@ -22,9 +22,8 @@ jobs:
           - "mcmc/hmc.jl"
           - "mcmc/abstractmcmc.jl"
           - "mcmc/Inference.jl"
-          - "experimental/gibbs.jl"
           - "mcmc/ess.jl"
-          - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
+          - "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
         version:
           - '1.7'
           - '1'
