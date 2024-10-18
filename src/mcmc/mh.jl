@@ -20,7 +20,6 @@ Construct a Metropolis-Hastings algorithm.
 The arguments `space` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
-- A set of one or more symbols to sample with `MH` in conjunction with `Gibbs`, i.e. `Gibbs(MH(:m), PG(10, :s))`
 - An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function`
   that generates returns a conditional proposal distribution.
 - A covariance matrix to use as for mean-zero multivariate normal proposals.
@@ -38,22 +37,6 @@ The default `MH` will use propose samples from the prior distribution using `Adv
 end
 
 chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
-mean(chain)
-```
-
-Alternatively, you can specify particular parameters to sample if you want to combine sampling
-from multiple samplers:
-
-```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Samples s with MH and m with PG
-chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s), PG(10, :m)), 1_000)
 mean(chain)
 ```
 
