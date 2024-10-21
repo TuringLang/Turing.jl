@@ -26,8 +26,8 @@ export @model,
     @logprob_str,
     @prob_str
 
-# AutoTapir is only supported by ADTypes v1.0 and above.
-@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
+# AutoTapir is only supported on Julia 1.10 and by ADTypes v1.0 and above.
+@static if (v"1.10" <= VERSION < v"1.11") && pkgversion(ADTypes) >= v"1"
     using ADTypes: AutoTapir
     export AutoTapir
 end
