@@ -1,16 +1,33 @@
 module Inference
 
 using ..Essential
-using DynamicPPL: Metadata, VarInfo, TypedVarInfo,
-    islinked, invlink!, link!,
-    setindex!!, push!!,
-    setlogp!!, getlogp,
-    VarName, getsym, vectorize,
-    _getvns, getdist,
-    Model, Sampler, SampleFromPrior, SampleFromUniform,
-    DefaultContext, PriorContext,
-    LikelihoodContext, set_flag!, unset_flag!,
-    getspace, inspace
+using DynamicPPL:
+    Metadata,
+    VarInfo,
+    TypedVarInfo,
+    islinked,
+    invlink!,
+    link!,
+    setindex!!,
+    push!!,
+    setlogp!!,
+    getlogp,
+    VarName,
+    getsym,
+    vectorize,
+    _getvns,
+    getdist,
+    Model,
+    Sampler,
+    SampleFromPrior,
+    SampleFromUniform,
+    DefaultContext,
+    PriorContext,
+    LikelihoodContext,
+    set_flag!,
+    unset_flag!,
+    getspace,
+    inspace
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -25,8 +42,10 @@ using Accessors: Accessors
 
 import ADTypes
 import AbstractMCMC
-import AdvancedHMC; const AHMC = AdvancedHMC
-import AdvancedMH; const AMH = AdvancedMH
+import AdvancedHMC
+const AHMC = AdvancedHMC
+import AdvancedMH
+const AMH = AdvancedMH
 import AdvancedPS
 import Accessors
 import EllipticalSliceSampling
@@ -36,35 +55,35 @@ import Random
 import MCMCChains
 import StatsBase: predict
 
-export  InferenceAlgorithm,
-        Hamiltonian,
-        StaticHamiltonian,
-        AdaptiveHamiltonian,
-        SampleFromUniform,
-        SampleFromPrior,
-        MH,
-        ESS,
-        Emcee,
-        Gibbs,      # classic sampling
-        GibbsConditional,
-        HMC,
-        SGLD,
-        PolynomialStepsize,
-        SGHMC,
-        HMCDA,
-        NUTS,       # Hamiltonian-like sampling
-        IS,
-        SMC,
-        CSMC,
-        PG,
-        Prior,
-        assume,
-        dot_assume,
-        observe,
-        dot_observe,
-        predict,
-        isgibbscomponent,
-        externalsampler
+export InferenceAlgorithm,
+    Hamiltonian,
+    StaticHamiltonian,
+    AdaptiveHamiltonian,
+    SampleFromUniform,
+    SampleFromPrior,
+    MH,
+    ESS,
+    Emcee,
+    Gibbs,      # classic sampling
+    GibbsConditional,
+    HMC,
+    SGLD,
+    PolynomialStepsize,
+    SGHMC,
+    HMCDA,
+    NUTS,       # Hamiltonian-like sampling
+    IS,
+    SMC,
+    CSMC,
+    PG,
+    Prior,
+    assume,
+    dot_assume,
+    observe,
+    dot_observe,
+    predict,
+    isgibbscomponent,
+    externalsampler
 
 #######################
 # Sampler abstraction #
@@ -86,7 +105,8 @@ The `Unconstrained` type-parameter is to indicate whether the sampler requires u
 # Fields
 $(TYPEDFIELDS)
 """
-struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <: InferenceAlgorithm
+struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <:
+       InferenceAlgorithm
     "the sampler to wrap"
     sampler::S
     "the automatic differentiation (AD) backend to use"
@@ -105,10 +125,12 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     function ExternalSampler(
         sampler::AbstractSampler,
         adtype::ADTypes.AbstractADType,
-       ::Val{unconstrained}=Val(true)
+        ::Val{unconstrained}=Val(true),
     ) where {unconstrained}
         if !(unconstrained isa Bool)
-            throw(ArgumentError("Expected Val{true} or Val{false}, got Val{$unconstrained}"))
+            throw(
+                ArgumentError("Expected Val{true} or Val{false}, got Val{$unconstrained}")
+            )
         end
         return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
     end
@@ -121,7 +143,9 @@ DynamicPPL.getspace(::ExternalSampler) = ()
 
 Return `true` if the sampler requires unconstrained space, and `false` otherwise.
 """
-requires_unconstrained_space(::ExternalSampler{<:Any,<:Any,Unconstrained}) where {Unconstrained} = Unconstrained
+requires_unconstrained_space(
+    ::ExternalSampler{<:Any,<:Any,Unconstrained}
+) where {Unconstrained} = Unconstrained
 
 """
     externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
@@ -135,10 +159,11 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
 - `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
-function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true)
+function externalsampler(
+    sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true
+)
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
-
 
 getADType(spl::Sampler) = getADType(spl.alg)
 getADType(::SampleFromPrior) = Turing.DEFAULT_ADTYPE
@@ -146,7 +171,9 @@ getADType(::SampleFromPrior) = Turing.DEFAULT_ADTYPE
 getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
 getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
 getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.DEFAULT_ADTYPE
-getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.childcontext(ctx))
+function getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext)
+    return getADType(DynamicPPL.childcontext(ctx))
+end
 
 getADType(alg::Hamiltonian) = alg.adtype
 
@@ -156,7 +183,7 @@ end
 
 function LogDensityProblems.logdensity(
     f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
-    x::NamedTuple
+    x::NamedTuple,
 )
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
 end
@@ -166,9 +193,15 @@ function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple)
     set_namedtuple!(deepcopy(vi), θ)
     return vi
 end
-DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple) = SimpleVarInfo(θ, vi.logp, vi.transformation)
+function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
+    return SimpleVarInfo(θ, vi.logp, vi.transformation)
+end
 
-# Algorithm for sampling from the prior
+"""
+    Prior()
+
+Algorithm for sampling from the prior.
+"""
 struct Prior <: InferenceAlgorithm end
 
 function AbstractMCMC.step(
@@ -178,13 +211,13 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    vi = last(DynamicPPL.evaluate!!(
-        model,
-        VarInfo(),
-        SamplingContext(
-            rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()
-        )
-    ))
+    vi = last(
+        DynamicPPL.evaluate!!(
+            model,
+            VarInfo(),
+            SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
+        ),
+    )
     return vi, nothing
 end
 
@@ -215,10 +248,10 @@ getstats(t) = nothing
 
 abstract type AbstractTransition end
 
-struct Transition{T, F<:AbstractFloat, S<:Union{NamedTuple, Nothing}} <: AbstractTransition
-    θ     :: T
-    lp    :: F # TODO: merge `lp` with `stat`
-    stat  :: S
+struct Transition{T,F<:AbstractFloat,S<:Union{NamedTuple,Nothing}} <: AbstractTransition
+    θ::T
+    lp::F # TODO: merge `lp` with `stat`
+    stat::S
 end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
@@ -231,16 +264,16 @@ end
 function metadata(t::Transition)
     stat = t.stat
     if stat === nothing
-        return (lp = t.lp,)
+        return (lp=t.lp,)
     else
-        return merge((lp = t.lp,), stat)
+        return merge((lp=t.lp,), stat)
     end
 end
 
 DynamicPPL.getlogp(t::Transition) = t.lp
 
 # Metadata of VarInfo object
-metadata(vi::AbstractVarInfo) = (lp = getlogp(vi),)
+metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 
 # TODO: Implement additional checks for certain samplers, e.g.
 # HMC not supporting discrete parameters.
@@ -256,10 +289,7 @@ end
 #########################################
 
 function AbstractMCMC.sample(
-    model::AbstractModel,
-    alg::InferenceAlgorithm,
-    N::Integer;
-    kwargs...
+    model::AbstractModel, alg::InferenceAlgorithm, N::Integer; kwargs...
 )
     return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
 end
@@ -270,7 +300,7 @@ function AbstractMCMC.sample(
     alg::InferenceAlgorithm,
     N::Integer;
     check_model::Bool=true,
-    kwargs...
+    kwargs...,
 )
     check_model && _check_model(model, alg)
     return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
@@ -282,10 +312,11 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    kwargs...
+    kwargs...,
 )
-    return AbstractMCMC.sample(Random.default_rng(), model, alg, ensemble, N, n_chains;
-                               kwargs...)
+    return AbstractMCMC.sample(
+        Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
+    )
 end
 
 function AbstractMCMC.sample(
@@ -296,11 +327,12 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     check_model::Bool=true,
-    kwargs...
+    kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), ensemble, N, n_chains;
-                               kwargs...)
+    return AbstractMCMC.sample(
+        rng, model, Sampler(alg, model), ensemble, N, n_chains; kwargs...
+    )
 end
 
 function AbstractMCMC.sample(
@@ -312,10 +344,19 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     chain_type=MCMCChains.Chains,
     progress=PROGRESS[],
-    kwargs...
+    kwargs...,
 )
-    return AbstractMCMC.mcmcsample(rng, model, sampler, ensemble, N, n_chains;
-                                   chain_type=chain_type, progress=progress, kwargs...)
+    return AbstractMCMC.mcmcsample(
+        rng,
+        model,
+        sampler,
+        ensemble,
+        N,
+        n_chains;
+        chain_type=chain_type,
+        progress=progress,
+        kwargs...,
+    )
 end
 
 ##########################
@@ -349,7 +390,6 @@ function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     return mapreduce(collect, vcat, iters)
 end
 
-
 function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     names_set = OrderedSet{VarName}()
     # Extract the parameter names and values from each transition.
@@ -364,9 +404,9 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
         return OrderedDict(zip(nms, vs))
     end
     names = collect(names_set)
-    vals = [get(dicts[i], key, missing) for i in eachindex(dicts),
-        (j, key) in enumerate(names)]
-
+    vals = [
+        get(dicts[i], key, missing) for i in eachindex(dicts), (j, key) in enumerate(names)
+    ]
 
     return names, vals
 end
@@ -382,7 +422,7 @@ function get_transition_extras(ts::AbstractVector)
     return names_values(extra_data)
 end
 
-function names_values(extra_data::AbstractVector{<:NamedTuple{names}}) where names
+function names_values(extra_data::AbstractVector{<:NamedTuple{names}}) where {names}
     values = [getfield(data, name) for data in extra_data, name in names]
     return collect(names), values
 end
@@ -398,10 +438,7 @@ function names_values(xs::AbstractVector{<:NamedTuple})
     names_unique = collect(names_set)
 
     # Extract all values as matrix.
-    values = [
-        haskey(x, name) ? x[name] : missing
-        for x in xs, name in names_unique
-    ]
+    values = [haskey(x, name) ? x[name] : missing for x in xs, name in names_unique]
 
     return names_unique, values
 end
@@ -416,13 +453,13 @@ function AbstractMCMC.bundle_samples(
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     state,
     chain_type::Type{MCMCChains.Chains};
-    save_state = false,
-    stats = missing,
-    sort_chain = false,
-    include_varname_to_symbol = true,
-    discard_initial = 0,
-    thinning = 1,
-    kwargs...
+    save_state=false,
+    stats=missing,
+    sort_chain=false,
+    include_varname_to_symbol=true,
+    discard_initial=0,
+    thinning=1,
+    kwargs...,
 )
     # Convert transitions to array format.
     # Also retrieve the variable names.
@@ -443,11 +480,11 @@ function AbstractMCMC.bundle_samples(
     info = NamedTuple()
 
     if include_varname_to_symbol
-        info = merge(info, (varname_to_symbol = OrderedDict(zip(varnames, varnames_symbol)),))
+        info = merge(info, (varname_to_symbol=OrderedDict(zip(varnames, varnames_symbol)),))
     end
 
     if save_state
-        info = merge(info, (model = model, sampler = spl, samplerstate = state))
+        info = merge(info, (model=model, sampler=spl, samplerstate=state))
     end
 
     # Merge in the timing info, if available
@@ -462,7 +499,7 @@ function AbstractMCMC.bundle_samples(
     chain = MCMCChains.Chains(
         parray,
         nms,
-        (internals = extra_params,);
+        (internals=extra_params,);
         evidence=le,
         info=info,
         start=discard_initial + 1,
@@ -479,7 +516,7 @@ function AbstractMCMC.bundle_samples(
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
     state,
     chain_type::Type{Vector{NamedTuple}};
-    kwargs...
+    kwargs...,
 )
     return map(ts) do t
         # Construct a dictionary of pairs `vn => value`.
@@ -545,15 +582,13 @@ for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
-    @eval DynamicPPL.getspace(::$alg{<:Any, space}) where {space} = space
+    @eval DynamicPPL.getspace(::$alg{<:Any,space}) where {space} = space
 end
 
 function DynamicPPL.get_matching_type(
-    spl::Sampler{<:Union{PG, SMC}},
-    vi,
-    ::Type{TV},
-) where {T, N, TV <: Array{T, N}}
-    return Array{T, N}
+    spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
+) where {T,N,TV<:Array{T,N}}
+    return Array{T,N}
 end
 
 ##############
@@ -636,32 +671,34 @@ true
 function predict(model::Model, chain::MCMCChains.Chains; kwargs...)
     return predict(Random.default_rng(), model, chain; kwargs...)
 end
-function predict(rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all = false)
+function predict(
+    rng::AbstractRNG, model::Model, chain::MCMCChains.Chains; include_all=false
+)
     # Don't need all the diagnostics
     chain_parameters = MCMCChains.get_sections(chain, :parameters)
 
     spl = DynamicPPL.SampleFromPrior()
 
     # Sample transitions using `spl` conditioned on values in `chain`
-    transitions = transitions_from_chain(rng, model, chain_parameters; sampler = spl)
+    transitions = transitions_from_chain(rng, model, chain_parameters; sampler=spl)
 
     # Let the Turing internals handle everything else for you
     chain_result = reduce(
-        MCMCChains.chainscat, [
+        MCMCChains.chainscat,
+        [
             AbstractMCMC.bundle_samples(
-                transitions[:, chain_idx],
-                model,
-                spl,
-                nothing,
-                MCMCChains.Chains
-            ) for chain_idx = 1:size(transitions, 2)
-        ]
+                transitions[:, chain_idx], model, spl, nothing, MCMCChains.Chains
+            ) for chain_idx in 1:size(transitions, 2)
+        ],
     )
 
     parameter_names = if include_all
         names(chain_result, :parameters)
     else
-        filter(k -> ∉(k, names(chain_parameters, :parameters)), names(chain_result, :parameters))
+        filter(
+            k -> ∉(k, names(chain_parameters, :parameters)),
+            names(chain_result, :parameters),
+        )
     end
 
     return chain_result[parameter_names]
@@ -716,11 +753,7 @@ julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
  [-1.704630494695469]
 ```
 """
-function transitions_from_chain(
-    model::Turing.Model,
-    chain::MCMCChains.Chains;
-    kwargs...
-)
+function transitions_from_chain(model::Turing.Model, chain::MCMCChains.Chains; kwargs...)
     return transitions_from_chain(Random.default_rng(), model, chain; kwargs...)
 end
 
@@ -728,7 +761,7 @@ function transitions_from_chain(
     rng::Random.AbstractRNG,
     model::Turing.Model,
     chain::MCMCChains.Chains;
-    sampler = DynamicPPL.SampleFromPrior()
+    sampler=DynamicPPL.SampleFromPrior(),
 )
     vi = Turing.VarInfo(model)
 
