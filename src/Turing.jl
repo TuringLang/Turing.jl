@@ -98,8 +98,8 @@ export @model,                 # modelling
     vi,                     # variational inference
     ADVI,
     sample,                 # inference
-    @logprob_str,
-    @prob_str,
+    @logprob_str,  # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
+    @prob_str,     # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
     externalsampler,
     AutoForwardDiff,        # ADTypes
     AutoReverseDiff,
