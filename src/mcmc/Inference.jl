@@ -196,7 +196,11 @@ function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
     return SimpleVarInfo(θ, vi.logp, vi.transformation)
 end
 
-# Algorithm for sampling from the prior
+"""
+    Prior()
+
+Algorithm for sampling from the prior.
+"""
 struct Prior <: InferenceAlgorithm end
 
 function AbstractMCMC.step(
