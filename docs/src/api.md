@@ -85,13 +85,12 @@ See the [variational inference tutorial](https://turinglang.org/docs/tutorials/0
 These are used to specify the automatic differentiation backend to use.
 See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-autodiff/) for more information.
 
-| Exported symbol   | Documentation                        | Description                               |
-|:----------------- |:------------------------------------ |:----------------------------------------- |
-| `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend                    |
-| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend                    |
-| `AutoZygote`      | [`ADTypes.AutoZygote`](@extref)      | Zygote.jl backend                         |
-| `AutoTracker`     | [`ADTypes.AutoTracker`](@extref)     | Tracker.jl backend                        |
-| `AutoTapir`       | [`ADTypes.AutoTapir`](@extref)       | Tapir.jl backend, only for ADTypes >= 1.0 |
+| Exported symbol   | Documentation                        | Description            |
+|:----------------- |:------------------------------------ |:---------------------- |
+| `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend |
+| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
+| `AutoZygote`      | [`ADTypes.AutoZygote`](@extref)      | Zygote.jl backend      |
+| `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
 
 ### Debugging
 

@@ -1,3 +1,14 @@
+# Release 0.35.0
+
+## Breaking changes
+
+Julia 1.10 is now the minimum required version for Turing.
+
+Tapir.jl has been removed and replaced with its successor, Mooncake.jl.
+You can use Mooncake.jl by passing `adbackend=AutoMooncake(; config=nothing)` to the relevant samplers.
+
+Support for Tracker.jl as an AD backend has been removed.
+
 # Release 0.33.0
 
 ## Breaking changes
