@@ -106,7 +106,7 @@ export @model,                 # modelling
     AutoForwardDiff,        # ADTypes
     AutoReverseDiff,
     AutoZygote,
-    AutoTracker,
+    AutoMooncake,
     setprogress!,           # debugging
     Flat,
     FlatPos,
@@ -135,25 +135,5 @@ export @model,                 # modelling
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     MAP,
     MLE
-
-# AutoTapir is only supported by ADTypes v1.0 and above.
-@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
-    export AutoTapir
-end
-
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-function __init__()
-    @static if !isdefined(Base, :get_extension)
-        @require Optim = "429524aa-4258-5aef-a3af-852621145aeb" include(
-            "../ext/TuringOptimExt.jl"
-        )
-        @require DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb" include(
-            "../ext/TuringDynamicHMCExt.jl"
-        )
-    end
-end
 
 end

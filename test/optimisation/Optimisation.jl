@@ -1,11 +1,13 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
-using ..ADUtils: ADTypeCheckContext
+using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
+using Mooncake: Mooncake
 using Random: Random
 using Optimization
 using Optimization: Optimization
@@ -617,12 +619,24 @@ using Turing
         @assert get(result, :c) == (; :c => Array{Float64}[])
     end
 
-    @testset "ADType" begin
+    @testset "ADType test with $adbackend" for adbackend in ADUtils.adbackends
         Random.seed!(222)
-        for adbackend in (AutoReverseDiff(), AutoForwardDiff(), AutoTracker())
-            m = DynamicPPL.contextualize(
-                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-            )
+        m = DynamicPPL.contextualize(
+            gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
+        )
+        if adbackend isa AutoMooncake
+            # Optimization.jl does not support Mooncake as an AD backend, see
+            # https://docs.sciml.ai/Optimization/stable/API/ad/#ad
+            # If it ever does, then we should just run them to make sure they don't error
+            err_msg = "The passed automatic differentiation backend choice is not available"
+            @test_throws err_msg maximum_likelihood(m; adtype=adbackend)
+            @test_throws err_msg maximum_a_posteriori(m; adtype=adbackend)
+        elseif adbackend isa AutoForwardDiff
+            # TODO: Figure out why this is happening.
+            # https://github.com/TuringLang/Turing.jl/issues/2369
+            @test_throws DivideError maximum_likelihood(m; adtype=adbackend)
+            @test_throws DivideError maximum_a_posteriori(m; adtype=adbackend)
+        else
             # These will error if the adbackend being used is not the one set.
             maximum_likelihood(m; adtype=adbackend)
             maximum_a_posteriori(m; adtype=adbackend)

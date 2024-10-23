@@ -179,43 +179,20 @@ end
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 """
 function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTuple)
-    # TODO: Replace this with something like
-    # for vn in keys(vi)
-    #     vi = DynamicPPL.setindex!!(vi, get(nt, vn))
-    # end
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
-        nvns = length(vns)
-
-        # if there is a single variable only
-        if nvns == 1
-            # assign the unpacked values
-            if length(vals) == 1
-                vi[vns[1]] = [vals[1];]
-                # otherwise just assign the values
-            else
-                vi[vns[1]] = [vals;]
-            end
-            # if there are multiple variables
-        elseif vals isa AbstractArray
-            nvals = length(vals)
-            # if values are provided as an array with a single element
-            if nvals == 1
-                # iterate over variables and unpacked values
-                for (vn, val) in zip(vns, vals[1])
-                    vi[vn] = [val;]
-                end
-                # otherwise number of variables and number of values have to be equal
-            elseif nvals == nvns
-                # iterate over variables and values
-                for (vn, val) in zip(vns, vals)
-                    vi[vn] = [val;]
-                end
-            else
-                error("Cannot assign `NamedTuple` to `VarInfo`")
-            end
+        if vals isa AbstractVector
+            vals = unvectorize(vals)
+        end
+        if length(vns) == 1
+            # Only one variable, assign the values to it
+            DynamicPPL.setindex!(vi, vals, vns[1])
         else
-            error("Cannot assign `NamedTuple` to `VarInfo`")
+            # Spread the values across the variables
+            length(vns) == length(vals) || error("Unequal number of variables and values")
+            for (vn, val) in zip(vns, vals)
+                DynamicPPL.setindex!(vi, val, vn)
+            end
         end
     end
 end
@@ -252,10 +229,10 @@ end
 unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
 # possibly unpack and reshape samples according to the prior distribution
-reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
-function reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector)
-    return val
+function reconstruct(dist::Distribution, val::AbstractVector)
+    return DynamicPPL.from_vec_transform(dist)(val)
 end
+reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector) = val
 function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::AbstractVector)
     offset = 0
     return map(dist) do d
@@ -289,7 +266,7 @@ end
         :(
             $name = reconstruct(
                 unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
-                DynamicPPL.getval(vi, vns.$name),
+                DynamicPPL.getindex_internal(vi, vns.$name),
             )
         ) for name in names
     ]
@@ -432,42 +409,45 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(rng, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi)
+function DynamicPPL.assume(
+    rng::Random.AbstractRNG, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi
+)
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
     DynamicPPL.updategid!(vi, vn, spl)
-    r = vi[vn]
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn)), vi
+    # Return.
+    return retval
 end
 
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
-    vn::VarName,
+    vns::AbstractVector{<:VarName},
     var::AbstractMatrix,
-    vi,
+    vi::AbstractVarInfo,
 )
-    @assert dim(dist) == size(var, 1)
-    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 2))
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
-    var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1]))), vi
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
+    DynamicPPL.updategid!.((vi,), vns, (spl,))
+    # Return.
+    return retval
 end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:MH},
     dists::Union{Distribution,AbstractArray{<:Distribution}},
-    vn::VarName,
+    vns::AbstractArray{<:VarName},
     var::AbstractArray,
-    vi,
+    vi::AbstractVarInfo,
 )
-    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = getvn.(CartesianIndices(var))
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
-    var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1]))), vi
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
+    DynamicPPL.updategid!.((vi,), vns, (spl,))
+    return retval
 end
 
 function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)

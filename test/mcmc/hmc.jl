@@ -2,7 +2,6 @@ module HMCTests
 
 using ..Models: gdemo_default
 using ..ADUtils: ADTypeCheckContext
-#using ..Models: gdemo
 using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
@@ -15,10 +14,9 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
+import Mooncake
 using Test: @test, @test_logs, @testset
 using Turing
-
-ADUtils.install_tapir && import Tapir
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Set a seed
@@ -269,19 +267,15 @@ ADUtils.install_tapir && import Tapir
         end
     end
 
-    # Disable on Julia <1.8 due to https://github.com/TuringLang/Turing.jl/pull/2197.
-    # TODO: Remove this block once https://github.com/JuliaFolds2/BangBang.jl/pull/22 has been released.
-    if VERSION ≥ v"1.8"
-        @testset "(partially) issue: #2095" begin
-            @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
-                xs = Vector{TV}(undef, 2)
-                xs[1] ~ Dirichlet(ones(5))
-                xs[2] ~ Dirichlet(ones(5))
-            end
-            model = vector_of_dirichlet()
-            chain = sample(model, NUTS(), 1000)
-            @test mean(Array(chain)) ≈ 0.2
+    @testset "(partially) issue: #2095" begin
+        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+            xs = Vector{TV}(undef, 2)
+            xs[1] ~ Dirichlet(ones(5))
+            xs[2] ~ Dirichlet(ones(5))
         end
+        model = vector_of_dirichlet()
+        chain = sample(model, NUTS(), 1000)
+        @test mean(Array(chain)) ≈ 0.2
     end
 
     @testset "issue: #2195" begin
