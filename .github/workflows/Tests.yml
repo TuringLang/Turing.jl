@@ -46,12 +46,36 @@ jobs:
 
         # Extra combinations to test
         include:
-          - arch: x86
-          - num_threads: 2
-          - os: windows-latest
-          - os: macOS-latest
+          # x86
+          - version: '1'
+            os: ubuntu-latest
+            arch: x86
+            num_threads: 1
+          # Multithreaded
+          - version: '1'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 2
+          # Windows
+          - version: '1'
+            os: windows-latest
+            arch: x64
+            num_threads: 1
+          # macOS
+          - version: '1'
+            os: macos-latest
+            arch: x64
+            num_threads: 1
+          # Minimum supported Julia version
           - version: 'min'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 1
+          # Pre-release Julia version
           - version: 'pre'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 1
 
     steps:
       - name: Print matrix variables
