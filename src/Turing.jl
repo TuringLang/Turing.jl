@@ -100,14 +100,14 @@ export @model,                 # modelling
     vi,                     # variational inference
     ADVI,
     sample,                 # inference
-    @logprob_str,
-    @prob_str,
+    @logprob_str,  # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
+    @prob_str,     # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
     externalsampler,
     AutoForwardDiff,        # ADTypes
     AutoReverseDiff,
     AutoZygote,
     AutoEnzyme,
-    AutoTracker,
+    AutoMooncake,
     setprogress!,           # debugging
     Flat,
     FlatPos,
@@ -136,25 +136,5 @@ export @model,                 # modelling
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     MAP,
     MLE
-
-# AutoTapir is only supported by ADTypes v1.0 and above.
-@static if VERSION >= v"1.10" && pkgversion(ADTypes) >= v"1"
-    export AutoTapir
-end
-
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-function __init__()
-    @static if !isdefined(Base, :get_extension)
-        @require Optim = "429524aa-4258-5aef-a3af-852621145aeb" include(
-            "../ext/TuringOptimExt.jl"
-        )
-        @require DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb" include(
-            "../ext/TuringDynamicHMCExt.jl"
-        )
-    end
-end
 
 end

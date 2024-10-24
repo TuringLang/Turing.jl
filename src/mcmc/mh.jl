@@ -27,7 +27,7 @@ The arguments `space` can be
 
 # Examples
 
-The default `MH` will use propose samples from the prior distribution using `AdvancedMH.StaticProposal`.
+The default `MH` will draw proposal samples from the prior distribution using `AdvancedMH.StaticProposal`.
 
 ```julia
 @model function gdemo(x, y)
@@ -45,34 +45,21 @@ Alternatively, you can specify particular parameters to sample if you want to co
 from multiple samplers:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Samples s with MH and m with PG
-chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s), PG(10, :m)), 1_000)
+# Samples s² with MH and m with PG
+chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s²), PG(10, :m)), 1_000)
 mean(chain)
 ```
 
-Using custom distributions defaults to using static MH:
+Specifying a single distribution implies the use of static MH:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Use a static proposal for s and random walk with proposal
-# standard deviation of 0.25 for m.
+# Use a static proposal for s² (which happens to be the same
+# as the prior) and a static proposal for m (note that this 
+# isn't a random walk proposal).
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => InverseGamma(2, 3),
+        :s² => InverseGamma(2, 3),
         :m => Normal(0, 1)
     ),
     1_000
@@ -83,19 +70,12 @@ mean(chain)
 Specifying explicit proposals using the `AdvancedMH` interface:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
-# Use a static proposal for s and random walk with proposal
+# Use a static proposal for s² and random walk with proposal
 # standard deviation of 0.25 for m.
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => AdvancedMH.StaticProposal(InverseGamma(2,3)),
+        :s² => AdvancedMH.StaticProposal(InverseGamma(2,3)),
         :m => AdvancedMH.RandomWalkProposal(Normal(0, 0.25))
     ),
     1_000
@@ -106,19 +86,12 @@ mean(chain)
 Using a custom function to specify a conditional distribution:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
 # Use a static proposal for s and and a conditional proposal for m,
 # where the proposal is centered around the current sample.
 chain = sample(
     gdemo(1.5, 2.0),
     MH(
-        :s => InverseGamma(2, 3),
+        :s² => InverseGamma(2, 3),
         :m => x -> Normal(x, 1)
     ),
     1_000
@@ -128,16 +101,10 @@ mean(chain)
 
 Providing a covariance matrix will cause `MH` to perform random-walk
 sampling in the transformed space with proposals drawn from a multivariate
-normal distribution. The provided matrix must be positive semi-definite and square. Usage:
+normal distribution. The provided matrix must be positive semi-definite and
+square:
 
 ```julia
-@model function gdemo(x, y)
-    s² ~ InverseGamma(2,3)
-    m ~ Normal(0, sqrt(s²))
-    x ~ Normal(m, sqrt(s²))
-    y ~ Normal(m, sqrt(s²))
-end
-
 # Providing a custom variance-covariance matrix
 chain = sample(
     gdemo(1.5, 2.0),
@@ -212,43 +179,20 @@ end
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 """
 function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTuple)
-    # TODO: Replace this with something like
-    # for vn in keys(vi)
-    #     vi = DynamicPPL.setindex!!(vi, get(nt, vn))
-    # end
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
-        nvns = length(vns)
-
-        # if there is a single variable only
-        if nvns == 1
-            # assign the unpacked values
-            if length(vals) == 1
-                vi[vns[1]] = [vals[1];]
-                # otherwise just assign the values
-            else
-                vi[vns[1]] = [vals;]
-            end
-            # if there are multiple variables
-        elseif vals isa AbstractArray
-            nvals = length(vals)
-            # if values are provided as an array with a single element
-            if nvals == 1
-                # iterate over variables and unpacked values
-                for (vn, val) in zip(vns, vals[1])
-                    vi[vn] = [val;]
-                end
-                # otherwise number of variables and number of values have to be equal
-            elseif nvals == nvns
-                # iterate over variables and values
-                for (vn, val) in zip(vns, vals)
-                    vi[vn] = [val;]
-                end
-            else
-                error("Cannot assign `NamedTuple` to `VarInfo`")
-            end
+        if vals isa AbstractVector
+            vals = unvectorize(vals)
+        end
+        if length(vns) == 1
+            # Only one variable, assign the values to it
+            DynamicPPL.setindex!(vi, vals, vns[1])
         else
-            error("Cannot assign `NamedTuple` to `VarInfo`")
+            # Spread the values across the variables
+            length(vns) == length(vals) || error("Unequal number of variables and values")
+            for (vn, val) in zip(vns, vals)
+                DynamicPPL.setindex!(vi, val, vn)
+            end
         end
     end
 end
@@ -285,10 +229,10 @@ end
 unvectorize(dists::AbstractVector) = length(dists) == 1 ? first(dists) : dists
 
 # possibly unpack and reshape samples according to the prior distribution
-reconstruct(dist::Distribution, val::AbstractVector) = DynamicPPL.reconstruct(dist, val)
-function reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector)
-    return val
+function reconstruct(dist::Distribution, val::AbstractVector)
+    return DynamicPPL.from_vec_transform(dist)(val)
 end
+reconstruct(dist::AbstractVector{<:UnivariateDistribution}, val::AbstractVector) = val
 function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::AbstractVector)
     offset = 0
     return map(dist) do d
@@ -322,7 +266,7 @@ end
         :(
             $name = reconstruct(
                 unvectorize(DynamicPPL.getdist.(Ref(vi), vns.$name)),
-                DynamicPPL.getval(vi, vns.$name),
+                DynamicPPL.getindex_internal(vi, vns.$name),
             )
         ) for name in names
     ]
@@ -465,42 +409,45 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(rng, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi)
+function DynamicPPL.assume(
+    rng::Random.AbstractRNG, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi
+)
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
     DynamicPPL.updategid!(vi, vn, spl)
-    r = vi[vn]
-    return r, logpdf_with_trans(dist, r, istrans(vi, vn)), vi
+    # Return.
+    return retval
 end
 
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:MH},
     dist::MultivariateDistribution,
-    vn::VarName,
+    vns::AbstractVector{<:VarName},
     var::AbstractMatrix,
-    vi,
+    vi::AbstractVarInfo,
 )
-    @assert dim(dist) == size(var, 1)
-    getvn = i -> VarName(vn, vn.indexing * "[:,$i]")
-    vns = getvn.(1:size(var, 2))
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = vi[vns]
-    var .= r
-    return var, sum(logpdf_with_trans(dist, r, istrans(vi, vns[1]))), vi
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
+    DynamicPPL.updategid!.((vi,), vns, (spl,))
+    # Return.
+    return retval
 end
 function DynamicPPL.dot_assume(
     rng,
     spl::Sampler{<:MH},
     dists::Union{Distribution,AbstractArray{<:Distribution}},
-    vn::VarName,
+    vns::AbstractArray{<:VarName},
     var::AbstractArray,
-    vi,
+    vi::AbstractVarInfo,
 )
-    getvn = ind -> VarName(vn, vn.indexing * "[" * join(Tuple(ind), ",") * "]")
-    vns = getvn.(CartesianIndices(var))
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
-    r = reshape(vi[vec(vns)], size(var))
-    var .= r
-    return var, sum(logpdf_with_trans.(dists, r, istrans(vi, vns[1]))), vi
+    # Just defer to `SampleFromPrior`.
+    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
+    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
+    DynamicPPL.updategid!.((vi,), vns, (spl,))
+    return retval
 end
 
 function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)

@@ -2,6 +2,7 @@ module InferenceTests
 
 using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
+import ..ADUtils
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
@@ -12,15 +13,11 @@ using LinearAlgebra: I
 import MCMCChains
 import Random
 import ReverseDiff
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 
-Enzyme.API.typeWarning!(false)
-
-# Enable runtime activity (workaround)
-Enzyme.API.runtimeActivity!(true)
-
-@testset "Testing inference.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
+@testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
     # Only test threading if 1.3+.
     if VERSION > v"1.2"
         @testset "threaded sampling" begin
@@ -73,7 +70,9 @@ Enzyme.API.runtimeActivity!(true)
 
             # Smoke test for default sample call.
             Random.seed!(100)
-            chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4)
+            chain = sample(
+                gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4
+            )
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
@@ -117,7 +116,7 @@ Enzyme.API.runtimeActivity!(true)
             a ~ Beta()
             lp1 = getlogp(__varinfo__)
             x[1] ~ Bernoulli(a)
-            global loglike = getlogp(__varinfo__) - lp1
+            return global loglike = getlogp(__varinfo__) - lp1
         end
         model = testmodel1([1.0])
         varinfo = Turing.VarInfo(model)
@@ -127,13 +126,17 @@ Enzyme.API.runtimeActivity!(true)
         # Test MiniBatchContext
         @model function testmodel2(x)
             a ~ Beta()
-            x[1] ~ Bernoulli(a)
+            return x[1] ~ Bernoulli(a)
         end
         model = testmodel2([1.0])
         varinfo1 = Turing.VarInfo(model)
         varinfo2 = deepcopy(varinfo1)
         model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
-        model(varinfo2, Turing.SampleFromPrior(), Turing.MiniBatchContext(Turing.LikelihoodContext(), 10))
+        model(
+            varinfo2,
+            Turing.SampleFromPrior(),
+            Turing.MiniBatchContext(Turing.LikelihoodContext(), 10),
+        )
         @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
     end
     @testset "Prior" begin
@@ -144,24 +147,24 @@ Enzyme.API.runtimeActivity!(true)
         chains = sample(gdemo_d(), Prior(), N)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 1)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
         chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
         @test chains isa MCMCChains.Chains
         @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol=0.1
-        @test mean(chains, :m) ≈ 0 atol=0.1
+        @test mean(chains, :s) ≈ 3 atol = 0.1
+        @test mean(chains, :m) ≈ 0 atol = 0.1
 
         Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N; chain_type = Vector{NamedTuple})
+        chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
         @test chains isa Vector{<:NamedTuple}
         @test length(chains) == N
         @test all(length(x) == 3 for x in chains)
         @test all(haskey(x, :lp) for x in chains)
-        @test mean(x[:s][1] for x in chains) ≈ 3 atol=0.1
-        @test mean(x[:m][1] for x in chains) ≈ 0 atol=0.1
+        @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
+        @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
 
         @testset "#2169" begin
             # Not exactly the same as the issue, but similar.
@@ -181,10 +184,10 @@ Enzyme.API.runtimeActivity!(true)
 
     @testset "chain ordering" begin
         for alg in (Prior(), Emcee(10, 2.0))
-            chain_sorted = sample(gdemo_default, alg, 1, sort_chain=true)
+            chain_sorted = sample(gdemo_default, alg, 1; sort_chain=true)
             @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
 
-            chain_unsorted = sample(gdemo_default, alg, 1, sort_chain=false)
+            chain_unsorted = sample(gdemo_default, alg, 1; sort_chain=false)
             @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
         end
     end
@@ -296,8 +299,12 @@ Enzyme.API.runtimeActivity!(true)
         @test_throws ErrorException chain = sample(gauss2(; x=x), PG(10), 10)
         @test_throws ErrorException chain = sample(gauss2(; x=x), SMC(), 10)
 
-        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10)
-        @test_throws ErrorException chain = sample(gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10)
+        @test_throws ErrorException chain = sample(
+            gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10
+        )
+        @test_throws ErrorException chain = sample(
+            gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10
+        )
 
         @model function gauss3(x, ::Type{TV}=Vector{Float64}) where {TV}
             priors = TV(undef, 2)
@@ -327,7 +334,9 @@ Enzyme.API.runtimeActivity!(true)
         end
 
         sample(
-            newinterface(obs), HMC(0.75, 3, :p, :x; adtype = Turing.AutoForwardDiff(; chunksize=2)), 100
+            newinterface(obs),
+            HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
+            100,
         )
     end
     @testset "no return" begin
@@ -374,7 +383,6 @@ Enzyme.API.runtimeActivity!(true)
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
-        # https://github.com/FluxML/Tracker.jl/issues/119
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -406,51 +414,51 @@ Enzyme.API.runtimeActivity!(true)
 
         # Type unstable getfield of tuple not supported in Enzyme yet
         if !(adbackend isa AutoEnzyme)
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            @model function vdemo3()
+                x = Vector{Real}(undef, N)
+                for i in 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
             end
-        end
 
-        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            @. x ~ Normal(0, 2)
-        end
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                @. x ~ Normal(0, 2)
+            end
 
-        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
 
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
 
-        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
 
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
 
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            @. x ~ InverseGamma(2, 3)
-        end
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                @. x ~ InverseGamma(2, 3)
+            end
 
-        sample(vdemo6(), alg, 1000)
+            sample(vdemo6(), alg, 1000)
 
-        N = 3
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            @. x ~ [InverseGamma(2, 3) for i in 1:N]
-        end
+            N = 3
+            @model function vdemo7()
+                x = Array{Real}(undef, N, N)
+                @. x ~ [InverseGamma(2, 3) for i in 1:N]
+            end
 
-        sample(vdemo7(), alg, 1000)
+            sample(vdemo7(), alg, 1000)
         end
     end
     @testset "vectorization .~" begin
@@ -476,50 +484,50 @@ Enzyme.API.runtimeActivity!(true)
 
         # Type unstable getfield of tuple not supported in Enzyme yet
         if !(adbackend isa AutoEnzyme)
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            @model function vdemo3()
+                x = Vector{Real}(undef, N)
+                for i in 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
             end
-        end
 
-        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            return x .~ Normal(0, 2)
-        end
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                return x .~ Normal(0, 2)
+            end
 
-        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
 
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
 
-        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
 
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
 
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            return x .~ InverseGamma(2, 3)
-        end
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                return x .~ InverseGamma(2, 3)
+            end
 
-        sample(vdemo6(), alg, 1000)
+            sample(vdemo6(), alg, 1000)
 
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
-        end
+            @model function vdemo7()
+                x = Array{Real}(undef, N, N)
+                return x .~ [InverseGamma(2, 3) for i in 1:N]
+            end
 
-        sample(vdemo7(), alg, 1000)
+            sample(vdemo7(), alg, 1000)
         end
     end
     @testset "Type parameters" begin
@@ -537,7 +545,9 @@ Enzyme.API.runtimeActivity!(true)
         t_loop = @elapsed res = sample(vdemo1(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo1kw(; T) = vdemo1(T)
-        t_loop = @elapsed res = sample(vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        t_loop = @elapsed res = sample(
+            vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
+        )
 
         @model function vdemo2(::Type{T}=Float64) where {T<:Real}
             x = Vector{T}(undef, N)
@@ -548,7 +558,9 @@ Enzyme.API.runtimeActivity!(true)
         t_vec = @elapsed res = sample(vdemo2(DynamicPPL.TypeWrap{Float64}()), alg, 250)
 
         vdemo2kw(; T) = vdemo2(T)
-        t_vec = @elapsed res = sample(vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        t_vec = @elapsed res = sample(
+            vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
+        )
 
         @model function vdemo3(::Type{TV}=Vector{Float64}) where {TV<:AbstractVector}
             x = TV(undef, N)
@@ -563,11 +575,7 @@ Enzyme.API.runtimeActivity!(true)
     end
 
     @testset "names_values" begin
-        ks, xs = Turing.Inference.names_values([
-            (a=1,),
-            (b=2,),
-            (a=3, b=4)
-        ])
+        ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
         @test all(xs[:, 1] .=== [1, missing, 3])
         @test all(xs[:, 2] .=== [missing, 2, 4])
     end
@@ -575,19 +583,18 @@ Enzyme.API.runtimeActivity!(true)
     @testset "check model" begin
         @model function demo_repeated_varname()
             x ~ Normal(0, 1)
-            x ~ Normal(x, 1)
+            return x ~ Normal(x, 1)
         end
 
         @test_throws ErrorException sample(
             demo_repeated_varname(), NUTS(), 1000; check_model=true
         )
         # Make sure that disabling the check also works.
-        @test (sample(
-            demo_repeated_varname(), Prior(), 10; check_model=false
-        ); true)
+        @test (sample(demo_repeated_varname(), Prior(), 10; check_model=false);
+        true)
 
         @model function demo_incorrect_missing(y)
-            y[1:1] ~ MvNormal(zeros(1), 1)
+            return y[1:1] ~ MvNormal(zeros(1), I)
         end
         @test_throws ErrorException sample(
             demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true

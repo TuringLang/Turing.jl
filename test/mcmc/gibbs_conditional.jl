@@ -2,6 +2,7 @@ module GibbsConditionalTests
 
 using ..Models: gdemo, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
+import ..ADUtils
 using Clustering: Clustering
 using Distributions: Categorical, InverseGamma, Normal, sample
 using ForwardDiff: ForwardDiff
@@ -11,12 +12,11 @@ using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: counts
 using StatsFuns: StatsFuns
+import Mooncake
 using Test: @test, @testset
 using Turing
 
-@testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in (
-    AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false)
-)
+@testset "Testing gibbs conditionals.jl with $adbackend" for adbackend in ADUtils.adbackends
     Random.seed!(1000)
     rng = StableRNG(123)
 

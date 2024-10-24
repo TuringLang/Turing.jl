@@ -2,19 +2,19 @@ module GibbsTests
 
 using ..Models: MoGtest_default, gdemo, gdemo_default
 using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
+import ..ADUtils
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
+import Mooncake
 using Test: @test, @testset
 using Turing
 using Turing: Inference
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in (
-    AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false)
-)
+@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "gibbs constructor" begin
         N = 500
         s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))

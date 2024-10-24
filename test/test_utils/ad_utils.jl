@@ -1,15 +1,19 @@
 module ADUtils
 
 using ForwardDiff: ForwardDiff
+using Pkg: Pkg
 using Random: Random
 using ReverseDiff: ReverseDiff
+using Mooncake: Mooncake
 using Test: Test
-using Tracker: Tracker
 using Turing: Turing
 using Turing: DynamicPPL
 using Zygote: Zygote
 
-export ADTypeCheckContext
+export ADTypeCheckContext, adbackends
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Stuff for checking that the right AD backend is being used.
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -26,18 +30,10 @@ const eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
+    Turing.AutoMooncake => (Mooncake.CoDual,),
     # Zygote.Dual is actually the same as ForwardDiff.Dual, so can't distinguish between the
     # two by element type. However, we have other checks for Zygote, see check_adtype.
     Turing.AutoZygote => (Zygote.Dual,),
-    Turing.AutoTracker => (
-        Tracker.Tracked,
-        Tracker.TrackedArray,
-        Tracker.TrackedMatrix,
-        Tracker.TrackedReal,
-        Tracker.TrackedStyle,
-        Tracker.TrackedVecOrMat,
-        Tracker.TrackedVector,
-    ),
 )
 
 """
@@ -241,7 +237,8 @@ Test.@testset "ADTypeCheckContext" begin
         Turing.AutoForwardDiff(),
         Turing.AutoReverseDiff(),
         Turing.AutoZygote(),
-        Turing.AutoTracker(),
+        # TODO: Mooncake
+        # Turing.AutoMooncake(config=nothing),
     )
     for actual_adtype in adtypes
         sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
@@ -269,5 +266,18 @@ Test.@testset "ADTypeCheckContext" begin
         end
     end
 end
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# List of AD backends to test.
+
+"""
+All the ADTypes on which we want to run the tests.
+"""
+adbackends = [
+    Turing.AutoForwardDiff(; chunksize=0),
+    Turing.AutoReverseDiff(; compile=false),
+    Turing.AutoMooncake(; config=nothing),
+    Turing.AutoEnzyme(),
+]
 
 end

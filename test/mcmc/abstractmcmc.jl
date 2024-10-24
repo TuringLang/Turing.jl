@@ -1,5 +1,6 @@
 module AbstractMCMCTests
 
+import ..ADUtils
 using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
@@ -11,6 +12,7 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
@@ -22,7 +24,9 @@ function initialize_nuts(model::Turing.Model)
 
     # Link the varinfo.
     f = Turing.Inference.setvarinfo(
-        f, DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model)
+        f,
+        DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model),
+        Turing.Inference.getADType(DynamicPPL.getcontext(LogDensityProblemsAD.parent(f))),
     )
 
     # Choose parameter dimensionality and initial parameter value
@@ -112,8 +116,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        # Try a few different AD backends.
-        @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
+        @testset "adtype=$adtype" for adtype in ADUtils.adbackends
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".

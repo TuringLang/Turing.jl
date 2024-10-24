@@ -207,12 +207,12 @@ end
 
 The *Poisson distribution* with logarithmic parameterization of the rate parameter
 describes the number of independent events occurring within a unit time interval, given the
-average rate of occurrence ``exp(logλ)``.
+average rate of occurrence ``\\exp(\\log\\lambda)``.
 
 The distribution has the probability mass function
 
 ```math
-P(X = k) = \\frac{e^{k \\cdot logλ}{k!} e^{-e^{logλ}}, \\quad \\text{ for } k = 0,1,2,\\ldots.
+P(X = k) = \\frac{e^{k \\cdot \\log\\lambda}}{k!} e^{-e^{\\log\\lambda}}, \\quad \\text{ for } k = 0,1,2,\\ldots.
 ```
 
 See also: [`Poisson`](@ref)

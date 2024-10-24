@@ -2,22 +2,18 @@ module SGHMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
+import ..ADUtils
 using Distributions: sample
 import Enzyme
 import ForwardDiff
 using LinearAlgebra: dot
 import ReverseDiff
 using StableRNGs: StableRNG
+import Mooncake
 using Test: @test, @testset
 using Turing
 
-# Disable Enzyme warnings
-Enzyme.API.typeWarning!(false)
-
-# Enable runtime activity (workaround)
-Enzyme.API.runtimeActivity!(true)
-
-@testset "Testing sghmc.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
+@testset "Testing sghmc.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
         @test alg isa SGHMC
@@ -43,7 +39,7 @@ Enzyme.API.runtimeActivity!(true)
     end
 end
 
-@testset "Testing sgld.jl with $adbackend" for adbackend in (AutoForwardDiff(; chunksize=0), AutoReverseDiff(; compile=false), AutoEnzyme())
+@testset "Testing sgld.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD
