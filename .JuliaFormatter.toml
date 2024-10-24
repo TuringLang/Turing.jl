@@ -8,7 +8,4 @@ ignore = [
     # https://github.com/TuringLang/Turing.jl/pull/2328/files
     "src/experimental/gibbs.jl",
     "test/experimental/gibbs.jl",
-    # https://github.com/TuringLang/Turing.jl/pull/1887 # Enzyme PR
-    "test/mcmc/hmc.jl",
-    "test/mcmc/sghmc.jl",
 ]

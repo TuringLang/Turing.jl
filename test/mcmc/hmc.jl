@@ -278,7 +278,7 @@ using Turing
         @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
             xs[1] ~ Dirichlet(ones(5))
-            xs[2] ~ Dirichlet(ones(5))
+            return xs[2] ~ Dirichlet(ones(5))
         end
         model = vector_of_dirichlet()
         chain = sample(model, NUTS(), 1000)
