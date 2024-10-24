@@ -32,15 +32,15 @@ using Turing
                         PG(10),
                         IS(),
                         MH(),
-                        Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend)),
-                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
+                        Gibbs(; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)),
+                        Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
                     )
                 else
                     (
                         HMC(0.1, 7; adtype=adbackend),
                         IS(),
                         MH(),
-                        Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m)),
+                        Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
                     )
                 end
                 for sampler in samplers
@@ -86,7 +86,7 @@ using Turing
 
         alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
         alg2 = PG(20)
-        alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
+        alg3 = Gibbs(; s=PG(30), m=HMC(0.2, 4; adtype=adbackend))
 
         chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
         check_gdemo(chn1)
@@ -239,7 +239,7 @@ using Turing
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(HMC(0.2, 3, :p; adtype=adbackend), PG(10, :x))
+        gibbs = Gibbs(; p=HMC(0.2, 3; adtype=adbackend), x=PG(10))
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
@@ -266,7 +266,7 @@ using Turing
             return s, m
         end
 
-        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        gibbs = Gibbs(; s=PG(10), m=HMC(0.4, 8; adtype=adbackend))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
     @testset "new grammar" begin
@@ -378,7 +378,7 @@ using Turing
         @test all(isone, res_pg[:x])
     end
     @testset "sample" begin
-        alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
+        alg = Gibbs(; m=HMC(0.2, 3; adtype=adbackend), s=PG(10))
         chn = sample(gdemo_default, alg, 1000)
     end
     @testset "vectorization @." begin
