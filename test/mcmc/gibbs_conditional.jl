@@ -5,6 +5,7 @@ using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
 using Clustering: Clustering
 using Distributions: Categorical, InverseGamma, Normal, sample
+import Enzyme
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
 using Random: Random

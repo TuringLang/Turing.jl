@@ -32,13 +32,13 @@ jobs:
 
           # Define the URL of the navbar to be used
           NAVBAR_URL="https://raw.githubusercontent.com/TuringLang/turinglang.github.io/main/assets/scripts/TuringNavbar.html"
-         
+
           # Update all HTML files in the current directory (gh-pages root)
           ./insert_navbar.sh . $NAVBAR_URL
-         
+
           # Remove the insert_navbar.sh file
           rm insert_navbar.sh
-         
+
           # Check if there are any changes
           if [[ -n $(git status -s) ]]; then
             git add .

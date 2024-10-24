@@ -277,6 +277,7 @@ adbackends = [
     Turing.AutoForwardDiff(; chunksize=0),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
+    Turing.AutoEnzyme(),
 ]
 
 end
