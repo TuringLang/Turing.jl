@@ -624,14 +624,7 @@ using Turing
         m = DynamicPPL.contextualize(
             gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
         )
-        if adbackend isa AutoMooncake
-            # Optimization.jl does not support Mooncake as an AD backend, see
-            # https://docs.sciml.ai/Optimization/stable/API/ad/#ad
-            # If it ever does, then we should just run them to make sure they don't error
-            err_msg = "The passed automatic differentiation backend choice is not available"
-            @test_throws err_msg maximum_likelihood(m; adtype=adbackend)
-            @test_throws err_msg maximum_a_posteriori(m; adtype=adbackend)
-        elseif adbackend isa AutoForwardDiff
+        if adbackend isa AutoForwardDiff
             # TODO: Figure out why this is happening.
             # https://github.com/TuringLang/Turing.jl/issues/2369
             @test_throws DivideError maximum_likelihood(m; adtype=adbackend)
