@@ -54,7 +54,7 @@ Specifying a single distribution implies the use of static MH:
 
 ```julia
 # Use a static proposal for s² (which happens to be the same
-# as the prior) and a static proposal for m (note that this 
+# as the prior) and a static proposal for m (note that this
 # isn't a random walk proposal).
 chain = sample(
     gdemo(1.5, 2.0),
