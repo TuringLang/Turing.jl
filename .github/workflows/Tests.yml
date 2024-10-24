@@ -11,7 +11,7 @@ jobs:
     # Use matrix.test.name here to avoid it taking up the entire window width
     name: test ${{matrix.test.name}} (${{ matrix.os }}, ${{ matrix.version }}, ${{ matrix.arch }}, ${{ matrix.num_threads }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.version == 'dev' }}
+    continue-on-error: ${{ matrix.version == 'pre' }}
 
     strategy:
       fail-fast: false
@@ -51,7 +51,7 @@ jobs:
           - os: windows-latest
           - os: macOS-latest
           - version: 'min'
-          - version: 'dev'
+          - version: 'pre'
 
     steps:
       - name: Print matrix variables
