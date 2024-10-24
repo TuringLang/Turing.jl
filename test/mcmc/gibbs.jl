@@ -14,13 +14,12 @@ using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
+import Mooncake
 using Test: @test, @test_deprecated, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
-
-ADUtils.install_tapir && import Tapir
 
 function check_transition_varnames(transition::Turing.Inference.Transition, parent_varnames)
     transition_varnames = mapreduce(vcat, transition.θ) do vn_and_val

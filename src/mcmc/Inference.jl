@@ -14,7 +14,6 @@ using DynamicPPL:
     getlogp,
     VarName,
     getsym,
-    vectorize,
     _getvns,
     getdist,
     Model,

@@ -85,7 +85,7 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
             dist = getdist(varinfo, vn)
             EllipticalSliceSampling.isgaussian(typeof(dist)) ||
                 error("[ESS] only supports Gaussian prior distributions")
-            vectorize(dist, mean(dist))
+            DynamicPPL.tovec(mean(dist))
         end
         return new{M,S,V,typeof(μ)}(model, sampler, varinfo, μ)
     end

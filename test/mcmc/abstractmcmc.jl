@@ -12,11 +12,10 @@ using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
+import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
-
-ADUtils.install_tapir && import Tapir
 
 function initialize_nuts(model::Turing.Model)
     # Create a log-density function with an implementation of the
@@ -117,10 +116,7 @@ end
 
 @testset "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        # TODO(mhauru) The below tests fail with Tapir, see
-        # https://github.com/TuringLang/Turing.jl/pull/2289.
-        # Once that is fixed, this should say `for adtype in ADUtils.adbackends`.
-        @testset "adtype=$adtype" for adtype in [AutoForwardDiff(), AutoReverseDiff()]
+        @testset "adtype=$adtype" for adtype in ADUtils.adbackends
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
