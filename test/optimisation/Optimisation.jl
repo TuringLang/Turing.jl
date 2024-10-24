@@ -5,6 +5,7 @@ using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+using Enzyme: Enzyme
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
 using Mooncake: Mooncake
