@@ -412,7 +412,7 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
-        # Type unstable getfield of tuple not supported in Enzyme yet
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
         if !(adbackend isa AutoEnzyme)
             # Vector assumptions
             N = 10
@@ -482,7 +482,7 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
-        # Type unstable getfield of tuple not supported in Enzyme yet
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
         if !(adbackend isa AutoEnzyme)
             # Vector assumptions
             N = 10

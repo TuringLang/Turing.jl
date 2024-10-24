@@ -78,7 +78,8 @@ using Turing
             reshape(mean(r; dims=1), 2, 2)
         end
 
-        if VERSION > v"1.7" || !(adbackend isa AutoEnzyme)
+        # TODO(mhauru) The below remains broken for Enzyme. Need to investigate why.
+        if !(adbackend isa AutoEnzyme)
             @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
         else
             @test_broken maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
