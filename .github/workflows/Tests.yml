@@ -85,7 +85,7 @@ jobs:
         with:
           version: '${{ matrix.version }}'
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       # TODO: Use julia-actions/julia-runtest when test_args are supported
       # Custom calls of Pkg.test tend to miss features such as e.g. adjustments for CompatHelper PRs
