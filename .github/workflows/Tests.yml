@@ -66,6 +66,11 @@ jobs:
             os: ubuntu-latest
             arch: x64
             num_threads: 1
+          # Minimum supported Julia version, multithreaded
+          - version: 'min'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 2
           # Pre-release Julia version
           - version: 'pre'
             os: ubuntu-latest
