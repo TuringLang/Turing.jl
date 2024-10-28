@@ -10,42 +10,35 @@
 #   rather than only for the "true" observations.
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
-struct GibbsContext{
-    VNs,Values,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
-} <: DynamicPPL.AbstractContext
+struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
+       DynamicPPL.AbstractContext
     target_varnames::VNs
-    conditioned_values::Values
     global_varinfo::GVI
     context::Ctx
 end
 
-function GibbsContext(target_varnames, conditioned_values, global_varinfo)
-    return GibbsContext(
-        target_varnames, conditioned_values, global_varinfo, DynamicPPL.DefaultContext()
-    )
+function GibbsContext(target_varnames, global_varinfo)
+    return GibbsContext(target_varnames, global_varinfo, DynamicPPL.DefaultContext())
 end
 
 DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
 function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
     return GibbsContext(
-        context.target_varnames,
-        context.conditioned_values,
-        Ref(context.global_varinfo[]),
-        childcontext,
+        context.target_varnames, Ref(context.global_varinfo[]), childcontext
     )
 end
 
 # has and get
 function has_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.hasvalue(context.conditioned_values, vn)
+    return DynamicPPL.haskey(context.global_varinfo[], vn)
 end
 function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     return all(Base.Fix1(has_conditioned_gibbs, context), vns)
 end
 
 function get_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.getvalue(context.conditioned_values, vn)
+    return context.global_varinfo[][vn]
 end
 function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     return map(Base.Fix1(get_conditioned_gibbs, context), vns)
@@ -57,26 +50,30 @@ function is_target_varname(context::GibbsContext, vn::VarName)
     )
 end
 
+function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
+    return all(Base.Fix1(is_target_varname, context), vns)
+end
+
 # Tilde pipeline
 function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
-    # Short-circuits the tilde assume if `vn` is present in `context`.
-    if has_conditioned_gibbs(context, vn)
+    if is_target_varname(context, vn)
+        # Fall back to the default behavior.
+        return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
+    elseif has_conditioned_gibbs(context, vn)
+        # Short-circuits the tilde assume if `vn` is present in `context`.
         value = get_conditioned_gibbs(context, vn)
         # TODO(mhauru) Is the call to logpdf correct if context.context is not
         # DefaultContext?
         return value, logpdf(right, value), vi
-    elseif is_target_varname(context, vn)
-        # Fall back to the default behavior.
-        return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
+        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
-            DynamicPPL.SamplingContext(
-                DynamicPPL.SampleFromPrior(), DynamicPPL.childcontext(context)
-            ),
+            DynamicPPL.childcontext(context),
+            prior_sampler,
             right,
             vn,
             context.global_varinfo[],
@@ -89,26 +86,27 @@ end
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
 )
-    # Short-circuits the tilde assume if `vn` is present in `context`.
-    if has_conditioned_gibbs(context, vn)
-        value = get_conditioned_gibbs(context, vn)
-        # TODO(mhauru) Is the call to logpdf correct if context.context is not
-        # DefaultContext?
-        return value, logpdf(right, value), vi
-    elseif is_target_varname(context, vn)
+    if is_target_varname(context, vn)
         # Fall back to the default behavior.
         return DynamicPPL.tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
         )
+    elseif has_conditioned_gibbs(context, vn)
+        # Short-circuits the tilde assume if `vn` is present in `context`.
+        value = get_conditioned_gibbs(context, vn)
+        # TODO(mhauru) Is the call to logpdf correct if context.context is not
+        # DefaultContext?
+        return value, logpdf(right, value), vi
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
+        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
-            DynamicPPL.SamplingContext(
-                rng, DynamicPPL.SampleFromPrior(), DynamicPPL.childcontext(context)
-            ),
+            rng,
+            DynamicPPL.childcontext(context),
+            prior_sampler,
             right,
             vn,
             context.global_varinfo[],
@@ -137,31 +135,64 @@ function reconstruct_getvalue(
 end
 
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
-    # Short-circuits the tilde assume if `vn` is present in `context`.
-    if has_conditioned_gibbs(context, vns)
+    if is_target_varname(context, vns)
+        # Fall back to the default behavior.
+        return DynamicPPL.dot_tilde_assume(
+            DynamicPPL.childcontext(context), right, left, vns, vi
+        )
+    elseif has_conditioned_gibbs(context, vns)
+        # Short-circuit the tilde assume if `vn` is present in `context`.
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
         return value, broadcast_logpdf(right, value), vi
+    else
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
+        prior_sampler = DynamicPPL.SampleFromPrior()
+        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
+            DynamicPPL.childcontext(context),
+            prior_sampler,
+            right,
+            left,
+            vns,
+            context.global_varinfo[],
+        )
+        context.global_varinfo[] = new_global_vi
+        return value, lp, vi
     end
-
-    # Otherwise, falls back to the default behavior.
-    return DynamicPPL.dot_tilde_assume(
-        DynamicPPL.childcontext(context), right, left, vns, vi
-    )
 end
 
 function DynamicPPL.dot_tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
 )
-    # Short-circuits the tilde assume if `vn` is present in `context`.
-    if has_conditioned_gibbs(context, vns)
+    if is_target_varname(context, vns)
+        # Fall back to the default behavior.
+        return DynamicPPL.dot_tilde_assume(
+            rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
+        )
+    elseif has_conditioned_gibbs(context, vns)
+        # Short-circuit the tilde assume if `vn` is present in `context`.
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
         return value, broadcast_logpdf(right, value), vi
+    else
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
+        prior_sampler = DynamicPPL.SampleFromPrior()
+        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
+            rng,
+            DynamicPPL.childcontext(context),
+            prior_sampler,
+            right,
+            left,
+            vns,
+            context.global_varinfo[],
+        )
+        context.global_varinfo[] = new_global_vi
+        return value, lp, vi
     end
-
-    # Otherwise, falls back to the default behavior.
-    return DynamicPPL.dot_tilde_assume(
-        rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
-    )
 end
 
 """
@@ -195,14 +226,7 @@ have in `varinfo`.
 function make_conditional(
     model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
 )
-    # We want to condition all the variables in keys(varinfo) that are not subsumed by any
-    # of the target variables.
-    not_target_variables = filter(
-        x -> !(any(Iterators.map(vn -> subsumes(vn, x), target_variables))), keys(varinfo)
-    )
-    vi_filtered = subset(varinfo, not_target_variables)
-    vals = DynamicPPL.OrderedDict(k => vi_filtered[k] for k in keys(vi_filtered))
-    gibbs_context = GibbsContext(target_variables, vals, Ref(varinfo), model.context)
+    gibbs_context = GibbsContext(target_variables, Ref(varinfo), model.context)
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context
 end
 
