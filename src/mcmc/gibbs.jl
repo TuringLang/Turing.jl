@@ -95,7 +95,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # Fall back to the default behavior.
         return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        # Short-circuits the tilde assume if `vn` is present in `context`.
+        # Short-circuit the tilde assume if `vn` is present in `context`.
         value = get_conditioned_gibbs(context, vn)
         # TODO(mhauru) Is the call to logpdf correct if context.context is not
         # DefaultContext?
@@ -105,10 +105,9 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
             DynamicPPL.childcontext(context),
-            prior_sampler,
+            DynamicPPL.SampleFromPrior(),
             right,
             vn,
             context.global_varinfo[],
@@ -118,30 +117,24 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
     end
 end
 
+# As above but with an RNG.
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
 )
+    # See comment in the above, rng-less version of this method for an explanation.
     if is_target_varname(context, vn)
-        # Fall back to the default behavior.
         return DynamicPPL.tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
         )
     elseif has_conditioned_gibbs(context, vn)
-        # Short-circuits the tilde assume if `vn` is present in `context`.
         value = get_conditioned_gibbs(context, vn)
-        # TODO(mhauru) Is the call to logpdf correct if context.context is not
-        # DefaultContext?
+        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
         return value, logpdf(right, value), vi
     else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
-        # being used by the current sampler.
-        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             DynamicPPL.childcontext(context),
-            prior_sampler,
+            DynamicPPL.SampleFromPrior(),
             right,
             vn,
             context.global_varinfo[],
@@ -169,21 +162,18 @@ function reconstruct_getvalue(
     return reduce(hcat, x[2:end]; init=x[1])
 end
 
+# Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
+# See comments there for more details.
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
     if is_target_varname(context, vns)
-        # Fall back to the default behavior.
         return DynamicPPL.dot_tilde_assume(
             DynamicPPL.childcontext(context), right, left, vns, vi
         )
     elseif has_conditioned_gibbs(context, vns)
-        # Short-circuit the tilde assume if `vn` is present in `context`.
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
         return value, broadcast_logpdf(right, value), vi
     else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
-        # being used by the current sampler.
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
             DynamicPPL.childcontext(context),
@@ -198,23 +188,19 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
     end
 end
 
+# As above but with an RNG.
 function DynamicPPL.dot_tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
 )
     if is_target_varname(context, vns)
-        # Fall back to the default behavior.
         return DynamicPPL.dot_tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
         )
     elseif has_conditioned_gibbs(context, vns)
-        # Short-circuit the tilde assume if `vn` is present in `context`.
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
+        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
         return value, broadcast_logpdf(right, value), vi
     else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
-        # being used by the current sampler.
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
             rng,
@@ -231,21 +217,6 @@ function DynamicPPL.dot_tilde_assume(
 end
 
 """
-    preferred_value_type(varinfo::DynamicPPL.AbstractVarInfo)
-
-Returns the preferred value type for a variable with the given `varinfo`.
-"""
-preferred_value_type(::DynamicPPL.AbstractVarInfo) = DynamicPPL.OrderedDict
-preferred_value_type(::DynamicPPL.SimpleVarInfo{<:NamedTuple}) = NamedTuple
-function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
-    # We can only do this in the scenario where all the varnames are `Accessors.IdentityLens`.
-    namedtuple_compatible = all(varinfo.metadata) do md
-        eltype(md.vns) <: VarName{<:Any,typeof(identity)}
-    end
-    return namedtuple_compatible ? NamedTuple : DynamicPPL.OrderedDict
-end
-
-"""
     make_conditional(model, target_variables, varinfo)
 
 Return a new, conditioned model for a component of a Gibbs sampler.
@@ -253,10 +224,15 @@ Return a new, conditioned model for a component of a Gibbs sampler.
 # Arguments
 - `model::DynamicPPL.Model`: The model to condition.
 - `target_variables::AbstractVector{<:VarName}`: The target variables of the component
-sampler. These will _not_ conditioned.
+sampler. These will _not_ be conditioned.
 - `varinfo::DynamicPPL.AbstractVarInfo`: Values for all variables in the model. All the
 values in `varinfo` but not in `target_variables` will be conditioned to the values they
 have in `varinfo`.
+
+# Returns
+- A new model with the variables _not_ in `target_variables` conditioned.
+- The `GibbsContext` object that will be used to condition the variables. This is necessary
+because evaluation can mutate its `global_varinfo` field, which we need to access later.
 """
 function make_conditional(
     model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
@@ -360,7 +336,7 @@ function DynamicPPL.initialstep(
     varnames = alg.varnames
     samplers = alg.samplers
 
-    # 1. Run the model once to get the varnames present + initial values to condition on.
+    # Run the model once to get the varnames present + initial values to condition on.
     vi = DynamicPPL.VarInfo(rng, model)
     if initial_params !== nothing
         vi = DynamicPPL.unflatten(vi, initial_params)
@@ -371,10 +347,13 @@ function DynamicPPL.initialstep(
     for (varnames_local, sampler_local) in zip(varnames, samplers)
         varnames_local = _maybevec(varnames_local)
         # Get the initial values for this component sampler.
-        vi_local = DynamicPPL.subset(vi, varnames_local)
-        initial_params_local = initial_params === nothing ? nothing : vi_local[:]
+        initial_params_local = if initial_params === nothing
+            nothing
+        else
+            DynamicPPL.subset(vi, varnames_local)[:]
+        end
 
-        # Construct the conditional model.
+        # Construct the conditioned model.
         model_local, context_local = make_conditional(model, varnames_local, vi)
 
         # Take initial step.
@@ -397,7 +376,7 @@ function DynamicPPL.initialstep(
         # This merges in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
         vi = merge(vi, context_local.global_varinfo[])
-        # This merges the latest values for all the variables in the current sampler.
+        # This merges the new values for all the variables sampled by the current sampler.
         vi = merge(vi, new_vi_local)
         push!(states, new_state_local)
     end
@@ -473,8 +452,8 @@ function recompute_logprob!!(
     return setlogp!!(state, vi_new.logp[])
 end
 
-# TODO(mhauru) Would really like to type constrain this to something like AbstractMCMCState
-# if such a thing existed.
+# TODO(mhauru) Would really like to type constrain the first argument to something like
+# AbstractMCMCState if such a thing existed.
 function DynamicPPL.setlogp!!(state, logp)
     try
         new_vi = setlogp!!(state.vi, logp)
@@ -496,11 +475,11 @@ function DynamicPPL.setlogp!!(state::TuringState, logp)
 end
 
 # TODO(mhauru) In the general case, which arguments are really needed for reset_state!!?
-# The current list is a guess, but I think some might be unnecessary.
+# The current list is a guess, and I think some are unnecessary.
 """
     reset_state!!(rng, model, sampler, state, varinfo, sampler_previous, state_previous)
 
-Return an updated state for a component sampler.
+Return an updated state for a Gibbs component sampler.
 
 This takes into account changes caused by other Gibbs components. The default implementation
 is to try to set the `vi` field of `state` to `varinfo`. If this is not the right thing to
