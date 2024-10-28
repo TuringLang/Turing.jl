@@ -10,10 +10,31 @@
 #   rather than only for the "true" observations.
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
+"""
+    GibbsContext(target_varnames, global_varinfo, context)
+
+A context used in the implementation of the Turing.jl Gibbs sampler.
+
+There will be one `GibbsContext` for each iteration of a component sampler.
+"""
 struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext
+    """
+    a collection of `VarName`s that are the ones the current component sampler is sampling.
+    For them, `GibbsContext` will just pass tilde_assume calls to its child context.
+    For other variables, their values will be fixed to the values they have in
+    `global_varinfo`.
+    """
     target_varnames::VNs
+    """
+    a `Ref` to the global `AbstractVarInfo` object that holds values for all variables, both
+    those fixed and those being sampled. We use a `Ref` because this field may need to be
+    updated if new variables are introduced.
+    """
     global_varinfo::GVI
+    """
+    the child context that tilde calls will eventually be passed onto.
+    """
     context::Ctx
 end
 
@@ -34,7 +55,14 @@ function has_conditioned_gibbs(context::GibbsContext, vn::VarName)
     return DynamicPPL.haskey(context.global_varinfo[], vn)
 end
 function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
-    return all(Base.Fix1(has_conditioned_gibbs, context), vns)
+    num_conditioned = count(Iterators.map(Base.Fix1(has_conditioned_gibbs, context), vns))
+    if (num_conditioned != 0) && (num_conditioned != length(vns))
+        error(
+            "Some but not all of the variables in `vns` have been conditioned on. " *
+            "Having mixed conditioning like this is not supported in GibbsContext.",
+        )
+    end
+    return num_conditioned > 0
 end
 
 function get_conditioned_gibbs(context::GibbsContext, vn::VarName)
@@ -51,7 +79,14 @@ function is_target_varname(context::GibbsContext, vn::VarName)
 end
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
-    return all(Base.Fix1(is_target_varname, context), vns)
+    num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
+    if (num_target != 0) && (num_target != length(vns))
+        error(
+            "Some but not all of the variables in `vns` are target variables. " *
+            "Having mixed targeting like this is not supported in GibbsContext.",
+        )
+    end
+    return num_target > 0
 end
 
 # Tilde pipeline
