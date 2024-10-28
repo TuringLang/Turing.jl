@@ -10,32 +10,51 @@
 #   rather than only for the "true" observations.
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
-struct GibbsContext{Values,Ctx<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
-    values::Values
+struct GibbsContext{
+    VNs,Values,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
+} <: DynamicPPL.AbstractContext
+    target_varnames::VNs
+    conditioned_values::Values
+    global_varinfo::GVI
     context::Ctx
 end
 
-GibbsContext(values) = GibbsContext(values, DynamicPPL.DefaultContext())
+function GibbsContext(target_varnames, conditioned_values, global_varinfo)
+    return GibbsContext(
+        target_varnames, conditioned_values, global_varinfo, DynamicPPL.DefaultContext()
+    )
+end
 
 DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
 function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
-    return GibbsContext(context.values, childcontext)
+    return GibbsContext(
+        context.target_varnames,
+        context.conditioned_values,
+        Ref(context.global_varinfo[]),
+        childcontext,
+    )
 end
 
 # has and get
 function has_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.hasvalue(context.values, vn)
+    return DynamicPPL.hasvalue(context.conditioned_values, vn)
 end
 function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     return all(Base.Fix1(has_conditioned_gibbs, context), vns)
 end
 
 function get_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.getvalue(context.values, vn)
+    return DynamicPPL.getvalue(context.conditioned_values, vn)
 end
 function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     return map(Base.Fix1(get_conditioned_gibbs, context), vns)
+end
+
+function is_target_varname(context::GibbsContext, vn::VarName)
+    return Iterators.any(
+        Iterators.map(target -> subsumes(target, vn), context.target_varnames)
+    )
 end
 
 # Tilde pipeline
@@ -43,11 +62,28 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vn)
         value = get_conditioned_gibbs(context, vn)
+        # TODO(mhauru) Is the call to logpdf correct if context.context is not
+        # DefaultContext?
         return value, logpdf(right, value), vi
+    elseif is_target_varname(context, vn)
+        # Fall back to the default behavior.
+        return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
+    else
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
+        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+            DynamicPPL.SamplingContext(
+                DynamicPPL.SampleFromPrior(), DynamicPPL.childcontext(context)
+            ),
+            right,
+            vn,
+            context.global_varinfo[],
+        )
+        context.global_varinfo[] = new_global_vi
+        return value, lp, vi
     end
-
-    # Otherwise, falls back to the default behavior.
-    return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
 end
 
 function DynamicPPL.tilde_assume(
@@ -56,13 +92,30 @@ function DynamicPPL.tilde_assume(
     # Short-circuits the tilde assume if `vn` is present in `context`.
     if has_conditioned_gibbs(context, vn)
         value = get_conditioned_gibbs(context, vn)
+        # TODO(mhauru) Is the call to logpdf correct if context.context is not
+        # DefaultContext?
         return value, logpdf(right, value), vi
+    elseif is_target_varname(context, vn)
+        # Fall back to the default behavior.
+        return DynamicPPL.tilde_assume(
+            rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
+        )
+    else
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
+        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+            DynamicPPL.SamplingContext(
+                rng, DynamicPPL.SampleFromPrior(), DynamicPPL.childcontext(context)
+            ),
+            right,
+            vn,
+            context.global_varinfo[],
+        )
+        context.global_varinfo[] = new_global_vi
+        return value, lp, vi
     end
-
-    # Otherwise, falls back to the default behavior.
-    return DynamicPPL.tilde_assume(
-        rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
-    )
 end
 
 # Some utility methods for handling the `logpdf` computations in dot-tilde the pipeline.
@@ -127,21 +180,6 @@ function preferred_value_type(varinfo::DynamicPPL.TypedVarInfo)
 end
 
 """
-    condition_gibbs(context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo)
-
-Return a `GibbsContext` with the values extracted from the given `varinfo` treated as
-conditioned.
-"""
-function condition_gibbs(
-    context::DynamicPPL.AbstractContext, varinfo::DynamicPPL.AbstractVarInfo
-)
-    # TODO(mhauru) Maybe use preferred_value_type to return NamedTuples in some cases.
-    # If not, then remove preferred_value_type.
-    vals = DynamicPPL.OrderedDict(k => varinfo[k] for k in keys(varinfo))
-    return GibbsContext(vals, context)
-end
-
-"""
     make_conditional(model, target_variables, varinfo)
 
 Return a new, conditioned model for a component of a Gibbs sampler.
@@ -157,12 +195,15 @@ have in `varinfo`.
 function make_conditional(
     model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
 )
+    # We want to condition all the variables in keys(varinfo) that are not subsumed by any
+    # of the target variables.
     not_target_variables = filter(
         x -> !(any(Iterators.map(vn -> subsumes(vn, x), target_variables))), keys(varinfo)
     )
     vi_filtered = subset(varinfo, not_target_variables)
-    gibbs_context = condition_gibbs(model.context, vi_filtered)
-    return DynamicPPL.contextualize(model, gibbs_context)
+    vals = DynamicPPL.OrderedDict(k => vi_filtered[k] for k in keys(vi_filtered))
+    gibbs_context = GibbsContext(target_variables, vals, Ref(varinfo), model.context)
+    return DynamicPPL.contextualize(model, gibbs_context), gibbs_context
 end
 
 # HACK: Allows us to support either passing in an implementation of `AbstractMCMC.AbstractSampler`
@@ -261,29 +302,21 @@ function DynamicPPL.initialstep(
     samplers = alg.samplers
 
     # 1. Run the model once to get the varnames present + initial values to condition on.
-    vi_base = DynamicPPL.VarInfo(rng, model)
-
-    # Simple way of setting the initial parameters: set them in the `vi_base`
-    # if they are given so they propagate to the subset varinfos used by each sampler.
+    vi = DynamicPPL.VarInfo(rng, model)
     if initial_params !== nothing
-        vi_base = DynamicPPL.unflatten(vi_base, initial_params)
+        vi = DynamicPPL.unflatten(vi, initial_params)
     end
 
-    # Create the varinfos for each sampler.
-    local_varinfos = map(Base.Fix1(DynamicPPL.subset, vi_base) ∘ _maybevec, varnames)
-    initial_params_all = if initial_params === nothing
-        fill(nothing, length(varnames))
-    else
-        # Extract from the `vi_base`, which should have the values set correctly from above.
-        map(vi -> vi[:], local_varinfos)
-    end
-
-    # 2. Construct a varinfo for every vn + sampler combo.
+    # Initialise each component sampler in turn, collect all their states.
     states = []
-    for (varnames_local, sampler_local, initial_params_local) in
-        zip(varnames, samplers, initial_params_all)
+    for (varnames_local, sampler_local) in zip(varnames, samplers)
+        varnames_local = _maybevec(varnames_local)
+        # Get the initial values for this component sampler.
+        vi_local = DynamicPPL.subset(vi, varnames_local)
+        initial_params_local = initial_params === nothing ? nothing : vi_local[:]
+
         # Construct the conditional model.
-        model_local = make_conditional(model, _maybevec(varnames_local), vi_base)
+        model_local, context_local = make_conditional(model, varnames_local, vi)
 
         # Take initial step.
         _, new_state_local = AbstractMCMC.step(
@@ -295,17 +328,21 @@ function DynamicPPL.initialstep(
             initial_params=initial_params_local,
             kwargs...,
         )
-        vi_local = varinfo(new_state_local)
+        new_vi_local = varinfo(new_state_local)
         # TODO(mhauru) Can we remove the invlinking?
-        vi_local = if DynamicPPL.istrans(vi_local)
-            DynamicPPL.invlink(vi_local, sampler_local, model_local)
+        new_vi_local = if DynamicPPL.istrans(new_vi_local)
+            DynamicPPL.invlink(new_vi_local, sampler_local, model_local)
         else
-            vi_local
+            new_vi_local
         end
-        vi_base = merge(vi_base, vi_local)
+        # This merges in any new variables that were introduced during the step, but that
+        # were not in the domain of the current sampler.
+        vi = merge(vi, context_local.global_varinfo[])
+        # This merges the latest values for all the variables in the current sampler.
+        vi = merge(vi, new_vi_local)
         push!(states, new_state_local)
     end
-    return Transition(model, vi_base), GibbsState(vi_base, states)
+    return Transition(model, vi), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step(
@@ -328,8 +365,6 @@ function AbstractMCMC.step(
         vi, new_state_local = gibbs_step_inner(
             rng, model, varnames, samplers, states, vi, index; kwargs...
         )
-
-        # Update the `states`
         states = Accessors.setindex(states, new_state_local, index)
     end
     return Transition(model, vi), GibbsState(vi, states)
@@ -379,7 +414,7 @@ function recompute_logprob!!(
     return setlogp!!(state, vi_new.logp[])
 end
 
-# TODO(mhauru) Would really like to type constraint this to something like AbstractMCMCState
+# TODO(mhauru) Would really like to type constrain this to something like AbstractMCMCState
 # if such a thing existed.
 function DynamicPPL.setlogp!!(state, logp)
     try
@@ -441,6 +476,8 @@ function reset_state!!(
     end
 end
 
+# Some samplers use a VarInfo directly as the state. In that case, there's little to do in
+# `reset_state!!`.
 function reset_state!!(
     model,
     sampler,
@@ -539,7 +576,6 @@ function gibbs_step_inner(
     index;
     kwargs...,
 )
-    # Needs to do a a few things.
     sampler_local = samplers[index]
     state_local = states[index]
     varnames_local = _maybevec(varnames[index])
@@ -547,13 +583,10 @@ function gibbs_step_inner(
     # TODO(mhauru) Can we remove the invlinking?
     vi = DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
 
-    # 1. Create conditional model.
-    # Construct the conditional model.
-    # NOTE: Here it's crucial that all the `varinfos` are in the constrained space,
-    # otherwise we're conditioning on values which are not in the support of the
-    # distributions.
-    model_local = make_conditional(model, varnames_local, vi)
+    # Construct the conditional model and the varinfo that this sampler should use.
+    model_local, context_local = make_conditional(model, varnames_local, vi)
     varinfo_local = subset(vi, varnames_local)
+    # TODO(mhauru) Can we remove the below, if get rid of all the invlinking?
     # If the varinfo of the previous state from this sampler is linked, we should link the
     # new varinfo too.
     if DynamicPPL.istrans(varinfo(state_local))
@@ -564,6 +597,8 @@ function gibbs_step_inner(
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
     state_previous = states[index == 1 ? length(states) : index - 1]
 
+    # Set the state of the current sampler, accounting for any changes made by other
+    # samplers.
     state_local = reset_state!!(
         model_local,
         sampler_local,
@@ -578,13 +613,17 @@ function gibbs_step_inner(
         state_local = recompute_logprob!!(rng, model_local, sampler_local, state_local)
     end
 
-    # 2. Take step with local sampler.
+    # Take a step with the local sampler.
     new_state_local = last(
         AbstractMCMC.step(rng, model_local, sampler_local, state_local; kwargs...)
     )
 
     new_vi_local = varinfo(new_state_local)
-    new_vi = merge(vi, new_vi_local)
+    # This merges in any new variables that were introduced during the step, but that
+    # were not in the domain of the current sampler.
+    new_vi = merge(vi, context_local.global_varinfo[])
+    # This merges the latest values for all the variables in the current sampler.
+    new_vi = merge(new_vi, new_vi_local)
     new_vi = setlogp!!(new_vi, new_vi_local.logp[])
     return new_vi, new_state_local
 end
