@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.35.1"
+version = "0.35.2"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -56,7 +56,7 @@ AdvancedMH = "0.8"
 AdvancedPS = "0.6.0"
 AdvancedVI = "0.2"
 BangBang = "0.4.2"
-Bijectors = "0.13.6"
+Bijectors = "0.14"
 Compat = "4.15.0"
 DataStructures = "0.18"
 Distributions = "0.23.3, 0.24, 0.25"
