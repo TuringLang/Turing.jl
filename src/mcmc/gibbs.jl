@@ -566,16 +566,13 @@ function reset_state!!(
         state.metric, DynamicPPL.LogDensityFunction(model)
     )
     θ_new = varinfo[:]
-    # Modify the momentum to have the right number of elements, if the number of position
-    # variables has changed. Any new dimensions will be set to zero momentum.
-    # Note that there's no guarantee that any new variables are at the end of the parameter
-    # list, so we may end up mismatching momenta and parameters. This shouldn't be of
-    # consequence though, since the momentum will get resampled anyway.
-    # Frankly, we could probably just as well set the momenta to zero, but that made
-    # ForwardDiff crash for some reason I (mhauru) didn't bother to investigate.
+    # Set the momentum to some arbitrary value, making sure it has the right number of
+    # components. We could try to do something clever here to only reset momenta related to
+    # new variables, but it'll be resampled in the next iteration anyway.
+    # TODO(mhauru) Would prefer to set it to zeros rather than ones, but that makes
+    # ForwardDiff crash for some reason. Should investigate and report as a ForwardDiff bug.
     momenta_old = state.transition.z.r
-    momenta_new = zero(θ_new)
-    momenta_new[1:length(momenta_old)] .= momenta_old
+    momenta_new = ones(eltype(momenta_old), length(θ_new))
     return Accessors.@set state.transition.z = AdvancedHMC.phasepoint(
         hamiltonian, θ_new, momenta_new
     )
