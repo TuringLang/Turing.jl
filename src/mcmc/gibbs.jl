@@ -367,12 +367,6 @@ function DynamicPPL.initialstep(
             kwargs...,
         )
         new_vi_local = varinfo(new_state_local)
-        # TODO(mhauru) Can we remove the invlinking?
-        new_vi_local = if DynamicPPL.istrans(new_vi_local)
-            DynamicPPL.invlink(new_vi_local, sampler_local, model_local)
-        else
-            new_vi_local
-        end
         # This merges in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
         vi = merge(vi, context_local.global_varinfo[])
@@ -626,18 +620,9 @@ function gibbs_step_inner(
     state_local = states[index]
     varnames_local = _maybevec(varnames[index])
 
-    # TODO(mhauru) Can we remove the invlinking?
-    vi = DynamicPPL.istrans(vi) ? DynamicPPL.invlink(vi, model) : vi
-
     # Construct the conditional model and the varinfo that this sampler should use.
     model_local, context_local = make_conditional(model, varnames_local, vi)
     varinfo_local = subset(vi, varnames_local)
-    # TODO(mhauru) Can we remove the below, if get rid of all the invlinking?
-    # If the varinfo of the previous state from this sampler is linked, we should link the
-    # new varinfo too.
-    if DynamicPPL.istrans(varinfo(state_local))
-        varinfo_local = DynamicPPL.link(varinfo_local, sampler_local, model_local)
-    end
 
     # Extract the previous sampler and state.
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
