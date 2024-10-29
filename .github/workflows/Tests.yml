@@ -9,9 +9,9 @@ on:
 jobs:
   test:
     # Use matrix.test.name here to avoid it taking up the entire window width
-    name: test ${{matrix.test.name}} (${{ matrix.os }}, ${{ matrix.version }}, ${{ matrix.arch }}, ${{ matrix.num_threads }})
-    runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.version == 'nightly' }}
+    name: test ${{matrix.test.name}} (${{ matrix.runner.os }}, ${{ matrix.runner.version }}, ${{ matrix.runner.arch }}, ${{ matrix.runner.num_threads }})
+    runs-on: ${{ matrix.runner.os }}
+    continue-on-error: ${{ matrix.runner.version == 'pre' }}
 
     strategy:
       fail-fast: false
@@ -35,63 +35,71 @@ jobs:
             args: "mcmc/ess.jl"
           - name: "everything else"
             args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
-        version:
-          - '1.10'
-          - '1'
-        os:
-          - ubuntu-latest
-          - windows-latest
-          - macOS-latest
-        arch:
-          - x64
-          - x86
-        num_threads:
-          - 1
-          - 2
-        exclude:
-          # With Windows and macOS, only run x64, 2 threads. We just want to see
-          # some combination work on OSes other than Ubuntu.
-          - os: windows-latest
-            version: '1'
-          - os: macOS-latest
-            version: '1'
-          - os: windows-latest
-            arch: x86
-          - os: macOS-latest
-            arch: x86
-          - os: windows-latest
+        runner:
+          # Default
+          - version: '1'
+            os: ubuntu-latest
+            arch: x64
             num_threads: 1
-          - os: macOS-latest
+          # x86
+          - version: '1'
+            os: ubuntu-latest
+            arch: x86
             num_threads: 1
-          # It's sufficient to test x86 with only Julia 1.10 and 1 thread.
-          - arch: x86
-            version: '1'
-          - arch: x86
+          # Multithreaded
+          - version: '1'
+            os: ubuntu-latest
+            arch: x64
             num_threads: 2
+          # Windows
+          - version: '1'
+            os: windows-latest
+            arch: x64
+            num_threads: 1
+          # macOS
+          - version: '1'
+            os: macos-latest
+            arch: x64
+            num_threads: 1
+          # Minimum supported Julia version
+          - version: 'min'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 1
+          # Minimum supported Julia version, multithreaded
+          - version: 'min'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 2
+          # Pre-release Julia version
+          - version: 'pre'
+            os: ubuntu-latest
+            arch: x64
+            num_threads: 1
 
     steps:
       - name: Print matrix variables
         run: |
-          echo "OS: ${{ matrix.os }}"
-          echo "Architecture: ${{ matrix.arch }}"
-          echo "Julia version: ${{ matrix.version }}"
-          echo "Number of threads: ${{ matrix.num_threads }}"
+          echo "OS: ${{ matrix.runner.os }}"
+          echo "Architecture: ${{ matrix.runner.arch }}"
+          echo "Julia version: ${{ matrix.runner.version }}"
+          echo "Number of threads: ${{ matrix.runner.num_threads }}"
           echo "Test arguments: ${{ matrix.test.args }}"
       - name: (De)activate coverage analysis
-        run: echo "COVERAGE=${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' && matrix.num_threads == 2 }}" >> "$GITHUB_ENV"
+        run: echo "COVERAGE=${{ matrix.runner.version == '1' && matrix.runner.os == 'ubuntu-latest' && matrix.runner.num_threads == 2 }}" >> "$GITHUB_ENV"
         shell: bash
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '${{ matrix.version }}'
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+          version: '${{ matrix.runner.version }}'
+          arch: ${{ matrix.runner.arch }}
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       # TODO: Use julia-actions/julia-runtest when test_args are supported
       # Custom calls of Pkg.test tend to miss features such as e.g. adjustments for CompatHelper PRs
       # Ref https://github.com/julia-actions/julia-runtest/pull/73
       - name: Call Pkg.test
-        run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test.args }}
+        run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.runner.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test.args }}
       - uses: julia-actions/julia-processcoverage@v1
         if: ${{ env.COVERAGE }}
       - uses: codecov/codecov-action@v4
