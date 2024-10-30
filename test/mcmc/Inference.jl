@@ -22,25 +22,14 @@ using Turing
         @testset "rng" begin
             model = gdemo_default
 
-            # multithreaded sampling with PG causes segfaults on Julia 1.5.4
-            # https://github.com/TuringLang/Turing.jl/issues/1571
-            samplers = @static if VERSION <= v"1.5.3" || VERSION >= v"1.6.0"
-                (
-                    HMC(0.1, 7; adtype=adbackend),
-                    PG(10),
-                    IS(),
-                    MH(),
-                    Gibbs(; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)),
-                    Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
-                )
-            else
-                (
-                    HMC(0.1, 7; adtype=adbackend),
-                    IS(),
-                    MH(),
-                    Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
-                )
-            end
+            samplers = (
+                HMC(0.1, 7; adtype=adbackend),
+                PG(10),
+                IS(),
+                MH(),
+                Gibbs(; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)),
+                Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
+            )
             for sampler in samplers
                 Random.seed!(5)
                 chain1 = sample(model, sampler, MCMCThreads(), 1000, 4)
