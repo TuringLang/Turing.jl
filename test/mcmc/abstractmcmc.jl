@@ -137,23 +137,14 @@ end
                 )
 
                 @testset "inference" begin
-                    if adtype isa AutoReverseDiff &&
-                        model.f === DynamicPPL.TestUtils.demo_assume_index_observe &&
-                        VERSION < v"1.8"
-                        # Ref: https://github.com/TuringLang/DynamicPPL.jl/issues/612
-                        @test_throws UndefRefError sample(
-                            model, sampler_ext, 5_000; sample_kwargs...
-                        )
-                    else
-                        DynamicPPL.TestUtils.test_sampler(
-                            [model],
-                            sampler_ext,
-                            5_000;
-                            rtol=0.2,
-                            sampler_name="AdvancedHMC",
-                            sample_kwargs...,
-                        )
-                    end
+                    DynamicPPL.TestUtils.test_sampler(
+                        [model],
+                        sampler_ext,
+                        5_000;
+                        rtol=0.2,
+                        sampler_name="AdvancedHMC",
+                        sample_kwargs...,
+                    )
                 end
             end
         end
