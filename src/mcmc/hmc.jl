@@ -15,6 +15,7 @@ struct HMCState{
     hamiltonian::THam
     z::PhType
     adaptor::TAdapt
+    sampler::Sampler{<:Hamiltonian}
 end
 
 ###
@@ -229,7 +230,7 @@ function DynamicPPL.initialstep(
     end
 
     transition = Transition(model, vi, t)
-    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
+    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor, spl)
 
     return transition, state
 end
@@ -275,7 +276,7 @@ function AbstractMCMC.step(
 
     # Compute next transition and state.
     transition = Transition(model, vi, t)
-    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
+    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor, spl)
 
     return transition, newstate
 end
