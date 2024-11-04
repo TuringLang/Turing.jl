@@ -475,71 +475,56 @@ function DynamicPPL.setlogp!!(state::TuringState, logp)
     return TuringState(setlogp!!(state.state, logp), logp)
 end
 
-# Some samplers use a VarInfo directly as the state. In that case, there's little to do in
-# `setparams!!`.
-function AbstractMCMC.setparams!!(state::VarInfo, params::AbstractVector)
-    return DynamicPPL.unflatten(state, params)
-end
+"""
+    setparams_varinfo!!(model, sampler::Sampler, state, params::AbstractVarInfo)
 
-function AbstractMCMC.setparams!!(state::VarInfo, params::AbstractVarInfo)
-    return params
-end
+A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
+`AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
+`AbstractMCMC.setparams!!(model, state, params[:])`.
 
-function AbstractMCMC.setparams!!(
-    model::DynamicPPL.Model,
-    state::TuringState,
-    params::Union{AbstractVector,AbstractVarInfo},
-)
-    new_inner_state = AbstractMCMC.setparams!!(model, state.state, params)
-    return TuringState(new_inner_state, state.logdensity)
-end
-
-# Unless some other treatment has been specified for this state type, just flatten the
-# AbstractVarInfo. This method exists because some sampler types need to override this
-# behavior.
-function AbstractMCMC.setparams!!(model::DynamicPPL.Model, state, params::AbstractVarInfo)
+`model` is typically a `DynamicPPL.Model`, but can also be e.g. an
+`AbstractMCMC.LogDensityModel`.
+"""
+function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
     return AbstractMCMC.setparams!!(model, state, params[:])
 end
 
-function AbstractMCMC.setparams!!(
-    model::DynamicPPL.Model, state::HMCState, params::AbstractVarInfo
+# Some samplers use a VarInfo directly as the state. In that case, there's little to do in
+# `setparams_varinfo!!`.
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, sampler::Sampler, state::VarInfo, params::AbstractVarInfo
+)
+    return params
+end
+
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, sampler::Sampler, state::TuringState, params::AbstractVarInfo
+)
+    logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
+    new_inner_state = setparams_varinfo!!(
+        AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
+    )
+    return TuringState(new_inner_state, logdensity)
+end
+
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, sampler::Sampler, state::HMCState, params::AbstractVarInfo
 )
     θ_new = params[:]
-    hamiltonian = get_hamiltonian(model, state.sampler, params, state, length(θ_new))
+    hamiltonian = get_hamiltonian(model, sampler, params, state, length(θ_new))
 
     # Update the parameter values in `state.z`.
     # TODO: Avoid mutation
     z = state.z
     resize!(z.θ, length(θ_new))
     z.θ .= θ_new
-    return HMCState(
-        params, state.i, state.kernel, hamiltonian, z, state.adaptor, state.sampler
-    )
+    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor)
 end
 
-function AbstractMCMC.setparams!!(
-    model::DynamicPPL.Model, state::HMCState, params::AbstractVector
-)
-    θ_new = params
-    vi = DynamicPPL.unflatten(state.vi, params)
-    hamiltonian = get_hamiltonian(model, state.sampler, vi, state, length(θ_new))
-
-    # Update the parameter values in `state.z`.
-    # TODO: Avoid mutation
-    z = state.z
-    resize!(z.θ, length(θ_new))
-    z.θ .= θ_new
-    return HMCState(vi, state.i, state.kernel, hamiltonian, z, state.adaptor, state.sampler)
-end
-
-function AbstractMCMC.setparams!!(
-    model::DynamicPPL.Model, state::PGState, params::AbstractVarInfo
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, sampler::Sampler, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
-end
-
-function AbstractMCMC.setparams!!(state::PGState, params::AbstractVector)
-    return PGState(DynamicPPL.unflatten(state.vi, params), state.rng)
 end
 
 function gibbs_step_inner(
@@ -566,7 +551,9 @@ function gibbs_step_inner(
 
     # Set the state of the current sampler, accounting for any changes made by other
     # samplers.
-    state_local = AbstractMCMC.setparams!!(model_local, state_local, varinfo_local)
+    state_local = setparams_varinfo!!(
+        model_local, sampler_local, state_local, varinfo_local
+    )
     if gibbs_requires_recompute_logprob(
         model_local, sampler_local, sampler_previous, state_local, state_previous
     )
