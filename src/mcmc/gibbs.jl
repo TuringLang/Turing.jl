@@ -374,6 +374,12 @@ function DynamicPPL.initialstep(
             kwargs...,
         )
         new_vi_local = varinfo(new_state_local)
+        # TODO(mhauru) Remove the below loop once samplers no longer depend on selectors.
+        # For some reason not having this in place was causing trouble for ESS, but not for
+        # other samplers. I didn't get to the bottom of it.
+        for vn in keys(new_vi_local)
+            DynamicPPL.setgid!(new_vi_local, sampler_local.selector, vn)
+        end
         # This merges in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
         vi = merge(vi, context_local.global_varinfo[])
@@ -544,6 +550,12 @@ function gibbs_step_inner(
     # Construct the conditional model and the varinfo that this sampler should use.
     model_local, context_local = make_conditional(model, varnames_local, global_vi)
     varinfo_local = subset(global_vi, varnames_local)
+    # TODO(mhauru) Remove the below loop once samplers no longer depend on selectors.
+    # For some reason not having this in place was causing trouble for ESS, but not for
+    # other samplers. I didn't get to the bottom of it.
+    for vn in keys(varinfo_local)
+        DynamicPPL.setgid!(varinfo_local, sampler_local.selector, vn)
+    end
 
     # Extract the previous sampler and state.
     sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
