@@ -407,78 +407,15 @@ function AbstractMCMC.step(
     # TODO: move this into a recursive function so we can unroll when reasonable?
     for index in 1:length(samplers)
         # Take the inner step.
+        sampler_local = samplers[index]
+        state_local = states[index]
+        varnames_local = _maybevec(varnames[index])
         vi, new_state_local = gibbs_step_inner(
-            rng, model, varnames, samplers, states, vi, index; kwargs...
+            rng, model, varnames_local, sampler_local, state_local, vi; kwargs...
         )
         states = Accessors.setindex(states, new_state_local, index)
     end
     return Transition(model, vi), GibbsState(vi, states)
-end
-
-# TODO: Remove this once we've done away with the selector functionality in DynamicPPL.
-function make_rerun_sampler(model::DynamicPPL.Model, sampler::DynamicPPL.Sampler)
-    # NOTE: This is different from the implementation used in the old `Gibbs` sampler, where we specifically provide
-    # a `gid`. Here, because `model` only contains random variables to be sampled by `sampler`, we just use the exact
-    # same `selector` as before but now with `rerun` set to `true` if needed.
-    return Accessors.@set sampler.selector.rerun = true
-end
-
-# Interface we need a sampler to implement to work as a component in a Gibbs sampler.
-"""
-    gibbs_requires_recompute_logprob(model_dst, sampler_dst, sampler_src, state_dst, state_src)
-
-Check if the log-probability of the destination model needs to be recomputed.
-
-Defaults to `true`
-"""
-function gibbs_requires_recompute_logprob(
-    model_dst, sampler_dst, sampler_src, state_dst, state_src
-)
-    return true
-end
-
-# TODO: Remove `rng`?
-function recompute_logprob!!(
-    rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::DynamicPPL.Sampler, state
-)
-    vi = varinfo(state)
-    # NOTE: Need to do this because some samplers might need some other quantity than the log-joint,
-    # e.g. log-likelihood in the scenario of `ESS`.
-    # NOTE: Need to update `sampler` too because the `gid` might change in the re-run of the model.
-    sampler_rerun = make_rerun_sampler(model, sampler)
-    # NOTE: If we hit `DynamicPPL.maybe_invlink_before_eval!!`, then this will result in a `invlink`ed
-    # `varinfo`, even if `varinfo` was linked.
-    vi_new = last(
-        DynamicPPL.evaluate!!(
-            model,
-            vi,
-            # TODO: Check if it's safe to drop the `rng` argument, i.e. just use default RNG.
-            DynamicPPL.SamplingContext(rng, sampler_rerun),
-        )
-    )
-    return setlogp!!(state, vi_new.logp[])
-end
-
-# TODO(mhauru) Would really like to type constrain the first argument to something like
-# AbstractMCMCState if such a thing existed.
-function DynamicPPL.setlogp!!(state, logp)
-    try
-        new_vi = setlogp!!(state.vi, logp)
-        if new_vi !== state.vi
-            return Accessors.set(state, Accessors.PropertyLens{:vi}(), new_vi)
-        else
-            return state
-        end
-    catch
-        error(
-            "Unable to set `state.vi` for a $(typeof(state)). " *
-            "Consider writing a method for `setlogp!!` for this type.",
-        )
-    end
-end
-
-function DynamicPPL.setlogp!!(state::TuringState, logp)
-    return TuringState(setlogp!!(state.state, logp), logp)
 end
 
 """
@@ -536,17 +473,12 @@ end
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    varnames,
-    samplers,
-    states,
-    global_vi,
-    index;
+    varnames_local,
+    sampler_local,
+    state_local,
+    global_vi;
     kwargs...,
 )
-    sampler_local = samplers[index]
-    state_local = states[index]
-    varnames_local = _maybevec(varnames[index])
-
     # Construct the conditional model and the varinfo that this sampler should use.
     model_local, context_local = make_conditional(model, varnames_local, global_vi)
     varinfo_local = subset(global_vi, varnames_local)
@@ -557,20 +489,18 @@ function gibbs_step_inner(
         DynamicPPL.setgid!(varinfo_local, sampler_local.selector, vn)
     end
 
-    # Extract the previous sampler and state.
-    sampler_previous = samplers[index == 1 ? length(samplers) : index - 1]
-    state_previous = states[index == 1 ? length(states) : index - 1]
-
+    # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not
+    # sampled by other samplers, we don't need to `setparams`, but could rather simply
+    # recompute the log probability. More over, in some cases the recomputation could also
+    # be avoided, if e.g. the previous sampler has done all the necessary work already.
+    # However, we've judged that doing any caching or other tricks to avoid this now would
+    # be premature optimization. In most use cases of Gibbs a single model call here is not
+    # going to be a significant expense anyway.
     # Set the state of the current sampler, accounting for any changes made by other
     # samplers.
     state_local = setparams_varinfo!!(
         model_local, sampler_local, state_local, varinfo_local
     )
-    if gibbs_requires_recompute_logprob(
-        model_local, sampler_local, sampler_previous, state_local, state_previous
-    )
-        state_local = recompute_logprob!!(rng, model_local, sampler_local, state_local)
-    end
 
     # Take a step with the local sampler.
     new_state_local = last(

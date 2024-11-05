@@ -183,6 +183,8 @@ has_dot_assume(::DynamicPPL.Model) = true
     end
 
     @testset "dynamic model" begin
+        # TODO(mhauru) We should check that the results of the sampling are correct.
+        # Currently we just check that this doesn't crash.
         @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
@@ -204,7 +206,7 @@ has_dot_assume(::DynamicPPL.Model) = true
         end
         model = imm(Random.randn(100), 1.0)
         # https://github.com/TuringLang/Turing.jl/issues/1725
-        # sample(model, Gibbs(MH(:z), HMC(0.01, 4, :m)), 100);
+        # sample(model, Gibbs(; z=MH(), m=HMC(0.01, 4)), 100);
         sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100)
     end
 
