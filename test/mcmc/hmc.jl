@@ -272,6 +272,15 @@ using Turing
         end
     end
 
+    @testset "error for impossible model" begin
+        @model function demo_impossible()
+            x ~ Normal()
+            Turing.@addlogprob! -Inf
+        end
+
+        @test_throws ErrorException sample(demo_impossible(), NUTS(; adtype=adbackend), 5)
+    end
+
     @testset "(partially) issue: #2095" begin
         @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
