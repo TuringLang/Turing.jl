@@ -442,6 +442,18 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
+    model::DynamicPPL.Model,
+    sampler::Sampler{<:ESS},
+    state::VarInfo,
+    params::AbstractVarInfo,
+)
+    # The state is already a VarInfo, so we can just return `params`, but first we need to
+    # update its logprob.
+    # TODO(mhauru) Is this the right context to use?
+    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
+end
+
+function setparams_varinfo!!(
     model::DynamicPPL.Model, sampler::Sampler, state::TuringState, params::AbstractVarInfo
 )
     logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
