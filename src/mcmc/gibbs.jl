@@ -450,7 +450,7 @@ function setparams_varinfo!!(
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
     # TODO(mhauru) Is this the right context to use?
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
+    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.LikelihoodContext()))
 end
 
 function setparams_varinfo!!(
