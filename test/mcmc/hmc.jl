@@ -15,7 +15,7 @@ import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 import Mooncake
-using Test: @test, @test_logs, @testset
+using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
