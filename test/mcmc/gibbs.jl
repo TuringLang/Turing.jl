@@ -8,6 +8,7 @@ using ..NumericalTests:
     check_numerical,
     two_sample_test
 import ..ADUtils
+import Combinatorics
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
@@ -15,7 +16,7 @@ using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
 import Mooncake
-using Test: @test, @test_broken, @test_deprecated, @testset
+using Test: @inferred, @test, @test_broken, @test_deprecated, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -41,6 +42,82 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 }
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
+
+@testset "GibbsContext" begin
+    @testset "type stability" begin
+        # A test model that has multiple features in one package:
+        # Floats, Ints, arguments, observations, loops, dot_tildes.
+        @model function test_model(obs1, obs2, num_vars, mean)
+            variance ~ Exponential(2)
+            z = Vector{Float64}(undef, num_vars)
+            z .~ truncated(Normal(mean, variance); lower=1)
+            y = Vector{Int64}(undef, num_vars)
+            for i in 1:num_vars
+                y[i] ~ Poisson(Int(round(z[i])))
+            end
+            s = sum(y) - sum(z)
+            obs1 ~ Normal(s, 1)
+            return obs2 ~ Poisson(y[3])
+        end
+
+        model = test_model(1.2, 2, 10, 2.5)
+        all_varnames = DynamicPPL.VarName[@varname(variance), @varname(z), @varname(y)]
+        # All combinations of elements in all_varnames.
+        target_vn_combinations = Iterators.flatten(
+            Iterators.map(
+                n -> Combinatorics.combinations(all_varnames, n), 1:length(all_varnames)
+            ),
+        )
+        for typed in (true, false)
+            for target_vns in target_vn_combinations
+                global_varinfo =
+                    typed ? DynamicPPL.VarInfo(model) : DynamicPPL.untyped_varinfo(model)
+                target_vns = collect(target_vns)
+                local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
+                ctx = Turing.Inference.GibbsContext(
+                    target_vns, Ref(global_varinfo), Turing.DefaultContext()
+                )
+
+                # Check that the correct varnames are conditioned, and that getting their
+                # values is type stable.
+                for k in keys(global_varinfo)
+                    is_target = any(
+                        Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns)
+                    )
+                    @test Turing.Inference.is_target_varname(ctx, k) == is_target
+                    if !is_target && typed
+                        @inferred Turing.Inference.get_conditioned_gibbs(ctx, k)
+                    end
+                end
+
+                # Check the type stability also in the dot_tilde pipeline.
+                for k in all_varnames
+                    # The map(identity, ...) part is there to concretise the eltype.
+                    subkeys = map(
+                        identity,
+                        filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_varinfo)),
+                    )
+                    is_target = (k in target_vns)
+                    @test Turing.Inference.is_target_varname(ctx, subkeys) == is_target
+                    if !is_target && typed
+                        @inferred Turing.Inference.get_conditioned_gibbs(ctx, subkeys)
+                    end
+                end
+
+                # Check that evaluate!! and the result it returns are type stable.
+                conditioned_model = DynamicPPL.contextualize(model, ctx)
+                _, post_eval_varinfo = @inferred DynamicPPL.evaluate!!(
+                    conditioned_model, local_varinfo
+                )
+                if typed
+                    for k in keys(post_eval_varinfo)
+                        @inferred post_eval_varinfo[k]
+                    end
+                end
+            end
+        end
+    end
+end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "Deprecated Gibbs constructors" begin
