@@ -432,12 +432,12 @@ function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
     return AbstractMCMC.setparams!!(model, state, params[:])
 end
 
-# Some samplers use a VarInfo directly as the state. In that case, there's little to do in
-# `setparams_varinfo!!`.
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler, state::VarInfo, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::VarInfo, params::AbstractVarInfo
 )
-    return params
+    # The state is already a VarInfo, so we can just return `params`, but first we need to
+    # update its logprob.
+    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.DefaultContext()))
 end
 
 function setparams_varinfo!!(
