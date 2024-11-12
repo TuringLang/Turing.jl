@@ -140,14 +140,22 @@ end
     end
 
     @testset "Gibbs constructors" begin
+        # Create Gibbs samplers with various configurations and ways of passing the
+        # arguments, and run them all on the `gdemo_default` model, see that nothing breaks.
         N = 10
-        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5, :s, :m; adtype=adbackend))
+        # Two variables being sampled by one sampler.
+        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5; adtype=adbackend))
         s2 = Gibbs((@varname(s), @varname(m)) => PG(10))
+        # One variable per sampler, using the keyword arg interface.
         s3 = Gibbs((; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)))
+        # As above but using a Dict of VarNames.
         s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
+        # As above but different samplers.
         s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
         s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
         s7 = Gibbs((@varname(s), @varname(m)) => PG(10))
+        # Multiple instnaces of the same sampler. This implements running, in this case,
+        # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
         s8 = begin
             hmc = HMC(0.1, 5; adtype=adbackend)
             pg = PG(10)
