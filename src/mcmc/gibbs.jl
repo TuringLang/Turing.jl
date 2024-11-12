@@ -16,11 +16,14 @@
 A context used in the implementation of the Turing.jl Gibbs sampler.
 
 There will be one `GibbsContext` for each iteration of a component sampler.
+
+# Fields
+$(DocStringExtensions.FIELDS)
 """
 struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext
     """
-    a collection of `VarName`s that are the ones the current component sampler is sampling.
+    a collection of `VarName`s that the current component sampler is sampling.
     For them, `GibbsContext` will just pass tilde_assume calls to its child context.
     For other variables, their values will be fixed to the values they have in
     `global_varinfo`.
@@ -380,10 +383,10 @@ function DynamicPPL.initialstep(
         for vn in keys(new_vi_local)
             DynamicPPL.setgid!(new_vi_local, sampler_local.selector, vn)
         end
-        # This merges in any new variables that were introduced during the step, but that
+        # Merge in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
         vi = merge(vi, context_local.global_varinfo[])
-        # This merges the new values for all the variables sampled by the current sampler.
+        # Merge the new values for all the variables sampled by the current sampler.
         vi = merge(vi, new_vi_local)
         push!(states, new_state_local)
     end
@@ -437,7 +440,8 @@ function setparams_varinfo!!(
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
-    # TODO(mhauru) Is this the right context to use?
+    # NOTE: Using `leafcontext(model.context)` here is a no-op, as it will be concatenated
+    # with `model.context` before hitting `model.f`.
     return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
 end
 

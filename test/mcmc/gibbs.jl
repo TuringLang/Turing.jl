@@ -79,7 +79,7 @@ has_dot_assume(::DynamicPPL.Model) = true
                 )
 
                 # Check that the correct varnames are conditioned, and that getting their
-                # values is type stable.
+                # values is type stable when the varinfo is.
                 for k in keys(global_varinfo)
                     is_target = any(
                         Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns)
