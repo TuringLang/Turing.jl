@@ -181,6 +181,11 @@ function DynamicPPL.initialstep(
             if init_attempt_count == 10
                 @warn "failed to find valid initial parameters in $(init_attempt_count) tries; consider providing explicit initial parameters using the `initial_params` keyword"
             end
+            if init_attempt_count == 1000
+                error(
+                    "failed to find valid initial parameters in $(init_attempt_count) tries. This may indicate an error with the model or AD backend; please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+                )
+            end
 
             # NOTE: This will sample in the unconstrained space.
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
