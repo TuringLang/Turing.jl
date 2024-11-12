@@ -459,7 +459,10 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler, state::TuringState, params::AbstractVarInfo
+    model::DynamicPPL.Model,
+    sampler::Sampler{<:ExternalSampler},
+    state::TuringState,
+    params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
     new_inner_state = setparams_varinfo!!(
@@ -469,7 +472,10 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler, state::HMCState, params::AbstractVarInfo
+    model::DynamicPPL.Model,
+    sampler::Sampler{<:Hamiltonian},
+    state::HMCState,
+    params::AbstractVarInfo,
 )
     θ_new = params[:]
     hamiltonian = get_hamiltonian(model, sampler, params, state, length(θ_new))
@@ -483,7 +489,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler, state::PGState, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::Sampler{<:PG}, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
 end
