@@ -18,7 +18,7 @@ A context used in the implementation of the Turing.jl Gibbs sampler.
 There will be one `GibbsContext` for each iteration of a component sampler.
 
 # Fields
-$(DocStringExtensions.FIELDS)
+$(FIELDS)
 """
 struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext

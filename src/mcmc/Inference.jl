@@ -35,7 +35,7 @@ using StatsFuns: logsumexp
 using Random: AbstractRNG
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Accessors: Accessors
 
