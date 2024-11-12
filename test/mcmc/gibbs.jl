@@ -289,22 +289,20 @@ end
     end
 
     @testset "dynamic model with dot tilde" begin
-        @model function dynamic_model_with_dot_tilde(num_zs=10)
-            z = Vector(undef, num_zs)
-            z .~ Exponential(1.0)
-            num_ms = Int(round(sum(z)))
-            m = Vector(undef, num_ms)
+        @model function dynamic_model_with_dot_tilde(
+            num_zs=10, ::Type{M}=Vector{Float64}
+        ) where {M}
+            z = M(undef, num_zs)
+            z .~ Poisson(1.0)
+            num_ms = sum(z)
+            m = M(undef, num_ms)
             return m .~ Normal(1.0, 1.0)
         end
         model = dynamic_model_with_dot_tilde()
         # TODO(mhauru) This is broken because of
         # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
         @test_broken (
-            sample(
-                model,
-                Gibbs(; z=NUTS(; adtype=adbackend), m=HMC(0.01, 4; adtype=adbackend)),
-                100,
-            );
+            sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100);
             true
         )
     end
