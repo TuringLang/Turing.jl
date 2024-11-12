@@ -332,6 +332,8 @@ _maybevec(x) = vec(x)  # assume it's iterable
 _maybevec(x::Tuple) = [x...]
 _maybevec(x::VarName) = [x]
 
+varinfo(state::GibbsState) = state.vi
+
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
