@@ -453,7 +453,8 @@ function setparams_varinfo!!(
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
-    # TODO(mhauru) Is this the right context to use?
+    # Note the use of LikelihoodContext, regardless of what context `model` has. This is
+    # specific to ESS as a sampler.
     return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.LikelihoodContext()))
 end
 
