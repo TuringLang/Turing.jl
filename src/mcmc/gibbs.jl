@@ -101,15 +101,15 @@ end
 
 # Tilde pipeline
 function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
-    if is_target_varname(context, vn)
+    return if is_target_varname(context, vn)
         # Fall back to the default behavior.
-        return DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
+        DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # Short-circuit the tilde assume if `vn` is present in `context`.
         value = get_conditioned_gibbs(context, vn)
         # TODO(mhauru) Is the call to logpdf correct if context.context is not
         # DefaultContext?
-        return value, logpdf(right, value), vi
+        value, logpdf(right, value), vi
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
@@ -123,7 +123,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        return value, lp, vi
+        value, lp, vi
     end
 end
 
@@ -132,14 +132,14 @@ function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
 )
     # See comment in the above, rng-less version of this method for an explanation.
-    if is_target_varname(context, vn)
-        return DynamicPPL.tilde_assume(
+    return if is_target_varname(context, vn)
+        DynamicPPL.tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
         )
     elseif has_conditioned_gibbs(context, vn)
         value = get_conditioned_gibbs(context, vn)
         # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        return value, logpdf(right, value), vi
+        value, logpdf(right, value), vi
     else
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
             rng,
@@ -150,7 +150,7 @@ function DynamicPPL.tilde_assume(
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        return value, lp, vi
+        value, lp, vi
     end
 end
 
@@ -175,14 +175,12 @@ end
 # Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
 # See comments there for more details.
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
-    if is_target_varname(context, vns)
-        return DynamicPPL.dot_tilde_assume(
-            DynamicPPL.childcontext(context), right, left, vns, vi
-        )
+    return if is_target_varname(context, vns)
+        DynamicPPL.dot_tilde_assume(DynamicPPL.childcontext(context), right, left, vns, vi)
     elseif has_conditioned_gibbs(context, vns)
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
         # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        return value, broadcast_logpdf(right, value), vi
+        value, broadcast_logpdf(right, value), vi
     else
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
@@ -194,7 +192,7 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        return value, lp, vi
+        value, lp, vi
     end
 end
 
@@ -202,14 +200,14 @@ end
 function DynamicPPL.dot_tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
 )
-    if is_target_varname(context, vns)
-        return DynamicPPL.dot_tilde_assume(
+    return if is_target_varname(context, vns)
+        DynamicPPL.dot_tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
         )
     elseif has_conditioned_gibbs(context, vns)
         value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
         # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        return value, broadcast_logpdf(right, value), vi
+        value, broadcast_logpdf(right, value), vi
     else
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
@@ -222,7 +220,7 @@ function DynamicPPL.dot_tilde_assume(
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        return value, lp, vi
+        value, lp, vi
     end
 end
 
