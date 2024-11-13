@@ -126,10 +126,17 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # Short-circuit the tilde assume if `vn` is present in `context`.
-        value = get_conditioned_gibbs(context, vn)
-        # TODO(mhauru) Is the call to logpdf correct if context.context is not
-        # DefaultContext?
-        value, logpdf(right, value), vi
+        child = DynamicPPL.childcontext(context)
+        if child isa SamplingContext
+            # TODO(mhauru) Would it ever be valid to have a SamplingContext as the child?
+            # We could just raise a warning, or optionally go down the stack of contexts
+            # skipping all SamplingContexts. The erroring is being conservative.
+            error("GibbsContext has a SamplingContext as its child.")
+        end
+        value, lp, _ = DynamicPPL.tilde_assume(
+            child, right, vn, get_global_varinfo(context)
+        )
+        value, lp, vi
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
@@ -157,9 +164,15 @@ function DynamicPPL.tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
         )
     elseif has_conditioned_gibbs(context, vn)
-        value = get_conditioned_gibbs(context, vn)
-        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        value, logpdf(right, value), vi
+        child = DynamicPPL.childcontext(context)
+        if child isa SamplingContext
+            # TODO(mhauru) See comment in the method above.
+            error("GibbsContext has a SamplingContext as its child.")
+        end
+        value, lp, _ = DynamicPPL.tilde_assume(
+            child, right, vn, get_global_varinfo(context)
+        )
+        value, lp, vi
     else
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
             rng,
@@ -198,9 +211,15 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
     return if is_target_varname(context, vns)
         DynamicPPL.dot_tilde_assume(DynamicPPL.childcontext(context), right, left, vns, vi)
     elseif has_conditioned_gibbs(context, vns)
-        value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        value, broadcast_logpdf(right, value), vi
+        child = DynamicPPL.childcontext(context)
+        if child isa SamplingContext
+            # TODO(mhauru) See comment in the method above.
+            error("GibbsContext has a SamplingContext as its child.")
+        end
+        value, lp, _ = DynamicPPL.dot_tilde_assume(
+            child, right, left, vns, get_global_varinfo(context)
+        )
+        value, lp, vi
     else
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
@@ -225,9 +244,15 @@ function DynamicPPL.dot_tilde_assume(
             rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
         )
     elseif has_conditioned_gibbs(context, vns)
-        value = reconstruct_getvalue(right, get_conditioned_gibbs(context, vns))
-        # TODO(mhauru) As above, is logpdf correct if context.context is not DefaultContext?
-        value, broadcast_logpdf(right, value), vi
+        child = DynamicPPL.childcontext(context)
+        if child isa SamplingContext
+            # TODO(mhauru) See comment in the method above.
+            error("GibbsContext has a SamplingContext as its child.")
+        end
+        value, lp, _ = DynamicPPL.dot_tilde_assume(
+            child, right, left, vns, get_global_varinfo(context)
+        )
+        value, lp, vi
     else
         prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
