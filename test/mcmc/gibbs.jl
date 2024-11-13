@@ -16,7 +16,7 @@ using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
 import Mooncake
-using Test: @inferred, @test, @test_broken, @test_deprecated, @testset
+using Test: @inferred, @test, @test_broken, @test_deprecated, @test_throws, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -110,6 +110,23 @@ has_dot_assume(::DynamicPPL.Model) = true
             end
         end
     end
+end
+
+@testset "Invalid Gibbs constructor" begin
+    # More samplers than varnames or vice versa
+    @test_throws ArgumentError Gibbs((@varname(s), @varname(m)), (NUTS(), NUTS(), NUTS()))
+    @test_throws ArgumentError Gibbs(
+        (@varname(s), @varname(m), @varname(x)), (NUTS(), NUTS())
+    )
+    # Invalid samplers
+    @test_throws ArgumentError Gibbs(@varname(s) => IS())
+    @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
+    @test_throws ArgumentError Gibbs(
+        @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
+    )
+    @test_throws ArgumentError Gibbs(
+        @varname(s) => SGLD(; stepsize=PolynomialStepsize(0.25))
+    )
 end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends

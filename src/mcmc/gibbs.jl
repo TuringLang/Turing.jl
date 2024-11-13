@@ -1,3 +1,23 @@
+"""
+    isgibbscomponent(alg::Union{InferenceAlgorithm, AbstractMCMC.AbstractSampler})
+
+Return a boolean indicating whether `alg` is a valid component for a Gibbs sampler.
+
+Defaults to `false` if no method has been defined for a particular algorithm type.
+"""
+isgibbscomponent(::InferenceAlgorithm) = false
+isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
+isgibbscomponent(spl::Sampler) = isgibbscomponent(spl.alg)
+
+isgibbscomponent(::ESS) = true
+isgibbscomponent(::HMC) = true
+isgibbscomponent(::HMCDA) = true
+isgibbscomponent(::NUTS) = true
+isgibbscomponent(::MH) = true
+isgibbscomponent(::PG) = true
+isgibbscomponent(::AdvancedHMC.HMC) = true
+isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
+
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
 # 2. Computes the log-probability of the fixed variables.
@@ -267,6 +287,19 @@ struct Gibbs{V,A} <: InferenceAlgorithm
     varnames::V
     "samplers for each entry in `varnames`"
     samplers::A
+
+    function Gibbs(varnames, samplers)
+        if length(varnames) != length(samplers)
+            throw(ArgumentError("Number of varnames and samplers must match."))
+        end
+        for spl in samplers
+            if !isgibbscomponent(spl)
+                msg = "All samplers must be valid Gibbs components, $(spl) is not."
+                throw(ArgumentError(msg))
+            end
+        end
+        return new{typeof(varnames),typeof(samplers)}(varnames, samplers)
+    end
 end
 
 # NamedTuple
