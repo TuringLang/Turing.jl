@@ -306,16 +306,17 @@ end
 Gibbs(; algs...) = Gibbs(NamedTuple(algs))
 function Gibbs(algs::NamedTuple)
     return Gibbs(
-        map(s -> VarName{s}(), keys(algs)), map(wrap_algorithm_maybe, values(algs))
+        map(s -> VarName{s}(), keys(algs)),
+        map(wrap_algorithm_maybe ∘ drop_space, values(algs)),
     )
 end
 
 # AbstractDict
 function Gibbs(algs::AbstractDict)
-    return Gibbs(collect(keys(algs)), map(wrap_algorithm_maybe, values(algs)))
+    return Gibbs(collect(keys(algs)), map(wrap_algorithm_maybe ∘ drop_space, values(algs)))
 end
 function Gibbs(algs::Pair...)
-    return Gibbs(map(first, algs), map(wrap_algorithm_maybe, map(last, algs)))
+    return Gibbs(map(first, algs), map(wrap_algorithm_maybe ∘ drop_space, map(last, algs)))
 end
 
 # The below two constructors only provide backwards compatibility with the constructor of
@@ -339,7 +340,7 @@ function Gibbs(algs::InferenceAlgorithm...)
         "`Gibbs(@varname(x) => NUTS(), @varname(x) => NUTS(), @varname(y) => MH())`"
     )
     Base.depwarn(msg, :Gibbs)
-    return Gibbs(varnames, map(wrap_algorithm_maybe, algs))
+    return Gibbs(varnames, map(wrap_algorithm_maybe ∘ drop_space, algs))
 end
 
 function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
@@ -410,12 +411,6 @@ function DynamicPPL.initialstep(
             kwargs...,
         )
         new_vi_local = varinfo(new_state_local)
-        # TODO(mhauru) Remove the below loop once samplers no longer depend on selectors.
-        # For some reason not having this in place was causing trouble for ESS, but not for
-        # other samplers. I didn't get to the bottom of it.
-        for vn in keys(new_vi_local)
-            DynamicPPL.setgid!(new_vi_local, sampler_local.selector, vn)
-        end
         # Merge in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
         vi = merge(vi, context_local.global_varinfo[])
@@ -539,12 +534,6 @@ function gibbs_step_inner(
     # Construct the conditional model and the varinfo that this sampler should use.
     model_local, context_local = make_conditional(model, varnames_local, global_vi)
     varinfo_local = subset(global_vi, varnames_local)
-    # TODO(mhauru) Remove the below loop once samplers no longer depend on selectors.
-    # For some reason not having this in place was causing trouble for ESS, but not for
-    # other samplers. I didn't get to the bottom of it.
-    for vn in keys(varinfo_local)
-        DynamicPPL.setgid!(varinfo_local, sampler_local.selector, vn)
-    end
 
     # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not
     # sampled by other samplers, we don't need to `setparams`, but could rather simply

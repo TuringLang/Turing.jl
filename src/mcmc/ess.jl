@@ -25,6 +25,8 @@ struct ESS{space} <: InferenceAlgorithm end
 ESS() = ESS{()}()
 ESS(space::Symbol) = ESS{(space,)}()
 
+drop_space(alg::ESS) = ESS()
+
 # always accept in the first step
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...

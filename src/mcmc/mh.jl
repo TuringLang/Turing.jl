@@ -145,6 +145,8 @@ function MH(space...)
     return MH{tuple(syms...),typeof(proposals)}(proposals)
 end
 
+drop_space(alg::MH{space,P}) where {space,P} = MH{(),P}(alg.proposals)
+
 # Some of the proposals require working in unconstrained space.
 transform_maybe(proposal::AMH.Proposal) = proposal
 function transform_maybe(proposal::AMH.RandomWalkProposal)

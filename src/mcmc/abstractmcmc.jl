@@ -28,8 +28,6 @@ function varinfo(state::TuringState)
     return DynamicPPL.unflatten(varinfo_from_logdensityfn(state.logdensity), θ)
 end
 varinfo(state::AbstractVarInfo) = state
-varinfo(state::HMCState) = state.vi
-varinfo(state::PGState) = state.vi
 
 # NOTE: Only thing that depends on the underlying sampler.
 # Something similar should be part of AbstractMCMC at some point:
