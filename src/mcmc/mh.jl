@@ -252,7 +252,7 @@ function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVa
 end
 
 @generated function _val_tuple(vi::VarInfo, vns::NamedTuple{names}) where {names}
-    isempty(names) === 0 && return :(NamedTuple())
+    isempty(names) && return :(NamedTuple())
     expr = Expr(:tuple)
     expr.args = Any[
         :(
