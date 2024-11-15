@@ -69,7 +69,8 @@ has_dot_assume(::DynamicPPL.Model) = true
                 n -> Combinatorics.combinations(all_varnames, n), 1:length(all_varnames)
             ),
         )
-        for target_vns in target_vn_combinations
+
+        @testset "$(target_vns)" for target_vns in target_vn_combinations
             global_varinfo = DynamicPPL.VarInfo(model)
             target_vns = collect(target_vns)
             local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)

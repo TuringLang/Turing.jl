@@ -31,24 +31,28 @@ isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
 """
-    GibbsContext(target_varnames, global_varinfo, context)
+    GibbsContext{VNs}(global_varinfo, context)
 
 A context used in the implementation of the Turing.jl Gibbs sampler.
 
 There will be one `GibbsContext` for each iteration of a component sampler.
 
+`VNs` is a `Val` type of a tuple of symbols for `VarName`s that the current component
+sampler is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
+calls to its child context. For other variables, their values will be fixed to the values
+they have in `global_varinfo`.
+
+The naive implementation of `GibbsContext` would simply have a field `target_varnames` that
+would be a collection of `VarName`s that the current component sampler is sampling. The
+reason we instead have a `Val` type parameter listing `Symbol`s is to allow
+`is_target_varname` to benefit from compile time constant propagation. This is important
+for type stability of `tilde_assume`.
+
 # Fields
 $(FIELDS)
 """
-struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
+struct GibbsContext{VNs<:Val,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext
-    """
-    a collection of `VarName`s that the current component sampler is sampling.
-    For them, `GibbsContext` will just pass tilde_assume calls to its child context.
-    For other variables, their values will be fixed to the values they have in
-    `global_varinfo`.
-    """
-    target_varnames::VNs
     """
     a `Ref` to the global `AbstractVarInfo` object that holds values for all variables, both
     those fixed and those being sampled. We use a `Ref` because this field may need to be
@@ -59,6 +63,19 @@ struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractCont
     the child context that tilde calls will eventually be passed onto.
     """
     context::Ctx
+
+    function GibbsContext{VNs}(global_varinfo, context) where {VNs}
+        return new{VNs,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
+    end
+
+    # If the first argument is not already a Val, convert it to one.
+    function GibbsContext(target_varnames, global_varinfo, context)
+        # TODO(mhauru) Add a check that all target_varnames have identity lenses.
+        vn_sym = Val(tuple((DynamicPPL.getsym(vn) for vn in target_varnames)...))
+        return new{typeof(vn_sym),typeof(global_varinfo),typeof(context)}(
+            global_varinfo, context
+        )
+    end
 end
 
 function GibbsContext(target_varnames, global_varinfo)
@@ -67,10 +84,8 @@ end
 
 DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
-function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
-    return GibbsContext(
-        context.target_varnames, Ref(context.global_varinfo[]), childcontext
-    )
+function DynamicPPL.setchildcontext(context::GibbsContext{VNs}, childcontext) where {VNs}
+    return GibbsContext{VNs}(Ref(context.global_varinfo[]), childcontext)
 end
 
 get_global_varinfo(context::GibbsContext) = context.global_varinfo[]
@@ -103,10 +118,10 @@ function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
 end
 
 function is_target_varname(context::GibbsContext, vn::VarName)
-    return Iterators.any(
-        Iterators.map(target -> subsumes(target, vn), context.target_varnames)
-    )
+    return is_target_varname(context, DynamicPPL.getsym(vn))
 end
+
+is_target_varname(::GibbsContext{Val{T}}, vn_symbol::Symbol) where {T} = vn_symbol in T
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
     num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
@@ -187,24 +202,6 @@ function DynamicPPL.tilde_assume(
     end
 end
 
-# Some utility methods for handling the `logpdf` computations in dot-tilde the pipeline.
-make_broadcastable(x) = x
-make_broadcastable(dist::Distribution) = tuple(dist)
-
-# Need the following two methods to properly support broadcasting over columns.
-broadcast_logpdf(dist, x) = sum(logpdf.(make_broadcastable(dist), x))
-function broadcast_logpdf(dist::MultivariateDistribution, x::AbstractMatrix)
-    return loglikelihood(dist, x)
-end
-
-# Needed to support broadcasting over columns for `MultivariateDistribution`s.
-reconstruct_getvalue(dist, x) = x
-function reconstruct_getvalue(
-    dist::MultivariateDistribution, x::AbstractVector{<:AbstractVector{<:Real}}
-)
-    return reduce(hcat, x[2:end]; init=x[1])
-end
-
 # Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
 # See comments there for more details.
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
@@ -221,10 +218,9 @@ function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi
         )
         value, lp, vi
     else
-        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
             DynamicPPL.childcontext(context),
-            prior_sampler,
+            DynamicPPL.SampleFromPrior(),
             right,
             left,
             vns,
@@ -254,11 +250,10 @@ function DynamicPPL.dot_tilde_assume(
         )
         value, lp, vi
     else
-        prior_sampler = DynamicPPL.SampleFromPrior()
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
             rng,
             DynamicPPL.childcontext(context),
-            prior_sampler,
+            DynamicPPL.SampleFromPrior(),
             right,
             left,
             vns,
@@ -294,10 +289,14 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context
 end
 
-# HACK: Allows us to support either passing in an implementation of `AbstractMCMC.AbstractSampler`
-# or an `AbstractInferenceAlgorithm`.
 wrap_algorithm_maybe(x) = x
-wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
+# All samplers are given the same Selector, so that they will also sample all variables
+# given to them by the Gibbs sampler. This avoids conflicts between the new and the old way
+# of choosing which sampler to use.
+function wrap_algorithm_maybe(x::DynamicPPL.Sampler)
+    return DynamicPPL.Sampler(x.alg, DynamicPPL.Selector(0))
+end
+wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
 """
     Gibbs
