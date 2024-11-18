@@ -65,10 +65,16 @@ struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractCont
     context::Ctx
 
     function GibbsContext{VNs}(global_varinfo, context) where {VNs}
+        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
+            error("GibbsContext can only wrap a leaf context, not a $(context).")
+        end
         return new{VNs,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
     end
 
     function GibbsContext(target_varnames, global_varinfo, context)
+        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
+            error("GibbsContext can only wrap a leaf context, not a $(context).")
+        end
         if any(vn -> DynamicPPL.getoptic(vn) != identity, target_varnames)
             msg =
                 "All Gibbs target variables must have identity lenses. " *
@@ -139,20 +145,14 @@ end
 
 # Tilde pipeline
 function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
+    child_context = DynamicPPL.childcontext(context)
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.
-        DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
+        DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # Short-circuit the tilde assume if `vn` is present in `context`.
-        child = DynamicPPL.childcontext(context)
-        if child isa SamplingContext
-            # TODO(mhauru) Would it ever be valid to have a SamplingContext as the child?
-            # We could just raise a warning, or optionally go down the stack of contexts
-            # skipping all SamplingContexts. The erroring is being conservative.
-            error("GibbsContext has a SamplingContext as its child.")
-        end
         value, lp, _ = DynamicPPL.tilde_assume(
-            child, right, vn, get_global_varinfo(context)
+            child_context, right, vn, get_global_varinfo(context)
         )
         value, lp, vi
     else
@@ -161,7 +161,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
-            DynamicPPL.childcontext(context),
+            child_context,
             DynamicPPL.SampleFromPrior(),
             right,
             vn,
@@ -177,24 +177,18 @@ function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
 )
     # See comment in the above, rng-less version of this method for an explanation.
+    child_context = DynamicPPL.childcontext(context)
     return if is_target_varname(context, vn)
-        DynamicPPL.tilde_assume(
-            rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
-        )
+        DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        child = DynamicPPL.childcontext(context)
-        if child isa SamplingContext
-            # TODO(mhauru) See comment in the method above.
-            error("GibbsContext has a SamplingContext as its child.")
-        end
         value, lp, _ = DynamicPPL.tilde_assume(
-            child, right, vn, get_global_varinfo(context)
+            child_context, right, vn, get_global_varinfo(context)
         )
         value, lp, vi
     else
         value, lp, new_global_vi = DynamicPPL.tilde_assume(
             rng,
-            DynamicPPL.childcontext(context),
+            child_context,
             DynamicPPL.SampleFromPrior(),
             right,
             vn,
@@ -208,21 +202,17 @@ end
 # Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
 # See comments there for more details.
 function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
+    child_context = DynamicPPL.childcontext(context)
     return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(DynamicPPL.childcontext(context), right, left, vns, vi)
+        DynamicPPL.dot_tilde_assume(child_context, right, left, vns, vi)
     elseif has_conditioned_gibbs(context, vns)
-        child = DynamicPPL.childcontext(context)
-        if child isa SamplingContext
-            # TODO(mhauru) See comment in the method above.
-            error("GibbsContext has a SamplingContext as its child.")
-        end
         value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child, right, left, vns, get_global_varinfo(context)
+            child_context, right, left, vns, get_global_varinfo(context)
         )
         value, lp, vi
     else
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
-            DynamicPPL.childcontext(context),
+            child_context,
             DynamicPPL.SampleFromPrior(),
             right,
             left,
@@ -238,24 +228,18 @@ end
 function DynamicPPL.dot_tilde_assume(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
 )
+    child_context = DynamicPPL.childcontext(context)
     return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(
-            rng, DynamicPPL.childcontext(context), sampler, right, left, vns, vi
-        )
+        DynamicPPL.dot_tilde_assume(rng, child_context, sampler, right, left, vns, vi)
     elseif has_conditioned_gibbs(context, vns)
-        child = DynamicPPL.childcontext(context)
-        if child isa SamplingContext
-            # TODO(mhauru) See comment in the method above.
-            error("GibbsContext has a SamplingContext as its child.")
-        end
         value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child, right, left, vns, get_global_varinfo(context)
+            child_context, right, left, vns, get_global_varinfo(context)
         )
         value, lp, vi
     else
         value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
             rng,
-            DynamicPPL.childcontext(context),
+            child_context,
             DynamicPPL.SampleFromPrior(),
             right,
             left,
@@ -288,7 +272,13 @@ because evaluation can mutate its `global_varinfo` field, which we need to acces
 function make_conditional(
     model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
 )
-    gibbs_context = GibbsContext(target_variables, Ref(varinfo), model.context)
+    # Insert the `GibbsContext` just before the leaf.
+    # 1. Extract the `leafcontext` from `model` and wrap in `GibbsContext`.
+    gibbs_context_inner = GibbsContext(
+        target_variables, Ref(varinfo), DynamicPPL.leafcontext(model.context)
+    )
+    # 2. Set the leaf context to be the `GibbsContext` wrapping `leafcontext(model.context)`.
+    gibbs_context = DynamicPPL.setleafcontext(model.context, gibbs_context_inner)
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context
 end
 
