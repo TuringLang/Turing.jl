@@ -37,21 +37,21 @@ A context used in the implementation of the Turing.jl Gibbs sampler.
 
 There will be one `GibbsContext` for each iteration of a component sampler.
 
-`VNs` is a `Val` type of a tuple of symbols for `VarName`s that the current component
+`VNs` is a a tuple of symbols for `VarName`s that the current component
 sampler is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
 calls to its child context. For other variables, their values will be fixed to the values
 they have in `global_varinfo`.
 
 The naive implementation of `GibbsContext` would simply have a field `target_varnames` that
 would be a collection of `VarName`s that the current component sampler is sampling. The
-reason we instead have a `Val` type parameter listing `Symbol`s is to allow
+reason we instead have a `Tuple` type parameter listing `Symbol`s is to allow
 `is_target_varname` to benefit from compile time constant propagation. This is important
 for type stability of `tilde_assume`.
 
 # Fields
 $(FIELDS)
 """
-struct GibbsContext{VNs<:Val,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
+struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext
     """
     a `Ref` to the global `AbstractVarInfo` object that holds values for all variables, both
@@ -68,13 +68,16 @@ struct GibbsContext{VNs<:Val,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.Abstrac
         return new{VNs,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
     end
 
-    # If the first argument is not already a Val, convert it to one.
     function GibbsContext(target_varnames, global_varinfo, context)
-        # TODO(mhauru) Add a check that all target_varnames have identity lenses.
-        vn_sym = Val(tuple((DynamicPPL.getsym(vn) for vn in target_varnames)...))
-        return new{typeof(vn_sym),typeof(global_varinfo),typeof(context)}(
-            global_varinfo, context
-        )
+        if any(vn -> DynamicPPL.getoptic(vn) != identity, target_varnames)
+            msg =
+                "All Gibbs target variables must have identity lenses. " *
+                "For example, you can't have `@varname(x.a[1])` as a target variable, " *
+                "only `@varname(x)`."
+            error(msg)
+        end
+        vn_sym = tuple(unique((DynamicPPL.getsym(vn) for vn in target_varnames))...)
+        return new{vn_sym,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
     end
 end
 
@@ -121,7 +124,7 @@ function is_target_varname(context::GibbsContext, vn::VarName)
     return is_target_varname(context, DynamicPPL.getsym(vn))
 end
 
-is_target_varname(::GibbsContext{Val{T}}, vn_symbol::Symbol) where {T} = vn_symbol in T
+is_target_varname(::GibbsContext{T}, vn_symbol::Symbol) where {T} = vn_symbol in T
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
     num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
