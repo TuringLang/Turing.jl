@@ -6,7 +6,6 @@ Return a boolean indicating whether `alg` is a valid component for a Gibbs sampl
 Defaults to `false` if no method has been defined for a particular algorithm type.
 """
 isgibbscomponent(::InferenceAlgorithm) = false
-isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(spl::Sampler) = isgibbscomponent(spl.alg)
 
 isgibbscomponent(::ESS) = true
@@ -15,6 +14,8 @@ isgibbscomponent(::HMCDA) = true
 isgibbscomponent(::NUTS) = true
 isgibbscomponent(::MH) = true
 isgibbscomponent(::PG) = true
+
+isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(::AdvancedHMC.HMC) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
 
@@ -279,7 +280,7 @@ function make_conditional(
     )
     # 2. Set the leaf context to be the `GibbsContext` wrapping `leafcontext(model.context)`.
     gibbs_context = DynamicPPL.setleafcontext(model.context, gibbs_context_inner)
-    return DynamicPPL.contextualize(model, gibbs_context), gibbs_context
+    return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
 wrap_algorithm_maybe(x) = x
@@ -430,7 +431,7 @@ function DynamicPPL.initialstep(
         new_vi_local = varinfo(new_state_local)
         # Merge in any new variables that were introduced during the step, but that
         # were not in the domain of the current sampler.
-        vi = merge(vi, context_local.global_varinfo[])
+        vi = merge(vi, get_global_varinfo(context_local))
         # Merge the new values for all the variables sampled by the current sampler.
         vi = merge(vi, new_vi_local)
         push!(states, new_state_local)
