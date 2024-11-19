@@ -481,7 +481,10 @@ function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::VarInfo, params::AbstractVarInfo
+    model::DynamicPPL.Model,
+    sampler::Sampler{<:MH},
+    state::AbstractVarInfo,
+    params::AbstractVarInfo,
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
@@ -493,14 +496,14 @@ end
 function setparams_varinfo!!(
     model::DynamicPPL.Model,
     sampler::Sampler{<:ESS},
-    state::VarInfo,
+    state::AbstractVarInfo,
     params::AbstractVarInfo,
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob.
-    # Note the use of LikelihoodContext, regardless of what context `model` has. This is
-    # specific to ESS as a sampler.
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.LikelihoodContext()))
+    # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
+    # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
+    # some variables and DefaultContext for others.
+    return last(DynamicPPL.evaluate!!(model, params, sampler))
 end
 
 function setparams_varinfo!!(
