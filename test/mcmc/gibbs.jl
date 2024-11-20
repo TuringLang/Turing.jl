@@ -43,287 +43,301 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
 
-# @testset "GibbsContext" begin
-#     @testset "type stability" begin
-#         # A test model that has multiple features in one package:
-#         # Floats, Ints, arguments, observations, loops, dot_tildes.
-#         @model function test_model(obs1, obs2, num_vars, mean)
-#             variance ~ Exponential(2)
-#             z = Vector{Float64}(undef, num_vars)
-#             z .~ truncated(Normal(mean, variance); lower=1)
-#             y = Vector{Int64}(undef, num_vars)
-#             for i in 1:num_vars
-#                 y[i] ~ Poisson(Int(round(z[i])))
-#             end
-#             s = sum(y) - sum(z)
-#             obs1 ~ Normal(s, 1)
-#             obs2 ~ Poisson(y[3])
-#             return obs1, obs2, variance, z, y, s
-#         end
+@testset "GibbsContext" begin
+    @testset "type stability" begin
+        # A test model that has multiple features in one package:
+        # Floats, Ints, arguments, observations, loops, dot_tildes.
+        @model function test_model(obs1, obs2, num_vars, mean)
+            variance ~ Exponential(2)
+            z = Vector{Float64}(undef, num_vars)
+            z .~ truncated(Normal(mean, variance); lower=1)
+            y = Vector{Int64}(undef, num_vars)
+            for i in 1:num_vars
+                y[i] ~ Poisson(Int(round(z[i])))
+            end
+            s = sum(y) - sum(z)
+            obs1 ~ Normal(s, 1)
+            obs2 ~ Poisson(y[3])
+            return obs1, obs2, variance, z, y, s
+        end
 
-#         model = test_model(1.2, 2, 10, 2.5)
-#         all_varnames = DynamicPPL.VarName[@varname(variance), @varname(z), @varname(y)]
-#         # All combinations of elements in all_varnames.
-#         target_vn_combinations = Iterators.flatten(
-#             Iterators.map(
-#                 n -> Combinatorics.combinations(all_varnames, n), 1:length(all_varnames)
-#             ),
-#         )
+        model = test_model(1.2, 2, 10, 2.5)
+        all_varnames = DynamicPPL.VarName[@varname(variance), @varname(z), @varname(y)]
+        # All combinations of elements in all_varnames.
+        target_vn_combinations = Iterators.flatten(
+            Iterators.map(
+                n -> Combinatorics.combinations(all_varnames, n), 1:length(all_varnames)
+            ),
+        )
 
-#         @testset "$(target_vns)" for target_vns in target_vn_combinations
-#             global_varinfo = DynamicPPL.VarInfo(model)
-#             target_vns = collect(target_vns)
-#             local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
-#             ctx = Turing.Inference.GibbsContext(
-#                 target_vns, Ref(global_varinfo), Turing.DefaultContext()
-#             )
+        @testset "$(target_vns)" for target_vns in target_vn_combinations
+            global_varinfo = DynamicPPL.VarInfo(model)
+            target_vns = collect(target_vns)
+            local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
+            ctx = Turing.Inference.GibbsContext(
+                target_vns, Ref(global_varinfo), Turing.DefaultContext()
+            )
 
-#             # Check that the correct varnames are conditioned, and that getting their
-#             # values is type stable when the varinfo is.
-#             for k in keys(global_varinfo)
-#                 is_target = any(Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns))
-#                 @test Turing.Inference.is_target_varname(ctx, k) == is_target
-#                 if !is_target
-#                     @inferred Turing.Inference.get_conditioned_gibbs(ctx, k)
-#                 end
-#             end
+            # Check that the correct varnames are conditioned, and that getting their
+            # values is type stable when the varinfo is.
+            for k in keys(global_varinfo)
+                is_target = any(Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns))
+                @test Turing.Inference.is_target_varname(ctx, k) == is_target
+                if !is_target
+                    @inferred Turing.Inference.get_conditioned_gibbs(ctx, k)
+                end
+            end
 
-#             # Check the type stability also in the dot_tilde pipeline.
-#             for k in all_varnames
-#                 # The map(identity, ...) part is there to concretise the eltype.
-#                 subkeys = map(
-#                     identity, filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_varinfo))
-#                 )
-#                 is_target = (k in target_vns)
-#                 @test Turing.Inference.is_target_varname(ctx, subkeys) == is_target
-#                 if !is_target
-#                     @inferred Turing.Inference.get_conditioned_gibbs(ctx, subkeys)
-#                 end
-#             end
+            # Check the type stability also in the dot_tilde pipeline.
+            for k in all_varnames
+                # The map(identity, ...) part is there to concretise the eltype.
+                subkeys = map(
+                    identity, filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_varinfo))
+                )
+                is_target = (k in target_vns)
+                @test Turing.Inference.is_target_varname(ctx, subkeys) == is_target
+                if !is_target
+                    @inferred Turing.Inference.get_conditioned_gibbs(ctx, subkeys)
+                end
+            end
 
-#             # Check that evaluate!! and the result it returns are type stable.
-#             conditioned_model = DynamicPPL.contextualize(model, ctx)
-#             _, post_eval_varinfo = @inferred DynamicPPL.evaluate!!(
-#                 conditioned_model, local_varinfo
-#             )
-#             for k in keys(post_eval_varinfo)
-#                 @inferred post_eval_varinfo[k]
-#             end
-#         end
-#     end
-# end
+            # Check that evaluate!! and the result it returns are type stable.
+            conditioned_model = DynamicPPL.contextualize(model, ctx)
+            _, post_eval_varinfo = @inferred DynamicPPL.evaluate!!(
+                conditioned_model, local_varinfo
+            )
+            for k in keys(post_eval_varinfo)
+                @inferred post_eval_varinfo[k]
+            end
+        end
+    end
+end
 
-# @testset "Invalid Gibbs constructor" begin
-#     # More samplers than varnames or vice versa
-#     @test_throws ArgumentError Gibbs((@varname(s), @varname(m)), (NUTS(), NUTS(), NUTS()))
-#     @test_throws ArgumentError Gibbs(
-#         (@varname(s), @varname(m), @varname(x)), (NUTS(), NUTS())
-#     )
-#     # Invalid samplers
-#     @test_throws ArgumentError Gibbs(@varname(s) => IS())
-#     @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
-#     @test_throws ArgumentError Gibbs(
-#         @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
-#     )
-#     @test_throws ArgumentError Gibbs(
-#         @varname(s) => SGLD(; stepsize=PolynomialStepsize(0.25))
-#     )
-# end
+@testset "Invalid Gibbs constructor" begin
+    # More samplers than varnames or vice versa
+    @test_throws ArgumentError Gibbs((@varname(s), @varname(m)), (NUTS(), NUTS(), NUTS()))
+    @test_throws ArgumentError Gibbs(
+        (@varname(s), @varname(m), @varname(x)), (NUTS(), NUTS())
+    )
+    # Invalid samplers
+    @test_throws ArgumentError Gibbs(@varname(s) => IS())
+    @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
+    @test_throws ArgumentError Gibbs(
+        @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
+    )
+    @test_throws ArgumentError Gibbs(
+        @varname(s) => SGLD(; stepsize=PolynomialStepsize(0.25))
+    )
+end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
-    # @testset "Deprecated Gibbs constructors" begin
-    #     N = 10
-    #     @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
-    #     @test_deprecated s2 = Gibbs(PG(10, :s, :m))
-    #     @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-    #     @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-    #     @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-    #     @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
-    #     @test_deprecated s7 = Gibbs((HMC(0.1, 5, :s; adtype=adbackend), 2), (ESS(:m), 3))
-    #     for s in (s1, s2, s3, s4, s5, s6, s7)
-    #         @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
-    #     end
+    @testset "Deprecated Gibbs constructors" begin
+        N = 10
+        @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
+        @test_deprecated s2 = Gibbs(PG(10, :s, :m))
+        @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
+        @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
+        @test_deprecated s7 = Gibbs((HMC(0.1, 5, :s; adtype=adbackend), 2), (ESS(:m), 3))
+        for s in (s1, s2, s3, s4, s5, s6, s7)
+            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
+        end
 
-    #     # Check that the samplers work despite using the deprecated constructor.
-    #     sample(gdemo_default, s1, N)
-    #     sample(gdemo_default, s2, N)
-    #     sample(gdemo_default, s3, N)
-    #     sample(gdemo_default, s4, N)
-    #     sample(gdemo_default, s5, N)
-    #     sample(gdemo_default, s6, N)
-    #     sample(gdemo_default, s7, N)
+        # Check that the samplers work despite using the deprecated constructor.
+        sample(gdemo_default, s1, N)
+        sample(gdemo_default, s2, N)
+        sample(gdemo_default, s3, N)
+        sample(gdemo_default, s4, N)
+        sample(gdemo_default, s5, N)
+        sample(gdemo_default, s6, N)
+        sample(gdemo_default, s7, N)
 
-    #     g = Turing.Sampler(s3, gdemo_default)
-    #     @test sample(gdemo_default, g, N) isa MCMCChains.Chains
-    # end
-
-    # @testset "Gibbs constructors" begin
-    #     # Create Gibbs samplers with various configurations and ways of passing the
-    #     # arguments, and run them all on the `gdemo_default` model, see that nothing breaks.
-    #     N = 10
-    #     # Two variables being sampled by one sampler.
-    #     s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5; adtype=adbackend))
-    #     s2 = Gibbs((@varname(s), @varname(m)) => PG(10))
-    #     # One variable per sampler, using the keyword arg interface.
-    #     s3 = Gibbs((; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)))
-    #     # As above but using a Dict of VarNames.
-    #     s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
-    #     # As above but different samplers.
-    #     s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
-    #     s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
-    #     s7 = Gibbs((@varname(s), @varname(m)) => PG(10))
-    #     # Multiple instnaces of the same sampler. This implements running, in this case,
-    #     # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
-    #     s8 = begin
-    #         hmc = HMC(0.1, 5; adtype=adbackend)
-    #         pg = PG(10)
-    #         vns = @varname(s)
-    #         vnm = @varname(m)
-    #         Gibbs(vns => hmc, vns => hmc, vns => hmc, vnm => pg, vnm => pg)
-    #     end
-    #     for s in (s1, s2, s3, s4, s5, s6, s7, s8)
-    #         @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
-    #     end
-
-    #     sample(gdemo_default, s1, N)
-    #     sample(gdemo_default, s2, N)
-    #     sample(gdemo_default, s3, N)
-    #     sample(gdemo_default, s4, N)
-    #     sample(gdemo_default, s5, N)
-    #     sample(gdemo_default, s6, N)
-    #     sample(gdemo_default, s7, N)
-    #     sample(gdemo_default, s8, N)
-
-    #     g = Turing.Sampler(s3, gdemo_default)
-    #     @test sample(gdemo_default, g, N) isa MCMCChains.Chains
-    # end
-
-    @testset "gibbs inference" begin
-        # Random.seed!(100)
-        # alg = Gibbs(; s=CSMC(15), m=HMC(0.2, 4; adtype=adbackend))
-        # chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        # check_numerical(chain, [:m], [7 / 6]; atol=0.15)
-        # # Be more relaxed with the tolerance of the variance.
-        # check_numerical(chain, [:s], [49 / 24]; atol=0.35)
-
-        # Random.seed!(100)
-
-        # alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
-        # chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        # check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
-
-        # alg = Gibbs(; s=CSMC(15), m=ESS())
-        # chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        # check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
-
-        # alg = CSMC(15)
-        # chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        # check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
-
-        # Random.seed!(200)
-        # gibbs = Gibbs(
-        # (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
-        # (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
-        # )
-        # chain = sample(MoGtest_default, gibbs, 10_000)
-        # check_MoGtest_default(chain; atol=0.15)
-
-        # Random.seed!(200)
-        # for alg in [
-        #     # The new syntax for specifying a sampler to run twice for one variable.
-        #     Gibbs(
-        #         @varname(s) => MH(),
-        #         @varname(s) => MH(),
-        #         @varname(m) => HMC(0.2, 4; adtype=adbackend),
-        #     ),
-        #     Gibbs(
-        #     @varname(s) => MH(),
-        #     @varname(m) => HMC(0.2, 4; adtype=adbackend),
-        #     @varname(m) => HMC(0.2, 4; adtype=adbackend),
-        #     ),
-        # ]
-        #     chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        #     check_gdemo(chain; atol=0.15)
-        # end
+        g = Turing.Sampler(s3, gdemo_default)
+        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
-    # @testset "transitions" begin
-    #     @model function gdemo_copy()
-    #         s ~ InverseGamma(2, 3)
-    #         m ~ Normal(0, sqrt(s))
-    #         1.5 ~ Normal(m, sqrt(s))
-    #         2.0 ~ Normal(m, sqrt(s))
-    #         return s, m
-    #     end
-    #     model = gdemo_copy()
+    @testset "Gibbs constructors" begin
+        # Create Gibbs samplers with various configurations and ways of passing the
+        # arguments, and run them all on the `gdemo_default` model, see that nothing breaks.
+        N = 10
+        # Two variables being sampled by one sampler.
+        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5; adtype=adbackend))
+        s2 = Gibbs((@varname(s), @varname(m)) => PG(10))
+        # One variable per sampler, using the keyword arg interface.
+        s3 = Gibbs((; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)))
+        # As above but using a Dict of VarNames.
+        s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
+        # As above but different samplers.
+        s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
+        s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
+        s7 = Gibbs((@varname(s), @varname(m)) => PG(10))
+        # Multiple instnaces of the same sampler. This implements running, in this case,
+        # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
+        s8 = begin
+            hmc = HMC(0.1, 5; adtype=adbackend)
+            pg = PG(10)
+            vns = @varname(s)
+            vnm = @varname(m)
+            Gibbs(vns => hmc, vns => hmc, vns => hmc, vnm => pg, vnm => pg)
+        end
+        for s in (s1, s2, s3, s4, s5, s6, s7, s8)
+            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
+        end
 
-    #     @nospecialize function AbstractMCMC.bundle_samples(
-    #         samples::Vector,
-    #         ::typeof(model),
-    #         ::Turing.Sampler{<:Gibbs},
-    #         state,
-    #         ::Type{MCMCChains.Chains};
-    #         kwargs...,
-    #     )
-    #         samples isa Vector{<:Inference.Transition} || error("incorrect transitions")
-    #         return nothing
-    #     end
+        sample(gdemo_default, s1, N)
+        sample(gdemo_default, s2, N)
+        sample(gdemo_default, s3, N)
+        sample(gdemo_default, s4, N)
+        sample(gdemo_default, s5, N)
+        sample(gdemo_default, s6, N)
+        sample(gdemo_default, s7, N)
+        sample(gdemo_default, s8, N)
 
-    #     function callback(rng, model, sampler, sample, state, i; kwargs...)
-    #         sample isa Inference.Transition || error("incorrect sample")
-    #         return nothing
-    #     end
+        g = Turing.Sampler(s3, gdemo_default)
+        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
+    end
 
-    #     alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
-    #     sample(model, alg, 100; callback=callback)
-    # end
+    @testset "gibbs inference" begin
+        Random.seed!(100)
+        alg = Gibbs(; s=CSMC(15), m=HMC(0.2, 4; adtype=adbackend))
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:m], [7 / 6]; atol=0.15)
+        # Be more relaxed with the tolerance of the variance.
+        check_numerical(chain, [:s], [49 / 24]; atol=0.35)
 
-    # @testset "dynamic model" begin
-    #     # TODO(mhauru) We should check that the results of the sampling are correct.
-    #     # Currently we just check that this doesn't crash.
-    #     @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
-    #         N = length(y)
-    #         rpm = DirichletProcess(alpha)
+        Random.seed!(100)
 
-    #         z = zeros(Int, N)
-    #         cluster_counts = zeros(Int, N)
-    #         fill!(cluster_counts, 0)
+        alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
-    #         for i in 1:N
-    #             z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
-    #             cluster_counts[z[i]] += 1
-    #         end
+        alg = Gibbs(; s=CSMC(15), m=ESS())
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
-    #         Kmax = findlast(!iszero, cluster_counts)
-    #         m = M(undef, Kmax)
-    #         for k in 1:Kmax
-    #             m[k] ~ Normal(1.0, 1.0)
-    #         end
-    #     end
-    #     model = imm(Random.randn(100), 1.0)
-    #     # https://github.com/TuringLang/Turing.jl/issues/1725
-    #     # sample(model, Gibbs(; z=MH(), m=HMC(0.01, 4)), 100);
-    #     sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100)
-    # end
+        alg = CSMC(15)
+        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 
-    # @testset "dynamic model with dot tilde" begin
-    #     @model function dynamic_model_with_dot_tilde(
-    #         num_zs=10, ::Type{M}=Vector{Float64}
-    #     ) where {M}
-    #         z = M(undef, num_zs)
-    #         z .~ Poisson(1.0)
-    #         num_ms = sum(z)
-    #         m = M(undef, num_ms)
-    #         return m .~ Normal(1.0, 1.0)
-    #     end
-    #     model = dynamic_model_with_dot_tilde()
-    #     # TODO(mhauru) This is broken because of
-    #     # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
-    #     @test_broken (
-    #         sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100);
-    #         true
-    #     )
-    # end
+        Random.seed!(200)
+        gibbs = Gibbs(
+            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
+            (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+        )
+        chain = sample(MoGtest_default, gibbs, 10_000)
+        check_MoGtest_default(chain; atol=0.15)
+
+        Random.seed!(200)
+        for alg in [
+            # The new syntax for specifying a sampler to run twice for one variable.
+            Gibbs(
+                @varname(s) => MH(),
+                @varname(s) => MH(),
+                @varname(m) => HMC(0.2, 4; adtype=adbackend),
+            ),
+            Gibbs(
+                @varname(s) => MH(),
+                @varname(m) => HMC(0.2, 4; adtype=adbackend),
+                @varname(m) => HMC(0.2, 4; adtype=adbackend),
+            ),
+        ]
+            chain = sample(gdemo(1.5, 2.0), alg, 10_000)
+            check_gdemo(chain; atol=0.15)
+        end
+    end
+
+    @testset "transitions" begin
+        @model function gdemo_copy()
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            1.5 ~ Normal(m, sqrt(s))
+            2.0 ~ Normal(m, sqrt(s))
+            return s, m
+        end
+        model = gdemo_copy()
+
+        @nospecialize function AbstractMCMC.bundle_samples(
+            samples::Vector,
+            ::typeof(model),
+            ::Turing.Sampler{<:Gibbs},
+            state,
+            ::Type{MCMCChains.Chains};
+            kwargs...,
+        )
+            samples isa Vector{<:Inference.Transition} || error("incorrect transitions")
+            return nothing
+        end
+
+        function callback(rng, model, sampler, sample, state, i; kwargs...)
+            sample isa Inference.Transition || error("incorrect sample")
+            return nothing
+        end
+
+        alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
+        sample(model, alg, 100; callback=callback)
+    end
+
+    @testset "dynamic model" begin
+        @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
+            N = length(y)
+            rpm = DirichletProcess(alpha)
+
+            z = zeros(Int, N)
+            cluster_counts = zeros(Int, N)
+            fill!(cluster_counts, 0)
+
+            for i in 1:N
+                z[i] ~ ChineseRestaurantProcess(rpm, cluster_counts)
+                cluster_counts[z[i]] += 1
+            end
+
+            Kmax = findlast(!iszero, cluster_counts)
+            m = M(undef, Kmax)
+            for k in 1:Kmax
+                m[k] ~ Normal(1.0, 1.0)
+            end
+        end
+        num_zs = 100
+        num_samples = 10_000
+        model = imm(Random.randn(num_zs), 1.0)
+        # https://github.com/TuringLang/Turing.jl/issues/1725
+        # sample(model, Gibbs(; z=MH(), m=HMC(0.01, 4)), 100);
+        chn = sample(
+            model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), num_samples
+        )
+        # The number of m variables that have a non-zero value in a sample.
+        num_ms = count(ismissing.(Array(chn[:, (num_zs + 1):end, 1])); dims=2)
+        # The below are regression tests. The values we are comparing against are from
+        # running the above model on the "old" Gibbs sampler that was in place still on
+        # 2024-11-20. The model was run 5 times with 10_000 samples each time. The values
+        # to compare to are the mean of those 5 runs, atol is roughly estimated from the
+        # standard deviation of those 5 runs.
+        # TODO(mhauru) Could we do something smarter here? Maybe a dynamic model for which
+        # the posterior is analytically known? Doing 10_000 samples to run the test suite
+        # is not ideal
+        @test isapprox(mean(num_ms), 8.6087; atol=0.5)
+        @test isapprox(std(num_ms), 1.8865; atol=0.01)
+    end
+
+    @testset "dynamic model with dot tilde" begin
+        @model function dynamic_model_with_dot_tilde(
+            num_zs=10, ::Type{M}=Vector{Float64}
+        ) where {M}
+            z = M(undef, num_zs)
+            z .~ Poisson(1.0)
+            num_ms = sum(z)
+            m = M(undef, num_ms)
+            return m .~ Normal(1.0, 1.0)
+        end
+        model = dynamic_model_with_dot_tilde()
+        # TODO(mhauru) This is broken because of
+        # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
+        @test_broken (
+            sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100);
+            true
+        )
+    end
 
     @testset "Demo models" begin
         @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
