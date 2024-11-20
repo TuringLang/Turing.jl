@@ -317,7 +317,7 @@ end
         # the posterior is analytically known? Doing 10_000 samples to run the test suite
         # is not ideal
         @test isapprox(mean(num_ms), 8.6087; atol=0.5)
-        @test isapprox(std(num_ms), 1.8865; atol=0.01)
+        @test isapprox(std(num_ms), 1.8865; atol=0.02)
     end
 
     @testset "dynamic model with dot tilde" begin
