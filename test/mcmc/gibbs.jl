@@ -367,6 +367,7 @@ end
             samplers = [
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
+                Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => ESS()),
             ]
 
             if !has_dot_assume(model)
@@ -412,10 +413,7 @@ end
                 initial_params = fill(initial_params, num_chains)
 
                 # Sampler to use for Gibbs components.
-                sampler_inner = HMC(0.1, 32)
-                sampler = Turing.Gibbs(
-                    @varname(s) => sampler_inner, @varname(m) => sampler_inner
-                )
+                sampler = Turing.Gibbs(@varname(s) => HMC(0.1, 32), @varname(m) => ESS())
                 Random.seed!(42)
                 chain = sample(
                     model,
