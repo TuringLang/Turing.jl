@@ -320,6 +320,28 @@ end
         @test isapprox(std(num_ms), 1.8865; atol=0.02)
     end
 
+    # The below test used to sample incorrectly before
+    # https://github.com/TuringLang/Turing.jl/pull/2328
+    @testset "dynamic model with ESS" begin
+        @model function dynamic_model_for_ess()
+            b ~ Bernoulli()
+            x_length = b ? 1 : 2
+            x = Vector{Float64}(undef, x_length)
+            for i in 1:x_length
+                x[i] ~ Normal(i, 1.0)
+            end
+        end
+
+        m = dynamic_model_for_ess()
+        chain = sample(m, Gibbs(:b => PG(10), :x => ESS()), 2000; discard_initial=100)
+        means = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 2.0)
+        stds = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 1.0)
+        for vn in keys(means)
+            @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.1)
+            @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.1)
+        end
+    end
+
     @testset "dynamic model with dot tilde" begin
         @model function dynamic_model_with_dot_tilde(
             num_zs=10, ::Type{M}=Vector{Float64}
