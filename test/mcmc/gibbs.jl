@@ -130,6 +130,127 @@ end
     )
 end
 
+# Test that the samplers are being called in the correct order, on the correct target
+# variables.
+@testset "Sampler call order" begin
+    # A wrapper around inference algorithms to allow intercepting the dispatch cascade to
+    # collect testing information.
+    struct AlgWrapper{Alg<:Inference.InferenceAlgorithm} <: Inference.InferenceAlgorithm
+        inner::Alg
+    end
+
+    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
+        DynamicPPL.Sampler(sampler.alg.inner, sampler.selector)
+
+    # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
+    # They all just propagate the call to the inner algorithm.
+    Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
+    Inference.drop_space(wrap::AlgWrapper) = AlgWrapper(Inference.drop_space(wrap.inner))
+    function Inference.setparams_varinfo!!(
+        model::DynamicPPL.Model,
+        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        state,
+        params::Turing.AbstractVarInfo,
+    )
+        return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
+    end
+
+    function target_vns(::Inference.GibbsContext{VNs}) where {VNs}
+        return VNs
+    end
+
+    # targets_and_algs will be a list of tuples, where the first element is the target_vns
+    # of a component sampler, and the second element is the component sampler itself.
+    # It is modified by the capture_targets_and_algs function.
+    targets_and_algs = Any[]
+
+    function capture_targets_and_algs(sampler, context)
+        if DynamicPPL.NodeTrait(context) == DynamicPPL.IsLeaf()
+            return nothing
+        end
+        if context isa Inference.GibbsContext
+            push!(targets_and_algs, (target_vns(context), sampler))
+        end
+        return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
+    end
+
+    # The methods that capture testing information for us.
+    function Turing.AbstractMCMC.step(
+        rng::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        args...;
+        kwargs...,
+    )
+        capture_targets_and_algs(sampler.alg.inner, model.context)
+        return Turing.AbstractMCMC.step(
+            rng, model, unwrap_sampler(sampler), args...; kwargs...
+        )
+    end
+
+    function Turing.DynamicPPL.initialstep(
+        rng::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        args...;
+        kwargs...,
+    )
+        capture_targets_and_algs(sampler.alg.inner, model.context)
+        return Turing.DynamicPPL.initialstep(
+            rng, model, unwrap_sampler(sampler), args...; kwargs...
+        )
+    end
+
+    # A test model that includes several different kinds of tilde syntax.
+    @model function test_model(val, ::Type{M}=Vector{Float64}) where {M}
+        s ~ Normal(0.1, 0.2)
+        m ~ Poisson()
+        val ~ Normal(s, 1)
+        1.0 ~ Normal(s + m, 1)
+
+        n := m + 1
+        xs = M(undef, n)
+        for i in eachindex(xs)
+            xs[i] ~ Beta(0.5, 0.5)
+        end
+
+        ys = M(undef, 2)
+        ys .~ Beta(1.0, 1.0)
+        return sum(xs), sum(ys), n
+    end
+
+    mh = MH()
+    pg = PG(10)
+    hmc = HMC(0.01, 4)
+    nuts = NUTS()
+    # Sample with all sorts of combinations of samplers and targets.
+    sampler = Gibbs(
+        (@varname(s),) => AlgWrapper(mh),
+        (@varname(s), @varname(m)) => AlgWrapper(mh),
+        (@varname(m),) => AlgWrapper(pg),
+        (@varname(xs),) => AlgWrapper(hmc),
+        (@varname(ys),) => AlgWrapper(nuts),
+        (@varname(ys),) => AlgWrapper(nuts),
+        (@varname(xs), @varname(ys)) => AlgWrapper(hmc),
+        (@varname(s),) => AlgWrapper(mh),
+    )
+    chain = sample(test_model(-1), sampler, 2)
+
+    expected_targets_and_algs_per_iteration = [
+        ((:s,), mh),
+        ((:s, :m), mh),
+        ((:m,), pg),
+        ((:xs,), hmc),
+        ((:ys,), nuts),
+        ((:ys,), nuts),
+        ((:xs, :ys), hmc),
+        ((:s,), mh),
+    ]
+    @test targets_and_algs == vcat(
+        expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
+    )
+end
+
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "Deprecated Gibbs constructors" begin
         N = 10
