@@ -59,7 +59,7 @@ jobs:
           # macOS
           - version: '1'
             os: macos-latest
-            arch: x64
+            arch: aarch64
             num_threads: 1
           # Minimum supported Julia version
           - version: 'min'
