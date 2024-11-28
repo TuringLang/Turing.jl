@@ -302,7 +302,7 @@ end
         # As above but using a Dict of VarNames.
         s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
         # As above but different samplers and using kwargs.
-        s5 = Gibbs(; s=CSMC(3), m=HMC(0.4, 8; adtype=adbackend))
+        s5 = Gibbs(; s=CSMC(3), m=HMCDA(200, 0.65, 0.15; adtype=adbackend))
         s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
         s7 = Gibbs(Dict((:s, @varname(m)) => PG(10)))
         # Multiple instnaces of the same sampler. This implements running, in this case,
@@ -347,7 +347,7 @@ end
 
         Random.seed!(100)
 
-        alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
+        alg = Gibbs(; s=MH(), m=HMCDA(200, 0.65, 0.3; adtype=adbackend))
         chain = sample(gdemo(1.5, 2.0), alg, 10_000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
 

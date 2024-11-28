@@ -6,9 +6,9 @@ using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
 
-# RepeatedSampler only really makes sense as a component sampler of Gibbs.
+# RepeatSampler only really makes sense as a component sampler of Gibbs.
 # Here we just check that running it by itself is equivalent to thinning.
-@testset "RepeatedSampler" begin
+@testset "RepeatSampler" begin
     num_repeats = 17
     num_samples = 10
     num_chains = 2
