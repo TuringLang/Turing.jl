@@ -285,17 +285,16 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
-wrap_algorithm_maybe(x) = x
-# All samplers are given the same Selector, so that they will also sample all variables
+# All samplers are given the same Selector, so that they will sample all variables
 # given to them by the Gibbs sampler. This avoids conflicts between the new and the old way
 # of choosing which sampler to use.
-function wrap_algorithm_maybe(x::DynamicPPL.Sampler)
+function set_selector(x::DynamicPPL.Sampler)
     return DynamicPPL.Sampler(x.alg, DynamicPPL.Selector(0))
 end
-function wrap_algorithm_maybe(x::RepeatSampler)
-    return RepeatSampler(wrap_algorithm_maybe(x.sampler), x.num_repeat)
+function set_selector(x::RepeatSampler)
+    return RepeatSampler(set_selector(x.sampler), x.num_repeat)
 end
-wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
+set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
 """
     Gibbs
@@ -333,22 +332,17 @@ to_varname(t) = map(to_varname, collect(t))
 # NamedTuple
 Gibbs(; algs...) = Gibbs(NamedTuple(algs))
 function Gibbs(algs::NamedTuple)
-    return Gibbs(
-        map(to_varname, keys(algs)), map(wrap_algorithm_maybe ∘ drop_space, values(algs))
-    )
+    return Gibbs(map(to_varname, keys(algs)), map(set_selector ∘ drop_space, values(algs)))
 end
 
 # AbstractDict
 function Gibbs(algs::AbstractDict)
     return Gibbs(
-        map(to_varname, collect(keys(algs))),
-        map(wrap_algorithm_maybe ∘ drop_space, values(algs)),
+        map(to_varname, collect(keys(algs))), map(set_selector ∘ drop_space, values(algs))
     )
 end
 function Gibbs(algs::Pair...)
-    return Gibbs(
-        map(to_varname ∘ first, algs), map(wrap_algorithm_maybe ∘ drop_space ∘ last, algs)
-    )
+    return Gibbs(map(to_varname ∘ first, algs), map(set_selector ∘ drop_space ∘ last, algs))
 end
 
 # The below two constructors only provide backwards compatibility with the constructor of
@@ -372,7 +366,7 @@ function Gibbs(algs::InferenceAlgorithm...)
         "`Gibbs(@varname(x) => RepeatSampler(NUTS(), 2), @varname(y) => MH())`"
     )
     Base.depwarn(msg, :Gibbs)
-    return Gibbs(varnames, map(wrap_algorithm_maybe ∘ drop_space, algs))
+    return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
 end
 
 function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
