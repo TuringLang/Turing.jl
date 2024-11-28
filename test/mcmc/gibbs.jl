@@ -251,6 +251,18 @@ end
     )
 end
 
+@testset "Equivalence of RepeatSampler and repeating Sampler" begin
+    sampler1 = Gibbs(@varname(s) => RepeatSampler(MH(), 3), @varname(m) => ESS())
+    sampler2 = Gibbs(
+        @varname(s) => MH(), @varname(s) => MH(), @varname(s) => MH(), @varname(m) => ESS()
+    )
+    Random.seed!(23)
+    chain1 = sample(gdemo_default, sampler1, 10)
+    Random.seed!(23)
+    chain2 = sample(gdemo_default, sampler1, 10)
+    @test chain1.value == chain2.value
+end
+
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @testset "Deprecated Gibbs constructors" begin
         N = 10
@@ -302,7 +314,12 @@ end
             vnm = @varname(m)
             Gibbs(vns => hmc, vns => hmc, vns => hmc, vnm => pg, vnm => pg)
         end
-        for s in (s1, s2, s3, s4, s5, s6, s7, s8)
+        # Same thing but using RepeatSampler.
+        s9 = Gibbs(
+            @varname(s) => RepeatSampler(HMC(0.1, 5; adtype=adbackend), 3),
+            @varname(m) => RepeatSampler(PG(10), 2),
+        )
+        for s in (s1, s2, s3, s4, s5, s6, s7, s8, s9)
             @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
         end
 
@@ -314,6 +331,7 @@ end
         sample(gdemo_default, s6, N)
         sample(gdemo_default, s7, N)
         sample(gdemo_default, s8, N)
+        sample(gdemo_default, s9, N)
 
         g = Turing.Sampler(s3, gdemo_default)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
@@ -355,7 +373,7 @@ end
             @varname(s) => MH(),
             (@varname(s), @varname(m)) => MH(),
             @varname(m) => ESS(),
-            @varname(s) => MH(),
+            @varname(s) => RepeatSampler(MH(), 3),
             @varname(m) => HMC(0.2, 4; adtype=adbackend),
             (@varname(m), @varname(s)) => HMC(0.2, 4; adtype=adbackend),
         )
@@ -367,7 +385,7 @@ end
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
             (@varname(z1), @varname(z2)) => PG(15),
             (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
-            (@varname(z3), @varname(z4)) => PG(15),
+            (@varname(z3), @varname(z4)) => RepeatSampler(PG(15), 2),
             (@varname(mu1)) => ESS(),
             (@varname(mu2)) => ESS(),
             (@varname(z1), @varname(z2)) => PG(15),

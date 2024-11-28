@@ -60,6 +60,7 @@ end
             @timeit_include("mcmc/abstractmcmc.jl")
             @timeit_include("mcmc/mh.jl")
             @timeit_include("ext/dynamichmc.jl")
+            @timeit_include("mcmc/repeat_sampler.jl")
         end
 
         @testset "variational algorithms" begin

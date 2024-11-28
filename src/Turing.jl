@@ -95,6 +95,7 @@ export @model,                 # modelling
     SMC,
     CSMC,
     PG,
+    RepeatSampler,
     vi,                     # variational inference
     ADVI,
     sample,                 # inference

@@ -15,6 +15,8 @@ isgibbscomponent(::NUTS) = true
 isgibbscomponent(::MH) = true
 isgibbscomponent(::PG) = true
 
+isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
+
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(::AdvancedHMC.HMC) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
@@ -364,7 +366,7 @@ function Gibbs(algs::InferenceAlgorithm...)
         "`Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. " *
         "Please use `Gibbs(; x=NUTS(), y=MH())` instead. If you want different iteration " *
         "counts for different subsamplers, use e.g. " *
-        "`Gibbs(@varname(x) => NUTS(), @varname(x) => NUTS(), @varname(y) => MH())`"
+        "`Gibbs(@varname(x) => RepeatSampler(NUTS(), 2), @varname(y) => MH())`"
     )
     Base.depwarn(msg, :Gibbs)
     return Gibbs(varnames, map(wrap_algorithm_maybe ∘ drop_space, algs))

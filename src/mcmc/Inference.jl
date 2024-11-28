@@ -74,6 +74,7 @@ export InferenceAlgorithm,
     SMC,
     CSMC,
     PG,
+    RepeatSampler,
     Prior,
     assume,
     dot_assume,
@@ -99,6 +100,12 @@ abstract type AdaptiveHamiltonian <: Hamiltonian end
 Return an `InferenceAlgorithm` like `alg`, but with all space information removed.
 """
 function drop_space end
+
+function drop_space(sampler::Sampler)
+    return Sampler(drop_space(sampler.alg), sampler.selector)
+end
+
+include("repeat_sampler.jl")
 
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
@@ -348,7 +355,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -460,7 +467,7 @@ getlogevidence(transitions, sampler, state) = missing
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -523,7 +530,7 @@ end
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
