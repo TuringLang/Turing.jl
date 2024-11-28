@@ -560,7 +560,8 @@ end
                 initial_params = fill(initial_params, num_chains)
 
                 # Sampler to use for Gibbs components.
-                sampler = Turing.Gibbs(@varname(s) => HMC(0.1, 32), @varname(m) => ESS())
+                hmc = HMC(0.1, 32)
+                sampler = Turing.Gibbs(@varname(s) => hmc, @varname(m) => hmc)
                 Random.seed!(42)
                 chain = sample(
                     model,
