@@ -543,6 +543,49 @@ function setparams_varinfo!!(
     return PGState(params, state.rng)
 end
 
+"""
+    match_linking!!(varinfo_local, prev_state_local, model)
+
+Make sure the linked/invlinked status of varinfo_local matches that of the previous
+state for this sampler. This is relevant when multilple samplers are sampling the same
+variables, and one might need it to be linked while the other doesn't.
+"""
+function match_linking!!(varinfo_local, prev_state_local, model)
+    prev_varinfo_local = varinfo(prev_state_local)
+    was_linked = DynamicPPL.istrans(prev_varinfo_local)
+    is_linked = DynamicPPL.istrans(varinfo_local)
+    if was_linked && !is_linked
+        varinfo_local = DynamicPPL.link!!(varinfo_local, model)
+    elseif !was_linked && is_linked
+        varinfo_local = DynamicPPL.invlink!!(varinfo_local, model)
+    end
+    # TODO(mhauru) The above might run into trouble if some variables are linked and others
+    # are not. `istrans(varinfo)` returns an `all` over the individual variables. This could
+    # especially be a problem with dynamic models, where new variables may get introduced,
+    # but also in cases where component samplers have partial overlap in their target
+    # variables. The below is how I would like to implement this, but DynamicPPL at this
+    # time does not support linking individual variables selected by `VarName`. It soon
+    # should though, so come back to this.
+    # prev_links_dict = Dict(vn => DynamicPPL.istrans(prev_varinfo_local, vn) for vn in keys(prev_varinfo_local))
+    # any_linked = any(values(prev_links_dict))
+    # for vn in keys(varinfo_local)
+    #     was_linked = if haskey(prev_varinfo_local, vn)
+    #         prev_links_dict[vn]
+    #     else
+    #         # If the old state didn't have this variable, we assume it was linked if _any_
+    #         # of the variables of the old state were linked.
+    #         any_linked
+    #     end
+    #     is_linked = DynamicPPL.istrans(varinfo_local, vn)
+    #     if was_linked && !is_linked
+    #         varinfo_local = DynamicPPL.invlink!!(varinfo_local, vn)
+    #     elseif !was_linked && is_linked
+    #         varinfo_local = DynamicPPL.link!!(varinfo_local, vn)
+    #     end
+    # end
+    return varinfo_local
+end
+
 function gibbs_step_inner(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -555,6 +598,7 @@ function gibbs_step_inner(
     # Construct the conditional model and the varinfo that this sampler should use.
     model_local, context_local = make_conditional(model, varnames_local, global_vi)
     varinfo_local = subset(global_vi, varnames_local)
+    varinfo_local = match_linking!!(varinfo_local, state_local, model)
 
     # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not
     # sampled by other samplers, we don't need to `setparams`, but could rather simply

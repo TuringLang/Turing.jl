@@ -350,22 +350,30 @@ end
         check_MoGtest_default(chain; atol=0.15)
 
         Random.seed!(200)
-        for alg in [
-            # The new syntax for specifying a sampler to run twice for one variable.
-            Gibbs(
-                @varname(s) => MH(),
-                @varname(s) => MH(),
-                @varname(m) => HMC(0.2, 4; adtype=adbackend),
-            ),
-            Gibbs(
-                @varname(s) => MH(),
-                @varname(m) => HMC(0.2, 4; adtype=adbackend),
-                @varname(m) => HMC(0.2, 4; adtype=adbackend),
-            ),
-        ]
-            chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-            check_gdemo(chain; atol=0.15)
-        end
+        # Test samplers that are run multiple times, or have overlapping targets.
+        alg = Gibbs(
+            @varname(s) => MH(),
+            (@varname(s), @varname(m)) => MH(),
+            @varname(m) => ESS(),
+            @varname(s) => MH(),
+            @varname(m) => HMC(0.2, 4; adtype=adbackend),
+            (@varname(m), @varname(s)) => HMC(0.2, 4; adtype=adbackend),
+        )
+        chain = sample(gdemo(1.5, 2.0), alg, 300)
+        check_gdemo(chain; atol=0.15)
+
+        Random.seed!(200)
+        gibbs = Gibbs(
+            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
+            (@varname(z1), @varname(z2)) => PG(15),
+            (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+            (@varname(z3), @varname(z4)) => PG(15),
+            (@varname(mu1)) => ESS(),
+            (@varname(mu2)) => ESS(),
+            (@varname(z1), @varname(z2)) => PG(15),
+        )
+        chain = sample(MoGtest_default, gibbs, 300)
+        check_MoGtest_default(chain; atol=0.15)
     end
 
     @testset "transitions" begin
