@@ -1,21 +1,9 @@
-module HMCTests
+module RepeatSamplerTests
 
 using ..Models: gdemo_default
-using ..ADUtils: ADTypeCheckContext
-using ..NumericalTests: check_gdemo, check_numerical
-import ..ADUtils
-using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-import DynamicPPL
 using DynamicPPL: Sampler
-import ForwardDiff
-using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
-import ReverseDiff
-using LinearAlgebra: I, dot, vec
-import Random
 using StableRNGs: StableRNG
-using StatsFuns: logistic
-import Mooncake
-using Test: @test, @test_logs, @testset, @test_throws
+using Test: @test, @testset
 using Turing
 
 # RepeatedSampler only really makes sense as a component sampler of Gibbs.
