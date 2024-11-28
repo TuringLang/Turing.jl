@@ -292,6 +292,9 @@ wrap_algorithm_maybe(x) = x
 function wrap_algorithm_maybe(x::DynamicPPL.Sampler)
     return DynamicPPL.Sampler(x.alg, DynamicPPL.Selector(0))
 end
+function wrap_algorithm_maybe(x::RepeatSampler)
+    return RepeatSampler(wrap_algorithm_maybe(x.sampler), x.num_repeat)
+end
 wrap_algorithm_maybe(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
 """
