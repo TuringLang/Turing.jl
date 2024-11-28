@@ -320,21 +320,30 @@ struct Gibbs{V,A} <: InferenceAlgorithm
     end
 end
 
+to_varname(vn::VarName) = vn
+to_varname(s::Symbol) = VarName{s}()
+# Any other value is assumed to be an iterable.
+to_varname(t) = map(to_varname, collect(t))
+
 # NamedTuple
 Gibbs(; algs...) = Gibbs(NamedTuple(algs))
 function Gibbs(algs::NamedTuple)
     return Gibbs(
-        map(s -> VarName{s}(), keys(algs)),
-        map(wrap_algorithm_maybe ∘ drop_space, values(algs)),
+        map(to_varname, keys(algs)), map(wrap_algorithm_maybe ∘ drop_space, values(algs))
     )
 end
 
 # AbstractDict
 function Gibbs(algs::AbstractDict)
-    return Gibbs(collect(keys(algs)), map(wrap_algorithm_maybe ∘ drop_space, values(algs)))
+    return Gibbs(
+        map(to_varname, collect(keys(algs))),
+        map(wrap_algorithm_maybe ∘ drop_space, values(algs)),
+    )
 end
 function Gibbs(algs::Pair...)
-    return Gibbs(map(first, algs), map(wrap_algorithm_maybe ∘ drop_space, map(last, algs)))
+    return Gibbs(
+        map(to_varname ∘ first, algs), map(wrap_algorithm_maybe ∘ drop_space ∘ last, algs)
+    )
 end
 
 # The below two constructors only provide backwards compatibility with the constructor of
@@ -383,6 +392,7 @@ end
 _maybevec(x) = vec(x)  # assume it's iterable
 _maybevec(x::Tuple) = [x...]
 _maybevec(x::VarName) = [x]
+_maybevec(x::Symbol) = [x]
 
 varinfo(state::GibbsState) = state.vi
 
