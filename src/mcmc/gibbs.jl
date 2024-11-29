@@ -571,6 +571,7 @@ function match_linking!!(varinfo_local, prev_state_local, model)
     # variables. The below is how I would like to implement this, but DynamicPPL at this
     # time does not support linking individual variables selected by `VarName`. It soon
     # should though, so come back to this.
+    # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2401
     # prev_links_dict = Dict(vn => DynamicPPL.istrans(prev_varinfo_local, vn) for vn in keys(prev_varinfo_local))
     # any_linked = any(values(prev_links_dict))
     # for vn in keys(varinfo_local)

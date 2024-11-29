@@ -463,6 +463,7 @@ end
         # TODO(mhauru) Could we do something smarter here? Maybe a dynamic model for which
         # the posterior is analytically known? Doing 10_000 samples to run the test suite
         # is not ideal
+        # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2402
         @test isapprox(mean(num_ms), 8.6087; atol=0.5)
         @test isapprox(std(num_ms), 1.8865; atol=0.02)
     end
