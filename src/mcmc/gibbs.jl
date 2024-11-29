@@ -509,7 +509,7 @@ function setparams_varinfo!!(
     # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
     # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
     # some variables and DefaultContext for others.
-    return last(DynamicPPL.evaluate!!(model, params, sampler))
+    return last(DynamicPPL.evaluate!!(model, params, SamplingContext(sampler)))
 end
 
 function setparams_varinfo!!(
