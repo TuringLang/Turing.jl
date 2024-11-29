@@ -129,11 +129,7 @@ function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
     return map(Base.Fix1(get_conditioned_gibbs, context), vns)
 end
 
-function is_target_varname(context::GibbsContext, vn::VarName)
-    return is_target_varname(context, DynamicPPL.getsym(vn))
-end
-
-is_target_varname(::GibbsContext{T}, vn_symbol::Symbol) where {T} = vn_symbol in T
+is_target_varname(::GibbsContext{VNs}, ::VarName{sym}) where {VNs,sym} = sym in VNs
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
     num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
