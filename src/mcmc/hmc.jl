@@ -463,6 +463,12 @@ end
 
 getstepsize(sampler::Sampler{<:Hamiltonian}, state) = sampler.alg.ϵ
 getstepsize(sampler::Sampler{<:AdaptiveHamiltonian}, state) = AHMC.getϵ(state.adaptor)
+function getstepsize(
+    sampler::Sampler{<:AdaptiveHamiltonian},
+    state::HMCState{TV,TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
+) where {TV,TKernel,THam,PhType}
+    return state.kernel.τ.integrator.ϵ
+end
 
 gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
