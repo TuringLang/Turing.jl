@@ -1,9 +1,13 @@
 include("test_utils/SelectiveTests.jl")
 using .SelectiveTests: isincluded, parse_args
 using Pkg
+using Random: seed!
 using Test
 using TimerOutputs: TimerOutputs, @timeit
 import Turing
+
+# Fix the global Random.seed for reproducibility.
+seed!(23)
 
 include(pkgdir(Turing) * "/test/test_utils/models.jl")
 include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
@@ -27,6 +31,10 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" begin
+    @testset "Test utils" begin
+        @timeit_include("test_utils/test_utils.jl")
+    end
+
     @testset "Aqua" begin
         @timeit_include("Aqua.jl")
     end

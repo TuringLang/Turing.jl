@@ -16,7 +16,7 @@ import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 import Mooncake
-using Test: @test, @test_broken, @test_logs, @testset
+using Test: @test, @test_broken, @test_logs, @testset, @test_throws
 using Turing
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
@@ -272,6 +272,15 @@ using Turing
         ) (:info,) match_mode = :any begin
             sample(demo_warn_initial_params(), NUTS(; adtype=adbackend), 5)
         end
+    end
+
+    @testset "error for impossible model" begin
+        @model function demo_impossible()
+            x ~ Normal()
+            Turing.@addlogprob! -Inf
+        end
+
+        @test_throws ErrorException sample(demo_impossible(), NUTS(; adtype=adbackend), 5)
     end
 
     @testset "(partially) issue: #2095" begin
