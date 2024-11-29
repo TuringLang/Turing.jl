@@ -337,61 +337,72 @@ end
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
-    @testset "gibbs inference" begin
-        Random.seed!(100)
-        alg = Gibbs(; s=CSMC(15), m=HMC(0.2, 4; adtype=adbackend))
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:m], [7 / 6]; atol=0.15)
-        # Be more relaxed with the tolerance of the variance.
-        check_numerical(chain, [:s], [49 / 24]; atol=0.35)
+    # Test various combinations of samplers against models for which we know the analytical
+    # posterior mean.
+    @testset "Gibbs inference" begin
+        @testset "CSMC and HMC on gdemo" begin
+            alg = Gibbs(; s=CSMC(15), m=HMC(0.2, 4; adtype=adbackend))
+            chain = sample(gdemo(1.5, 2.0), alg, 3_000)
+            check_numerical(chain, [:m], [7 / 6]; atol=0.15)
+            # Be more relaxed with the tolerance of the variance.
+            check_numerical(chain, [:s], [49 / 24]; atol=0.35)
+        end
 
-        Random.seed!(100)
+        @testset "MH and HMCDA on gdemo" begin
+            alg = Gibbs(; s=MH(), m=HMCDA(200, 0.65, 0.3; adtype=adbackend))
+            chain = sample(gdemo(1.5, 2.0), alg, 3_000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        end
 
-        alg = Gibbs(; s=MH(), m=HMCDA(200, 0.65, 0.3; adtype=adbackend))
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        @testset "CSMC and ESS on gdemo" begin
+            alg = Gibbs(; s=CSMC(15), m=ESS())
+            chain = sample(gdemo(1.5, 2.0), alg, 3_000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        end
 
-        alg = Gibbs(; s=CSMC(15), m=ESS())
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        # TODO(mhauru) Why is this in the Gibbs test suite?
+        @testset "CSMC on gdemo" begin
+            alg = CSMC(15)
+            chain = sample(gdemo(1.5, 2.0), alg, 4_000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        end
 
-        alg = CSMC(15)
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        @testset "PG and HMC on MoGtest_default" begin
+            gibbs = Gibbs(
+                (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
+                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+            )
+            chain = sample(MoGtest_default, gibbs, 2_000)
+            check_MoGtest_default(chain; atol=0.15)
+        end
 
-        Random.seed!(200)
-        gibbs = Gibbs(
-            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
-            (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
-        )
-        chain = sample(MoGtest_default, gibbs, 10_000)
-        check_MoGtest_default(chain; atol=0.15)
+        @testset "Multiple overlapping samplers on gdemo" begin
+            # Test samplers that are run multiple times, or have overlapping targets.
+            alg = Gibbs(
+                @varname(s) => MH(),
+                (@varname(s), @varname(m)) => MH(),
+                @varname(m) => ESS(),
+                @varname(s) => RepeatSampler(MH(), 3),
+                @varname(m) => HMC(0.2, 4; adtype=adbackend),
+                (@varname(m), @varname(s)) => HMC(0.2, 4; adtype=adbackend),
+            )
+            chain = sample(gdemo(1.5, 2.0), alg, 500)
+            check_gdemo(chain; atol=0.15)
+        end
 
-        Random.seed!(200)
-        # Test samplers that are run multiple times, or have overlapping targets.
-        alg = Gibbs(
-            @varname(s) => MH(),
-            (@varname(s), @varname(m)) => MH(),
-            @varname(m) => ESS(),
-            @varname(s) => RepeatSampler(MH(), 3),
-            @varname(m) => HMC(0.2, 4; adtype=adbackend),
-            (@varname(m), @varname(s)) => HMC(0.2, 4; adtype=adbackend),
-        )
-        chain = sample(gdemo(1.5, 2.0), alg, 300)
-        check_gdemo(chain; atol=0.15)
-
-        Random.seed!(200)
-        gibbs = Gibbs(
-            (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
-            (@varname(z1), @varname(z2)) => PG(15),
-            (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
-            (@varname(z3), @varname(z4)) => RepeatSampler(PG(15), 2),
-            (@varname(mu1)) => ESS(),
-            (@varname(mu2)) => ESS(),
-            (@varname(z1), @varname(z2)) => PG(15),
-        )
-        chain = sample(MoGtest_default, gibbs, 300)
-        check_MoGtest_default(chain; atol=0.15)
+        @testset "Multiple overlapping samplers on MoGtest_default" begin
+            gibbs = Gibbs(
+                (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
+                (@varname(z1), @varname(z2)) => PG(15),
+                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+                (@varname(z3), @varname(z4)) => RepeatSampler(PG(15), 2),
+                (@varname(mu1)) => ESS(),
+                (@varname(mu2)) => ESS(),
+                (@varname(z1), @varname(z2)) => PG(15),
+            )
+            chain = sample(MoGtest_default, gibbs, 500)
+            check_MoGtest_default(chain; atol=0.15)
+        end
     end
 
     @testset "transitions" begin
