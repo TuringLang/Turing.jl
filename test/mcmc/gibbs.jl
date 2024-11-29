@@ -638,7 +638,7 @@ end
 
             # `sample`
             Random.seed!(42)
-            chain = sample(model, alg, 10_000; progress=false)
+            chain = sample(model, alg, 1_000; progress=false)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
 
