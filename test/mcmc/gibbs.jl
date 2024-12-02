@@ -264,6 +264,7 @@ end
 end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
+    @info "Starting Gibbs tests with $adbackend"
     @testset "Deprecated Gibbs constructors" begin
         N = 10
         @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
