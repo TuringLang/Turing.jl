@@ -21,6 +21,8 @@ end
 ### Hamiltonian Monte Carlo samplers.
 ###
 
+varinfo(state::HMCState) = state.vi
+
 """
     HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())
 
@@ -74,6 +76,10 @@ function HMC(
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
     return HMC(ϵ, n_leapfrog, metricT, space; adtype=adtype)
+end
+
+function drop_space(alg::HMC{AD,space,metricT}) where {AD,space,metricT}
+    return HMC{AD,(),metricT}(alg.ϵ, alg.n_leapfrog, alg.adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -376,6 +382,10 @@ function HMCDA(
     return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype=adtype)
 end
 
+function drop_space(alg::HMCDA{AD,space,metricT}) where {AD,space,metricT}
+    return HMCDA{AD,(),metricT}(alg.n_adapts, alg.δ, alg.λ, alg.ϵ, alg.adtype)
+end
+
 """
     NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()
 
@@ -451,6 +461,12 @@ end
 
 function NUTS(; kwargs...)
     return NUTS(-1, 0.65; kwargs...)
+end
+
+function drop_space(alg::NUTS{AD,space,metricT}) where {AD,space,metricT}
+    return NUTS{AD,(),metricT}(
+        alg.n_adapts, alg.δ, alg.max_depth, alg.Δ_max, alg.ϵ, alg.adtype
+    )
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)

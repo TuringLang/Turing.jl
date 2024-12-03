@@ -28,6 +28,8 @@ struct IS{space} <: InferenceAlgorithm end
 
 IS() = IS{()}()
 
+drop_space(alg::IS) = IS()
+
 DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 
 function DynamicPPL.initialstep(

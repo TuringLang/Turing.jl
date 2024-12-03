@@ -20,7 +20,6 @@ Construct a Metropolis-Hastings algorithm.
 The arguments `space` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
-- A set of one or more symbols to sample with `MH` in conjunction with `Gibbs`, i.e. `Gibbs(MH(:m), PG(10, :s))`
 - An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function`
   that generates returns a conditional proposal distribution.
 - A covariance matrix to use as for mean-zero multivariate normal proposals.
@@ -38,15 +37,6 @@ The default `MH` will draw proposal samples from the prior distribution using `A
 end
 
 chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
-mean(chain)
-```
-
-Alternatively, you can specify particular parameters to sample if you want to combine sampling
-from multiple samplers:
-
-```julia
-# Samples s² with MH and m with PG
-chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s²), PG(10, :m)), 1_000)
 mean(chain)
 ```
 
@@ -155,6 +145,8 @@ function MH(space...)
     return MH{tuple(syms...),typeof(proposals)}(proposals)
 end
 
+drop_space(alg::MH{space,P}) where {space,P} = MH{(),P}(alg.proposals)
+
 # Some of the proposals require working in unconstrained space.
 transform_maybe(proposal::AMH.Proposal) = proposal
 function transform_maybe(proposal::AMH.RandomWalkProposal)
@@ -260,7 +252,7 @@ function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVa
 end
 
 @generated function _val_tuple(vi::VarInfo, vns::NamedTuple{names}) where {names}
-    isempty(names) === 0 && return :(NamedTuple())
+    isempty(names) && return :(NamedTuple())
     expr = Expr(:tuple)
     expr.args = Any[
         :(
