@@ -5,6 +5,7 @@ using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+import Enzyme
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: I
 using LogDensityProblems: LogDensityProblems

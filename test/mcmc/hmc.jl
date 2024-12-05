@@ -7,6 +7,7 @@ import ..ADUtils
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
+import Enzyme
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -15,10 +16,11 @@ import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 import Mooncake
-using Test: @test, @test_logs, @testset, @test_throws
+using Test: @test, @test_broken, @test_logs, @testset, @test_throws
 using Turing
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
+    @info "Running HMC tests with $adbackend"
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin
@@ -70,14 +72,19 @@ using Turing
         end
 
         model_f = hmcmatrixsup()
-        n_samples = 1_000
+        n_samples = 5_000
         vs = map(1:3) do _
             chain = sample(rng, model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
             reshape(mean(r; dims=1), 2, 2)
         end
 
-        @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        # TODO(mhauru) The below remains broken for Enzyme. Need to investigate why.
+        if !(adbackend isa AutoEnzyme)
+            @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        else
+            @test_broken maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        end
     end
     @testset "multivariate support" begin
         # Define NN flow
@@ -104,18 +111,14 @@ using Turing
         alpha = 0.16                  # regularizatin term
         var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
-        @model function bnn(ts)
-            b1 ~ MvNormal(
-                [0.0; 0.0; 0.0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
-            )
-            w11 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w12 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w13 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
+        @model function bnn(ts, var_prior)
+            b1 ~ MvNormal(zeros(3), var_prior * I)
+            w11 ~ MvNormal(zeros(2), var_prior * I)
+            w12 ~ MvNormal(zeros(2), var_prior * I)
+            w13 ~ MvNormal(zeros(2), var_prior * I)
             bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal(
-                [0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
-            )
+            wo ~ MvNormal(zeros(3), var_prior * I)
             for i in rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)
@@ -124,7 +127,7 @@ using Turing
         end
 
         # Sampling
-        chain = sample(rng, bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
+        chain = sample(rng, bnn(ts, var_prior), HMC(0.1, 5; adtype=adbackend), 10)
     end
 
     @testset "hmcda inference" begin
@@ -330,12 +333,16 @@ using Turing
     end
 
     @testset "Check ADType" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        sample(rng, m, alg, 10)
+        # These tests don't make sense for Enzyme, since it does not use a particular element
+        # type.
+        if !(adbackend isa AutoEnzyme)
+            alg = HMC(0.1, 10; adtype=adbackend)
+            m = DynamicPPL.contextualize(
+                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
+            )
+            # These will error if the adbackend being used is not the one set.
+            @test (sample(rng, m, alg, 10); true)
+        end
     end
 end
 

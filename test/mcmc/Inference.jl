@@ -7,6 +7,7 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
 using DynamicPPL: Sampler, getlogp
+import Enzyme
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
@@ -396,51 +397,54 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            @model function vdemo3()
+                x = Vector{Real}(undef, N)
+                for i in 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
             end
+
+            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                @. x ~ Normal(0, 2)
+            end
+
+            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
+
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                @. x ~ InverseGamma(2, 3)
+            end
+
+            sample(vdemo6(), alg, 1000)
+
+            N = 3
+            @model function vdemo7()
+                x = Array{Real}(undef, N, N)
+                @. x ~ [InverseGamma(2, 3) for i in 1:N]
+            end
+
+            sample(vdemo7(), alg, 1000)
         end
-
-        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            @. x ~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            @. x ~ InverseGamma(2, 3)
-        end
-
-        sample(vdemo6(), alg, 1000)
-
-        N = 3
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            @. x ~ [InverseGamma(2, 3) for i in 1:N]
-        end
-
-        sample(vdemo7(), alg, 1000)
     end
     @testset "vectorization .~" begin
         @model function vdemo1(x)
@@ -463,50 +467,53 @@ using Turing
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(vdemo2(randn(D, 100)), alg, 250)
 
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            @model function vdemo3()
+                x = Vector{Real}(undef, N)
+                for i in 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
             end
+
+            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                return x .~ Normal(0, 2)
+            end
+
+            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
+
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                return x .~ InverseGamma(2, 3)
+            end
+
+            sample(vdemo6(), alg, 1000)
+
+            @model function vdemo7()
+                x = Array{Real}(undef, N, N)
+                return x .~ [InverseGamma(2, 3) for i in 1:N]
+            end
+
+            sample(vdemo7(), alg, 1000)
         end
-
-        t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            return x .~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            return x .~ InverseGamma(2, 3)
-        end
-
-        sample(vdemo6(), alg, 1000)
-
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
-        end
-
-        sample(vdemo7(), alg, 1000)
     end
     @testset "Type parameters" begin
         N = 10

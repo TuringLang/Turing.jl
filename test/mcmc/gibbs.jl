@@ -5,6 +5,7 @@ using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 import ..ADUtils
 using Distributions: InverseGamma, Normal
 using Distributions: sample
+import Enzyme
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
