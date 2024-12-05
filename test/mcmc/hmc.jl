@@ -20,6 +20,7 @@ using Test: @test, @test_broken, @test_logs, @testset, @test_throws
 using Turing
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
+    @info "Running HMC tests with $adbackend"
     # Set a seed
     rng = StableRNG(123)
     @testset "constrained bounded" begin
@@ -332,12 +333,16 @@ using Turing
     end
 
     @testset "Check ADType" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        sample(rng, m, alg, 10)
+        # These tests don't make sense for Enzyme, since it does not use a particular element
+        # type.
+        if !(adbackend isa AutoEnzyme)
+            alg = HMC(0.1, 10; adtype=adbackend)
+            m = DynamicPPL.contextualize(
+                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
+            )
+            # These will error if the adbackend being used is not the one set.
+            @test (sample(rng, m, alg, 10); true)
+        end
     end
 end
 

@@ -1,7 +1,7 @@
 """Module for testing the test utils themselves."""
 module TestUtilsTests
 
-using ..ADUtils: ADTypeCheckContext, AbstractWrongADBackendError
+using ..ADUtils: ADTypeCheckContext, AbstractWrongADBackendError, adbackends
 using ForwardDiff: ForwardDiff
 using ReverseDiff: ReverseDiff
 using Test: @test, @testset, @test_throws
@@ -13,12 +13,11 @@ using Zygote: Zygote
 @testset "ADTypeCheckContext" begin
     Turing.@model test_model() = x ~ Turing.Normal(0, 1)
     tm = test_model()
-    adtypes = (
-        Turing.AutoForwardDiff(),
-        Turing.AutoReverseDiff(),
-        Turing.AutoZygote(),
-        # TODO: Mooncake
-        # Turing.AutoMooncake(config=nothing),
+    # These tests don't make sense for Enzyme, since it doesn't have its own element type.
+    # TODO(mhauru): Make these tests work for more Mooncake.
+    adtypes = filter(
+        adtype -> !(adtype isa Turing.AutoMooncake || adtype isa Turing.AutoEnzyme),
+        adbackends,
     )
     for actual_adtype in adtypes
         sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)

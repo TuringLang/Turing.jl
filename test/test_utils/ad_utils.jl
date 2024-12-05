@@ -1,11 +1,11 @@
 module ADUtils
 
+using Enzyme: Enzyme
 using ForwardDiff: ForwardDiff
 using Pkg: Pkg
 using Random: Random
 using ReverseDiff: ReverseDiff
 using Mooncake: Mooncake
-using Test: Test
 using Turing: Turing
 using Turing: DynamicPPL
 using Zygote: Zygote
@@ -239,7 +239,10 @@ adbackends = [
     Turing.AutoForwardDiff(; chunksize=0),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
-    Turing.AutoEnzyme(),
+    # TODO(mhauru) Do we want to run both? For now yes, while building up Enzyme
+    # integration, but in the long term maybe not?
+    Turing.AutoEnzyme(; mode=Enzyme.Forward),
+    Turing.AutoEnzyme(; mode=Enzyme.Reverse),
 ]
 
 end
