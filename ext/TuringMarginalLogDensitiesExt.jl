@@ -1,21 +1,20 @@
 module TuringMarginalLogDensitiesExt
 
 using Turing: Turing, DynamicPPL
+using Turing.Inference: LogDensityProblems
 using MarginalLogDensities: MarginalLogDensities
-
 
 # Use a struct for this to avoid closure overhead.
 struct Drop2ndArgAndFlipSign{F}
     f::F
 end
 
-(f::Drop2ndArg)(x, _) = -f.f(x)
-
+(f::Drop2ndArgAndFlipSign)(x, _) = -f.f(x)
 
 function Turing.marginalize(
     model::DynamicPPL.Model,
     varnames::Vector,
-    method::MarginalLogDensities.AbstractMarginalizer=MarginalLogDensities.LaplaceApprox()
+    method::MarginalLogDensities.AbstractMarginalizer=MarginalLogDensities.LaplaceApprox(),
 )
     # Determine the indices for the variables to marginalise out.
     varinfo = DynamicPPL.typed_varinfo(model)
@@ -27,12 +26,14 @@ function Turing.marginalize(
     varinfo_linked = DynamicPPL.link(varinfo, model)
     f = Base.Fix1(
         LogDensityProblems.logdensity,
-        DynamicPPL.LogDensityFunction(varinfo_linked, model, context)
+        DynamicPPL.LogDensityFunction(varinfo_linked, model, context),
     )
     # HACK: need the sign-flip here because `OptimizationContext` is a hacky impl which
     # represent the _negative_ log-density.
-    mdl = MarginalLogDensity(
+    mdl = MarginalLogDensities.MarginalLogDensity(
         Drop2ndArgAndFlipSign(f), varinfo_linked[:], varindices, (), method
     )
     return mdl
+end
+
 end
