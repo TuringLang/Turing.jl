@@ -1,9 +1,11 @@
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
+AbstractPPL = "7a57a42e-76ec-4ea3-a279-07e840d6d9cf"
 AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
 AdvancedPS = "576499cb-2369-40b2-a588-c64705576edc"
 AdvancedVI = "b5ca4192-6429-45e5-a2d9-87aec30a685c"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+BangBang = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DistributionsAD = "ced4e74d-a319-5a8a-b0ac-84af2272839c"
