@@ -58,6 +58,8 @@ using .Optimisation
 include("experimental/Experimental.jl")
 include("deprecated.jl") # to be removed in the next minor version release
 
+include("extensions.jl")
+
 ###########
 # Exports #
 ###########
