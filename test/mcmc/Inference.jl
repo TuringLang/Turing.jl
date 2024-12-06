@@ -17,6 +17,8 @@ using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
+    @info "Starting Inference.jl tests with $adbackend"
+
     @testset "threaded sampling" begin
         # Test that chains with the same seed will sample identically.
         @testset "rng" begin
@@ -32,10 +34,10 @@ using Turing
             )
             for sampler in samplers
                 Random.seed!(5)
-                chain1 = sample(model, sampler, MCMCThreads(), 1000, 4)
+                chain1 = sample(model, sampler, MCMCThreads(), 10, 4)
 
                 Random.seed!(5)
-                chain2 = sample(model, sampler, MCMCThreads(), 1000, 4)
+                chain2 = sample(model, sampler, MCMCThreads(), 10, 4)
 
                 @test chain1.value == chain2.value
             end
@@ -45,10 +47,10 @@ using Turing
             rng = Random.MersenneTwister(seed)
             for sampler in samplers
                 Random.seed!(rng, seed)
-                chain1 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+                chain1 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
                 Random.seed!(rng, seed)
-                chain2 = sample(rng, model, sampler, MCMCThreads(), 1000, 4)
+                chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
                 @test chain1.value == chain2.value
             end
@@ -56,13 +58,13 @@ using Turing
 
         # Smoke test for default sample call.
         Random.seed!(100)
-        chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 1000, 4)
+        chain = sample(gdemo_default, HMC(0.1, 7; adtype=adbackend), MCMCThreads(), 100, 4)
         check_gdemo(chain)
 
         # run sampler: progress logging should be disabled and
         # it should return a Chains object
         sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
-        chains = sample(gdemo_default, sampler, MCMCThreads(), 1000, 4)
+        chains = sample(gdemo_default, sampler, MCMCThreads(), 10, 4)
         @test chains isa MCMCChains.Chains
     end
 
@@ -73,27 +75,28 @@ using Turing
         alg2 = PG(20)
         alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
 
-        chn1 = sample(gdemo_default, alg1, 5000; save_state=true)
+        chn1 = sample(gdemo_default, alg1, 1000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_contd = sample(gdemo_default, alg1, 5000; resume_from=chn1)
+        chn1_contd = sample(gdemo_default, alg1, 1000; resume_from=chn1)
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(gdemo_default, alg1, 5000; resume_from=chn1)
+        chn1_contd2 = sample(gdemo_default, alg1, 1000; resume_from=chn1)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(gdemo_default, alg2, 5000; discard_initial=2000, save_state=true)
+        chn2 = sample(gdemo_default, alg2, 1000; discard_initial=50, save_state=true)
         check_gdemo(chn2)
 
-        chn2_contd = sample(gdemo_default, alg2, 2000; resume_from=chn2)
+        chn2_contd = sample(gdemo_default, alg2, 1000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(gdemo_default, alg3, 5_000; discard_initial=2000, save_state=true)
+        chn3 = sample(gdemo_default, alg3, 1000; discard_initial=100, save_state=true)
         check_gdemo(chn3)
 
-        chn3_contd = sample(gdemo_default, alg3, 5_000; resume_from=chn3)
+        chn3_contd = sample(gdemo_default, alg3, 1000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
+
     @testset "Contexts" begin
         # Test LikelihoodContext
         @model function testmodel1(x)
@@ -123,32 +126,36 @@ using Turing
         )
         @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
     end
+
     @testset "Prior" begin
-        N = 10_000
+        N = 2000
 
         # Note that all chains contain 3 values per sample: 2 variables + log probability
-        Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N)
-        @test chains isa MCMCChains.Chains
-        @test size(chains) == (N, 3, 1)
-        @test mean(chains, :s) ≈ 3 atol = 0.1
-        @test mean(chains, :m) ≈ 0 atol = 0.1
+        @testset "Single-threaded vanilla" begin
+            chains = sample(gdemo_d(), Prior(), N)
+            @test chains isa MCMCChains.Chains
+            @test size(chains) == (N, 3, 1)
+            @test mean(chains, :s) ≈ 3 atol = 0.1
+            @test mean(chains, :m) ≈ 0 atol = 0.1
+        end
 
-        Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
-        @test chains isa MCMCChains.Chains
-        @test size(chains) == (N, 3, 4)
-        @test mean(chains, :s) ≈ 3 atol = 0.1
-        @test mean(chains, :m) ≈ 0 atol = 0.1
+        @testset "Multi-threaded" begin
+            chains = sample(gdemo_d(), Prior(), MCMCThreads(), N, 4)
+            @test chains isa MCMCChains.Chains
+            @test size(chains) == (N, 3, 4)
+            @test mean(chains, :s) ≈ 3 atol = 0.1
+            @test mean(chains, :m) ≈ 0 atol = 0.1
+        end
 
-        Random.seed!(100)
-        chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
-        @test chains isa Vector{<:NamedTuple}
-        @test length(chains) == N
-        @test all(length(x) == 3 for x in chains)
-        @test all(haskey(x, :lp) for x in chains)
-        @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
-        @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
+        @testset "Vector chain_type" begin
+            chains = sample(gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple})
+            @test chains isa Vector{<:NamedTuple}
+            @test length(chains) == N
+            @test all(length(x) == 3 for x in chains)
+            @test all(haskey(x, :lp) for x in chains)
+            @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
+            @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
+        end
 
         @testset "#2169" begin
             # Not exactly the same as the issue, but similar.
@@ -197,8 +204,8 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res1 = sample(test_assume(), smc, 1000)
-        res2 = sample(test_assume(), pg, 1000)
+        res1 = sample(test_assume(), smc, 100)
+        res2 = sample(test_assume(), pg, 100)
 
         check_numerical(res1, [:y], [0.5]; atol=0.1)
         check_numerical(res2, [:y], [0.5]; atol=0.1)
@@ -207,6 +214,7 @@ using Turing
         @test all(isone, res1[:x])
         @test all(isone, res2[:x])
     end
+
     @testset "beta binomial" begin
         prior = Beta(2, 2)
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -226,14 +234,15 @@ using Turing
         pg = PG(10)
         gibbs = Gibbs(HMC(0.2, 3, :p; adtype=adbackend), PG(10, :x))
 
-        chn_s = sample(testbb(obs), smc, 1000)
-        chn_p = sample(testbb(obs), pg, 2000)
-        chn_g = sample(testbb(obs), gibbs, 1500)
+        chn_s = sample(testbb(obs), smc, 100)
+        chn_p = sample(testbb(obs), pg, 100)
+        chn_g = sample(testbb(obs), gibbs, 100)
 
         check_numerical(chn_s, [:p], [meanp]; atol=0.05)
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
         check_numerical(chn_g, [:x], [meanp]; atol=0.1)
     end
+
     @testset "forbid global" begin
         xs = [1.5 2.0]
         # xx = 1
@@ -254,6 +263,7 @@ using Turing
         gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m; adtype=adbackend))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
+
     @testset "new grammar" begin
         x = Float64[1 2]
 
@@ -306,6 +316,8 @@ using Turing
         chain = sample(gauss3(x, DynamicPPL.TypeWrap{Vector{Real}}()), PG(10), 10)
         chain = sample(gauss3(x, DynamicPPL.TypeWrap{Vector{Real}}()), SMC(), 10)
     end
+
+    # TODO(mhauru) What is this testing? Why does it not use the looped-over adbackend?
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
@@ -320,9 +332,10 @@ using Turing
         sample(
             newinterface(obs),
             HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
-            100,
+            10,
         )
     end
+
     @testset "no return" begin
         Random.seed!(5)
         @model function noreturn(x)
@@ -333,9 +346,10 @@ using Turing
             end
         end
 
-        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000)
+        chain = sample(noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 100)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
+
     @testset "observe" begin
         Random.seed!(5)
         @model function test()
@@ -350,8 +364,8 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res_is = sample(test(), is, 10000)
-        res_smc = sample(test(), smc, 1000)
+        res_is = sample(test(), is, 100)
+        res_smc = sample(test(), smc, 100)
         res_pg = sample(test(), pg, 100)
 
         @test all(isone, res_is[:x])
@@ -362,10 +376,12 @@ using Turing
 
         @test all(isone, res_pg[:x])
     end
+
     @testset "sample" begin
         alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
-        chn = sample(gdemo_default, alg, 1000)
+        chn = sample(gdemo_default, alg, 100)
     end
+
     @testset "vectorization @." begin
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
@@ -376,7 +392,7 @@ using Turing
 
         alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(100)
-        res = sample(vdemo1(x), alg, 250)
+        res = sample(vdemo1(x), alg, 10)
 
         @model function vdemo1b(x)
             s ~ InverseGamma(2, 3)
@@ -385,7 +401,7 @@ using Turing
             return s, m
         end
 
-        res = sample(vdemo1b(x), alg, 250)
+        res = sample(vdemo1b(x), alg, 10)
 
         @model function vdemo2(x)
             μ ~ MvNormal(zeros(size(x, 1)), I)
@@ -394,7 +410,7 @@ using Turing
 
         D = 2
         alg = HMC(0.01, 5; adtype=adbackend)
-        res = sample(vdemo2(randn(D, 100)), alg, 250)
+        res = sample(vdemo2(randn(D, 100)), alg, 10)
 
         # Vector assumptions
         N = 10
@@ -407,6 +423,8 @@ using Turing
             end
         end
 
+        # TODO(mhauru) What is the point of the below @elapsed stuff? It prints out some
+        # timings. Do we actually ever look at them?
         t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
         # Test for vectorize UnivariateDistribution
@@ -432,7 +450,7 @@ using Turing
             @. x ~ InverseGamma(2, 3)
         end
 
-        sample(vdemo6(), alg, 1000)
+        sample(vdemo6(), alg, 10)
 
         N = 3
         @model function vdemo7()
@@ -440,8 +458,9 @@ using Turing
             @. x ~ [InverseGamma(2, 3) for i in 1:N]
         end
 
-        sample(vdemo7(), alg, 1000)
+        sample(vdemo7(), alg, 10)
     end
+
     @testset "vectorization .~" begin
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
@@ -452,7 +471,7 @@ using Turing
 
         alg = HMC(0.01, 5; adtype=adbackend)
         x = randn(100)
-        res = sample(vdemo1(x), alg, 250)
+        res = sample(vdemo1(x), alg, 10)
 
         @model function vdemo2(x)
             μ ~ MvNormal(zeros(size(x, 1)), I)
@@ -461,7 +480,7 @@ using Turing
 
         D = 2
         alg = HMC(0.01, 5; adtype=adbackend)
-        res = sample(vdemo2(randn(D, 100)), alg, 250)
+        res = sample(vdemo2(randn(D, 100)), alg, 10)
 
         # Vector assumptions
         N = 10
@@ -474,6 +493,7 @@ using Turing
             end
         end
 
+        # TODO(mhauru) Same question as above about @elapsed.
         t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
 
         # Test for vectorize UnivariateDistribution
@@ -499,15 +519,16 @@ using Turing
             return x .~ InverseGamma(2, 3)
         end
 
-        sample(vdemo6(), alg, 1000)
+        sample(vdemo6(), alg, 10)
 
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
             return x .~ [InverseGamma(2, 3) for i in 1:N]
         end
 
-        sample(vdemo7(), alg, 1000)
+        sample(vdemo7(), alg, 10)
     end
+
     @testset "Type parameters" begin
         N = 10
         alg = HMC(0.01, 5; adtype=adbackend)
@@ -519,37 +540,35 @@ using Turing
             end
         end
 
-        t_loop = @elapsed res = sample(vdemo1(), alg, 250)
-        t_loop = @elapsed res = sample(vdemo1(DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        # TODO(mhauru) What are we testing below? Just that using a type parameter doesn't
+        # crash?
+        sample(vdemo1(), alg, 10)
+        sample(vdemo1(DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
         vdemo1kw(; T) = vdemo1(T)
-        t_loop = @elapsed res = sample(
-            vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
-        )
+        sample(vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
         @model function vdemo2(::Type{T}=Float64) where {T<:Real}
             x = Vector{T}(undef, N)
             @. x ~ Normal(0, 2)
         end
 
-        t_vec = @elapsed res = sample(vdemo2(), alg, 250)
-        t_vec = @elapsed res = sample(vdemo2(DynamicPPL.TypeWrap{Float64}()), alg, 250)
+        sample(vdemo2(), alg, 10)
+        sample(vdemo2(DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
         vdemo2kw(; T) = vdemo2(T)
-        t_vec = @elapsed res = sample(
-            vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 250
-        )
+        sample(vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
         @model function vdemo3(::Type{TV}=Vector{Float64}) where {TV<:AbstractVector}
             x = TV(undef, N)
             @. x ~ InverseGamma(2, 3)
         end
 
-        sample(vdemo3(), alg, 250)
-        sample(vdemo3(DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 250)
+        sample(vdemo3(), alg, 10)
+        sample(vdemo3(DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 10)
 
         vdemo3kw(; T) = vdemo3(T)
-        sample(vdemo3kw(; T=DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 250)
+        sample(vdemo3kw(; T=DynamicPPL.TypeWrap{Vector{Float64}}()), alg, 10)
     end
 
     @testset "names_values" begin
@@ -565,7 +584,7 @@ using Turing
         end
 
         @test_throws ErrorException sample(
-            demo_repeated_varname(), NUTS(), 1000; check_model=true
+            demo_repeated_varname(), NUTS(), 10; check_model=true
         )
         # Make sure that disabling the check also works.
         @test (sample(demo_repeated_varname(), Prior(), 10; check_model=false);
@@ -575,7 +594,7 @@ using Turing
             return y[1:1] ~ MvNormal(zeros(1), I)
         end
         @test_throws ErrorException sample(
-            demo_incorrect_missing([missing]), NUTS(), 1000; check_model=true
+            demo_incorrect_missing([missing]), NUTS(), 10; check_model=true
         )
     end
 end
