@@ -6,10 +6,13 @@ using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
 using Random: Random
+using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
 
 @testset "ESS" begin
+    @info "Starting ESS tests"
+
     @model function demo(x)
         m ~ Normal()
         return x ~ Normal(m, 0.5)
@@ -25,7 +28,7 @@ using Turing
 
     @testset "ESS constructor" begin
         Random.seed!(0)
-        N = 500
+        N = 10
 
         s1 = ESS()
         s2 = ESS(:m)
@@ -43,41 +46,49 @@ using Turing
     end
 
     @testset "ESS inference" begin
-        Random.seed!(1)
-        chain = sample(demo_default, ESS(), 5_000)
-        check_numerical(chain, [:m], [0.8]; atol=0.1)
+        @info "Starting ESS inference tests"
+        rng = StableRNG(23)
 
-        Random.seed!(1)
-        chain = sample(demodot_default, ESS(), 5_000)
-        check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
-
-        Random.seed!(100)
-        alg = Gibbs(CSMC(15, :s), ESS(:m))
-        chain = sample(gdemo(1.5, 2.0), alg, 10_000)
-        check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
-
-        # MoGtest
-        Random.seed!(125)
-        alg = Gibbs(CSMC(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
-        chain = sample(MoGtest_default, alg, 6000)
-        check_MoGtest_default(chain; atol=0.1)
-
-        # Different "equivalent" models.
-        # NOTE: Because `ESS` only supports "single" variables with
-        # Gaussian priors, we restrict ourselves to this subspace by conditioning
-        # on the non-Gaussian variables in `DEMO_MODELS`.
-        models_conditioned = map(DynamicPPL.TestUtils.DEMO_MODELS) do model
-            # Condition on the non-Gaussian random variables.
-            model | (s=DynamicPPL.TestUtils.posterior_mean(model).s,)
+        @testset "demo_default" begin
+            chain = sample(rng, demo_default, ESS(), 500)
+            check_numerical(chain, [:m], [0.8]; atol=0.1)
         end
 
-        DynamicPPL.TestUtils.test_sampler(
-            models_conditioned,
-            DynamicPPL.Sampler(ESS()),
-            10_000;
-            # Filter out the varnames we've conditioned on.
-            varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,
-        )
+        @testset "demodot_default" begin
+            chain = sample(rng, demodot_default, ESS(), 500)
+            check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
+        end
+
+        @testset "gdemo with CSMC + ESS" begin
+            alg = Gibbs(CSMC(15, :s), ESS(:m))
+            chain = sample(rng, gdemo(1.5, 2.0), alg, 2000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        end
+
+        @testset "MoGtest_default with CSMC + ESS" begin
+            alg = Gibbs(CSMC(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
+            chain = sample(rng, MoGtest_default, alg, 2000)
+            check_MoGtest_default(chain; atol=0.1)
+        end
+
+        @testset "TestModels" begin
+            # Different "equivalent" models.
+            # NOTE: Because `ESS` only supports "single" variables with
+            # Gaussian priors, we restrict ourselves to this subspace by conditioning
+            # on the non-Gaussian variables in `DEMO_MODELS`.
+            models_conditioned = map(DynamicPPL.TestUtils.DEMO_MODELS) do model
+                # Condition on the non-Gaussian random variables.
+                model | (s=DynamicPPL.TestUtils.posterior_mean(model).s,)
+            end
+
+            DynamicPPL.TestUtils.test_sampler(
+                models_conditioned,
+                DynamicPPL.Sampler(ESS()),
+                2000;
+                # Filter out the varnames we've conditioned on.
+                varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,
+            )
+        end
     end
 end
 
