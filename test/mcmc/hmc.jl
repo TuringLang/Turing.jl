@@ -139,8 +139,10 @@ using Turing
     end
 
     # TODO(mhauru) The below one is a) slow, b) flaky, in that changing the seed can
-    # easily make it fail, despite many more samples taken by most other tests.
+    # easily make it fail, despite many more samples taken by most other tests. Hence
+    # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
+        rng = StableRNG(123)
         Random.seed!(12345)
         alg = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, :m; init_ϵ=0.05, adtype=adbackend))
         res = sample(rng, gdemo_default, alg, 3000; discard_initial=1000)
