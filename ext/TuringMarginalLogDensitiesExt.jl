@@ -18,7 +18,7 @@ function Turing.marginalize(
 )
     # Determine the indices for the variables to marginalise out.
     varinfo = DynamicPPL.typed_varinfo(model)
-    varindices = DynamicPPL.getranges(varinfo, varnames)
+    varindices = DynamicPPL.vector_getranges(varinfo, varnames)
     # Construct the marginal log-density model.
     # Use linked `varinfo` to that we're working in unconstrained space and `OptimizationContext` to ensure
     # that the log-abs-det jacobian terms are not included.
