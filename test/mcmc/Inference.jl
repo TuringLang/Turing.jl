@@ -78,25 +78,25 @@ using Turing
         alg2 = PG(20)
         alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
 
-        chn1 = sample(rng, gdemo_default, alg1, 1000; save_state=true)
+        chn1 = sample(rng, gdemo_default, alg1, 2000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_contd = sample(rng, gdemo_default, alg1, 1000; resume_from=chn1)
+        chn1_contd = sample(rng, gdemo_default, alg1, 2000; resume_from=chn1)
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(rng, gdemo_default, alg1, 1000; resume_from=chn1)
+        chn1_contd2 = sample(rng, gdemo_default, alg1, 2000; resume_from=chn1)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(rng, gdemo_default, alg2, 1000; discard_initial=50, save_state=true)
+        chn2 = sample(rng, gdemo_default, alg2, 2000; discard_initial=50, save_state=true)
         check_gdemo(chn2)
 
-        chn2_contd = sample(rng, gdemo_default, alg2, 1000; resume_from=chn2)
+        chn2_contd = sample(rng, gdemo_default, alg2, 2000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
-        chn3 = sample(rng, gdemo_default, alg3, 1000; discard_initial=100, save_state=true)
+        chn3 = sample(rng, gdemo_default, alg3, 2000; discard_initial=100, save_state=true)
         check_gdemo(chn3)
 
-        chn3_contd = sample(rng, gdemo_default, alg3, 1000; resume_from=chn3)
+        chn3_contd = sample(rng, gdemo_default, alg3, 2000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
 
