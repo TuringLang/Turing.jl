@@ -56,7 +56,7 @@ using Turing
         end
 
         chain = sample(
-            rng, constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 100
+            rng, constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 200
         )
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
