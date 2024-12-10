@@ -145,6 +145,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
     @testset "gibbs MH proposal matrix" begin
         # https://github.com/TuringLang/Turing.jl/issues/1556
+        rng = StableRNG(23)
 
         # generate data
         x = rand(Normal(5, 10), 20)
@@ -166,23 +167,16 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # with small-valued VC matrix to check if we only see very small steps
         vc_μ = convert(Array, 1e-4 * I(2))
         vc_σ = convert(Array, 1e-4 * I(2))
+        alg_small = Gibbs(MH((:μ, vc_μ)), MH((:σ, vc_σ)))
+        alg_big = MH()
 
-        alg = Gibbs(MH((:μ, vc_μ)), MH((:σ, vc_σ)))
-
-        chn = sample(
-            mod,
-            alg,
-            3_000, # draws
-        )
-
-        chn2 = sample(mod, MH(), 3_000)
+        chn_small = sample(copy(rng), mod, alg_small, 1_000)
+        chn_big = sample(copy(rng), mod, alg_big, 1_000)
 
         # Test that the small variance version is actually smaller.
-        v1 = var(diff(Array(chn["μ[1]"]); dims=1))
-        v2 = var(diff(Array(chn2["μ[1]"]); dims=1))
-
-        # FIXME: Do this properly. It sometimes fails.
-        # @test v1 < v2
+        variance_small = var(diff(Array(chn_small["μ[1]"]); dims=1))
+        variance_big = var(diff(Array(chn_big["μ[1]"]); dims=1))
+        @test variance_small < variance_big / 1000.0
     end
 
     @testset "vector of multivariate distributions" begin
