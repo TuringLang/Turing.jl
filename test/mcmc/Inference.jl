@@ -65,7 +65,7 @@ using Turing
                 gdemo_default,
                 HMC(0.1, 7; adtype=adbackend),
                 MCMCThreads(),
-                400,
+                1_000,
                 4,
             )
             check_gdemo(chain)
@@ -83,29 +83,29 @@ using Turing
         alg2 = PG(20)
         alg3 = Gibbs(PG(30, :s), HMC(0.2, 4, :m; adtype=adbackend))
 
-        chn1 = sample(copy(rng), gdemo_default, alg1, 2000; save_state=true)
+        chn1 = sample(copy(rng), gdemo_default, alg1, 2_000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_contd = sample(copy(rng), gdemo_default, alg1, 2000; resume_from=chn1)
+        chn1_contd = sample(copy(rng), gdemo_default, alg1, 2_000; resume_from=chn1)
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(copy(rng), gdemo_default, alg1, 2000; resume_from=chn1)
+        chn1_contd2 = sample(copy(rng), gdemo_default, alg1, 2_000; resume_from=chn1)
         check_gdemo(chn1_contd2)
 
         chn2 = sample(
-            copy(rng), gdemo_default, alg2, 2000; discard_initial=100, save_state=true
+            copy(rng), gdemo_default, alg2, 2_000; discard_initial=100, save_state=true
         )
         check_gdemo(chn2)
 
-        chn2_contd = sample(copy(rng), gdemo_default, alg2, 2000; resume_from=chn2)
+        chn2_contd = sample(copy(rng), gdemo_default, alg2, 2_000; resume_from=chn2)
         check_gdemo(chn2_contd)
 
         chn3 = sample(
-            copy(rng), gdemo_default, alg3, 2000; discard_initial=100, save_state=true
+            copy(rng), gdemo_default, alg3, 2_000; discard_initial=100, save_state=true
         )
         check_gdemo(chn3)
 
-        chn3_contd = sample(copy(rng), gdemo_default, alg3, 2000; resume_from=chn3)
+        chn3_contd = sample(copy(rng), gdemo_default, alg3, 2_000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
 
@@ -140,7 +140,7 @@ using Turing
     end
 
     @testset "Prior" begin
-        N = 2000
+        N = 10_000
 
         # Note that all chains contain 3 values per sample: 2 variables + log probability
         @testset "Single-threaded vanilla" begin
@@ -216,8 +216,8 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res1 = sample(copy(rng), test_assume(), smc, 100)
-        res2 = sample(copy(rng), test_assume(), pg, 100)
+        res1 = sample(copy(rng), test_assume(), smc, 1_000)
+        res2 = sample(copy(rng), test_assume(), pg, 1_000)
 
         check_numerical(res1, [:y], [0.5]; atol=0.1)
         check_numerical(res2, [:y], [0.5]; atol=0.1)
@@ -347,7 +347,7 @@ using Turing
             copy(rng),
             newinterface(obs),
             HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
-            10,
+            100,
         )
     end
 
@@ -377,8 +377,8 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res_is = sample(copy(rng), test(), is, 100)
-        res_smc = sample(copy(rng), test(), smc, 100)
+        res_is = sample(copy(rng), test(), is, 1_000)
+        res_smc = sample(copy(rng), test(), smc, 1_000)
         res_pg = sample(copy(rng), test(), pg, 100)
 
         @test all(isone, res_is[:x])
@@ -392,7 +392,7 @@ using Turing
 
     @testset "sample" begin
         alg = Gibbs(HMC(0.2, 3, :m; adtype=adbackend), PG(10, :s))
-        chn = sample(copy(rng), gdemo_default, alg, 100)
+        chn = sample(copy(rng), gdemo_default, alg, 10)
     end
 
     @testset "vectorization @." begin
@@ -507,7 +507,7 @@ using Turing
         end
 
         # TODO(mhauru) Same question as above about @elapsed.
-        t_loop = @elapsed res = sample(copy(rng), vdemo3(), alg, 1000)
+        t_loop = @elapsed res = sample(copy(rng), vdemo3(), alg, 1_000)
 
         # Test for vectorize UnivariateDistribution
         @model function vdemo4()
@@ -515,11 +515,11 @@ using Turing
             return x .~ Normal(0, 2)
         end
 
-        t_vec = @elapsed res = sample(copy(rng), vdemo4(), alg, 1000)
+        t_vec = @elapsed res = sample(copy(rng), vdemo4(), alg, 1_000)
 
         @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
 
-        t_mv = @elapsed res = sample(copy(rng), vdemo5(), alg, 1000)
+        t_mv = @elapsed res = sample(copy(rng), vdemo5(), alg, 1_000)
 
         println("Time for")
         println("  Loop : ", t_loop)
