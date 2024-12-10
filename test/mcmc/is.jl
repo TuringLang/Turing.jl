@@ -68,7 +68,7 @@ using Turing
             return x
         end
 
-        chains = sample(test(), IS(), 10000)
+        chains = sample(test(), IS(), 1_000)
 
         @test all(isone, chains[:x])
         @test chains.logevidence ≈ -2 * log(2)

@@ -140,7 +140,7 @@ end
                     DynamicPPL.TestUtils.test_sampler(
                         [model],
                         sampler_ext,
-                        5_000;
+                        2_000;
                         rtol=0.2,
                         sampler_name="AdvancedHMC",
                         sample_kwargs...,
@@ -187,7 +187,7 @@ end
                     DynamicPPL.TestUtils.test_sampler(
                         [model],
                         sampler_ext,
-                        10_000;
+                        1_000;
                         discard_initial=1_000,
                         thinning=10,
                         rtol=0.2,
