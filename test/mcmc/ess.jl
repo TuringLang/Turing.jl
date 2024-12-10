@@ -27,7 +27,6 @@ using Turing
     demodot_default = demodot(1.0)
 
     @testset "ESS constructor" begin
-        Random.seed!(0)
         N = 10
 
         s1 = ESS()
@@ -50,24 +49,24 @@ using Turing
         rng = StableRNG(23)
 
         @testset "demo_default" begin
-            chain = sample(rng, demo_default, ESS(), 500)
+            chain = sample(copy(rng), demo_default, ESS(), 500)
             check_numerical(chain, [:m], [0.8]; atol=0.1)
         end
 
         @testset "demodot_default" begin
-            chain = sample(rng, demodot_default, ESS(), 500)
+            chain = sample(copy(rng), demodot_default, ESS(), 500)
             check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
         end
 
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(CSMC(15, :s), ESS(:m))
-            chain = sample(rng, gdemo(1.5, 2.0), alg, 2000)
+            chain = sample(copy(rng), gdemo(1.5, 2.0), alg, 2000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
 
         @testset "MoGtest_default with CSMC + ESS" begin
             alg = Gibbs(CSMC(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
-            chain = sample(rng, MoGtest_default, alg, 2000)
+            chain = sample(copy(rng), MoGtest_default, alg, 2000)
             check_MoGtest_default(chain; atol=0.1)
         end
 

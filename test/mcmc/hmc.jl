@@ -34,7 +34,7 @@ using Turing
         end
 
         chain = sample(
-            rng,
+            copy(rng),
             constrained_test(obs),
             HMC(1.5, 3; adtype=adbackend),# using a large step size (1.5)
             500,
@@ -56,7 +56,7 @@ using Turing
         end
 
         chain = sample(
-            rng, constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 200
+            copy(rng), constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 200
         )
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
@@ -64,7 +64,7 @@ using Turing
 
     @testset "hmc reverse diff" begin
         alg = HMC(0.1, 10; adtype=adbackend)
-        res = sample(rng, gdemo_default, alg, 2000)
+        res = sample(copy(rng), gdemo_default, alg, 2000)
         check_gdemo(res; rtol=0.1)
     end
 
@@ -74,13 +74,14 @@ using Turing
         end
 
         model_f = hmcmatrixsup()
-        n_samples = 100
+        n_samples = 500
         vs = map(1:3) do _
-            chain = sample(rng, model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
+            chain = sample(copy(rng), model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
             reshape(mean(r; dims=1), 2, 2)
         end
 
+        # TODO(mhauru) This test needs a comment explaining what is being tested.
         @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
     end
 
@@ -129,12 +130,12 @@ using Turing
         end
 
         # Sampling
-        chain = sample(rng, bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
+        chain = sample(copy(rng), bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
     end
 
     @testset "hmcda inference" begin
         alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
-        res1 = sample(rng, gdemo_default, alg1, 3000)
+        res1 = sample(copy(rng), gdemo_default, alg1, 3000)
         check_gdemo(res1)
     end
 
@@ -142,10 +143,9 @@ using Turing
     # easily make it fail, despite many more samples than taken by most other tests. Hence
     # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
-        rng = StableRNG(123)
         Random.seed!(12345)
         alg = Gibbs(PG(20, :s), HMCDA(500, 0.8, 0.25, :m; init_ϵ=0.05, adtype=adbackend))
-        res = sample(rng, gdemo_default, alg, 3000; discard_initial=1000)
+        res = sample(StableRNG(123), gdemo_default, alg, 3000; discard_initial=1000)
         check_gdemo(res)
     end
 
@@ -168,7 +168,7 @@ using Turing
 
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
-        res = sample(rng, gdemo_default, alg, 500)
+        res = sample(copy(rng), gdemo_default, alg, 500)
         check_gdemo(res)
     end
 
@@ -189,8 +189,8 @@ using Turing
     @testset "check discard" begin
         alg = NUTS(100, 0.8; adtype=adbackend)
 
-        c1 = sample(rng, gdemo_default, alg, 500; discard_adapt=true)
-        c2 = sample(rng, gdemo_default, alg, 500; discard_adapt=false)
+        c1 = sample(copy(rng), gdemo_default, alg, 500; discard_adapt=true)
+        c2 = sample(copy(rng), gdemo_default, alg, 500; discard_adapt=false)
 
         @test size(c1, 1) == 500
         @test size(c2, 1) == 500
@@ -200,9 +200,9 @@ using Turing
         alg1 = Gibbs(PG(10, :m), NUTS(100, 0.65, :s; adtype=adbackend))
         alg2 = Gibbs(PG(10, :m), HMC(0.1, 3, :s; adtype=adbackend))
         alg3 = Gibbs(PG(10, :m), HMCDA(100, 0.65, 0.3, :s; adtype=adbackend))
-        @test sample(rng, gdemo_default, alg1, 10) isa Chains
-        @test sample(rng, gdemo_default, alg2, 10) isa Chains
-        @test sample(rng, gdemo_default, alg3, 10) isa Chains
+        @test sample(copy(rng), gdemo_default, alg1, 10) isa Chains
+        @test sample(copy(rng), gdemo_default, alg2, 10) isa Chains
+        @test sample(copy(rng), gdemo_default, alg3, 10) isa Chains
     end
 
     @testset "Regression tests" begin
@@ -211,28 +211,28 @@ using Turing
             m = Matrix{T}(undef, 2, 3)
             return m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe1(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
+        @test sample(copy(rng), mwe1(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
 
         @model function mwe2(::Type{T}=Matrix{Float64}) where {T}
             m = T(undef, 2, 3)
             return m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe2(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
+        @test sample(copy(rng), mwe2(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
 
         # https://github.com/TuringLang/Turing.jl/issues/1308
         @model function mwe3(::Type{T}=Array{Float64}) where {T}
             m = T(undef, 2, 3)
             return m .~ MvNormal(zeros(2), I)
         end
-        @test sample(rng, mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
+        @test sample(copy(rng), mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
     end
 
     # issue #1923
     @testset "reproducibility" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
-        res1 = sample(rng, gdemo_default, alg, 10)
-        res2 = sample(rng, gdemo_default, alg, 10)
-        res3 = sample(rng, gdemo_default, alg, 10)
+        res1 = sample(copy(rng), gdemo_default, alg, 10)
+        res2 = sample(copy(rng), gdemo_default, alg, 10)
+        res3 = sample(copy(rng), gdemo_default, alg, 10)
         @test Array(res1) == Array(res2) == Array(res3)
     end
 
@@ -333,7 +333,7 @@ using Turing
             gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
         )
         # These will error if the adbackend being used is not the one set.
-        sample(rng, m, alg, 10)
+        sample(copy(rng), m, alg, 10)
     end
 end
 
