@@ -87,7 +87,7 @@ using Turing
         chn1_contd2 = sample(rng, gdemo_default, alg1, 2000; resume_from=chn1)
         check_gdemo(chn1_contd2)
 
-        chn2 = sample(rng, gdemo_default, alg2, 2000; discard_initial=50, save_state=true)
+        chn2 = sample(rng, gdemo_default, alg2, 2000; discard_initial=100, save_state=true)
         check_gdemo(chn2)
 
         chn2_contd = sample(rng, gdemo_default, alg2, 2000; resume_from=chn2)
@@ -349,7 +349,7 @@ using Turing
             end
         end
 
-        chain = sample(rng, noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 100)
+        chain = sample(rng, noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
 
