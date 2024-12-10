@@ -49,12 +49,12 @@ using Turing
         rng = StableRNG(23)
 
         @testset "demo_default" begin
-            chain = sample(copy(rng), demo_default, ESS(), 500)
+            chain = sample(copy(rng), demo_default, ESS(), 5_000)
             check_numerical(chain, [:m], [0.8]; atol=0.1)
         end
 
         @testset "demodot_default" begin
-            chain = sample(copy(rng), demodot_default, ESS(), 500)
+            chain = sample(copy(rng), demodot_default, ESS(), 5_000)
             check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
         end
 
