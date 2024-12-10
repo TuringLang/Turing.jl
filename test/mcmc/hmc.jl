@@ -37,7 +37,7 @@ using Turing
             copy(rng),
             constrained_test(obs),
             HMC(1.5, 3; adtype=adbackend),# using a large step size (1.5)
-            500,
+            1_000,
         )
 
         check_numerical(chain, [:p], [10 / 14]; atol=0.1)
@@ -56,7 +56,7 @@ using Turing
         end
 
         chain = sample(
-            copy(rng), constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 200
+            copy(rng), constrained_simplex_test(obs12), HMC(0.75, 2; adtype=adbackend), 1000
         )
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
@@ -64,7 +64,7 @@ using Turing
 
     @testset "hmc reverse diff" begin
         alg = HMC(0.1, 10; adtype=adbackend)
-        res = sample(copy(rng), gdemo_default, alg, 2000)
+        res = sample(copy(rng), gdemo_default, alg, 4_000)
         check_gdemo(res; rtol=0.1)
     end
 
@@ -74,7 +74,7 @@ using Turing
         end
 
         model_f = hmcmatrixsup()
-        n_samples = 500
+        n_samples = 1_000
         vs = map(1:3) do _
             chain = sample(copy(rng), model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
             r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
@@ -135,7 +135,7 @@ using Turing
 
     @testset "hmcda inference" begin
         alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
-        res1 = sample(copy(rng), gdemo_default, alg1, 3000)
+        res1 = sample(copy(rng), gdemo_default, alg1, 3_000)
         check_gdemo(res1)
     end
 
@@ -286,7 +286,7 @@ using Turing
             return xs[2] ~ Dirichlet(ones(5))
         end
         model = vector_of_dirichlet()
-        chain = sample(model, NUTS(), 100)
+        chain = sample(model, NUTS(), 1_000)
         @test mean(Array(chain)) ≈ 0.2
     end
 
@@ -309,7 +309,7 @@ using Turing
         end
 
         model = buggy_model()
-        num_samples = 100
+        num_samples = 1_000
 
         chain = sample(model, NUTS(), num_samples; initial_params=[0.5, 1.75, 1.0])
         chain_prior = sample(model, Prior(), num_samples)

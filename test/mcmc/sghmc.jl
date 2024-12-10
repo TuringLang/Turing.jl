@@ -58,7 +58,7 @@ end
     @testset "sgld inference" begin
         rng = StableRNG(1)
 
-        chain = sample(rng, gdemo_default, SGLD(; stepsize=PolynomialStepsize(0.5)), 5000)
+        chain = sample(rng, gdemo_default, SGLD(; stepsize=PolynomialStepsize(0.5)), 20_000)
         check_gdemo(chain; atol=0.2)
 
         # Weight samples by step sizes (cf section 4.2 in the paper by Welling and Teh)
