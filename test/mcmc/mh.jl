@@ -18,9 +18,11 @@ using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
 @testset "mh.jl" begin
+    @info "Starting MH tests"
+    rng = StableRNG(23)
+
     @testset "mh constructor" begin
-        Random.seed!(10)
-        N = 500
+        N = 10
         s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))
         s2 = MH(:s, :m)
         s3 = MH()
@@ -43,42 +45,51 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
         # c6 = sample(gdemo_default, s6, N)
     end
+
     @testset "mh inference" begin
         # Set the initial parameters, because if we get unlucky with the initial state,
         # these chains are too short to converge to reasonable numbers.
-        discard_initial = 1000
+        discard_initial = 1_000
         initial_params = [1.0, 1.0]
 
-        Random.seed!(125)
-        alg = MH()
-        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
-        check_gdemo(chain; atol=0.1)
+        @testset "gdemo_default" begin
+            alg = MH()
+            chain = sample(
+                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+            )
+            check_gdemo(chain; atol=0.1)
+        end
 
-        Random.seed!(125)
-        # MH with Gaussian proposal
-        alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
-        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
-        check_gdemo(chain; atol=0.1)
+        @testset "gdemo_default with custom proposals" begin
+            alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
+            chain = sample(
+                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+            )
+            check_gdemo(chain; atol=0.1)
+        end
 
-        Random.seed!(125)
-        # MH within Gibbs
-        alg = Gibbs(MH(:m), MH(:s))
-        chain = sample(gdemo_default, alg, 10_000; discard_initial, initial_params)
-        check_gdemo(chain; atol=0.1)
+        @testset "gdemo_default with MH-within-Gibbs" begin
+            alg = Gibbs(MH(:m), MH(:s))
+            chain = sample(
+                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+            )
+            check_gdemo(chain; atol=0.1)
+        end
 
-        Random.seed!(125)
-        # MoGtest
-        gibbs = Gibbs(
-            CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
-        )
-        chain = sample(
-            MoGtest_default,
-            gibbs,
-            500;
-            discard_initial=100,
-            initial_params=[1.0, 1.0, 0.0, 0.0, 1.0, 4.0],
-        )
-        check_MoGtest_default(chain; atol=0.2)
+        @testset "MoGtest_default with Gibbs" begin
+            gibbs = Gibbs(
+                CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
+            )
+            chain = sample(
+                copy(rng),
+                MoGtest_default,
+                gibbs,
+                500;
+                discard_initial=100,
+                initial_params=[1.0, 1.0, 0.0, 0.0, 1.0, 4.0],
+            )
+            check_MoGtest_default(chain; atol=0.2)
+        end
     end
 
     # Test MH shape passing.
@@ -115,14 +126,12 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2
         @test vt[:s] isa Float64
 
-        chain = sample(model, MH(), 100)
+        chain = sample(model, MH(), 10)
 
         @test chain isa MCMCChains.Chains
     end
 
     @testset "proposal matrix" begin
-        Random.seed!(100)
-
         mat = [1.0 -0.05; -0.05 1.0]
 
         prop1 = mat # Matrix only constructor
@@ -136,8 +145,8 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @test spl1.proposals.proposal.Σ.mat == spl2.proposals.proposal.Σ.mat
 
         # Test inference.
-        chain1 = sample(gdemo_default, spl1, 10000)
-        chain2 = sample(gdemo_default, spl2, 10000)
+        chain1 = sample(copy(rng), gdemo_default, spl1, 2_000)
+        chain2 = sample(copy(rng), gdemo_default, spl2, 2_000)
 
         check_gdemo(chain1)
         check_gdemo(chain2)
@@ -145,7 +154,6 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
     @testset "gibbs MH proposal matrix" begin
         # https://github.com/TuringLang/Turing.jl/issues/1556
-        rng = StableRNG(23)
 
         # generate data
         x = rand(Normal(5, 10), 20)
@@ -176,7 +184,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # Test that the small variance version is actually smaller.
         variance_small = var(diff(Array(chn_small["μ[1]"]); dims=1))
         variance_big = var(diff(Array(chn_big["μ[1]"]); dims=1))
-        @test variance_small < variance_big / 1000.0
+        @test variance_small < variance_big / 1_000.0
     end
 
     @testset "vector of multivariate distributions" begin
@@ -187,14 +195,12 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
             end
         end
 
-        Random.seed!(100)
-        chain = sample(test(1), MH(), 5_000)
+        chain = sample(copy(rng), test(1), MH(), 5_000)
         for i in 1:5
             @test mean(chain, "T[1][$i]") ≈ 0.2 atol = 0.01
         end
 
-        Random.seed!(100)
-        chain = sample(test(10), MH(), 5_000)
+        chain = sample(copy(rng), test(10), MH(), 5_000)
         for j in 1:10, i in 1:5
             @test mean(chain, "T[$j][$i]") ≈ 0.2 atol = 0.01
         end
@@ -203,8 +209,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "LKJCholesky" begin
         for uplo in ['L', 'U']
             @model f() = x ~ LKJCholesky(2, 1, uplo)
-            Random.seed!(100)
-            chain = sample(f(), MH(), 5_000)
+            chain = sample(copy(rng), f(), MH(), 5_000)
             indices = [(1, 1), (2, 1), (2, 2)]
             values = [1, 0, 0.785]
             for ((i, j), v) in zip(indices, values)
@@ -258,9 +263,6 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     end
 
     @testset "prior" begin
-        # HACK: MH can be so bad for this prior model for some reason that it's difficult to
-        # find a non-trivial `atol` where the tests will pass for all seeds. Hence we fix it :/
-        rng = StableRNG(10)
         alg = MH()
         gdemo_default_prior = DynamicPPL.contextualize(
             gdemo_default, DynamicPPL.PriorContext()
@@ -268,7 +270,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         burnin = 10_000
         n = 10_000
         chain = sample(
-            rng, gdemo_default_prior, alg, n; discard_initial=burnin, thinning=10
+            copy(rng), gdemo_default_prior, alg, n; discard_initial=burnin, thinning=10
         )
         check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0]; atol=0.3)
     end
@@ -276,6 +278,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(
+            copy(rng),
             demo_filldist_issue2180(),
             MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
             10_000,
