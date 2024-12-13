@@ -19,7 +19,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
 @testset "mh.jl" begin
     @info "Starting MH tests"
-    rng = StableRNG(23)
+    seed = 23
 
     @testset "mh constructor" begin
         N = 10
@@ -55,7 +55,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @testset "gdemo_default" begin
             alg = MH()
             chain = sample(
-                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+                StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
             check_gdemo(chain; atol=0.1)
         end
@@ -63,7 +63,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @testset "gdemo_default with custom proposals" begin
             alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
             chain = sample(
-                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+                StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
             check_gdemo(chain; atol=0.1)
         end
@@ -71,7 +71,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @testset "gdemo_default with MH-within-Gibbs" begin
             alg = Gibbs(MH(:m), MH(:s))
             chain = sample(
-                copy(rng), gdemo_default, alg, 10_000; discard_initial, initial_params
+                StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
             check_gdemo(chain; atol=0.1)
         end
@@ -81,7 +81,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
                 CSMC(15, :z1, :z2, :z3, :z4), MH((:mu1, GKernel(1)), (:mu2, GKernel(1)))
             )
             chain = sample(
-                copy(rng),
+                StableRNG(seed),
                 MoGtest_default,
                 gibbs,
                 500;
@@ -145,8 +145,8 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @test spl1.proposals.proposal.Σ.mat == spl2.proposals.proposal.Σ.mat
 
         # Test inference.
-        chain1 = sample(copy(rng), gdemo_default, spl1, 2_000)
-        chain2 = sample(copy(rng), gdemo_default, spl2, 2_000)
+        chain1 = sample(StableRNG(seed), gdemo_default, spl1, 2_000)
+        chain2 = sample(StableRNG(seed), gdemo_default, spl2, 2_000)
 
         check_gdemo(chain1)
         check_gdemo(chain2)
@@ -178,8 +178,8 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         alg_small = Gibbs(MH((:μ, vc_μ)), MH((:σ, vc_σ)))
         alg_big = MH()
 
-        chn_small = sample(copy(rng), mod, alg_small, 1_000)
-        chn_big = sample(copy(rng), mod, alg_big, 1_000)
+        chn_small = sample(StableRNG(seed), mod, alg_small, 1_000)
+        chn_big = sample(StableRNG(seed), mod, alg_big, 1_000)
 
         # Test that the small variance version is actually smaller.
         variance_small = var(diff(Array(chn_small["μ[1]"]); dims=1))
@@ -195,12 +195,12 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
             end
         end
 
-        chain = sample(copy(rng), test(1), MH(), 5_000)
+        chain = sample(StableRNG(seed), test(1), MH(), 5_000)
         for i in 1:5
             @test mean(chain, "T[1][$i]") ≈ 0.2 atol = 0.01
         end
 
-        chain = sample(copy(rng), test(10), MH(), 5_000)
+        chain = sample(StableRNG(seed), test(10), MH(), 5_000)
         for j in 1:10, i in 1:5
             @test mean(chain, "T[$j][$i]") ≈ 0.2 atol = 0.01
         end
@@ -209,7 +209,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "LKJCholesky" begin
         for uplo in ['L', 'U']
             @model f() = x ~ LKJCholesky(2, 1, uplo)
-            chain = sample(copy(rng), f(), MH(), 5_000)
+            chain = sample(StableRNG(seed), f(), MH(), 5_000)
             indices = [(1, 1), (2, 1), (2, 2)]
             values = [1, 0, 0.785]
             for ((i, j), v) in zip(indices, values)
@@ -270,7 +270,12 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         burnin = 10_000
         n = 10_000
         chain = sample(
-            copy(rng), gdemo_default_prior, alg, n; discard_initial=burnin, thinning=10
+            StableRNG(seed),
+            gdemo_default_prior,
+            alg,
+            n;
+            discard_initial=burnin,
+            thinning=10,
         )
         check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0]; atol=0.3)
     end
@@ -278,7 +283,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(
-            copy(rng),
+            StableRNG(seed),
             demo_filldist_issue2180(),
             MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
             10_000,
