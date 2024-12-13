@@ -30,7 +30,7 @@ macro timeit_include(path::AbstractString)
     end
 end
 
-@testset "Turing" begin
+@testset "Turing" verbose = true begin
     @testset "Test utils" begin
         @timeit_include("test_utils/test_utils.jl")
     end
@@ -39,12 +39,12 @@ end
         @timeit_include("Aqua.jl")
     end
 
-    @testset "essential" begin
+    @testset "essential" verbose = true begin
         @timeit_include("essential/ad.jl")
         @timeit_include("essential/container.jl")
     end
 
-    @testset "samplers (without AD)" begin
+    @testset "samplers (without AD)" verbose = true begin
         @timeit_include("mcmc/particle_mcmc.jl")
         @timeit_include("mcmc/emcee.jl")
         @timeit_include("mcmc/ess.jl")
@@ -52,7 +52,7 @@ end
     end
 
     @timeit TIMEROUTPUT "inference" begin
-        @testset "inference with samplers" begin
+        @testset "inference with samplers" verbose = true begin
             @timeit_include("mcmc/gibbs.jl")
             @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
@@ -67,7 +67,7 @@ end
             @timeit_include("variational/advi.jl")
         end
 
-        @testset "mode estimation" begin
+        @testset "mode estimation" verbose = true begin
             @timeit_include("optimisation/Optimisation.jl")
             @timeit_include("ext/OptimInterface.jl")
         end
@@ -81,7 +81,7 @@ end
         @timeit_include("variational/optimisers.jl")
     end
 
-    @testset "stdlib" begin
+    @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
         @timeit_include("stdlib/RandomMeasures.jl")
     end
