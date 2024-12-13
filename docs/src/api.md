@@ -37,11 +37,11 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Modelling
 
-| Exported symbol | Documentation                     | Description                                  |
-|:--------------- |:--------------------------------- |:-------------------------------------------- |
-| `@model`        | [`DynamicPPL.@model`](@extref)    | Define a probabilistic model                 |
-| `@varname`      | [`AbstractPPL.@varname`](@extref) | Generate a `VarName` from a Julia expression |
-| `@submodel`     | [`DynamicPPL.@submodel`](@extref) | Define a submodel                            |
+| Exported symbol | Documentation                       | Description                                  |
+|:--------------- |:----------------------------------- |:-------------------------------------------- |
+| `@model`        | [`DynamicPPL.@model`](@extref)      | Define a probabilistic model                 |
+| `@varname`      | [`AbstractPPL.@varname`](@extref)   | Generate a `VarName` from a Julia expression |
+| `to_submodel`   | [`DynamicPPL.to_submodel`](@extref) | Define a submodel                            |
 
 ### Inference
 
