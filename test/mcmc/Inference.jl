@@ -246,9 +246,9 @@ using Turing
         pg = PG(10)
         gibbs = Gibbs(HMC(0.2, 3, :p; adtype=adbackend), PG(10, :x))
 
-        chn_s = sample(copy(rng), testbb(obs), smc, 100)
-        chn_p = sample(copy(rng), testbb(obs), pg, 100)
-        chn_g = sample(copy(rng), testbb(obs), gibbs, 100)
+        chn_s = sample(copy(rng), testbb(obs), smc, 200)
+        chn_p = sample(copy(rng), testbb(obs), pg, 200)
+        chn_g = sample(copy(rng), testbb(obs), gibbs, 200)
 
         check_numerical(chn_s, [:p], [meanp]; atol=0.05)
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
