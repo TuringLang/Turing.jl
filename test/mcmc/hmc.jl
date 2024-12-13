@@ -68,21 +68,20 @@ using Turing
         check_gdemo(res; rtol=0.1)
     end
 
+    # Test the sampling of a matrix-value distribution.
     @testset "matrix support" begin
-        @model function hmcmatrixsup()
-            return v ~ Wishart(7, [1 0.5; 0.5 1])
-        end
-
+        dist = Wishart(7, [1 0.5; 0.5 1])
+        @model hmcmatrixsup() = v ~ dist
         model_f = hmcmatrixsup()
         n_samples = 1_000
-        vs = map(1:3) do _
-            chain = sample(copy(rng), model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
-            r = reshape(Array(group(chain, :v)), n_samples, 2, 2)
-            reshape(mean(r; dims=1), 2, 2)
-        end
 
-        # TODO(mhauru) This test needs a comment explaining what is being tested.
-        @test maximum(abs, mean(vs) - (7 * [1 0.5; 0.5 1])) <= 0.5
+        chain = sample(StableRNG(24), model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
+        # Reshape the chain into an array of 2x2 matrices, one per sample. Then compute
+        # the average of the samples, as a matrix
+        r = reshape(Array(chain), n_samples, 2, 2)
+        r_mean = dropdims(mean(r; dims=1); dims=1)
+
+        @test isapprox(r_mean, mean(dist); atol=0.2)
     end
 
     @testset "multivariate support" begin
