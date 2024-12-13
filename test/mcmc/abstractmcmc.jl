@@ -187,7 +187,7 @@ end
                     DynamicPPL.TestUtils.test_sampler(
                         [model],
                         sampler_ext,
-                        1_000;
+                        2_000;
                         discard_initial=1_000,
                         thinning=10,
                         rtol=0.2,
