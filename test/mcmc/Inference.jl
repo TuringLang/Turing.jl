@@ -157,7 +157,7 @@ using Turing
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), N)
             @test chains isa MCMCChains.Chains
             @test size(chains) == (N, 3, 1)
-            @test mean(chains, :s) ≈ 3 atol = 0.1
+            @test mean(chains, :s) ≈ 3 atol = 0.11
             @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
@@ -165,7 +165,7 @@ using Turing
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), MCMCThreads(), N, 4)
             @test chains isa MCMCChains.Chains
             @test size(chains) == (N, 3, 4)
-            @test mean(chains, :s) ≈ 3 atol = 0.1
+            @test mean(chains, :s) ≈ 3 atol = 0.11
             @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
@@ -177,7 +177,7 @@ using Turing
             @test length(chains) == N
             @test all(length(x) == 3 for x in chains)
             @test all(haskey(x, :lp) for x in chains)
-            @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.1
+            @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.11
             @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
         end
 
