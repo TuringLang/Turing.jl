@@ -177,7 +177,7 @@ const gdemo_default = gdemo_d()
     end
 
     @testset "sample" begin
-        alg = Gibbs(; m=HMC(0.2, 3), PG(10))
+        alg = Gibbs(; m=HMC(0.2, 3), s=PG(10))
         chn = sample(gdemo_default, alg, 1000)
     end
 
