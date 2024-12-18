@@ -70,7 +70,8 @@ using DynamicPPL:
     decondition,
     fix,
     unfix,
-    conditioned
+    conditioned,
+    to_submodel
 using StatsBase: predict
 using Bijectors: ordered
 using OrderedCollections: OrderedDict
@@ -78,7 +79,8 @@ using OrderedCollections: OrderedDict
 # Turing essentials - modelling macros and inference algorithms
 export @model,                 # modelling
     @varname,
-    @submodel,
+    @submodel,  # Deprecated
+    to_submodel,
     DynamicPPL,
     Prior,                  # Sampling from the prior
     MH,                     # classic sampling

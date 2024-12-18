@@ -6,8 +6,6 @@ using DynamicPPL:
     VarInfo,
     TypedVarInfo,
     islinked,
-    invlink!,
-    link!,
     setindex!!,
     push!!,
     setlogp!!,
