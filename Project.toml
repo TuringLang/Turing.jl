@@ -41,10 +41,12 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
+MarginalLogDensities = "f0c3360a-fb8d-11e9-1194-5521fd7ee392"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
+TuringMarginalLogDensitiesExt = "MarginalLogDensities"
 TuringOptimExt = "Optim"
 
 [compat]
@@ -63,13 +65,14 @@ Distributions = "0.23.3, 0.24, 0.25"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.29, 0.30.4, 0.31"
+DynamicPPL = "0.31.4"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3"
 Libtask = "0.8.8"
 LinearAlgebra = "1"
 LogDensityProblems = "2"
 LogDensityProblemsAD = "1.7.0"
+MarginalLogDensities = "0.3.6"
 MCMCChains = "5, 6"
 NamedArrays = "0.9, 0.10"
 Optim = "1"

@@ -89,6 +89,10 @@ end
     @testset "utilities" begin
         @timeit_include("mcmc/utilities.jl")
     end
+
+    @testset "extensions" begin
+        @timeit_include("ext/TuringMarginalLogDensitiesExt.jl")
+    end
 end
 
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)
