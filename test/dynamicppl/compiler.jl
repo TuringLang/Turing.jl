@@ -100,7 +100,7 @@ const gdemo_default = gdemo_d()
         chain = sample(gauss(x), PG(10), 10)
         chain = sample(gauss(x), SMC(), 10)
 
-         # Test algorithm that does not support models with keyword arguments. See issue #2007 for more details.
+        # Test algorithm that does not support models with keyword arguments. See issue #2007 for more details.
         @model function gauss2(::Type{TV}=Vector{Float64}; x) where {TV}
             priors = TV(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
