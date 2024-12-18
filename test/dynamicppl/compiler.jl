@@ -64,7 +64,7 @@ const gdemo_default = gdemo_d()
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
         check_numerical(chn_g, [:x], [meanp]; atol=0.1)
     end
-    @testset "forbid global" begin
+    @testset "model with global variables" begin
         xs = [1.5 2.0]
         # xx = 1
 
@@ -100,6 +100,7 @@ const gdemo_default = gdemo_d()
         chain = sample(gauss(x), PG(10), 10)
         chain = sample(gauss(x), SMC(), 10)
 
+         # Test algorithm that does not support models with keyword arguments. See issue #2007 for more details.
         @model function gauss2(::Type{TV}=Vector{Float64}; x) where {TV}
             priors = TV(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
@@ -149,7 +150,7 @@ const gdemo_default = gdemo_d()
         chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6), 1000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
-    @testset "observe" begin
+    @testset "observe with literals" begin
         @model function test()
             z ~ Normal(0, 1)
             x ~ Bernoulli(1)
