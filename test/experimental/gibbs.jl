@@ -28,8 +28,9 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe)},
+    Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
-    Model{typeof(DynamicPPL.TestUtils.demo_assume_literal_dot_observe)},
+    Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix)},
 }
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false

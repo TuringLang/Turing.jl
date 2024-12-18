@@ -14,7 +14,6 @@ include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
 include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
 
 Turing.setprogress!(false)
-
 included_paths, excluded_paths = parse_args(ARGS)
 
 # Filter which tests to run and collect timing and allocations information to show in a
@@ -84,6 +83,10 @@ end
     @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
         @timeit_include("stdlib/RandomMeasures.jl")
+    end
+
+    @testset "DynamicPPL integration" begin
+        @timeit_include("dynamicppl/compiler.jl")
     end
 
     @testset "utilities" begin
