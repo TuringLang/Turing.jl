@@ -39,6 +39,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 AbstractMCMC = "5"
+AbstractPPL = "0.9"
 AdvancedMH = "0.6, 0.7, 0.8"
 AdvancedPS = "0.6.0"
 AdvancedVI = "0.2"
