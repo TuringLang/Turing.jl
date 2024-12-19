@@ -55,7 +55,6 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
-include("experimental/Experimental.jl")
 include("deprecated.jl") # to be removed in the next minor version release
 
 ###########
@@ -88,7 +87,6 @@ export @model,                 # modelling
     Emcee,
     ESS,
     Gibbs,
-    GibbsConditional,
     HMC,                    # Hamiltonian-like sampling
     SGLD,
     SGHMC,
@@ -99,6 +97,7 @@ export @model,                 # modelling
     SMC,
     CSMC,
     PG,
+    RepeatSampler,
     vi,                     # variational inference
     ADVI,
     sample,                 # inference

@@ -46,7 +46,7 @@ const gdemo_default = gdemo_d()
         @model function testbb(obs)
             p ~ Beta(2, 2)
             x ~ Bernoulli(p)
-            for i in 1:length(obs)
+            for i in eachindex(obs)
                 obs[i] ~ Bernoulli(p)
             end
             return p, x
@@ -54,7 +54,7 @@ const gdemo_default = gdemo_d()
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(HMC(0.2, 3, :p), PG(10, :x))
+        gibbs = Gibbs(; p=HMC(0.2, 3), x=PG(10))
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
@@ -73,7 +73,7 @@ const gdemo_default = gdemo_d()
             m ~ Normal(0, sqrt(s))
             # xx ~ Normal(m, sqrt(s)) # this is illegal
 
-            for i in 1:length(xs)
+            for i in eachindex(xs)
                 xs[i] ~ Normal(m, sqrt(s))
                 # for xx in xs
                 # xx ~ Normal(m, sqrt(s))
@@ -81,7 +81,7 @@ const gdemo_default = gdemo_d()
             return s, m
         end
 
-        gibbs = Gibbs(PG(10, :s), HMC(0.4, 8, :m))
+        gibbs = Gibbs(; s=PG(10), m=HMC(0.4, 8))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
     @testset "new grammar" begin
@@ -91,7 +91,7 @@ const gdemo_default = gdemo_d()
             priors = Array{Float64}(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
-            for i in 1:length(x)
+            for i in eachindex(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
             end
             return priors
@@ -105,7 +105,7 @@ const gdemo_default = gdemo_d()
             priors = TV(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
-            for i in 1:length(x)
+            for i in eachindex(x)
                 x[i] ~ Normal(priors[2], sqrt(priors[1]))
             end
             return priors
@@ -126,7 +126,7 @@ const gdemo_default = gdemo_d()
 
         @model function newinterface(obs)
             p ~ Beta(2, 2)
-            for i in 1:length(obs)
+            for i in eachindex(obs)
                 obs[i] ~ Bernoulli(p)
             end
             return p
@@ -142,7 +142,7 @@ const gdemo_default = gdemo_d()
         @model function noreturn(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
-            for i in 1:length(x)
+            for i in eachindex(x)
                 x[i] ~ Normal(m, sqrt(s))
             end
         end
@@ -177,7 +177,7 @@ const gdemo_default = gdemo_d()
     end
 
     @testset "sample" begin
-        alg = Gibbs(HMC(0.2, 3, :m), PG(10, :s))
+        alg = Gibbs(; m=HMC(0.2, 3), s=PG(10))
         chn = sample(gdemo_default, alg, 1000)
     end
 

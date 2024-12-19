@@ -49,6 +49,10 @@ function SGHMC(
     )
 end
 
+function drop_space(alg::SGHMC{AD,space,T}) where {AD,space,T}
+    return SGHMC{AD,(),T}(alg.learning_rate, alg.momentum_decay, alg.adtype)
+end
+
 struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
     logdensity::L
     vi::V
@@ -128,6 +132,10 @@ struct SGLD{AD,space,S} <: StaticHamiltonian
     "Step size function."
     stepsize::S
     adtype::AD
+end
+
+function drop_space(alg::SGLD{AD,space,S}) where {AD,space,S}
+    return SGLD{AD,(),S}(alg.stepsize, alg.adtype)
 end
 
 struct PolynomialStepsize{T<:Real}

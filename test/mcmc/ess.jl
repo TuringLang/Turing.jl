@@ -40,7 +40,7 @@ using Turing
         c3 = sample(demodot_default, s1, N)
         c4 = sample(demodot_default, s2, N)
 
-        s3 = Gibbs(ESS(:m), MH(:s))
+        s3 = Gibbs(; m=ESS(), s=MH())
         c5 = sample(gdemo_default, s3, N)
     end
 
@@ -59,13 +59,17 @@ using Turing
         end
 
         @testset "gdemo with CSMC + ESS" begin
-            alg = Gibbs(CSMC(15, :s), ESS(:m))
+            alg = Gibbs(; s=CSMC(15), m=ESS())
             chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 2000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
 
         @testset "MoGtest_default with CSMC + ESS" begin
-            alg = Gibbs(CSMC(15, :z1, :z2, :z3, :z4), ESS(:mu1), ESS(:mu2))
+            alg = Gibbs(
+                (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
+                @varname(mu1) => ESS(),
+                @varname(mu2) => ESS(),
+            )
             chain = sample(StableRNG(seed), MoGtest_default, alg, 2000)
             check_MoGtest_default(chain; atol=0.1)
         end

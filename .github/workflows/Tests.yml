@@ -34,12 +34,10 @@ jobs:
             args: "mcmc/abstractmcmc.jl"
           - name: "mcmc/Inference"
             args: "mcmc/Inference.jl"
-          - name: "experimental/gibbs"
-            args: "experimental/gibbs.jl"
           - name: "mcmc/ess"
             args: "mcmc/ess.jl"
           - name: "everything else"
-            args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
+            args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
         runner:
           # Default
           - version: '1'
