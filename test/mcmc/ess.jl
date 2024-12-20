@@ -71,7 +71,11 @@ using Turing
                 @varname(mu2) => ESS(),
             )
             chain = sample(StableRNG(seed), MoGtest_default, alg, 2000)
-            check_MoGtest_default(chain; atol=0.1)
+            # (penelopeysm) Note that the tolerance for x86 needs to be larger
+            # because CSMC (i.e. PG) is not reproducible across architectures.
+            # See https://github.com/TuringLang/Turing.jl/issues/2446.
+            atol = Sys.ARCH == :i686 ? 0.12 : 0.1
+            check_MoGtest_default(chain; atol=atol)
         end
 
         @testset "TestModels" begin
