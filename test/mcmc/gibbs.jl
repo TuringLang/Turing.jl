@@ -481,7 +481,13 @@ end
         # the posterior is analytically known? Doing 10_000 samples to run the test suite
         # is not ideal
         # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2402
-        @test isapprox(mean(num_ms), 8.6087; atol=0.8)
+
+        # (penelopeysm) Note also the larger atol on x86 runners. This is
+        # needed because PG is not fully reproducible across architectures,
+        # even when seeded as above. See
+        # https://github.com/TuringLang/Turing.jl/issues/2446
+        mean_atol = Sys.ARCH == :i686 ? 1.3 : 0.8
+        @test isapprox(mean(num_ms), 8.6087; atol=mean_atol)
         @test isapprox(std(num_ms), 1.8865; atol=0.02)
     end
 
