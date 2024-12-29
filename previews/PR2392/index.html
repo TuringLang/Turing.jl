@@ -375,7 +375,7 @@
             </g>
         </svg>
     </a>
-    <span class="ext-menu-toggle"><body>#9776;</span>
+    <span class="ext-menu-toggle">&#9776;</span>
 </nav>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -413,7 +413,7 @@
         // Close menus if clicked outside
         document.addEventListener("click", (event) => {
             if (
-                !navLinks.contains(event.target) <body><body>
+                !navLinks.contains(event.target) &&
                 !menuToggle.contains(event.target)
             ) {
                 navLinks.classList.remove("show");
