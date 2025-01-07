@@ -378,7 +378,11 @@ function Gibbs(alg1::InferenceAlgorithm, other_algs::InferenceAlgorithm...)
     return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
 end
 
-function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
+function Gibbs(
+    alg_with_iters1::Tuple{<:InferenceAlgorithm,Int},
+    other_algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...,
+)
+    algs_with_iters = [alg_with_iters1, other_algs_with_iters...]
     algs = Iterators.map(first, algs_with_iters)
     iters = Iterators.map(last, algs_with_iters)
     algs_duplicated = Iterators.flatten((
