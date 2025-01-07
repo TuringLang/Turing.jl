@@ -325,7 +325,8 @@ Currently only variable names without indexing are supported, so for instance
 # Fields
 $(TYPEDFIELDS)
 """
-struct Gibbs{V,A} <: InferenceAlgorithm
+struct Gibbs{V<:AbstractVector{<:AbstractVector{<:VarName}},A<:AbstractVector} <:
+       InferenceAlgorithm
     "varnames representing variables for each sampler"
     varnames::V
     "samplers for each entry in `varnames`"
