@@ -471,6 +471,7 @@ function AbstractMCMC.step(
         # Take the inner step.
         sampler_local = samplers[index]
         state_local = states[index]
+        varnames_local = varnames[index]
         vi, new_state_local = gibbs_step_inner(
             rng, model, varnames_local, sampler_local, state_local, vi; kwargs...
         )
