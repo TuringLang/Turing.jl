@@ -319,6 +319,9 @@ Gibbs(@varname(x) => NUTS(), @varname(y) => MH())
 Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
 
+Currently only variable names without indexing are supported, so for instance
+`Gibbs(@varname(x[1]) => NUTS())` does not work. This will hopefully change in the future.
+
 # Fields
 $(TYPEDFIELDS)
 """
