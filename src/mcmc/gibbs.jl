@@ -293,11 +293,11 @@ end
 set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
 to_varname(vn::VarName) = vn
-to_varname(s::Symbol) = VarName{s}()
+to_varname(s::Symbol) = VarName(s)
 
 to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
-to_varname_list(t) = map(to_varname, collect(t))
+to_varname_list(t) = collect(map(to_varname, t))
 
 """
     Gibbs
@@ -357,7 +357,8 @@ end
 
 # The below two constructors only provide backwards compatibility with the constructor of
 # the old Gibbs sampler. They are deprecated and will be removed in the future.
-function Gibbs(algs::InferenceAlgorithm...)
+function Gibbs(alg1::InferenceAlgorithm, other_algs::InferenceAlgorithm...)
+    algs = [alg1, other_algs...]
     varnames = map(algs) do alg
         space = getspace(alg)
         if (space isa VarName)
@@ -378,9 +379,6 @@ function Gibbs(algs::InferenceAlgorithm...)
     Base.depwarn(msg, :Gibbs)
     return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
 end
-
-# This disambiguates a method ambiguity. To be removed when the above deprecated one is.
-Gibbs() = Gibbs([], [])
 
 function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
     algs = Iterators.map(first, algs_with_iters)
