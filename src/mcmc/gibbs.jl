@@ -292,12 +292,9 @@ function set_selector(x::RepeatSampler)
 end
 set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
-to_varname(vn::VarName) = vn
-to_varname(s::Symbol) = VarName(s)
-
-to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
+to_varname_list(x::Union{VarName,Symbol}) = [VarName(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
-to_varname_list(t) = collect(map(to_varname, t))
+to_varname_list(t) = collect(map(VarName, t))
 
 """
     Gibbs
