@@ -292,10 +292,32 @@ function set_selector(x::RepeatSampler)
 end
 set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
 
+to_varname(vn::VarName) = vn
+to_varname(s::Symbol) = VarName{s}()
+
+to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
+# Any other value is assumed to be an iterable of VarNames and Symbols.
+to_varname_list(t) = map(to_varname, collect(t))
+
 """
     Gibbs
 
 A type representing a Gibbs sampler.
+
+# Constructors
+
+`Gibbs` needs to be given a set of pairs of variable names and samplers. Instead of a single
+variable name per sampler, one can also give an iterable of variables, all of which are
+sampled by the same component sampler.
+
+Each variable name can be given as either a `Symbol` or a `VarName`.
+
+Some examples of valid constructors are:
+```julia
+Gibbs(:x => NUTS(), :y => MH())
+Gibbs(@varname(x) => NUTS(), @varname(y) => MH())
+Gibbs((@varname(x), :y) => NUTS(), :z => MH())
+```
 
 # Fields
 $(TYPEDFIELDS)
@@ -310,35 +332,24 @@ struct Gibbs{V,A} <: InferenceAlgorithm
         if length(varnames) != length(samplers)
             throw(ArgumentError("Number of varnames and samplers must match."))
         end
+
         for spl in samplers
             if !isgibbscomponent(spl)
                 msg = "All samplers must be valid Gibbs components, $(spl) is not."
                 throw(ArgumentError(msg))
             end
         end
+
+        # Ensure that samplers have the same selector, and that varnames are lists of
+        # VarNames.
+        samplers = map(set_selector ∘ drop_space, samplers)
+        varnames = map(to_varname_list, varnames)
         return new{typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
 end
 
-to_varname(vn::VarName) = vn
-to_varname(s::Symbol) = VarName{s}()
-# Any other value is assumed to be an iterable.
-to_varname(t) = map(to_varname, collect(t))
-
-# NamedTuple
-Gibbs(; algs...) = Gibbs(NamedTuple(algs))
-function Gibbs(algs::NamedTuple)
-    return Gibbs(map(to_varname, keys(algs)), map(set_selector ∘ drop_space, values(algs)))
-end
-
-# AbstractDict
-function Gibbs(algs::AbstractDict)
-    return Gibbs(
-        map(to_varname, collect(keys(algs))), map(set_selector ∘ drop_space, values(algs))
-    )
-end
 function Gibbs(algs::Pair...)
-    return Gibbs(map(to_varname ∘ first, algs), map(set_selector ∘ drop_space ∘ last, algs))
+    return Gibbs(map(first, algs), map(last, algs))
 end
 
 # The below two constructors only provide backwards compatibility with the constructor of
@@ -384,10 +395,9 @@ struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     states::S
 end
 
-_maybevec(x) = vec(x)  # assume it's iterable
-_maybevec(x::Tuple) = [x...]
-_maybevec(x::VarName) = [x]
-_maybevec(x::Symbol) = [x]
+_maybecollect(x) = collect(x)  # assume it's iterable
+_maybecollect(x::VarName) = [x]
+_maybecollect(x::Symbol) = [x]
 
 varinfo(state::GibbsState) = state.vi
 
@@ -412,7 +422,7 @@ function DynamicPPL.initialstep(
     # Initialise each component sampler in turn, collect all their states.
     states = []
     for (varnames_local, sampler_local) in zip(varnames, samplers)
-        varnames_local = _maybevec(varnames_local)
+        varnames_local = _maybecollect(varnames_local)
         # Get the initial values for this component sampler.
         initial_params_local = if initial_params === nothing
             nothing
@@ -463,7 +473,7 @@ function AbstractMCMC.step(
         # Take the inner step.
         sampler_local = samplers[index]
         state_local = states[index]
-        varnames_local = _maybevec(varnames[index])
+        varnames_local = _maybecollect(varnames[index])
         vi, new_state_local = gibbs_step_inner(
             rng, model, varnames_local, sampler_local, state_local, vi; kwargs...
         )
