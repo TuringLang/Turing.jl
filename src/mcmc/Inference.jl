@@ -6,8 +6,6 @@ using DynamicPPL:
     VarInfo,
     TypedVarInfo,
     islinked,
-    invlink!,
-    link!,
     setindex!!,
     push!!,
     setlogp!!,
@@ -35,7 +33,7 @@ using StatsFuns: logsumexp
 using Random: AbstractRNG
 using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
-using DocStringExtensions: TYPEDEF, TYPEDFIELDS
+using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet
 using Accessors: Accessors
 
@@ -64,7 +62,6 @@ export InferenceAlgorithm,
     ESS,
     Emcee,
     Gibbs,      # classic sampling
-    GibbsConditional,
     HMC,
     SGLD,
     PolynomialStepsize,
@@ -75,13 +72,13 @@ export InferenceAlgorithm,
     SMC,
     CSMC,
     PG,
+    RepeatSampler,
     Prior,
     assume,
     dot_assume,
     observe,
     dot_observe,
     predict,
-    isgibbscomponent,
     externalsampler
 
 #######################
@@ -93,6 +90,20 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
+
+# TODO(mhauru) Remove the below function once all the space/Selector stuff has been removed.
+"""
+    drop_space(alg::InferenceAlgorithm)
+
+Return an `InferenceAlgorithm` like `alg`, but with all space information removed.
+"""
+function drop_space end
+
+function drop_space(sampler::Sampler)
+    return Sampler(drop_space(sampler.alg), sampler.selector)
+end
+
+include("repeat_sampler.jl")
 
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
@@ -134,6 +145,9 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
         return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
     end
 end
+
+# External samplers don't have notion of space to begin with.
+drop_space(x::ExternalSampler) = x
 
 DynamicPPL.getspace(::ExternalSampler) = ()
 
@@ -202,6 +216,8 @@ end
 Algorithm for sampling from the prior.
 """
 struct Prior <: InferenceAlgorithm end
+
+drop_space(x::Prior) = x
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -337,7 +353,7 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::AbstractModel,
-    sampler::Sampler{<:InferenceAlgorithm},
+    sampler::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -449,7 +465,7 @@ getlogevidence(transitions, sampler, state) = missing
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -512,7 +528,7 @@ end
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior},
+    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
@@ -562,22 +578,21 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
+include("abstractmcmc.jl")
 include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("particle_mcmc.jl")
-include("gibbs_conditional.jl")
 include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
-include("abstractmcmc.jl")
 
 ################
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Gibbs, :Emcee)
+for alg in (:SMC, :PG, :MH, :IS, :ESS, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)

@@ -1,8 +1,12 @@
 module ExperimentalGibbsTests
 
 using ..Models: MoGtest_default, MoGtest_default_z_vector, gdemo
-using ..NumericalTests: check_MoGtest_default, check_MoGtest_default_z_vector, check_gdemo,
-    check_numerical, two_sample_test
+using ..NumericalTests:
+    check_MoGtest_default,
+    check_MoGtest_default_z_vector,
+    check_gdemo,
+    check_numerical,
+    two_sample_test
 using DynamicPPL
 using Random
 using Test
@@ -11,10 +15,7 @@ using Turing.Inference: AdvancedHMC, AdvancedMH
 using ForwardDiff: ForwardDiff
 using ReverseDiff: ReverseDiff
 
-function check_transition_varnames(
-    transition::Turing.Inference.Transition,
-    parent_varnames
-)
+function check_transition_varnames(transition::Turing.Inference.Transition, parent_varnames)
     transition_varnames = mapreduce(vcat, transition.θ) do vn_and_val
         [first(vn_and_val)]
     end
@@ -28,8 +29,9 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe)},
+    Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
-    Model{typeof(DynamicPPL.TestUtils.demo_assume_literal_dot_observe)},
+    Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
     Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix)},
 }
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
@@ -48,14 +50,8 @@ has_dot_assume(::Model) = true
             end
 
             samplers = [
-                Turing.Experimental.Gibbs(
-                    vns_s => NUTS(),
-                    vns_m => NUTS(),
-                ),
-                Turing.Experimental.Gibbs(
-                    vns_s => NUTS(),
-                    vns_m => HMC(0.01, 4),
-                )
+                Turing.Experimental.Gibbs(vns_s => NUTS(), vns_m => NUTS()),
+                Turing.Experimental.Gibbs(vns_s => NUTS(), vns_m => HMC(0.01, 4)),
             ]
 
             if !has_dot_assume(model)
@@ -63,25 +59,23 @@ has_dot_assume(::Model) = true
                 append!(
                     samplers,
                     [
-                        Turing.Experimental.Gibbs(
-                            vns_s => HMC(0.01, 4),
-                            vns_m => MH(),
-                        ),
-                        Turing.Experimental.Gibbs(
-                            vns_s => MH(),
-                            vns_m => HMC(0.01, 4),
-                        )
-                    ]
+                        Turing.Experimental.Gibbs(vns_s => HMC(0.01, 4), vns_m => MH()),
+                        Turing.Experimental.Gibbs(vns_s => MH(), vns_m => HMC(0.01, 4)),
+                    ],
                 )
             end
 
             @testset "$sampler" for sampler in samplers
                 # Check that taking steps performs as expected.
                 rng = Random.default_rng()
-                transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler))
+                transition, state = AbstractMCMC.step(
+                    rng, model, DynamicPPL.Sampler(sampler)
+                )
                 check_transition_varnames(transition, vns)
-                for _ = 1:5
-                    transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler), state)
+                for _ in 1:5
+                    transition, state = AbstractMCMC.step(
+                        rng, model, DynamicPPL.Sampler(sampler), state
+                    )
                     check_transition_varnames(transition, vns)
                 end
             end
@@ -103,8 +97,7 @@ has_dot_assume(::Model) = true
                 # Sampler to use for Gibbs components.
                 sampler_inner = HMC(0.1, 32)
                 sampler = Turing.Experimental.Gibbs(
-                    vns_s => sampler_inner,
-                    vns_m => sampler_inner,
+                    vns_s => sampler_inner, vns_m => sampler_inner
                 )
                 Random.seed!(42)
                 chain = sample(
@@ -116,7 +109,7 @@ has_dot_assume(::Model) = true
                     progress=false,
                     initial_params=initial_params,
                     discard_initial=1_000,
-                    thinning=thinning
+                    thinning=thinning,
                 )
 
                 # "Ground truth" samples.
@@ -136,7 +129,7 @@ has_dot_assume(::Model) = true
                 # Perform KS test to ensure that the chains are similar.
                 xs = Array(chain)
                 xs_true = Array(chain_true)
-                for i = 1:size(xs, 2)
+                for i in 1:size(xs, 2)
                     @test two_sample_test(xs[:, i], xs_true[:, i]; warn_on_fail=true)
                     # Let's make sure that the significance level is not too low by
                     # checking that the KS test fails for some simple transformations.
@@ -199,42 +192,58 @@ has_dot_assume(::Model) = true
             @varname(mu1) => ESS(),
             @varname(mu2) => ESS(),
         )
-        vns = (@varname(z1), @varname(z2), @varname(z3), @varname(z4), @varname(mu1), @varname(mu2))
+        vns = (
+            @varname(z1),
+            @varname(z2),
+            @varname(z3),
+            @varname(z4),
+            @varname(mu1),
+            @varname(mu2)
+        )
         # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
         check_transition_varnames(transition, vns)
-        for _ = 1:5
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+        for _ in 1:5
+            transition, state = AbstractMCMC.step(
+                rng, model, DynamicPPL.Sampler(alg), state
+            )
             check_transition_varnames(transition, vns)
         end
 
         # Sample!
         Random.seed!(42)
         chain = sample(MoGtest_default, alg, 1000; progress=false)
-        check_MoGtest_default(chain, atol = 0.2)
+        check_MoGtest_default(chain; atol=0.2)
     end
 
     @testset "CSMC + ESS (usage of implicit varname)" begin
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
         alg = Turing.Experimental.Gibbs(
-            @varname(z) => CSMC(15),
-            @varname(mu1) => ESS(),
-            @varname(mu2) => ESS(),
+            @varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS()
         )
-        vns = (@varname(z[1]), @varname(z[2]), @varname(z[3]), @varname(z[4]), @varname(mu1), @varname(mu2))
+        vns = (
+            @varname(z[1]),
+            @varname(z[2]),
+            @varname(z[3]),
+            @varname(z[4]),
+            @varname(mu1),
+            @varname(mu2)
+        )
         # `step`
         transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
         check_transition_varnames(transition, vns)
-        for _ = 1:5
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg), state)
+        for _ in 1:5
+            transition, state = AbstractMCMC.step(
+                rng, model, DynamicPPL.Sampler(alg), state
+            )
             check_transition_varnames(transition, vns)
         end
 
         # Sample!
         Random.seed!(42)
         chain = sample(model, alg, 1000; progress=false)
-        check_MoGtest_default_z_vector(chain, atol = 0.2)
+        check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
     @testset "externsalsampler" begin
@@ -251,18 +260,21 @@ has_dot_assume(::Model) = true
         model = demo_gibbs_external()
         samplers_inner = [
             externalsampler(AdvancedMH.RWMH(1)),
-            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoForwardDiff()),
-            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoReverseDiff()),
-            externalsampler(AdvancedHMC.HMC(1e-1, 32), adtype=AutoReverseDiff(compile=true)),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32); adtype=AutoForwardDiff()),
+            externalsampler(AdvancedHMC.HMC(1e-1, 32); adtype=AutoReverseDiff()),
+            externalsampler(
+                AdvancedHMC.HMC(1e-1, 32); adtype=AutoReverseDiff(; compile=true)
+            ),
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
             sampler = Turing.Experimental.Gibbs(
-                @varname(m1) => sampler_inner,
-                @varname(m2) => sampler_inner,
+                @varname(m1) => sampler_inner, @varname(m2) => sampler_inner
             )
             Random.seed!(42)
-            chain = sample(model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0)
-            check_numerical(chain, [:m1, :m2], [-0.2, 0.6], atol=0.1)
+            chain = sample(
+                model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
+            )
+            check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
         end
     end
 end

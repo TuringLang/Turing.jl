@@ -45,6 +45,8 @@ end
 SMC(space::Symbol...) = SMC(space)
 SMC(space::Tuple) = SMC(AdvancedPS.ResampleWithESSThreshold(), space)
 
+drop_space(alg::SMC{space,R}) where {space,R} = SMC{(),R}(alg.resampler)
+
 struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
     "The parameters for any given sample."
     θ::T
@@ -220,6 +222,8 @@ function PG(nparticles::Int, space::Tuple)
     return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(), space)
 end
 
+drop_space(alg::PG{space,R}) where {space,R} = PG{(),R}(alg.nparticles, alg.resampler)
+
 """
     CSMC(...)
 
@@ -240,6 +244,8 @@ struct PGState
     vi::AbstractVarInfo
     rng::Random.AbstractRNG
 end
+
+varinfo(state::PGState) = state.vi
 
 function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     theta = getparams(model, vi)
