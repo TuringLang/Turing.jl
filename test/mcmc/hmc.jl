@@ -146,7 +146,9 @@ using Turing
     # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
         Random.seed!(12345)
-        alg = Gibbs(; s=PG(20), m=HMCDA(500, 0.8, 0.25; init_ϵ=0.05, adtype=adbackend))
+        alg = Gibbs(
+            :s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05, adtype=adbackend)
+        )
         res = sample(StableRNG(123), gdemo_default, alg, 3000; discard_initial=1000)
         check_gdemo(res)
     end
@@ -199,9 +201,9 @@ using Turing
     end
 
     @testset "AHMC resize" begin
-        alg1 = Gibbs(; m=PG(10), s=NUTS(100, 0.65; adtype=adbackend))
-        alg2 = Gibbs(; m=PG(10), s=HMC(0.1, 3; adtype=adbackend))
-        alg3 = Gibbs(; m=PG(10), s=HMCDA(100, 0.65, 0.3; adtype=adbackend))
+        alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65; adtype=adbackend))
+        alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3; adtype=adbackend))
+        alg3 = Gibbs(:m => PG(10), :s => HMCDA(100, 0.65, 0.3; adtype=adbackend))
         @test sample(StableRNG(seed), gdemo_default, alg1, 10) isa Chains
         @test sample(StableRNG(seed), gdemo_default, alg2, 10) isa Chains
         @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains

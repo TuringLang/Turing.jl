@@ -54,7 +54,7 @@ const gdemo_default = gdemo_d()
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(; p=HMC(0.2, 3), x=PG(10))
+        gibbs = Gibbs(:p => HMC(0.2, 3), :x => PG(10))
 
         chn_s = sample(testbb(obs), smc, 1000)
         chn_p = sample(testbb(obs), pg, 2000)
@@ -81,7 +81,7 @@ const gdemo_default = gdemo_d()
             return s, m
         end
 
-        gibbs = Gibbs(; s=PG(10), m=HMC(0.4, 8))
+        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
     @testset "new grammar" begin
@@ -177,7 +177,7 @@ const gdemo_default = gdemo_d()
     end
 
     @testset "sample" begin
-        alg = Gibbs(; m=HMC(0.2, 3), s=PG(10))
+        alg = Gibbs(:m => HMC(0.2, 3), :s => PG(10))
         chn = sample(gdemo_default, alg, 1000)
     end
 

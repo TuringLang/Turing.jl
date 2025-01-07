@@ -379,6 +379,9 @@ function Gibbs(algs::InferenceAlgorithm...)
     return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
 end
 
+# This disambiguates a method ambiguity. To be removed when the above deprecated one is.
+Gibbs() = Gibbs([], [])
+
 function Gibbs(algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...)
     algs = Iterators.map(first, algs_with_iters)
     iters = Iterators.map(last, algs_with_iters)
