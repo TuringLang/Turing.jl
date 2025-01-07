@@ -398,10 +398,6 @@ struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     states::S
 end
 
-_maybecollect(x) = collect(x)  # assume it's iterable
-_maybecollect(x::VarName) = [x]
-_maybecollect(x::Symbol) = [x]
-
 varinfo(state::GibbsState) = state.vi
 
 function DynamicPPL.initialstep(
@@ -425,7 +421,6 @@ function DynamicPPL.initialstep(
     # Initialise each component sampler in turn, collect all their states.
     states = []
     for (varnames_local, sampler_local) in zip(varnames, samplers)
-        varnames_local = _maybecollect(varnames_local)
         # Get the initial values for this component sampler.
         initial_params_local = if initial_params === nothing
             nothing
@@ -476,7 +471,6 @@ function AbstractMCMC.step(
         # Take the inner step.
         sampler_local = samplers[index]
         state_local = states[index]
-        varnames_local = _maybecollect(varnames[index])
         vi, new_state_local = gibbs_step_inner(
             rng, model, varnames_local, sampler_local, state_local, vi; kwargs...
         )
