@@ -23,7 +23,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     # ensemble sampling.
     prop = AMH.StretchProposal(nothing, stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
-    return Emcee{(),typeof(ensemble)}(ensemble)
+    return Emcee{typeof(ensemble)}(ensemble)
 end
 
 drop_space(alg::Emcee) = alg
