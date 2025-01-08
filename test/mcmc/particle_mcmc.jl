@@ -4,7 +4,6 @@ using ..Models: gdemo_default
 #using ..Models: MoGtest, MoGtest_default
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
-using DynamicPPL: getspace
 using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing
@@ -13,19 +12,15 @@ using Turing
     @testset "constructor" begin
         s = SMC()
         @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === ()
 
         s = SMC(0.6)
         @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === ()
 
         s = SMC(resample_multinomial, 0.6)
         @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === ()
 
         s = SMC(resample_systematic)
         @test s.resampler === resample_systematic
-        @test getspace(s) === ()
     end
 
     @testset "models" begin
@@ -78,22 +73,18 @@ end
         s = PG(10)
         @test s.nparticles == 10
         @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === ()
 
         s = PG(60, 0.6)
         @test s.nparticles == 60
         @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === ()
 
         s = PG(80, resample_multinomial, 0.6)
         @test s.nparticles == 80
         @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === ()
 
         s = PG(100, resample_systematic)
         @test s.nparticles == 100
         @test s.resampler === resample_systematic
-        @test getspace(s) === ()
     end
 
     @testset "logevidence" begin
