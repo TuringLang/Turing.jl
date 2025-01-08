@@ -198,9 +198,7 @@ Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles.
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function PG(
-    nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold()
-)
+function PG(nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold())
     return PG{typeof(resampler)}(nparticles, resampler)
 end
 
