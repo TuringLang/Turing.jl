@@ -27,6 +27,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
 end
 
 drop_space(alg::Emcee) = alg
+DynamicPPL.getspace(::Emcee) = ()
 
 struct EmceeState{V<:AbstractVarInfo,S}
     vi::V
