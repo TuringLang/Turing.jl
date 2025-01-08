@@ -13,7 +13,7 @@ Foreman-Mackey, D., Hogg, D. W., Lang, D., & Goodman, J. (2013).
 emcee: The MCMC Hammer. Publications of the Astronomical Society of the
 Pacific, 125 (925), 306. https://doi.org/10.1086/670067
 """
-struct Emcee{space,E<:AMH.Ensemble} <: InferenceAlgorithm
+struct Emcee{E<:AMH.Ensemble} <: InferenceAlgorithm
     ensemble::E
 end
 
@@ -26,7 +26,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     return Emcee{(),typeof(ensemble)}(ensemble)
 end
 
-drop_space(alg::Emcee{space,E}) where {space,E} = Emcee{(),E}(alg.ensemble)
+drop_space(alg::Emcee) = alg
 
 struct EmceeState{V<:AbstractVarInfo,S}
     vi::V
