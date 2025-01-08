@@ -15,37 +15,34 @@ Sequential Monte Carlo sampler.
 
 $(TYPEDFIELDS)
 """
-struct SMC{space,R} <: ParticleInference
+struct SMC{R} <: ParticleInference
     resampler::R
 end
 
 """
-    SMC(space...)
-    SMC([resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    SMC([resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
+    SMC()
+    SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
-Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
+Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=())
-    return SMC{space,typeof(resampler)}(resampler)
+function SMC(resampler=AdvancedPS.ResampleWithESSThreshold())
+    return SMC{typeof(resampler)}(resampler)
 end
 
 # Convenient constructors with ESS threshold
-function SMC(resampler, threshold::Real, space::Tuple=())
-    return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
+function SMC(resampler, threshold::Real)
+    return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold))
 end
-function SMC(threshold::Real, space::Tuple=())
-    return SMC(AdvancedPS.resample_systematic, threshold, space)
+function SMC(threshold::Real)
+    return SMC(AdvancedPS.resample_systematic, threshold)
 end
 
-# If only the space is defined
-SMC(space::Symbol...) = SMC(space)
-SMC(space::Tuple) = SMC(AdvancedPS.ResampleWithESSThreshold(), space)
-
-drop_space(alg::SMC{space,R}) where {space,R} = SMC{(),R}(alg.resampler)
+drop_space(alg::SMC) = alg
+DynamicPPL.getspace(::SMC) = ()
 
 struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
     "The parameters for any given sample."
@@ -184,7 +181,7 @@ Particle Gibbs sampler.
 
 $(TYPEDFIELDS)
 """
-struct PG{space,R} <: ParticleInference
+struct PG{R} <: ParticleInference
     """Number of particles."""
     nparticles::Int
     """Resampling algorithm."""
@@ -192,37 +189,31 @@ struct PG{space,R} <: ParticleInference
 end
 
 """
-    PG(n, space...)
-    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
+    PG(n)
+    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
+    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)
 
-Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
-in `space`.
+Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles.
 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
 function PG(
-    nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=()
+    nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold()
 )
-    return PG{space,typeof(resampler)}(nparticles, resampler)
+    return PG{typeof(resampler)}(nparticles, resampler)
 end
 
 # Convenient constructors with ESS threshold
-function PG(nparticles::Int, resampler, threshold::Real, space::Tuple=())
-    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
+function PG(nparticles::Int, resampler, threshold::Real)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold))
 end
-function PG(nparticles::Int, threshold::Real, space::Tuple=())
-    return PG(nparticles, AdvancedPS.resample_systematic, threshold, space)
-end
-
-# If only the number of particles and the space is defined
-PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
-function PG(nparticles::Int, space::Tuple)
-    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(), space)
+function PG(nparticles::Int, threshold::Real)
+    return PG(nparticles, AdvancedPS.resample_systematic, threshold)
 end
 
-drop_space(alg::PG{space,R}) where {space,R} = PG{(),R}(alg.nparticles, alg.resampler)
+drop_space(alg::PG) = alg
+DynamicPPL.getspace(::PG) = ()
 
 """
     CSMC(...)
@@ -384,31 +375,21 @@ function DynamicPPL.assume(
     vi = trace_local_varinfo_maybe(_vi)
     trng = trace_local_rng_maybe(rng)
 
-    if inspace(vn, spl)
-        if ~haskey(vi, vn)
-            r = rand(trng, dist)
-            push!!(vi, vn, r, dist, spl)
-        elseif is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del") # Reference particle parent
-            r = rand(trng, dist)
-            vi[vn] = DynamicPPL.tovec(r)
-            DynamicPPL.setgid!(vi, spl.selector, vn)
-            setorder!(vi, vn, get_num_produce(vi))
-        else
-            DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
-            r = vi[vn]
-        end
-        # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
-        lp = 0
-    else # vn belongs to other sampler <=> conditioning on vn
-        if haskey(vi, vn)
-            r = vi[vn]
-        else
-            r = rand(rng, dist)
-            push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
-        end
-        lp = logpdf_with_trans(dist, r, istrans(vi, vn))
+    if ~haskey(vi, vn)
+        r = rand(trng, dist)
+        push!!(vi, vn, r, dist, spl)
+    elseif is_flagged(vi, vn, "del")
+        unset_flag!(vi, vn, "del") # Reference particle parent
+        r = rand(trng, dist)
+        vi[vn] = DynamicPPL.tovec(r)
+        DynamicPPL.setgid!(vi, spl.selector, vn)
+        setorder!(vi, vn, get_num_produce(vi))
+    else
+        DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
+        r = vi[vn]
     end
+    # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
+    lp = 0
     return r, lp, vi
 end
 

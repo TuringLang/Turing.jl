@@ -592,10 +592,6 @@ include("emcee.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG)
-    @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
-end
-
 function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
 ) where {T,N,TV<:Array{T,N}}

@@ -267,25 +267,6 @@ end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @info "Starting Gibbs tests with $adbackend"
-    @testset "Deprecated Gibbs constructors" begin
-        N = 10
-        @test_deprecated s2 = Gibbs(PG(10, :s, :m))
-        @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        for s in (s2, s3, s4, s5)
-            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
-        end
-
-        # Check that the samplers work despite using the deprecated constructor.
-        sample(gdemo_default, s2, N)
-        sample(gdemo_default, s3, N)
-        sample(gdemo_default, s4, N)
-        sample(gdemo_default, s5, N)
-
-        g = Turing.Sampler(s3, gdemo_default)
-        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
-    end
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the
