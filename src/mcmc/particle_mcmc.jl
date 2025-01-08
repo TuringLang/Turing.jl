@@ -17,6 +17,10 @@ $(TYPEDFIELDS)
 """
 struct SMC{R} <: ParticleInference
     resampler::R
+
+    # Specifying this constructor stops the creation of default constructors. We rather
+    # define our own outer constructors below.
+    SMC{R}(resampler::R) where {R} = new{R}(resampler)
 end
 
 """
@@ -186,6 +190,10 @@ struct PG{R} <: ParticleInference
     nparticles::Int
     """Resampling algorithm."""
     resampler::R
+
+    # Specifying this constructor stops the creation of default constructors. We rather
+    # define our own outer constructors below.
+    PG{R}(nparticles::Int, resampler::R) where {R} = new{R}(nparticles, resampler)
 end
 
 """
