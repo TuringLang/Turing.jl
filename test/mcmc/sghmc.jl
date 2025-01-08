@@ -19,12 +19,7 @@ using Turing
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
 
-        alg = SGHMC(:m; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
-        @test alg isa SGHMC
-        sampler = Turing.Sampler(alg)
-        @test sampler isa Turing.Sampler{<:SGHMC}
-
-        alg = SGHMC(:s; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
+        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=adbackend)
         @test alg isa SGHMC
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
@@ -45,12 +40,7 @@ end
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGLD}
 
-        alg = SGLD(:m; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
-        @test alg isa SGLD
-        sampler = Turing.Sampler(alg)
-        @test sampler isa Turing.Sampler{<:SGLD}
-
-        alg = SGLD(:s; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
+        alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adbackend)
         @test alg isa SGLD
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGLD}

@@ -595,9 +595,6 @@ include("emcee.jl")
 for alg in (:SMC, :PG, :IS, :Emcee)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
-for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
-    @eval DynamicPPL.getspace(::$alg{<:Any,space}) where {space} = space
-end
 
 function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}

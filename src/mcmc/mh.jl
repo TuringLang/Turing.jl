@@ -139,6 +139,7 @@ struct MH{P} <: InferenceAlgorithm
     end
 end
 
+# TODO(mhauru) Remove the below once DPPL no longer relies on it.
 drop_space(alg::MH) = alg
 DynamicPPL.getspace(::MH) = ()
 

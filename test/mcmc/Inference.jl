@@ -368,7 +368,7 @@ using Turing
         sample(
             StableRNG(seed),
             newinterface(obs),
-            HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
+            HMC(0.75, 3; adtype=Turing.AutoForwardDiff(; chunksize=2)),
             100,
         )
     end
