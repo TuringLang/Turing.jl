@@ -322,8 +322,10 @@ Currently only variable names without indexing are supported, so for instance
 # Fields
 $(TYPEDFIELDS)
 """
-struct Gibbs{V<:AbstractVector{<:AbstractVector{<:VarName}},A<:AbstractVector} <:
+struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
        InferenceAlgorithm
+    # TODO(mhauru) Revisit whether A should have a fixed element type once
+    # InferenceAlgorithm/Sampler types have been cleaned up.
     "varnames representing variables for each sampler"
     varnames::V
     "samplers for each entry in `varnames`"
@@ -343,9 +345,9 @@ struct Gibbs{V<:AbstractVector{<:AbstractVector{<:VarName}},A<:AbstractVector} <
 
         # Ensure that samplers have the same selector, and that varnames are lists of
         # VarNames.
-        samplers = map(set_selector ∘ drop_space, samplers)
-        varnames = map(to_varname_list, varnames)
-        return new{typeof(varnames),typeof(samplers)}(varnames, samplers)
+        samplers = tuple(map(set_selector ∘ drop_space, samplers)...)
+        varnames = tuple(map(to_varname_list, varnames)...)
+        return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
 end
 
