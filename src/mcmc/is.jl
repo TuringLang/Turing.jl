@@ -24,11 +24,9 @@ end
 sample(gdemo([1.5, 2]), IS(), 1000)
 ```
 """
-struct IS{space} <: InferenceAlgorithm end
+struct IS <: InferenceAlgorithm end
 
-IS() = IS{()}()
-
-drop_space(alg::IS) = IS()
+drop_space(alg::IS) = alg
 
 DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 

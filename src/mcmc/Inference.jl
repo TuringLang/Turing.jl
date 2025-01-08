@@ -592,7 +592,7 @@ include("emcee.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :IS)
+for alg in (:SMC, :PG)
     @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
 end
 
