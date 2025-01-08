@@ -360,7 +360,7 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype=adtype)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT; adtype=adtype)
 end
 
 function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ::Tuple{}; kwargs...)
@@ -446,7 +446,7 @@ function NUTS(
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
+    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
 end
 
 function NUTS(; kwargs...)
