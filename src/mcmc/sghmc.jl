@@ -1,7 +1,7 @@
 """
-    SGHMC{AD,space}
+    SGHMC{AD}
 
-Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.e
+Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
 # Fields
 $(TYPEDFIELDS)
@@ -12,15 +12,14 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian
+struct SGHMC{AD,T<:Real} <: StaticHamiltonian
     learning_rate::T
     momentum_decay::T
     adtype::AD
 end
 
 """
-    SGHMC(
-        space::Symbol...;
+    SGHMC(;
         learning_rate::Real,
         momentum_decay::Real,
         adtype::ADTypes.AbstractADType = AutoForwardDiff(),
@@ -37,21 +36,18 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-function SGHMC(
-    space::Symbol...;
+function SGHMC(;
     learning_rate::Real,
     momentum_decay::Real,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
-    return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(
+    return SGHMC{typeof(adtype),typeof(_learning_rate)}(
         _learning_rate, _momentum_decay, adtype
     )
 end
 
-function drop_space(alg::SGHMC{AD,space,T}) where {AD,space,T}
-    return SGHMC{AD,(),T}(alg.learning_rate, alg.momentum_decay, alg.adtype)
-end
+drop_space(alg::SGHMC) = alg
 
 struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
     logdensity::L
@@ -128,15 +124,13 @@ Max Welling & Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Lan
 Dynamics. In: Proceedings of the 28th International Conference on Machine Learning
 (pp. 681–688).
 """
-struct SGLD{AD,space,S} <: StaticHamiltonian
+struct SGLD{AD,S} <: StaticHamiltonian
     "Step size function."
     stepsize::S
     adtype::AD
 end
 
-function drop_space(alg::SGLD{AD,space,S}) where {AD,space,S}
-    return SGLD{AD,(),S}(alg.stepsize, alg.adtype)
-end
+drop_space(alg::SGLD) = alg
 
 struct PolynomialStepsize{T<:Real}
     "Constant scale factor of the step size."
@@ -172,8 +166,7 @@ end
 (f::PolynomialStepsize)(t::Int) = f.a / (t + f.b)^f.γ
 
 """
-    SGLD(
-        space::Symbol...;
+    SGLD(;
         stepsize = PolynomialStepsize(0.01),
         adtype::ADTypes.AbstractADType = AutoForwardDiff(),
     )
@@ -193,12 +186,10 @@ Dynamics. In: Proceedings of the 28th International Conference on Machine Learni
 
 See also: [`PolynomialStepsize`](@ref)
 """
-function SGLD(
-    space::Symbol...;
-    stepsize=PolynomialStepsize(0.01),
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+function SGLD(;
+    stepsize=PolynomialStepsize(0.01), adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE
 )
-    return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
+    return SGLD{typeof(adtype),typeof(stepsize)}(stepsize, adtype)
 end
 
 struct SGLDTransition{T,F<:Real} <: AbstractTransition
