@@ -35,8 +35,8 @@ using Turing
         c1 = sample(demo_default, s1, N)
         c2 = sample(demodot_default, s1, N)
 
-        s2 = Gibbs(; m=ESS(), s=MH())
-        c3 = sample(gdemo_default, s2, N)
+        s2 = Gibbs(:m => ESS(), :s => MH())
+        c3 = sample(gdemo_default, s3, N)
     end
 
     @testset "ESS inference" begin
@@ -54,7 +54,7 @@ using Turing
         end
 
         @testset "gdemo with CSMC + ESS" begin
-            alg = Gibbs(; s=CSMC(15), m=ESS())
+            alg = Gibbs(:s => CSMC(15), :m => ESS())
             chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 2000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
