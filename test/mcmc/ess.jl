@@ -36,7 +36,7 @@ using Turing
         c2 = sample(demodot_default, s1, N)
 
         s2 = Gibbs(:m => ESS(), :s => MH())
-        c3 = sample(gdemo_default, s3, N)
+        c3 = sample(gdemo_default, s2, N)
     end
 
     @testset "ESS inference" begin
