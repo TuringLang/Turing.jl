@@ -45,9 +45,6 @@ function SMC(threshold::Real)
     return SMC(AdvancedPS.resample_systematic, threshold)
 end
 
-drop_space(alg::SMC) = alg
-DynamicPPL.getspace(::SMC) = ()
-
 struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
     "The parameters for any given sample."
     θ::T
@@ -217,9 +214,6 @@ end
 function PG(nparticles::Int, threshold::Real)
     return PG(nparticles, AdvancedPS.resample_systematic, threshold)
 end
-
-drop_space(alg::PG) = alg
-DynamicPPL.getspace(::PG) = ()
 
 """
     CSMC(...)

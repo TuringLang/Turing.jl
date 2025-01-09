@@ -91,18 +91,6 @@ abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
-# TODO(mhauru) Remove the below function once all the space/Selector stuff has been removed.
-"""
-    drop_space(alg::InferenceAlgorithm)
-
-Return an `InferenceAlgorithm` like `alg`, but with all space information removed.
-"""
-function drop_space end
-
-function drop_space(sampler::Sampler)
-    return Sampler(drop_space(sampler.alg), sampler.selector)
-end
-
 include("repeat_sampler.jl")
 
 """
@@ -145,11 +133,6 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
         return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
     end
 end
-
-# External samplers don't have notion of space to begin with.
-drop_space(x::ExternalSampler) = x
-
-DynamicPPL.getspace(::ExternalSampler) = ()
 
 """
     requires_unconstrained_space(sampler::ExternalSampler)
@@ -216,8 +199,6 @@ end
 Algorithm for sampling from the prior.
 """
 struct Prior <: InferenceAlgorithm end
-
-drop_space(x::Prior) = x
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -602,6 +583,8 @@ end
 # Utilities  #
 ##############
 
+# TODO(mhauru) Remove this once DynamicPPL has removed all its Selector stuff.
+DynamicPPL.getspace(::InferenceAlgorithm) = ()
 DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
 DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 

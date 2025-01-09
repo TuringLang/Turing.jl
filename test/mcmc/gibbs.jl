@@ -17,7 +17,7 @@ using Random: Random
 using ReverseDiff: ReverseDiff
 import Mooncake
 using StableRNGs: StableRNG
-using Test: @inferred, @test, @test_broken, @test_deprecated, @test_throws, @testset
+using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -150,7 +150,6 @@ end
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
     Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
-    Inference.drop_space(wrap::AlgWrapper) = AlgWrapper(Inference.drop_space(wrap.inner))
     function Inference.setparams_varinfo!!(
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},

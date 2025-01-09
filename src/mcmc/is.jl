@@ -26,9 +26,6 @@ sample(gdemo([1.5, 2]), IS(), 1000)
 """
 struct IS <: InferenceAlgorithm end
 
-drop_space(alg::IS) = alg
-DynamicPPL.getspace(::IS) = ()
-
 DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 
 function DynamicPPL.initialstep(

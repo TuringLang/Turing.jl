@@ -139,10 +139,6 @@ struct MH{P} <: InferenceAlgorithm
     end
 end
 
-# TODO(mhauru) Remove the below once DPPL no longer relies on it.
-drop_space(alg::MH) = alg
-DynamicPPL.getspace(::MH) = ()
-
 # Some of the proposals require working in unconstrained space.
 transform_maybe(proposal::AMH.Proposal) = proposal
 function transform_maybe(proposal::AMH.RandomWalkProposal)

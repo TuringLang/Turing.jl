@@ -47,8 +47,6 @@ function SGHMC(;
     )
 end
 
-drop_space(alg::SGHMC) = alg
-
 struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
     logdensity::L
     vi::V
@@ -129,8 +127,6 @@ struct SGLD{AD,S} <: StaticHamiltonian
     stepsize::S
     adtype::AD
 end
-
-drop_space(alg::SGLD) = alg
 
 struct PolynomialStepsize{T<:Real}
     "Constant scale factor of the step size."

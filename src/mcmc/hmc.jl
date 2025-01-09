@@ -76,10 +76,6 @@ function HMC(
     return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
-# TODO(mhauru) Remove the below once DPPL no longer relies on it.
-drop_space(alg::Hamiltonian) = alg
-DynamicPPL.getspace(::Hamiltonian) = ()
-
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`

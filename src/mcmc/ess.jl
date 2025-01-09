@@ -22,10 +22,6 @@ Mean
 """
 struct ESS <: InferenceAlgorithm end
 
-# TODO(mhauru) Remove the below once DPPL no longer relies on it.
-drop_space(alg::ESS) = alg
-DynamicPPL.getspace(::Sampler{<:ESS}) = ()
-
 # always accept in the first step
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
