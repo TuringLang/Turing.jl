@@ -17,10 +17,6 @@ $(TYPEDFIELDS)
 """
 struct SMC{R} <: ParticleInference
     resampler::R
-
-    # Specifying this constructor stops the creation of default constructors. We rather
-    # define our own outer constructors below.
-    SMC{R}(resampler::R) where {R} = new{R}(resampler)
 end
 
 """
@@ -184,10 +180,6 @@ struct PG{R} <: ParticleInference
     nparticles::Int
     """Resampling algorithm."""
     resampler::R
-
-    # Specifying this constructor stops the creation of default constructors. We rather
-    # define our own outer constructors below.
-    PG{R}(nparticles::Int, resampler::R) where {R} = new{R}(nparticles, resampler)
 end
 
 """
@@ -199,8 +191,8 @@ Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles.
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function PG(nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold())
-    return PG{typeof(resampler)}(nparticles, resampler)
+function PG(nparticles::Int)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold())
 end
 
 # Convenient constructors with ESS threshold
