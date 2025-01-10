@@ -42,9 +42,7 @@ function SGHMC(;
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
-    return SGHMC{typeof(adtype),typeof(_learning_rate)}(
-        _learning_rate, _momentum_decay, adtype
-    )
+    return SGHMC(_learning_rate, _momentum_decay, adtype)
 end
 
 struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
@@ -185,7 +183,7 @@ See also: [`PolynomialStepsize`](@ref)
 function SGLD(;
     stepsize=PolynomialStepsize(0.01), adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE
 )
-    return SGLD{typeof(adtype),typeof(stepsize)}(stepsize, adtype)
+    return SGLD(stepsize, adtype)
 end
 
 struct SGLDTransition{T,F<:Real} <: AbstractTransition
