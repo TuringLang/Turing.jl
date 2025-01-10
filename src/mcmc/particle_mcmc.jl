@@ -24,7 +24,6 @@ struct SMC{R} <: ParticleInference
 end
 
 """
-    SMC()
     SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
     SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
@@ -33,9 +32,7 @@ Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler=AdvancedPS.ResampleWithESSThreshold())
-    return SMC{typeof(resampler)}(resampler)
-end
+SMC() = SMC(AdvancedPS.ResampleWithESSThreshold())
 
 # Convenient constructors with ESS threshold
 function SMC(resampler, threshold::Real)
@@ -194,7 +191,6 @@ struct PG{R} <: ParticleInference
 end
 
 """
-    PG(n)
     PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
     PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)
 
