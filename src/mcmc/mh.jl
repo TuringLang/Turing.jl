@@ -398,9 +398,6 @@ function DynamicPPL.assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!(vi, vn, spl)
-    # Return.
     return retval
 end
 
@@ -414,9 +411,6 @@ function DynamicPPL.dot_assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
-    # Return.
     return retval
 end
 function DynamicPPL.dot_assume(
@@ -429,8 +423,6 @@ function DynamicPPL.dot_assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
     return retval
 end
 

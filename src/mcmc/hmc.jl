@@ -495,7 +495,6 @@ end
 function DynamicPPL.assume(
     rng, spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
-    DynamicPPL.updategid!(vi, vn, spl)
     return DynamicPPL.assume(dist, vn, vi)
 end
 
@@ -507,7 +506,6 @@ function DynamicPPL.dot_assume(
     var::AbstractMatrix,
     vi,
 )
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dist, var, vns, vi)
 end
 function DynamicPPL.dot_assume(
@@ -518,7 +516,6 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 

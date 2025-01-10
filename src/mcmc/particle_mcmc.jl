@@ -370,10 +370,8 @@ function DynamicPPL.assume(
         unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)
         vi[vn] = DynamicPPL.tovec(r)
-        DynamicPPL.setgid!(vi, spl.selector, vn)
         setorder!(vi, vn, get_num_produce(vi))
     else
-        DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
         r = vi[vn]
     end
     # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
