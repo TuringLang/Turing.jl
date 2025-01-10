@@ -50,6 +50,7 @@ import LogDensityProblems
 import LogDensityProblemsAD
 import Random
 import MCMCChains
+import StatsBase: predict
 
 export InferenceAlgorithm,
     Hamiltonian,
@@ -77,6 +78,7 @@ export InferenceAlgorithm,
     dot_assume,
     observe,
     dot_observe,
+    predict,
     externalsampler
 
 #######################
