@@ -654,14 +654,10 @@ function gibbs_step_recursive(
     # going to be a significant expense anyway.
     # Set the state of the current sampler, accounting for any changes made by other
     # samplers.
-    state = setparams_varinfo!!(
-        conditioned_model, sampler, state, vi
-    )
+    state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
 
     # Take a step with the local sampler.
-    new_state = last(
-        AbstractMCMC.step(rng, conditioned_model, sampler, state; kwargs...)
-    )
+    new_state = last(AbstractMCMC.step(rng, conditioned_model, sampler, state; kwargs...))
 
     new_vi_local = varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
