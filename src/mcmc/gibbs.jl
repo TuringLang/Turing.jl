@@ -409,19 +409,13 @@ function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:Gibbs},
-    vi_base::DynamicPPL.AbstractVarInfo;
+    vi::DynamicPPL.AbstractVarInfo;
     initial_params=nothing,
     kwargs...,
 )
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
-
-    # Run the model once to get the varnames present + initial values to condition on.
-    vi = DynamicPPL.VarInfo(rng, model)
-    if initial_params !== nothing
-        vi = DynamicPPL.unflatten(vi, initial_params)
-    end
 
     vi, states = gibbs_initialstep_recursive(
         rng, model, varnames, samplers, vi; initial_params=initial_params, kwargs...
