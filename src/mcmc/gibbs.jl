@@ -429,14 +429,14 @@ recursively on the remaining samplers, until no samplers remain. Return the glob
 and a tuple of initial states for all component samplers.
 """
 function gibbs_initialstep_recursive(
-    rng, model, varname_tuples, samplers, vi, states=(); initial_params=nothing, kwargs...
+    rng, model, varname_vecs, samplers, vi, states=(); initial_params=nothing, kwargs...
 )
     # End recursion
-    if isempty(varname_tuples) && isempty(samplers)
+    if isempty(varname_vecs) && isempty(samplers)
         return vi, states
     end
 
-    varnames, varname_tuples_tail... = varname_tuples
+    varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
 
     # Get the initial values for this component sampler.
@@ -470,7 +470,7 @@ function gibbs_initialstep_recursive(
     return gibbs_initialstep_recursive(
         rng,
         model,
-        varname_tuples_tail,
+        varname_vecs_tail,
         samplers_tail,
         vi,
         states;
@@ -624,7 +624,7 @@ function on the tail, until there are no more samplers left.
 function gibbs_step_recursive(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    varname_tuples,
+    varname_vecs,
     samplers,
     states,
     global_vi,
@@ -632,11 +632,11 @@ function gibbs_step_recursive(
     kwargs...,
 )
     # End recursion.
-    if isempty(varname_tuples) && isempty(samplers) && isempty(states)
+    if isempty(varname_vecs) && isempty(samplers) && isempty(states)
         return global_vi, new_states
     end
 
-    varnames, varname_tuples_tail... = varname_tuples
+    varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
     state, states_tail... = states
 
@@ -672,7 +672,7 @@ function gibbs_step_recursive(
     return gibbs_step_recursive(
         rng,
         model,
-        varname_tuples_tail,
+        varname_vecs_tail,
         samplers_tail,
         states_tail,
         new_global_vi,
