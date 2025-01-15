@@ -2,10 +2,6 @@
 ### Sampler states
 ###
 
-struct MH{space,P} <: InferenceAlgorithm
-    proposals::P
-end
-
 proposal(p::AdvancedMH.Proposal) = p
 proposal(f::Function) = AdvancedMH.StaticProposal(f)
 proposal(d::Distribution) = AdvancedMH.StaticProposal(d)
@@ -13,15 +9,15 @@ proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
 proposal(x) = error("proposals of type ", typeof(x), " are not supported")
 
 """
-    MH(space...)
+    MH(proposals...)
 
 Construct a Metropolis-Hastings algorithm.
 
-The arguments `space` can be
+The arguments `proposals` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
 - An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function`
-  that generates returns a conditional proposal distribution.
+  that returns a conditional proposal distribution.
 - A covariance matrix to use as for mean-zero multivariate normal proposals.
 
 # Examples
@@ -108,44 +104,40 @@ mean(chain)
 ```
 
 """
-function MH(space...)
-    syms = Symbol[]
+struct MH{P} <: InferenceAlgorithm
+    proposals::P
 
-    prop_syms = Symbol[]
-    props = AMH.Proposal[]
+    function MH(proposals...)
+        prop_syms = Symbol[]
+        props = AMH.Proposal[]
 
-    for s in space
-        if s isa Symbol
-            # If it's just a symbol, proceed as normal.
-            push!(syms, s)
-        elseif s isa Pair || s isa Tuple
-            # Check to see whether it's a pair that specifies a kernel
-            # or a specific proposal distribution.
-            push!(prop_syms, s[1])
-            push!(props, proposal(s[2]))
-        elseif length(space) == 1
-            # If we hit this block, check to see if it's
-            # a run-of-the-mill proposal or covariance
-            # matrix.
-            prop = proposal(s)
+        for s in proposals
+            if s isa Pair || s isa Tuple
+                # Check to see whether it's a pair that specifies a kernel
+                # or a specific proposal distribution.
+                push!(prop_syms, s[1])
+                push!(props, proposal(s[2]))
+            elseif length(proposals) == 1
+                # If we hit this block, check to see if it's
+                # a run-of-the-mill proposal or covariance
+                # matrix.
+                prop = proposal(s)
 
-            # Return early, we got a covariance matrix.
-            return MH{(),typeof(prop)}(prop)
-        else
-            # Try to convert it to a proposal anyways,
-            # throw an error if not acceptable.
-            prop = proposal(s)
-            push!(props, prop)
+                # Return early, we got a covariance matrix.
+                return new{typeof(prop)}(prop)
+            else
+                # Try to convert it to a proposal anyways,
+                # throw an error if not acceptable.
+                prop = proposal(s)
+                push!(props, prop)
+            end
         end
+
+        proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
+
+        return new{typeof(proposals)}(proposals)
     end
-
-    proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
-    syms = vcat(syms, prop_syms)
-
-    return MH{tuple(syms...),typeof(proposals)}(proposals)
 end
-
-drop_space(alg::MH{space,P}) where {space,P} = MH{(),P}(alg.proposals)
 
 # Some of the proposals require working in unconstrained space.
 transform_maybe(proposal::AMH.Proposal) = proposal
@@ -351,7 +343,7 @@ function propose!!(
 )
     # If this is the case, we can just draw directly from the proposal
     # matrix.
-    vals = vi[spl]
+    vals = vi[:]
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
@@ -406,9 +398,6 @@ function DynamicPPL.assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!(vi, vn, spl)
-    # Return.
     return retval
 end
 
@@ -422,9 +411,6 @@ function DynamicPPL.dot_assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
-    # Return.
     return retval
 end
 function DynamicPPL.dot_assume(
@@ -437,8 +423,6 @@ function DynamicPPL.dot_assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
     return retval
 end
 
