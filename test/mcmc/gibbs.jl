@@ -759,6 +759,25 @@ end
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
         end
     end
+
+    # Test a model that where the sampler needs to link a variable, which consequently
+    # changes dimension. This used to error because the initial value `VarInfo`,
+    # obtained from just `VarInfo(model)`, had a value of dimension 2 for `w`, and the one
+    # coming out of the initial step of the component sampler had a dimension of 1, since it
+    # the latter was linked. `merge` of the varinfos couldn't handle that.
+    @testset "linking changes dimension" begin
+        @model function dirichlet_model()
+            K = 2
+            w ~ Dirichlet(K, 1.0)
+            for i in 1:K
+                0.1 ~ Normal(w[i], 1.0)
+            end
+        end
+
+        model = dirichlet_model()
+        sampler = Gibbs(:w => HMC(0.05, 10))
+        @test (sample(model, sampler, 10); true)
+    end
 end
 
 end
