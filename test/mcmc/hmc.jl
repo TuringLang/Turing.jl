@@ -86,11 +86,7 @@ using Turing
         r_mean = dropdims(mean(r; dims=1); dims=1)
 
         # TODO(mhauru) The below remains broken for Enzyme. Need to investigate why.
-        if !(adbackend isa AutoEnzyme)
-            @test isapprox(r_mean, mean(dist); atol=0.2)
-        else
-            @test_broken isapprox(r_mean, mean(dist); atol=0.2)
-        end
+        @test isapprox(r_mean, mean(dist); atol=0.2) broken=(adbackend isa AutoEnzyme)
     end
 
     @testset "multivariate support" begin
