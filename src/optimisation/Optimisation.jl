@@ -16,6 +16,7 @@ using Printf: Printf
 using ForwardDiff: ForwardDiff
 using StatsAPI: StatsAPI
 using Statistics: Statistics
+using LinearAlgebra: LinearAlgebra
 
 export maximum_a_posteriori, maximum_likelihood
 # The MAP and MLE exports are only needed for the Optim.jl interface.
@@ -228,11 +229,47 @@ end
 
 # Various StatsBase methods for ModeResult
 
-function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
+function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
     # Get columns for coeftable.
     terms = string.(StatsBase.coefnames(m))
     estimates = m.values.array[:, 1]
-    stderrors = StatsBase.stderror(m)
+    notes = nothing
+    local stderrors
+    if numerrors_warnonly
+        infmat = StatsBase.informationmatrix(m)
+        local vcov
+        try
+            vcov = inv(infmat)
+        catch e
+            if isa(e, LinearAlgebra.SingularException)
+                stderrors = fill(NaN, length(m.values))
+                notes = ["Info. matrix is singular" for _ in 1:length(m.values)]
+            else
+                rethrow(e)
+            end
+        else
+            stderrors = []
+            vars = LinearAlgebra.diag(vcov)
+            if any(x -> x < 0, vars)
+                notes = []
+            end
+            for var in vars
+                if var >= 0
+                    push!(stderrors, sqrt(var))
+                    if notes !== nothing
+                        push!(notes, "")
+                    end
+                else
+                    push!(stderrors, NaN)
+                    if notes !== nothing
+                        push!(notes, "Negative variance")
+                    end
+                end
+            end
+        end
+    else
+        stderrors = StatsBase.stderror(m)
+    end
     zscore = estimates ./ stderrors
     p = map(z -> StatsAPI.pvalue(Distributions.Normal(), z; tail=:both), zscore)
 
@@ -244,7 +281,7 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     level_ = 100 * level
     level_percentage = isinteger(level_) ? Int(level_) : level_
 
-    cols = [estimates, stderrors, zscore, p, ci_low, ci_high]
+    cols = Vector[estimates, stderrors, zscore, p, ci_low, ci_high]
     colnms = [
         "Coef.",
         "Std. Error",
@@ -253,6 +290,10 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
         "Lower $(level_percentage)%",
         "Upper $(level_percentage)%",
     ]
+    if notes !== nothing
+        push!(cols, notes)
+        push!(colnms, "Error notes")
+    end
     return StatsBase.CoefTable(cols, colnms, terms)
 end
 

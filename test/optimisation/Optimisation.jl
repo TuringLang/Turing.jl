@@ -635,6 +635,24 @@ using Turing
             maximum_a_posteriori(m; adtype=adbackend)
         end
     end
+
+    @testset "Collinear coeftable" begin
+        xs = [-1.0, 0.0, 1.0]
+        ys = [0.0, 0.0, 0.0]
+
+        @model function collinear(x, y)
+            a ~ Normal(0, 1)
+            b ~ Normal(0, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, 1)
+        end
+
+        model = collinear(xs, ys)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        tab = coeftable(mle_estimate)
+        @assert isnan(tab.cols[2][1])
+        @assert tab.colnms[end] == "Error notes"
+        @assert occursin("singular", tab.cols[end][1])
+    end
 end
 
 end
