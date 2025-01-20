@@ -16,6 +16,8 @@ using Printf: Printf
 using ForwardDiff: ForwardDiff
 using StatsAPI: StatsAPI
 using Statistics: Statistics
+using NaNMath: NaNMath
+using LinearAlgebra: LinearAlgebra
 
 export maximum_a_posteriori, maximum_likelihood
 # The MAP and MLE exports are only needed for the Optim.jl interface.
@@ -281,6 +283,7 @@ function StatsBase.informationmatrix(
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
 
+StatsAPI.stderror(model::ModeResult) = NaNMath.sqrt.(LinearAlgebra.diag(StatsBase.vcov(model)))
 StatsBase.coef(m::ModeResult) = m.values
 StatsBase.coefnames(m::ModeResult) = names(m.values)[1]
 StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
