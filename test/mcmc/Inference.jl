@@ -32,8 +32,8 @@ using Turing
                 PG(10),
                 IS(),
                 MH(),
-                Gibbs(; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)),
-                Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS()),
+                Gibbs(:s => PG(3), :m => HMC(0.4, 8; adtype=adbackend)),
+                Gibbs(:s => HMC(0.1, 5; adtype=adbackend), :m => ESS()),
             )
             for sampler in samplers
                 Random.seed!(5)
@@ -82,7 +82,7 @@ using Turing
     @testset "chain save/resume" begin
         alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
         alg2 = PG(20)
-        alg3 = Gibbs(; s=PG(30), m=HMC(0.2, 4; adtype=adbackend))
+        alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4; adtype=adbackend))
 
         chn1 = sample(StableRNG(seed), gdemo_default, alg1, 2_000; save_state=true)
         check_gdemo(chn1)
@@ -261,7 +261,7 @@ using Turing
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(; p=HMC(0.2, 3; adtype=adbackend), x=PG(10))
+        gibbs = Gibbs(:p => HMC(0.2, 3; adtype=adbackend), :x => PG(10))
 
         chn_s = sample(StableRNG(seed), testbb(obs), smc, 200)
         chn_p = sample(StableRNG(seed), testbb(obs), pg, 200)
@@ -289,7 +289,7 @@ using Turing
             return s, m
         end
 
-        gibbs = Gibbs(; s=PG(10), m=HMC(0.4, 8; adtype=adbackend))
+        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8; adtype=adbackend))
         chain = sample(StableRNG(seed), fggibbstest(xs), gibbs, 2)
     end
 
@@ -416,7 +416,7 @@ using Turing
     end
 
     @testset "sample" begin
-        alg = Gibbs(; m=HMC(0.2, 3; adtype=adbackend), s=PG(10))
+        alg = Gibbs(:m => HMC(0.2, 3; adtype=adbackend), :s => PG(10))
         chn = sample(StableRNG(seed), gdemo_default, alg, 10)
     end
 

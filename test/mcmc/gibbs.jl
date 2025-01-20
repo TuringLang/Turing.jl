@@ -131,6 +131,9 @@ end
     @test_throws ArgumentError Gibbs(
         @varname(s) => SGLD(; stepsize=PolynomialStepsize(0.25))
     )
+    # Values that we don't know how to convert to VarNames.
+    @test_throws MethodError Gibbs(1 => NUTS())
+    @test_throws MethodError Gibbs("x" => NUTS())
 end
 
 # Test that the samplers are being called in the correct order, on the correct target
@@ -228,14 +231,14 @@ end
     nuts = NUTS()
     # Sample with all sorts of combinations of samplers and targets.
     sampler = Gibbs(
-        (@varname(s),) => AlgWrapper(mh),
+        @varname(s) => AlgWrapper(mh),
         (@varname(s), @varname(m)) => AlgWrapper(mh),
-        (@varname(m),) => AlgWrapper(pg),
-        (@varname(xs),) => AlgWrapper(hmc),
-        (@varname(ys),) => AlgWrapper(nuts),
-        (@varname(ys),) => AlgWrapper(nuts),
+        @varname(m) => AlgWrapper(pg),
+        @varname(xs) => AlgWrapper(hmc),
+        @varname(ys) => AlgWrapper(nuts),
+        @varname(ys) => AlgWrapper(nuts),
         (@varname(xs), @varname(ys)) => AlgWrapper(hmc),
-        (@varname(s),) => AlgWrapper(mh),
+        @varname(s) => AlgWrapper(mh),
     )
     chain = sample(test_model(-1), sampler, 2)
 
@@ -301,17 +304,12 @@ end
         # Two variables being sampled by one sampler.
         s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5; adtype=adbackend))
         s2 = Gibbs((@varname(s), :m) => PG(10))
-        # One variable per sampler, using the keyword arg interface.
-        s3 = Gibbs((; s=PG(3), m=HMC(0.4, 8; adtype=adbackend)))
-        # As above but using a Dict of VarNames.
-        s4 = Gibbs(Dict(@varname(s) => PG(3), @varname(m) => HMC(0.4, 8; adtype=adbackend)))
         # As above but different samplers and using kwargs.
-        s5 = Gibbs(; s=CSMC(3), m=HMCDA(200, 0.65, 0.15; adtype=adbackend))
-        s6 = Gibbs(; s=HMC(0.1, 5; adtype=adbackend), m=ESS())
-        s7 = Gibbs(Dict((:s, @varname(m)) => PG(10)))
+        s3 = Gibbs(:s => CSMC(3), :m => HMCDA(200, 0.65, 0.15; adtype=adbackend))
+        s4 = Gibbs(@varname(s) => HMC(0.1, 5; adtype=adbackend), @varname(m) => ESS())
         # Multiple instnaces of the same sampler. This implements running, in this case,
         # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
-        s8 = begin
+        s5 = begin
             hmc = HMC(0.1, 5; adtype=adbackend)
             pg = PG(10)
             vns = @varname(s)
@@ -319,23 +317,20 @@ end
             Gibbs(vns => hmc, vns => hmc, vns => hmc, vnm => pg, vnm => pg)
         end
         # Same thing but using RepeatSampler.
-        s9 = Gibbs(
+        s6 = Gibbs(
             @varname(s) => RepeatSampler(HMC(0.1, 5; adtype=adbackend), 3),
             @varname(m) => RepeatSampler(PG(10), 2),
         )
-        for s in (s1, s2, s3, s4, s5, s6, s7, s8, s9)
+        for s in (s1, s2, s3, s4, s5, s6)
             @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
         end
 
-        sample(gdemo_default, s1, N)
-        sample(gdemo_default, s2, N)
-        sample(gdemo_default, s3, N)
-        sample(gdemo_default, s4, N)
-        sample(gdemo_default, s5, N)
-        sample(gdemo_default, s6, N)
-        sample(gdemo_default, s7, N)
-        sample(gdemo_default, s8, N)
-        sample(gdemo_default, s9, N)
+        @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s2, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s3, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s4, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
 
         g = Turing.Sampler(s3, gdemo_default)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
@@ -345,7 +340,7 @@ end
     # posterior mean.
     @testset "Gibbs inference" begin
         @testset "CSMC and HMC on gdemo" begin
-            alg = Gibbs(; s=CSMC(15), m=HMC(0.2, 4; adtype=adbackend))
+            alg = Gibbs(:s => CSMC(15), :m => HMC(0.2, 4; adtype=adbackend))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:m], [7 / 6]; atol=0.15)
             # Be more relaxed with the tolerance of the variance.
@@ -353,13 +348,13 @@ end
         end
 
         @testset "MH and HMCDA on gdemo" begin
-            alg = Gibbs(; s=MH(), m=HMCDA(200, 0.65, 0.3; adtype=adbackend))
+            alg = Gibbs(:s => MH(), :m => HMCDA(200, 0.65, 0.3; adtype=adbackend))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
 
         @testset "CSMC and ESS on gdemo" begin
-            alg = Gibbs(; s=CSMC(15), m=ESS())
+            alg = Gibbs(:s => CSMC(15), :m => ESS())
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
@@ -436,7 +431,7 @@ end
             return nothing
         end
 
-        alg = Gibbs(; s=MH(), m=HMC(0.2, 4; adtype=adbackend))
+        alg = Gibbs(:s => MH(), :m => HMC(0.2, 4; adtype=adbackend))
         sample(model, alg, 100; callback=callback)
     end
 
@@ -464,11 +459,11 @@ end
         num_samples = 10_000
         model = imm(Random.randn(num_zs), 1.0)
         # https://github.com/TuringLang/Turing.jl/issues/1725
-        # sample(model, Gibbs(; z=MH(), m=HMC(0.01, 4)), 100);
+        # sample(model, Gibbs(:z => MH(), :m => HMC(0.01, 4)), 100);
         chn = sample(
             StableRNG(23),
             model,
-            Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)),
+            Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)),
             num_samples,
         )
         # The number of m variables that have a non-zero value in a sample.
@@ -528,7 +523,7 @@ end
         # TODO(mhauru) This is broken because of
         # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
         @test_broken (
-            sample(model, Gibbs(; z=PG(10), m=HMC(0.01, 4; adtype=adbackend)), 100);
+            sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100);
             true
         )
     end

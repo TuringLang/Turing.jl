@@ -34,7 +34,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         c2 = sample(gdemo_default, s2, N)
         c3 = sample(gdemo_default, s3, N)
 
-        s4 = Gibbs(; m=MH(), s=MH())
+        s4 = Gibbs(:m => MH(), :s => MH())
         c4 = sample(gdemo_default, s4, N)
 
         # s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
@@ -69,7 +69,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
 
         @testset "gdemo_default with MH-within-Gibbs" begin
-            alg = Gibbs(; m=MH(), s=MH())
+            alg = Gibbs(:m => MH(), :s => MH())
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
@@ -177,7 +177,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # with small-valued VC matrix to check if we only see very small steps
         vc_μ = convert(Array, 1e-4 * I(2))
         vc_σ = convert(Array, 1e-4 * I(2))
-        alg_small = Gibbs(; μ=MH((:μ, vc_μ)), σ=MH((:σ, vc_σ)))
+        alg_small = Gibbs(:μ => MH((:μ, vc_μ)), :σ => MH((:σ, vc_σ)))
         alg_big = MH()
         chn_small = sample(StableRNG(seed), mod, alg_small, 1_000)
         chn_big = sample(StableRNG(seed), mod, alg_big, 1_000)
