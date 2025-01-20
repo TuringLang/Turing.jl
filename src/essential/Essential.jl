@@ -11,7 +11,8 @@ using Bijectors: PDMatDistribution
 using AdvancedVI
 using StatsFuns: logsumexp, softmax
 @reexport using DynamicPPL
-using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoZygote, AutoMooncake
+using ADTypes:
+    ADTypes, AutoForwardDiff, AutoEnzyme, AutoReverseDiff, AutoZygote, AutoMooncake
 
 using AdvancedPS: AdvancedPS
 
@@ -19,6 +20,7 @@ include("container.jl")
 
 export @model,
     @varname,
+    AutoEnzyme,
     AutoForwardDiff,
     AutoZygote,
     AutoReverseDiff,
