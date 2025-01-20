@@ -463,7 +463,9 @@ using Turing
                 end
             end
 
-            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+            # TODO(mhauru) What is the point of the below @elapsed stuff? It prints out some
+            # timings. Do we actually ever look at them?
+            t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1000)
 
             # Test for vectorize UnivariateDistribution
             @model function vdemo4()
@@ -471,11 +473,11 @@ using Turing
                 @. x ~ Normal(0, 2)
             end
 
-            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+            t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1000)
 
             @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
 
-            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+            t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1000)
 
             println("Time for")
             println("  Loop : ", t_loop)
@@ -488,7 +490,7 @@ using Turing
                 @. x ~ InverseGamma(2, 3)
             end
 
-            sample(vdemo6(), alg, 1000)
+            sample(StableRNG(seed), vdemo6(), alg, 10)
 
             N = 3
             @model function vdemo7()
@@ -496,45 +498,8 @@ using Turing
                 @. x ~ [InverseGamma(2, 3) for i in 1:N]
             end
 
-            sample(vdemo7(), alg, 1000)
+            sample(StableRNG(seed), vdemo7(), alg, 10)
         end
-
-        # TODO(mhauru) What is the point of the below @elapsed stuff? It prints out some
-        # timings. Do we actually ever look at them?
-        t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            @. x ~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            @. x ~ InverseGamma(2, 3)
-        end
-
-        sample(StableRNG(seed), vdemo6(), alg, 10)
-
-        N = 3
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            @. x ~ [InverseGamma(2, 3) for i in 1:N]
-        end
-
-        sample(StableRNG(seed), vdemo7(), alg, 10)
     end
 
     @testset "vectorization .~" begin
@@ -571,7 +536,8 @@ using Turing
                 end
             end
 
-            t_loop = @elapsed res = sample(vdemo3(), alg, 1000)
+            # TODO(mhauru) Same question as above about @elapsed.
+            t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1_000)
 
             # Test for vectorize UnivariateDistribution
             @model function vdemo4()
@@ -579,11 +545,11 @@ using Turing
                 return x .~ Normal(0, 2)
             end
 
-            t_vec = @elapsed res = sample(vdemo4(), alg, 1000)
+            t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1_000)
 
             @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
 
-            t_mv = @elapsed res = sample(vdemo5(), alg, 1000)
+            t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1_000)
 
             println("Time for")
             println("  Loop : ", t_loop)
@@ -596,50 +562,15 @@ using Turing
                 return x .~ InverseGamma(2, 3)
             end
 
-            sample(vdemo6(), alg, 1000)
+            sample(StableRNG(seed), vdemo6(), alg, 10)
 
             @model function vdemo7()
                 x = Array{Real}(undef, N, N)
                 return x .~ [InverseGamma(2, 3) for i in 1:N]
             end
 
-            sample(vdemo7(), alg, 1000)
+            sample(StableRNG(seed), vdemo7(), alg, 10)
         end
-
-        # TODO(mhauru) Same question as above about @elapsed.
-        t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1_000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            return x .~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1_000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1_000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            return x .~ InverseGamma(2, 3)
-        end
-
-        sample(StableRNG(seed), vdemo6(), alg, 10)
-
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
-        end
-
-        sample(StableRNG(seed), vdemo7(), alg, 10)
     end
 
     @testset "Type parameters" begin
