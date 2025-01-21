@@ -109,13 +109,6 @@ OrderedLogistic
 LogPoisson
 ```
 
-`BernoulliLogit` is part of Distributions.jl since version 0.25.77.
-If you are using an older version of Distributions where this isn't defined, Turing will export the same distribution.
-
-```@docs
-Distributions.BernoulliLogit
-```
-
 ### Tools to work with distributions
 
 | Exported symbol | Documentation                          | Description                                                    |
