@@ -42,12 +42,12 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Inference
 
-| Exported symbol   | Documentation                                                                                     | Description                        |
-| :---------------  | :------------------------------------------------------------------------------------------------ | :-------------------               |
-| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain)  | Sample from a model                |
-| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                             | Run MCMC using multiple threads    |
-| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                         | Run MCMC using multiple processes  |
-| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                              | Run MCMC using without parallelism |
+| Exported symbol   | Documentation                                                                                    | Description                        |
+|:----------------- |:------------------------------------------------------------------------------------------------ |:---------------------------------- |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model                |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                            | Run MCMC using multiple threads    |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                        | Run MCMC using multiple processes  |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                             | Run MCMC using without parallelism |
 
 ### Samplers
 
@@ -127,18 +127,18 @@ predict
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
-| Exported symbol             | Documentation                                                                                                                      | Description                                                      |
-| :-------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------- |
-| `returned`                  | [`DynamicPPL.returned`](@extref)                                                                                                   | Calculate additional quantities defined in a model               |
-| `pointwise_loglikelihoods`  | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                   | Compute log likelihoods for each sample in a chain               |
-| `logprior`                  | [`DynamicPPL.logprior`](@extref)                                                                                                   | Compute log prior probability                                    |
-| `logjoint`                  | [`DynamicPPL.logjoint`](@extref)                                                                                                   | Compute log joint probability                                    |
-| `condition`                 | [`AbstractPPL.condition`](@extref)                                                                                                 | Condition a model on data                                        |
-| `decondition`               | [`AbstractPPL.decondition`](@extref)                                                                                               | Remove conditioning on data                                      |
-| `conditioned`               | [`DynamicPPL.conditioned`](@extref)                                                                                                | Return the conditioned values of a model                         |
-| `fix`                       | [`DynamicPPL.fix`](@extref)                                                                                                        | Fix the value of a variable                                      |
-| `unfix`                     | [`DynamicPPL.unfix`](@extref)                                                                                                      | Unfix the value of a variable                                    |
-| `OrderedDict`               | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts)  | An ordered dictionary                                            |
+| Exported symbol            | Documentation                                                                                                                     | Description                                        |
+|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:-------------------------------------------------- |
+| `returned`                 | [`DynamicPPL.returned`](@extref)                                                                                                  | Calculate additional quantities defined in a model |
+| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain |
+| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                      |
+| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                      |
+| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                                | Condition a model on data                          |
+| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                              | Remove conditioning on data                        |
+| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                               | Return the conditioned values of a model           |
+| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                       | Fix the value of a variable                        |
+| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                      |
+| `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                              |
 
 ### Extra re-exports from Bijectors
 
