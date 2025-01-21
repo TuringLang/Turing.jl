@@ -81,7 +81,7 @@ function AbstractMCMC.step(
     # Generate a log joint function.
     vi = state.vi
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(model, vi))
+        Base.Fix1(LogDensityProblems.logdensity, DynamicPPL.LogDensityFunction(model, vi))
     )
 
     # Compute the next states.

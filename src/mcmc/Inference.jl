@@ -178,7 +178,7 @@ function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
 end
 
 function LogDensityProblems.logdensity(
-    f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
+    f::DynamicPPL.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
     x::NamedTuple,
 )
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
