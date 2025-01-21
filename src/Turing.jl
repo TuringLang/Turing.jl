@@ -75,7 +75,6 @@ using DynamicPPL:
     conditioned,
     to_submodel
 using StatsBase: predict
-using Bijectors: ordered
 using OrderedCollections: OrderedDict
 
 # Turing essentials - modelling macros and inference algorithms
@@ -147,8 +146,6 @@ export
     AutoMooncake,
     # DistributionsAD
     filldist,
-    arraydist,
-    # Bijectors
-    ordered
+    arraydist
 
 end
