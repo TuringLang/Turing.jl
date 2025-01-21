@@ -6,7 +6,6 @@ Turing.jl directly re-exports the entire public API of the following packages:
 
   - [Distributions.jl](https://juliastats.org/Distributions.jl)
   - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
-  - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
 
 Please see the individual packages for their documentation.
 
@@ -43,9 +42,12 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Inference
 
-| Exported symbol | Documentation                                                                                    | Description         |
-|:--------------- |:------------------------------------------------------------------------------------------------ |:------------------- |
-| `sample`        | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model |
+| Exported symbol   | Documentation                                                                                     | Description                        |
+| :---------------  | :------------------------------------------------------------------------------------------------ | :-------------------               |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain)  | Sample from a model                |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                             | Run MCMC using multiple threads    |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                         | Run MCMC using multiple processes  |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                              | Run MCMC using without parallelism |
 
 ### Samplers
 

@@ -4,7 +4,7 @@ using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, AbstractMCMC
+@reexport using Distributions, MCMCChains
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
@@ -15,6 +15,7 @@ using NamedArrays: NamedArrays
 using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
+using AbstractMCMC
 
 using Accessors: Accessors
 
@@ -137,6 +138,9 @@ export
     ADVI,
     # AbstractMCMC
     sample,
+    MCMCThreads,
+    MCMCDistributed,
+    MCMCSerial,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
