@@ -18,7 +18,7 @@ using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
 
-function initialize_nuts(model::Turing.Model)
+function initialize_nuts(model::DynamicPPL.Model)
     # Create a log-density function with an implementation of the
     # gradient so we ensure that we're using the same AD backend as in Turing.
     f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
