@@ -8,7 +8,7 @@ using Libtask
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
-using DynamicPPL: DynamicPPL, LogDensityFunction
+using DynamicPPL: DynamicPPL
 import DynamicPPL: getspace, NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
@@ -99,7 +99,6 @@ export
     conditioned,
     fix,
     unfix,
-    LogDensityFunction,
     # OrderedCollections
     OrderedDict,
     # Turing.Inference

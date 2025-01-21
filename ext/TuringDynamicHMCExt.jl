@@ -77,7 +77,7 @@ function DynamicPPL.initialstep(
 
     # Define log-density function.
     ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+        DynamicPPL.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
     )
 
     # Perform initial step.

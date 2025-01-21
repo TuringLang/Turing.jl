@@ -188,7 +188,7 @@ A log density function for the MH sampler.
 
 This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
 """
-const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{
+const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = DynamicPPL.LogDensityFunction{
     V,M,<:DynamicPPL.SamplingContext{<:S}
 }
 
@@ -318,7 +318,7 @@ function propose!!(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            Turing.LogDensityFunction(
+            DynamicPPL.LogDensityFunction(
                 vi,
                 model,
                 DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
@@ -353,7 +353,7 @@ function propose!!(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            Turing.LogDensityFunction(
+            DynamicPPL.LogDensityFunction(
                 vi,
                 model,
                 DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
