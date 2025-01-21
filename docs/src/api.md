@@ -140,14 +140,6 @@ Please see the [generated quantities](https://turinglang.org/docs/tutorials/usag
 | `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                      |
 | `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                              |
 
-### Extra re-exports from Bijectors
-
-Note that Bijectors itself does not export `ordered`.
-
-```@docs
-Bijectors.ordered
-```
-
 ### Point estimates
 
 See the [mode estimation tutorial](https://turinglang.org/docs/tutorials/docs-17-mode-estimation/) for more information.
