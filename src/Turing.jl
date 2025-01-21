@@ -83,8 +83,6 @@ export
     @varname,
     # DynamicPPL
     DynamicPPL,
-    @logprob_str,  # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
-    @prob_str,     # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
     @model,
     to_submodel,
     @submodel,  # Deprecated in DynamicPPL
