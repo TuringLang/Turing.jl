@@ -9,6 +9,8 @@ Turing.jl directly re-exports the entire public API of the following packages:
 
 Please see the individual packages for their documentation.
 
+For convenience when constructing distributions, Turing.jl also re-exports [LinearAlgebra.I](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.I).
+
 ## Individual exports and re-exports
 
 **All** of the following symbols are exported unqualified by Turing, even though the documentation suggests that many of them are qualified.

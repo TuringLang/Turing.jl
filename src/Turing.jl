@@ -21,6 +21,7 @@ using Accessors: Accessors
 
 using Printf: Printf
 using Random: Random
+using LinearAlgebra: I
 
 using ADTypes: ADTypes
 
@@ -147,6 +148,8 @@ export
     AutoMooncake,
     # DistributionsAD
     filldist,
-    arraydist
+    arraydist,
+    # LinearAlgebra
+    I
 
 end
