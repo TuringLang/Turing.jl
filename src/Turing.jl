@@ -130,7 +130,6 @@ export
     Flat,
     FlatPos,
     BinomialLogit,
-    BernoulliLogit,         # Part of Distributions >= 0.25.77
     OrderedLogistic,
     LogPoisson,
     # AdvancedVI
