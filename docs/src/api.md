@@ -7,8 +7,6 @@ Turing.jl directly re-exports the entire public API of the following packages:
   - [Distributions.jl](https://juliastats.org/Distributions.jl)
   - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
   - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
-  - [Bijectors.jl](https://turinglang.org/Bijectors.jl)
-  - [Libtask.jl](https://github.com/TuringLang/Libtask.jl)
 
 Please see the individual packages for their documentation.
 
