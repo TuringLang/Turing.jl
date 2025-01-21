@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..ADUtils: ADTypeCheckContext
 using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
+using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
@@ -293,7 +294,7 @@ using Turing
 
             # HACK: Necessary to avoid NUTS failing during adaptation.
             try
-                x ~ transformed(Normal(0, 1), inverse(Bijectors.Logit(lb, ub)))
+                x ~ Bijectors.transformed(Normal(0, 1), inverse(Bijectors.Logit(lb, ub)))
             catch e
                 if e isa DomainError
                     Turing.@addlogprob! -Inf

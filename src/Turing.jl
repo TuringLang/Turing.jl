@@ -4,7 +4,7 @@ using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
+@reexport using Distributions, MCMCChains, AbstractMCMC
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
