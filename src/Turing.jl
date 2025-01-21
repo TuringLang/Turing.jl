@@ -82,7 +82,6 @@ export
     # AbstractPPL
     @varname,
     # DynamicPPL
-    DynamicPPL,
     @model,
     to_submodel,
     @submodel,  # Deprecated in DynamicPPL

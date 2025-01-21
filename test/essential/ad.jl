@@ -2,7 +2,7 @@ module AdTests
 
 using ..Models: gdemo_default
 using Distributions: logpdf
-using DynamicPPL: getlogp, getindex_internal
+using DynamicPPL: DynamicPPL, getlogp, getindex_internal
 using ForwardDiff
 using LinearAlgebra
 using LogDensityProblems: LogDensityProblems

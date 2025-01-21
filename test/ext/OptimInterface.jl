@@ -2,6 +2,7 @@ module OptimInterfaceTests
 
 using ..Models: gdemo_default
 using Distributions.FillArrays: Zeros
+using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Optim: Optim
 using Random: Random

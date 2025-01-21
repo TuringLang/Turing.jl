@@ -1,6 +1,7 @@
 module DynamicPPLCompilerTests
 
 using ..NumericalTests: check_numerical
+using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Test: @test, @testset, @test_throws
 using Turing
