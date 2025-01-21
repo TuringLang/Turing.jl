@@ -64,6 +64,7 @@ include("deprecated.jl") # to be removed in the next minor version release
 using DynamicPPL:
     pointwise_loglikelihoods,
     generated_quantities,
+    returned,
     logprior,
     logjoint,
     condition,
@@ -88,6 +89,8 @@ export
     to_submodel,
     @submodel,  # Deprecated in DynamicPPL
     generated_quantities, # Deprecated in DynamicPPL
+    returned,
+    prefix,
     NamedDist,
     predict,
     pointwise_loglikelihoods,
