@@ -59,7 +59,7 @@ function AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
             ESSPrior(model, spl, vi),
-            Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
+            DynamicPPL.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
         ),
         EllipticalSliceSampling.ESS(),
         oldstate,
@@ -117,7 +117,7 @@ end
 Distributions.mean(p::ESSPrior) = p.μ
 
 # Evaluate log-likelihood of proposals
-const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{
+const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = DynamicPPL.LogDensityFunction{
     V,M,<:DynamicPPL.SamplingContext{<:S}
 }
 
