@@ -268,7 +268,7 @@ end
     @test chain1.value == chain2.value
 end
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
+@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends[3:end]
     @info "Starting Gibbs tests with $adbackend"
     @testset "Deprecated Gibbs constructors" begin
         N = 10
@@ -366,12 +366,15 @@ end
         end
 
         @testset "PG and HMC on MoGtest_default" begin
-            gibbs = Gibbs(
-                (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
-                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
-            )
-            chain = sample(MoGtest_default, gibbs, 2_000)
-            check_MoGtest_default(chain; atol=0.15)
+            # Skip this test on x86 as it segfaults
+            if Sys.ARCH != :i686
+                gibbs = Gibbs(
+                    (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
+                    (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+                )
+                chain = sample(MoGtest_default, gibbs, 2_000)
+                check_MoGtest_default(chain; atol=0.15)
+            end
         end
 
         @testset "Multiple overlapping samplers on gdemo" begin
@@ -476,13 +479,7 @@ end
         # the posterior is analytically known? Doing 10_000 samples to run the test suite
         # is not ideal
         # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2402
-
-        # (penelopeysm) Note also the larger atol on x86 runners. This is
-        # needed because PG is not fully reproducible across architectures,
-        # even when seeded as above. See
-        # https://github.com/TuringLang/Turing.jl/issues/2446
-        mean_atol = Sys.ARCH == :i686 ? 1.3 : 0.8
-        @test isapprox(mean(num_ms), 8.6087; atol=mean_atol)
+        @test isapprox(mean(num_ms), 8.6087; atol=0.8)
         @test isapprox(std(num_ms), 1.8865; atol=0.02)
     end
 

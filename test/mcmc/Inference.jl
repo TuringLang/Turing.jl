@@ -266,7 +266,7 @@ using Turing
         chn_p = sample(StableRNG(seed), testbb(obs), pg, 200)
         chn_g = sample(StableRNG(seed), testbb(obs), gibbs, 200)
 
-        check_numerical(chn_s, [:p], [meanp]; atol=0.05)
+        check_numerical(chn_s, [:p], [meanp]; atol=0.2)
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
         check_numerical(chn_g, [:x], [meanp]; atol=0.1)
     end

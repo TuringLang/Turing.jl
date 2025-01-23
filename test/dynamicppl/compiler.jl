@@ -17,7 +17,11 @@ end
 const gdemo_default = gdemo_d()
 
 @testset "compiler.jl" begin
+    @info "compiler.jl"
+
     @testset "assume" begin
+        @info "assume"
+
         @model function test_assume()
             x ~ Bernoulli(1)
             y ~ Bernoulli(x / 2)
@@ -37,7 +41,10 @@ const gdemo_default = gdemo_d()
         @test all(isone, res1[:x])
         @test all(isone, res2[:x])
     end
+
     @testset "beta binomial" begin
+        @info "beta binomial"
+
         prior = Beta(2, 2)
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
         exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
@@ -64,7 +71,9 @@ const gdemo_default = gdemo_d()
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
         check_numerical(chn_g, [:x], [meanp]; atol=0.1)
     end
+
     @testset "model with global variables" begin
+        @info "model with global variables"
         xs = [1.5 2.0]
         # xx = 1
 
@@ -84,7 +93,9 @@ const gdemo_default = gdemo_d()
         gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8))
         chain = sample(fggibbstest(xs), gibbs, 2)
     end
+
     @testset "new grammar" begin
+        @info "new grammar"
         x = Float64[1 2]
 
         @model function gauss(x)
@@ -121,7 +132,9 @@ const gdemo_default = gdemo_d()
             gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10
         )
     end
+
     @testset "new interface" begin
+        @info "new interface"
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
         @model function newinterface(obs)
@@ -138,7 +151,9 @@ const gdemo_default = gdemo_d()
             100,
         )
     end
+
     @testset "no return" begin
+        @info "no return"
         @model function noreturn(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -150,7 +165,9 @@ const gdemo_default = gdemo_d()
         chain = sample(noreturn([1.5 2.0]), HMC(0.15, 6), 1000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
+
     @testset "observe with literals" begin
+        @info "observe with literals"
         @model function test()
             z ~ Normal(0, 1)
             x ~ Bernoulli(1)
@@ -177,11 +194,13 @@ const gdemo_default = gdemo_d()
     end
 
     @testset "sample" begin
+        @info "sample"
         alg = Gibbs(:m => HMC(0.2, 3), :s => PG(10))
         chn = sample(gdemo_default, alg, 1000)
     end
 
     @testset "vectorization @." begin
+        @info "vectorization @."
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -257,7 +276,9 @@ const gdemo_default = gdemo_d()
 
         sample(vdemo7(), alg, 1000)
     end
+
     @testset "vectorization .~" begin
+        @info "vectorization .~"
         @model function vdemo1(x)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
@@ -323,7 +344,9 @@ const gdemo_default = gdemo_d()
 
         sample(vdemo7(), alg, 1000)
     end
+
     @testset "Type parameters" begin
+        @info "Type parameters"
         N = 10
         alg = HMC(0.01, 5; adtype=AutoForwardDiff(; chunksize=N))
         x = randn(1000)
