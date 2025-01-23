@@ -763,8 +763,9 @@ end
     # Test a model that where the sampler needs to link a variable, which consequently
     # changes dimension. This used to error because the initial value `VarInfo`,
     # obtained from just `VarInfo(model)`, had a value of dimension 2 for `w`, and the one
-    # coming out of the initial step of the component sampler had a dimension of 1, since it
-    # the latter was linked. `merge` of the varinfos couldn't handle that.
+    # coming out of the initial step of the component sampler had a dimension of 1, since
+    # the latter was linked. `merge` of the varinfos couldn't handle that before DPPL
+    # 0.34.1.
     @testset "linking changes dimension" begin
         @model function dirichlet_model()
             K = 2
