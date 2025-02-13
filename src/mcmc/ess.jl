@@ -136,17 +136,3 @@ function DynamicPPL.tilde_observe(
 )
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
-
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, left, vns, vi
-)
-    return DynamicPPL.dot_tilde_assume(
-        rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi
-    )
-end
-
-function DynamicPPL.dot_tilde_observe(
-    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
-)
-    return DynamicPPL.dot_tilde_observe(ctx, SampleFromPrior(), right, left, vi)
-end

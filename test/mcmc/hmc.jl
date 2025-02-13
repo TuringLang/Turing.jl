@@ -155,11 +155,11 @@ using Turing
 
     @testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         alg = HMCDA(200, 0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         @test isa(alg, HMCDA)
@@ -174,11 +174,11 @@ using Turing
 
     @testset "nuts constructor" begin
         alg = NUTS(200, 0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
@@ -327,7 +327,7 @@ using Turing
         algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
         @testset "$(alg)" for alg in algs
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg, gdemo_default)
+            spl = Sampler(alg)
             hmc_state = DynamicPPL.initialstep(
                 Random.default_rng(), gdemo_default, spl, DynamicPPL.VarInfo(gdemo_default)
             )[2]

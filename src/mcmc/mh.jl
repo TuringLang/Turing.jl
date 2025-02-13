@@ -186,26 +186,17 @@ end
 
 A log density function for the MH sampler.
 
-This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
+This variant uses the `set_namedtuple!` function to update the `VarInfo`.
 """
 const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{
     V,M,<:DynamicPPL.SamplingContext{<:S}
 }
 
 function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
-    # TODO: Make this work with immutable `f.varinfo` too.
-    sampler = DynamicPPL.getsampler(f)
-    vi = f.varinfo
-
-    x_old, lj_old = vi[sampler], getlogp(vi)
+    vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
     vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.getcontext(f)))
     lj = getlogp(vi_new)
-
-    # Reset old `vi`.
-    setindex!!(vi, x_old, sampler)
-    setlogp!!(vi, lj_old)
-
     return lj
 end
 
@@ -237,7 +228,7 @@ The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
 function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
-    vns = _getvns(vi, spl)
+    vns = all_varnames_grouped_by_symbol(vi)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
     return dt, vt
@@ -297,7 +288,7 @@ end
 
 function maybe_link!!(varinfo, sampler, proposal, model)
     return if should_link(varinfo, sampler, proposal)
-        link!!(varinfo, sampler, model)
+        link!!(varinfo, model)
     else
         varinfo
     end
@@ -362,7 +353,7 @@ function propose!!(
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.params), trans.lp)
+    return setlogp!!(DynamicPPL.unflatten(vi, trans.params), trans.lp)
 end
 
 function DynamicPPL.initialstep(
@@ -401,40 +392,6 @@ function DynamicPPL.assume(
     return retval
 end
 
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:MH},
-    dist::MultivariateDistribution,
-    vns::AbstractVector{<:VarName},
-    var::AbstractMatrix,
-    vi::AbstractVarInfo,
-)
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
-    return retval
-end
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:MH},
-    dists::Union{Distribution,AbstractArray{<:Distribution}},
-    vns::AbstractArray{<:VarName},
-    var::AbstractArray,
-    vi::AbstractVarInfo,
-)
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
-    return retval
-end
-
 function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)
     return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
-end
-
-function DynamicPPL.dot_observe(
-    spl::Sampler{<:MH},
-    ds::Union{Distribution,AbstractArray{<:Distribution}},
-    value::AbstractArray,
-    vi,
-)
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end

@@ -5,6 +5,9 @@ using DynamicPPL:
     Metadata,
     VarInfo,
     TypedVarInfo,
+    # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL. Either export it
+    # or use something else.
+    all_varnames_grouped_by_symbol,
     islinked,
     setindex!!,
     push!!,
@@ -12,7 +15,6 @@ using DynamicPPL:
     getlogp,
     VarName,
     getsym,
-    _getvns,
     getdist,
     Model,
     Sampler,
@@ -22,9 +24,7 @@ using DynamicPPL:
     PriorContext,
     LikelihoodContext,
     set_flag!,
-    unset_flag!,
-    getspace,
-    inspace
+    unset_flag!
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -75,9 +75,7 @@ export InferenceAlgorithm,
     RepeatSampler,
     Prior,
     assume,
-    dot_assume,
     observe,
-    dot_observe,
     predict,
     externalsampler
 
@@ -299,7 +297,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -326,9 +324,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(
-        rng, model, Sampler(alg, model), ensemble, N, n_chains; kwargs...
-    )
+    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -582,11 +578,6 @@ end
 ##############
 # Utilities  #
 ##############
-
-# TODO(mhauru) Remove this once DynamicPPL has removed all its Selector stuff.
-DynamicPPL.getspace(::InferenceAlgorithm) = ()
-DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
-DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 
 """
 

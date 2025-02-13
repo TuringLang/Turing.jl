@@ -148,10 +148,10 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = DynamicPPL.link(vi_original, spl, model)
+    vi = DynamicPPL.link(vi_original, model)
 
     # Extract parameters.
-    theta = vi[spl]
+    theta = vi[:]
 
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
@@ -189,7 +189,7 @@ function DynamicPPL.initialstep(
 
             # NOTE: This will sample in the unconstrained space.
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
-            theta = vi[spl]
+            theta = vi[:]
 
             hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
             z = AHMC.phasepoint(rng, theta, hamiltonian)
@@ -226,10 +226,10 @@ function DynamicPPL.initialstep(
 
     # Update `vi` based on acceptance
     if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
+        vi = DynamicPPL.unflatten(vi, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     else
-        vi = DynamicPPL.unflatten(vi, spl, theta)
+        vi = DynamicPPL.unflatten(vi, theta)
         vi = setlogp!!(vi, log_density_old)
     end
 
@@ -274,7 +274,7 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, spl, t.z.θ)
+        vi = DynamicPPL.unflatten(vi, t.z.θ)
         vi = setlogp!!(vi, t.stat.log_density)
     end
 
@@ -493,43 +493,13 @@ end
 #### Compiler interface, i.e. tilde operators.
 ####
 function DynamicPPL.assume(
-    rng, spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
+    rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
     return DynamicPPL.assume(dist, vn, vi)
 end
 
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:Hamiltonian},
-    dist::MultivariateDistribution,
-    vns::AbstractArray{<:VarName},
-    var::AbstractMatrix,
-    vi,
-)
-    return DynamicPPL.dot_assume(dist, var, vns, vi)
-end
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:Hamiltonian},
-    dists::Union{Distribution,AbstractArray{<:Distribution}},
-    vns::AbstractArray{<:VarName},
-    var::AbstractArray,
-    vi,
-)
-    return DynamicPPL.dot_assume(dists, var, vns, vi)
-end
-
-function DynamicPPL.observe(spl::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
+function DynamicPPL.observe(::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
     return DynamicPPL.observe(d, value, vi)
-end
-
-function DynamicPPL.dot_observe(
-    spl::Sampler{<:Hamiltonian},
-    ds::Union{Distribution,AbstractArray{<:Distribution}},
-    value::AbstractArray,
-    vi,
-)
-    return DynamicPPL.dot_observe(ds, value, vi)
 end
 
 ####

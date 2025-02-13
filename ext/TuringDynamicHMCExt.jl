@@ -25,21 +25,14 @@ To use it, make sure you have DynamicHMC package (version >= 2) loaded:
 using DynamicHMC
 ```
 """
-struct DynamicNUTS{AD,space,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
+struct DynamicNUTS{AD,T<:DynamicHMC.NUTS} <: Turing.Inference.Hamiltonian
     sampler::T
     adtype::AD
 end
 
-function DynamicNUTS(
-    spl::DynamicHMC.NUTS=DynamicHMC.NUTS(),
-    space::Tuple=();
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
-    return DynamicNUTS{typeof(adtype),space,typeof(spl)}(spl, adtype)
-end
+DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
+DynamicNUTS(spl) = DynamicNUTS(spl, Turing.DEFAULT_ADTYPE)
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
-
-DynamicPPL.getspace(::DynamicNUTS{<:Any,space}) where {space} = space
 
 """
     DynamicNUTSState
@@ -70,8 +63,8 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.islinked(vi, spl)
-        vi = DynamicPPL.link!!(vi, spl, model)
+    if !DynamicPPL.islinked(vi)
+        vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
     end
 
@@ -82,13 +75,13 @@ function DynamicPPL.initialstep(
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng, ℓ, 0; initialization=(q=vi[spl],), reporter=DynamicHMC.NoProgressReport()
+        rng, ℓ, 0; initialization=(q=vi[:],), reporter=DynamicHMC.NoProgressReport()
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
 
     # Update the variables.
-    vi = DynamicPPL.setindex!!(vi, Q.q, spl)
+    vi = DynamicPPL.unflatten(vi, Q.q)
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
@@ -112,7 +105,7 @@ function AbstractMCMC.step(
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.
-    vi = DynamicPPL.setindex!!(vi, Q.q, spl)
+    vi = DynamicPPL.unflatten(vi, Q.q)
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
