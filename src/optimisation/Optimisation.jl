@@ -229,6 +229,17 @@ end
 
 # Various StatsBase methods for ModeResult
 
+"""
+    StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
+
+
+Return a table with coefficients and related statistics of the model. level determines the
+level for confidence intervals (by default, 95%).
+
+In case the `numerrors_warnonly` argument is true (the default) numerical errors encountered
+during the computation of the standard errors will be caught and reported in an extra
+"Error notes" column.
+"""
 function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
     # Get columns for coeftable.
     terms = string.(StatsBase.coefnames(m))
