@@ -233,6 +233,9 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly
     # Get columns for coeftable.
     terms = string.(StatsBase.coefnames(m))
     estimates = m.values.array[:, 1]
+    # If numerrors_warnonly is true, and if either the information matrix is singular or has
+    # negative entries on its diagonal, then `notes` will be a list of strings for each
+    # value in `m.values`, explaining why the standard error is NaN.
     notes = nothing
     local stderrors
     if numerrors_warnonly
@@ -243,13 +246,13 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly
         catch e
             if isa(e, LinearAlgebra.SingularException)
                 stderrors = fill(NaN, length(m.values))
-                notes = ["Info. matrix is singular" for _ in 1:length(m.values)]
+                notes = fill("Information matrix is singular", length(m.values))
             else
                 rethrow(e)
             end
         else
-            stderrors = []
             vars = LinearAlgebra.diag(vcov)
+            stderrors = eltype(vars)[]
             if any(x -> x < 0, vars)
                 notes = []
             end
