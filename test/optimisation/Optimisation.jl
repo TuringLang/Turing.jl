@@ -653,6 +653,25 @@ using Turing
         @assert tab.colnms[end] == "Error notes"
         @assert occursin("singular", tab.cols[end][1])
     end
+
+    @testset "Same coeftable with/without numerrors_warnonly" begin
+        xs = [0.0, 1.0, 2.0]
+
+        @model function extranormal(x)
+            mean ~ Normal(0, 1)
+            return x ~ Normal(mean, 1)
+        end
+
+        model = extranormal(xs)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
+        no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
+        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
+    end
 end
 
 end
