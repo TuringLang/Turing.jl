@@ -345,7 +345,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
 
         # Ensure that samplers have the same selector, and that varnames are lists of
         # VarNames.
-        samplers = tuple(map(set_selector ∘ drop_space, samplers)...)
+        samplers = tuple(map(set_selector, samplers)...)
         varnames = tuple(map(to_varname_list, varnames)...)
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
@@ -354,49 +354,6 @@ end
 function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
-
-# The below two constructors only provide backwards compatibility with the constructor of
-# the old Gibbs sampler. They are deprecated and will be removed in the future.
-function Gibbs(alg1::InferenceAlgorithm, other_algs::InferenceAlgorithm...)
-    algs = [alg1, other_algs...]
-    varnames = map(algs) do alg
-        space = getspace(alg)
-        if (space isa VarName)
-            space
-        elseif (space isa Symbol)
-            VarName{space}()
-        else
-            tuple((s isa Symbol ? VarName{s}() : s for s in space)...)
-        end
-    end
-    msg = (
-        "Specifying which sampler to use with which variable using syntax like " *
-        "`Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. " *
-        "Please use `Gibbs(; x=NUTS(), y=MH())` instead. If you want different iteration " *
-        "counts for different subsamplers, use e.g. " *
-        "`Gibbs(@varname(x) => RepeatSampler(NUTS(), 2), @varname(y) => MH())`"
-    )
-    Base.depwarn(msg, :Gibbs)
-    return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
-end
-
-function Gibbs(
-    alg_with_iters1::Tuple{<:InferenceAlgorithm,Int},
-    other_algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...,
-)
-    algs_with_iters = [alg_with_iters1, other_algs_with_iters...]
-    algs = Iterators.map(first, algs_with_iters)
-    iters = Iterators.map(last, algs_with_iters)
-    algs_duplicated = Iterators.flatten((
-        Iterators.repeated(alg, iter) for (alg, iter) in zip(algs, iters)
-    ))
-    # This calls the other deprecated constructor from above, hence no need for a depwarn
-    # here.
-    return Gibbs(algs_duplicated...)
-end
-
-# TODO: Remove when no longer needed.
-DynamicPPL.getspace(::Gibbs) = ()
 
 struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     vi::V
