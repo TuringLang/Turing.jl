@@ -68,7 +68,7 @@ function AbstractMCMC.step(
         vis[1],
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, model)
-            AMH.Transition(vi[spl], getlogp(vi), false)
+            AMH.Transition(vi[:], getlogp(vi), false)
         end,
     )
 

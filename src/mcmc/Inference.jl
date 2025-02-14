@@ -8,6 +8,7 @@ using DynamicPPL:
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL. Either export it
     # or use something else.
     all_varnames_grouped_by_symbol,
+    syms,
     islinked,
     setindex!!,
     push!!,

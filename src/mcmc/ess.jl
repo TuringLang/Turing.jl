@@ -27,15 +27,20 @@ function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
     # Sanity check
-    vns = _getvns(vi, spl)
-    length(vns) == 1 ||
-        error("[ESS] does only support one variable ($(length(vns)) variables specified)")
-    for vn in only(vns)
+    # TODO(mhauru) What is the point of the first check? Why is it relevant that if there
+    # are multiple variables they are all under the same symbol?
+    vn_syms = syms(vi)
+    if length(vn_syms) != 1
+        msg = """
+            ESS only supports one variable symbol ($(length(vn_syms)) variables specified)\
+        """
+        error(msg)
+    end
+    for vn in keys(vi)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
-            error("[ESS] only supports Gaussian prior distributions")
+            error("ESS only supports Gaussian prior distributions")
     end
-
     return Transition(model, vi), vi
 end
 
@@ -61,7 +66,7 @@ function AbstractMCMC.step(
     )
 
     # update sample and log-likelihood
-    vi = setindex!!(vi, sample, spl)
+    vi = DynamicPPL.unflatten(vi, sample)
     vi = setlogp!!(vi, state.loglikelihood)
 
     return Transition(model, vi), vi
@@ -77,8 +82,8 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     function ESSPrior{M,S,V}(
         model::M, sampler::S, varinfo::V
     ) where {M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo}
-        vns = _getvns(varinfo, sampler)
-        μ = mapreduce(vcat, vns[1]) do vn
+        vns = keys(varinfo)
+        μ = mapreduce(vcat, vns) do vn
             dist = getdist(varinfo, vn)
             EllipticalSliceSampling.isgaussian(typeof(dist)) ||
                 error("[ESS] only supports Gaussian prior distributions")
@@ -100,12 +105,12 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
     # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
-    vns = _getvns(varinfo, sampler)
-    for vn in Iterators.flatten(values(vns))
+    vns = keys(varinfo)
+    for vn in vns
         set_flag!(varinfo, vn, "del")
     end
     p.model(rng, varinfo, sampler)
-    return varinfo[sampler]
+    return varinfo[:]
 end
 
 # Mean of prior distribution
@@ -118,7 +123,7 @@ const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.L
 
 function (ℓ::ESSLogLikelihood)(f::AbstractVector)
     sampler = DynamicPPL.getsampler(ℓ)
-    varinfo = setindex!!(ℓ.varinfo, f, sampler)
+    varinfo = DynamicPPL.unflatten(ℓ.varinfo, f)
     varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
     return getlogp(varinfo)
 end
