@@ -17,7 +17,7 @@ using Random: Random
 using ReverseDiff: ReverseDiff
 import Mooncake
 using StableRNGs: StableRNG
-using Test: @inferred, @test, @test_broken, @test_deprecated, @test_throws, @testset
+using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -150,7 +150,6 @@ end
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
     Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
-    Inference.drop_space(wrap::AlgWrapper) = AlgWrapper(Inference.drop_space(wrap.inner))
     function Inference.setparams_varinfo!!(
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -270,31 +269,6 @@ end
 
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @info "Starting Gibbs tests with $adbackend"
-    @testset "Deprecated Gibbs constructors" begin
-        N = 10
-        @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
-        @test_deprecated s2 = Gibbs(PG(10, :s, :m))
-        @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
-        @test_deprecated s7 = Gibbs((HMC(0.1, 5, :s; adtype=adbackend), 2), (ESS(:m), 3))
-        for s in (s1, s2, s3, s4, s5, s6, s7)
-            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
-        end
-
-        # Check that the samplers work despite using the deprecated constructor.
-        sample(gdemo_default, s1, N)
-        sample(gdemo_default, s2, N)
-        sample(gdemo_default, s3, N)
-        sample(gdemo_default, s4, N)
-        sample(gdemo_default, s5, N)
-        sample(gdemo_default, s6, N)
-        sample(gdemo_default, s7, N)
-
-        g = Turing.Sampler(s3, gdemo_default)
-        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
-    end
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the

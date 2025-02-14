@@ -28,10 +28,9 @@ function RepeatSampler(alg::InferenceAlgorithm, num_repeat::Int)
     return RepeatSampler(Sampler(alg), num_repeat)
 end
 
-drop_space(rs::RepeatSampler) = RepeatSampler(drop_space(rs.sampler), rs.num_repeat)
 getADType(spl::RepeatSampler) = getADType(spl.sampler)
 DynamicPPL.default_chain_type(sampler::RepeatSampler) = default_chain_type(sampler.sampler)
-DynamicPPL.getspace(spl::RepeatSampler) = getspace(spl.sampler)
+# TODO(mhauru) Remove the below once DynamicPPL has removed all its Selector stuff.
 DynamicPPL.inspace(vn::VarName, spl::RepeatSampler) = inspace(vn, spl.sampler)
 
 function setparams_varinfo!!(model::DynamicPPL.Model, sampler::RepeatSampler, state, params)
