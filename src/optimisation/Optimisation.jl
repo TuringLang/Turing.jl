@@ -88,39 +88,10 @@ function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     return r, lp, vi
 end
 
-_loglikelihood(dist::Distribution, x) = StatsAPI.loglikelihood(dist, x)
-
-function _loglikelihood(dists::AbstractArray{<:Distribution}, x)
-    return StatsAPI.loglikelihood(arraydist(dists), x)
-end
-
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument
-    # shouldn't affect anything.
-    # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(
-        Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
-    )
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        _loglikelihood(right, r)
-    else
-        # MLE
-        0
-    end
-    return r, lp, vi
-end
-
 function DynamicPPL.tilde_observe(
     ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
 )
     return DynamicPPL.tilde_observe(ctx.context, args...)
-end
-
-function DynamicPPL.dot_tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.dot_tilde_observe(ctx.context, args...)
 end
 
 """

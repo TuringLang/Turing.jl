@@ -269,7 +269,9 @@ const gdemo_default = gdemo_d()
 
         @model function vdemo2(x)
             μ ~ MvNormal(zeros(size(x, 1)), I)
-            return x .~ MvNormal(μ, I)
+            for i in axes(x, 2)
+                x[:, i] ~ MvNormal(μ, I)
+            end
         end
 
         D = 2
@@ -316,7 +318,7 @@ const gdemo_default = gdemo_d()
 
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
+            return x ~ product_distribution([InverseGamma(2, 3) for i in 1:N])
         end
 
         sample(vdemo7(), alg, 1000)

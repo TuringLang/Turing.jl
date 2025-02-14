@@ -72,7 +72,7 @@ using Turing
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
+            sampler = Sampler(HMC(0.1, 7; adtype=adbackend))
             chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
             @test chains isa MCMCChains.Chains
         end
