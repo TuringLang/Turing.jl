@@ -635,6 +635,43 @@ using Turing
             maximum_a_posteriori(m; adtype=adbackend)
         end
     end
+
+    @testset "Collinear coeftable" begin
+        xs = [-1.0, 0.0, 1.0]
+        ys = [0.0, 0.0, 0.0]
+
+        @model function collinear(x, y)
+            a ~ Normal(0, 1)
+            b ~ Normal(0, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, 1)
+        end
+
+        model = collinear(xs, ys)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        tab = coeftable(mle_estimate)
+        @assert isnan(tab.cols[2][1])
+        @assert tab.colnms[end] == "Error notes"
+        @assert occursin("singular", tab.cols[end][1])
+    end
+
+    @testset "Same coeftable with/without numerrors_warnonly" begin
+        xs = [0.0, 1.0, 2.0]
+
+        @model function extranormal(x)
+            mean ~ Normal(0, 1)
+            return x ~ Normal(mean, 1)
+        end
+
+        model = extranormal(xs)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
+        no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
+        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
+    end
 end
 
 end
