@@ -178,7 +178,7 @@ function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
 end
 
 function LogDensityProblems.logdensity(
-    f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
+    f::DynamicPPL.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
     x::NamedTuple,
 )
     return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
@@ -637,13 +637,15 @@ julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
  [-1.704630494695469]
 ```
 """
-function transitions_from_chain(model::Turing.Model, chain::MCMCChains.Chains; kwargs...)
+function transitions_from_chain(
+    model::DynamicPPL.Model, chain::MCMCChains.Chains; kwargs...
+)
     return transitions_from_chain(Random.default_rng(), model, chain; kwargs...)
 end
 
 function transitions_from_chain(
     rng::Random.AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     chain::MCMCChains.Chains;
     sampler=DynamicPPL.SampleFromPrior(),
 )
