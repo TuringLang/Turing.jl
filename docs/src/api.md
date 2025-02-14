@@ -58,7 +58,6 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                   |
 | `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                           |
 | `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                      |
-| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | A "pseudo-sampler" to provide analytical conditionals to `Gibbs`    |
 | `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                             |
 | `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                               |
 | `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                         |
