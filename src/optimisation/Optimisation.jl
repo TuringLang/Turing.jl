@@ -128,7 +128,7 @@ end
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = DynamicPPL.LogDensityFunction{
     V,M,C
 }
 
@@ -139,7 +139,7 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
     init = DynamicPPL.VarInfo(model)
-    return Turing.LogDensityFunction(init, model, context)
+    return DynamicPPL.LogDensityFunction(init, model, context)
 end
 
 """

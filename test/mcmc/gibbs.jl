@@ -9,6 +9,7 @@ using ..NumericalTests:
     two_sample_test
 import ..ADUtils
 import Combinatorics
+using AbstractMCMC: AbstractMCMC
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
@@ -179,7 +180,7 @@ end
     end
 
     # The methods that capture testing information for us.
-    function Turing.AbstractMCMC.step(
+    function AbstractMCMC.step(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -187,9 +188,7 @@ end
         kwargs...,
     )
         capture_targets_and_algs(sampler.alg.inner, model.context)
-        return Turing.AbstractMCMC.step(
-            rng, model, unwrap_sampler(sampler), args...; kwargs...
-        )
+        return AbstractMCMC.step(rng, model, unwrap_sampler(sampler), args...; kwargs...)
     end
 
     function Turing.DynamicPPL.initialstep(
