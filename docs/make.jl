@@ -33,5 +33,3 @@ makedocs(;
     warnonly=true,
     plugins=[links],
 )
-
-deploydocs(; repo="github.com/TuringLang/Turing.jl.git", push_preview=true)
