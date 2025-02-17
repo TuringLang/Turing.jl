@@ -654,6 +654,28 @@ using Turing
         @assert occursin("singular", tab.cols[end][1])
     end
 
+    @testset "Negative variance" begin
+        # A model for which the likelihood has a saddle point at x=0, y=0.
+        # Creating an optimisation result for this model at the x=0, y=0 results in negative
+        # variance for one of the variables, because the variance is calculated as the
+        # diagonal of the inverse of the Hessian.
+        @model function saddle_model()
+            x ~ Normal(0, 1)
+            y ~ Normal(x, 1)
+            Turing.@addlogprob! x^2 - y^2
+            return nothing
+        end
+        m = saddle_model()
+        ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, ctx)
+        vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
+        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        ct = coeftable(m)
+        @assert isnan(ct.cols[2][1])
+        @assert ct.colnms[end] == "Error notes"
+        @assert occursin("Negative variance", ct.cols[end][1])
+    end
+
     @testset "Same coeftable with/without numerrors_warnonly" begin
         xs = [0.0, 1.0, 2.0]
 
