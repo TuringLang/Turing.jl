@@ -1,3 +1,9 @@
+# Release 0.37.0
+
+## Breaking changes
+
+0.37 removes the old Gibbs constructors deprecated in 0.36.
+
 # Release 0.36.0
 
 ## Breaking changes

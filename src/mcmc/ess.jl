@@ -20,12 +20,7 @@ Mean
 │ 1   │ m          │ 0.824853 │
 ```
 """
-struct ESS{space} <: InferenceAlgorithm end
-
-ESS() = ESS{()}()
-ESS(space::Symbol) = ESS{(space,)}()
-
-drop_space(alg::ESS) = ESS()
+struct ESS <: InferenceAlgorithm end
 
 # always accept in the first step
 function DynamicPPL.initialstep(
@@ -35,7 +30,7 @@ function DynamicPPL.initialstep(
     vns = _getvns(vi, spl)
     length(vns) == 1 ||
         error("[ESS] does only support one variable ($(length(vns)) variables specified)")
-    for vn in vns[1]
+    for vn in only(vns)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("[ESS] only supports Gaussian prior distributions")
@@ -48,7 +43,7 @@ function AbstractMCMC.step(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
     # obtain previous sample
-    f = vi[spl]
+    f = vi[:]
 
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
@@ -129,13 +124,11 @@ function (ℓ::ESSLogLikelihood)(f::AbstractVector)
 end
 
 function DynamicPPL.tilde_assume(
-    rng::Random.AbstractRNG, ctx::DefaultContext, sampler::Sampler{<:ESS}, right, vn, vi
+    rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, vn, vi
 )
-    return if inspace(vn, sampler)
-        DynamicPPL.tilde_assume(rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi)
-    else
-        DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, vi)
-    end
+    return DynamicPPL.tilde_assume(
+        rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi
+    )
 end
 
 function DynamicPPL.tilde_observe(
@@ -145,22 +138,11 @@ function DynamicPPL.tilde_observe(
 end
 
 function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG,
-    ctx::DefaultContext,
-    sampler::Sampler{<:ESS},
-    right,
-    left,
-    vns,
-    vi,
+    rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, left, vns, vi
 )
-    # TODO: Or should we do `all(Base.Fix2(inspace, sampler), vns)`?
-    return if inspace(first(vns), sampler)
-        DynamicPPL.dot_tilde_assume(
-            rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi
-        )
-    else
-        DynamicPPL.dot_tilde_assume(rng, ctx, SampleFromPrior(), right, left, vns, vi)
-    end
+    return DynamicPPL.dot_tilde_assume(
+        rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi
+    )
 end
 
 function DynamicPPL.dot_tilde_observe(
