@@ -88,39 +88,10 @@ function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
     return r, lp, vi
 end
 
-_loglikelihood(dist::Distribution, x) = StatsAPI.loglikelihood(dist, x)
-
-function _loglikelihood(dists::AbstractArray{<:Distribution}, x)
-    return StatsAPI.loglikelihood(arraydist(dists), x)
-end
-
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument
-    # shouldn't affect anything.
-    # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(
-        Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
-    )
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        _loglikelihood(right, r)
-    else
-        # MLE
-        0
-    end
-    return r, lp, vi
-end
-
 function DynamicPPL.tilde_observe(
     ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
 )
     return DynamicPPL.tilde_observe(ctx.context, args...)
-end
-
-function DynamicPPL.dot_tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.dot_tilde_observe(ctx.context, args...)
 end
 
 """
@@ -128,8 +99,8 @@ end
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{
-    V,M,C
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo,AD} = Turing.LogDensityFunction{
+    M,V,C,AD
 }
 
 """
@@ -139,7 +110,7 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
     init = DynamicPPL.VarInfo(model)
-    return Turing.LogDensityFunction(init, model, context)
+    return Turing.LogDensityFunction(model, init, context)
 end
 
 """
@@ -154,9 +125,7 @@ required by Optimization.jl.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
-    return -DynamicPPL.getlogp(
-        last(DynamicPPL.evaluate!!(f.model, varinfo, DynamicPPL.getcontext(f)))
-    )
+    return -DynamicPPL.getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
 
 (f::OptimLogDensity)(z, _) = f(z)

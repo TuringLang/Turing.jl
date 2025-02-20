@@ -26,7 +26,7 @@ function initialize_nuts(model::Turing.Model)
     f = Turing.Inference.setvarinfo(
         f,
         DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model),
-        Turing.Inference.getADType(DynamicPPL.getcontext(LogDensityProblemsAD.parent(f))),
+        Turing.Inference.getADType(LogDensityProblemsAD.parent(f).context),
     )
 
     # Choose parameter dimensionality and initial parameter value
@@ -122,7 +122,7 @@ end
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_nuts(model)
                 sampler_ext = DynamicPPL.Sampler(
-                    externalsampler(sampler; adtype, unconstrained=true), model
+                    externalsampler(sampler; adtype, unconstrained=true)
                 )
                 # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
                 # @testset "initial_params" begin
@@ -178,7 +178,7 @@ end
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_mh_rw(model)
                 sampler_ext = DynamicPPL.Sampler(
-                    externalsampler(sampler; unconstrained=true), model
+                    externalsampler(sampler; unconstrained=true)
                 )
                 @testset "initial_params" begin
                     test_initial_params(model, sampler_ext)
@@ -201,7 +201,7 @@ end
         # @testset "MH with prior proposal" begin
         #     @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         #         sampler = initialize_mh_with_prior_proposal(model);
-        #         sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false), model)
+        #         sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false))
         #         @testset "initial_params" begin
         #             test_initial_params(model, sampler_ext)
         #         end

@@ -119,7 +119,7 @@ function DynamicPPL.initialstep(
 )
     # Reset the VarInfo.
     reset_num_produce!(vi)
-    set_retained_vns_del_by_spl!(vi, spl)
+    set_retained_vns_del!(vi)
     resetlogp!!(vi)
     empty!!(vi)
 
@@ -253,7 +253,7 @@ function DynamicPPL.initialstep(
 )
     # Reset the VarInfo before new sweep
     reset_num_produce!(vi)
-    set_retained_vns_del_by_spl!(vi, spl)
+    set_retained_vns_del!(vi)
     resetlogp!!(vi)
 
     # Create a new set of particles
@@ -291,7 +291,7 @@ function AbstractMCMC.step(
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    set_retained_vns_del_by_spl!(vi, spl)
+    set_retained_vns_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -365,7 +365,7 @@ function DynamicPPL.assume(
 
     if ~haskey(vi, vn)
         r = rand(trng, dist)
-        push!!(vi, vn, r, dist, spl)
+        push!!(vi, vn, r, dist)
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)

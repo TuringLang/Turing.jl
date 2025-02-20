@@ -38,12 +38,14 @@ function test_model_ad(model, f, syms::Vector{Symbol})
     grad_FWAD = sort(ForwardDiff.gradient(f, x))
 
     # Compare with `logdensity_and_gradient`.
-    z = vi[SampleFromPrior()]
+    z = vi[:]
     for chunksize in (0, 1, 10), standardtag in (true, false, 0, 3)
         ℓ = LogDensityProblemsAD.ADgradient(
             Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag),
             Turing.LogDensityFunction(
-                vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()
+                model,
+                vi,
+                DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext()),
             ),
         )
         l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
@@ -84,9 +86,11 @@ end
         grad_FWAD = sort(g(_x))
 
         ℓ = Turing.LogDensityFunction(
-            vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext()
+            ad_test_f,
+            vi,
+            DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext()),
         )
-        x = map(x -> Float64(x), vi[SampleFromPrior()])
+        x = map(x -> Float64(x), vi[:])
 
         zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
         if isdefined(Base, :get_extension)
@@ -170,15 +174,15 @@ end
             # setup
             varinfo_init = Turing.VarInfo(model)
             spl = DynamicPPL.SampleFromPrior()
-            varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
+            varinfo_init = DynamicPPL.link!!(varinfo_init, model)
 
             function logπ(z; unlinked=false)
-                varinfo = DynamicPPL.unflatten(varinfo_init, spl, z)
+                varinfo = DynamicPPL.unflatten(varinfo_init, z)
 
                 # TODO(torfjelde): Pretty sure this is a mistake.
                 # Why are we not linking `varinfo` rather than `varinfo_init`?
                 if unlinked
-                    varinfo_init = DynamicPPL.invlink!!(varinfo_init, spl, model)
+                    varinfo_init = DynamicPPL.invlink!!(varinfo_init, model)
                 end
                 varinfo = last(
                     DynamicPPL.evaluate!!(
@@ -186,7 +190,7 @@ end
                     ),
                 )
                 if unlinked
-                    varinfo_init = DynamicPPL.link!!(varinfo_init, spl, model)
+                    varinfo_init = DynamicPPL.link!!(varinfo_init, model)
                 end
 
                 return -DynamicPPL.getlogp(varinfo)

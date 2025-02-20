@@ -45,7 +45,10 @@ function getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper)
     return getvarinfo(LogDensityProblemsAD.parent(f))
 end
 
-setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Accessors.@set f.varinfo = varinfo
+function setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo)
+    return DynamicPPL.LogDensityFunction(f.model, varinfo, f.context; adtype=f.adtype)
+end
+
 function setvarinfo(
     f::LogDensityProblemsAD.ADGradientWrapper, varinfo, adtype::ADTypes.AbstractADType
 )
