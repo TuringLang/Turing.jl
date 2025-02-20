@@ -94,12 +94,43 @@ function DynamicPPL.tilde_observe(
 end
 
 """
-    OptimLogDensity{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo,C<:OptimizationContext,AD<:ADTypes.AbstractADType}
+    OptimLogDensity{
+        M<:DynamicPPL.Model,
+        V<:DynamicPPL.VarInfo,
+        C<:OptimizationContext,
+        AD<:ADTypes.AbstractADType
+    }
 
-A struct that stores the negative log density function of a `DynamicPPL` model.
+A struct that wraps a single LogDensityFunction. Can be invoked either using
 
-TODO(penelopeysm): It _doesn't_ really store the negative, does it? It's more like we
-overrode logdensity to give the negative logdensity.
+```julia
+OptimLogDensity(model, varinfo, ctx; adtype=adtype)
+```
+
+or
+
+```julia
+OptimLogDensity(model, ctx; adtype=adtype)
+```
+
+If not specified, `adtype` defaults to `AutoForwardDiff()`.
+
+An OptimLogDensity does not, in itself, obey the LogDensityProblems interface.
+Thus, if you want to calculate the log density of its contents at the point
+`z`, you should manually call
+
+```julia
+LogDensityProblems.logdensity(f.ldf, z)
+```
+
+However, it is a callable object which returns the *negative* log density of
+the underlying LogDensityFunction at the point `z`. This is done to satisfy
+the Optim.jl interface.
+
+```julia
+optim_ld = OptimLogDensity(model, varinfo, ctx)
+optim_ld(z)  # returns -logp
+```
 """
 struct OptimLogDensity{
     M<:DynamicPPL.Model,
@@ -114,7 +145,7 @@ function OptimLogDensity(
     model::DynamicPPL.Model,
     vi::DynamicPPL.VarInfo,
     ctx::OptimizationContext;
-    adtype::Union{Nothing,ADTypes.AbstractADType}=AutoForwardDiff(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
 )
     return OptimLogDensity(Turing.LogDensityFunction(model, vi, ctx; adtype=adtype))
 end
@@ -123,7 +154,7 @@ end
 function OptimLogDensity(
     model::DynamicPPL.Model,
     ctx::OptimizationContext;
-    adtype::Union{Nothing,ADTypes.AbstractADType}=AutoForwardDiff(),
+    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
 )
     return OptimLogDensity(
         Turing.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx; adtype=adtype)
