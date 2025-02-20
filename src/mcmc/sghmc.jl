@@ -72,7 +72,7 @@ function DynamicPPL.initialstep(
         DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
         adtype=spl.alg.adtype,
     )
-    state = SGHMCState(ℓ, vi, zero(vi[spl]))
+    state = SGHMCState(ℓ, vi, zero(vi[:]))
 
     return sample, state
 end
@@ -87,7 +87,7 @@ function AbstractMCMC.step(
     # Compute gradient of log density.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
 
     # Update latent variables and velocity according to
@@ -246,7 +246,7 @@ function AbstractMCMC.step(
     # Perform gradient step.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
     step = state.step
     stepsize = spl.alg.stepsize(step)

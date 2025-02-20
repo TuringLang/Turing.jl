@@ -512,7 +512,7 @@ using Turing
 
         @model function vdemo2(x)
             μ ~ MvNormal(zeros(size(x, 1)), I)
-            return x .~ MvNormal(μ, I)
+            return x ~ filldist(MvNormal(μ, I), size(x, 2))
         end
 
         D = 2
@@ -560,7 +560,7 @@ using Turing
 
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
+            return x ~ filldist(InverseGamma(2, 3), N, N)
         end
 
         sample(StableRNG(seed), vdemo7(), alg, 10)

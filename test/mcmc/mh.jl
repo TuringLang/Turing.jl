@@ -238,7 +238,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
         vi = deepcopy(vi_base)
-        d = length(vi_base[DynamicPPL.SampleFromPrior()])
+        d = length(vi_base[:])
         alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
