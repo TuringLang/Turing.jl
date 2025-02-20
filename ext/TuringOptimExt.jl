@@ -75,7 +75,7 @@ end
 
 function _mle_optimize(model::DynamicPPL.Model, args...; kwargs...)
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -145,16 +145,14 @@ end
 
 function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
-
 """
-    _optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
+    _optimize(f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
 
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function _optimize(
-    model::DynamicPPL.Model,
     f::Optimisation.OptimLogDensity,
     init_vals::AbstractArray=DynamicPPL.getparams(f.ldf),
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
@@ -188,7 +186,7 @@ function _optimize(
     logdensity_optimum = Optimisation.OptimLogDensity(
         f.ldf.model, vi_optimum, f.ldf.context
     )
-    vns_vals_iter = Turing.Inference.getparams(model, vi_optimum)
+    vns_vals_iter = Turing.Inference.getparams(f.ldf.model, vi_optimum)
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
