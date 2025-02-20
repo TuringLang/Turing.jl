@@ -156,19 +156,19 @@ function DynamicPPL.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(
-            model,
-            vi,
-            # Use the leaf-context from the `model` in case the user has
-            # contextualized the model with something like `PriorContext`
-            # to sample from the prior.
-            DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-        ),
+    ldf = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
+        # need to pass in the sampler? (In fact LogDensityFunction defaults to
+        # using leafcontext(model.context) so could we just remove the argument
+        # entirely?)
+        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
+        adtype=spl.alg.adtype,
     )
-    logπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
-    ∂logπ∂θ(x) = LogDensityProblems.logdensity_and_gradient(ℓ, x)
-    hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+    lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
+    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
+    hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
     # Compute phase point z.
     z = AHMC.phasepoint(rng, theta, hamiltonian)
@@ -287,16 +287,19 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(
-            model,
-            vi,
-            DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context)),
-        ),
+    ldf = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
+        # need to pass in the sampler? (In fact LogDensityFunction defaults to
+        # using leafcontext(model.context) so could we just remove the argument
+        # entirely?)
+        DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context));
+        adtype=spl.alg.adtype,
     )
-    ℓπ = Base.Fix1(LogDensityProblems.logdensity, ℓ)
-    ∂ℓπ∂θ = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ℓ)
-    return AHMC.Hamiltonian(metric, ℓπ, ∂ℓπ∂θ)
+    lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
+    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
+    return AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 end
 
 """

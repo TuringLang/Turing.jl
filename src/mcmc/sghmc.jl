@@ -66,10 +66,11 @@ function DynamicPPL.initialstep(
 
     # Compute initial sample and state.
     sample = Transition(model, vi)
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(
-            model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
-        ),
+    ℓ = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
+        adtype=spl.alg.adtype,
     )
     state = SGHMCState(ℓ, vi, zero(vi[spl]))
 
@@ -228,10 +229,11 @@ function DynamicPPL.initialstep(
 
     # Create first sample and state.
     sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(
-            model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
-        ),
+    ℓ = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
+        adtype=spl.alg.adtype,
     )
     state = SGLDState(ℓ, vi, 1)
 
