@@ -158,8 +158,8 @@ function DynamicPPL.initialstep(
     metric = metricT(length(theta))
     ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(
-            vi,
             model,
+            vi,
             # Use the leaf-context from the `model` in case the user has
             # contextualized the model with something like `PriorContext`
             # to sample from the prior.
@@ -289,8 +289,8 @@ function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
     ℓ = LogDensityProblemsAD.ADgradient(
         Turing.LogDensityFunction(
-            vi,
             model,
+            vi,
             DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context)),
         ),
     )

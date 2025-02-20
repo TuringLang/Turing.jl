@@ -43,7 +43,9 @@ function test_model_ad(model, f, syms::Vector{Symbol})
         ℓ = LogDensityProblemsAD.ADgradient(
             Turing.AutoForwardDiff(; chunksize=chunksize, tag=standardtag),
             Turing.LogDensityFunction(
-                vi, model, SampleFromPrior(), DynamicPPL.DefaultContext()
+                model,
+                vi,
+                DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext()),
             ),
         )
         l, ∇E = LogDensityProblems.logdensity_and_gradient(ℓ, z)
@@ -84,7 +86,9 @@ end
         grad_FWAD = sort(g(_x))
 
         ℓ = Turing.LogDensityFunction(
-            vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext()
+            ad_test_f,
+            vi,
+            DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext()),
         )
         x = map(x -> Float64(x), vi[:])
 

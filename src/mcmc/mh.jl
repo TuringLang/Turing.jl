@@ -310,8 +310,8 @@ function propose!!(
         Base.Fix1(
             LogDensityProblems.logdensity,
             Turing.LogDensityFunction(
-                vi,
                 model,
+                vi,
                 DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
             ),
         ),
@@ -345,8 +345,8 @@ function propose!!(
         Base.Fix1(
             LogDensityProblems.logdensity,
             Turing.LogDensityFunction(
-                vi,
                 model,
+                vi,
                 DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
             ),
         ),

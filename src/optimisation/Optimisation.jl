@@ -110,7 +110,7 @@ Create a callable `OptimLogDensity` struct that evaluates a model using the give
 """
 function OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
     init = DynamicPPL.VarInfo(model)
-    return Turing.LogDensityFunction(init, model, context)
+    return Turing.LogDensityFunction(model, init, context)
 end
 
 """

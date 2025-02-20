@@ -59,7 +59,9 @@ function AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
             ESSPrior(model, spl, vi),
-            Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
+            Turing.LogDensityFunction(
+                model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
+            ),
         ),
         EllipticalSliceSampling.ESS(),
         oldstate,
