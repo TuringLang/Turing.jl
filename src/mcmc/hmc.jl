@@ -191,7 +191,7 @@ function DynamicPPL.initialstep(
             vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
             theta = vi[:]
 
-            hamiltonian = AHMC.Hamiltonian(metric, logπ, ∂logπ∂θ)
+            hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
             z = AHMC.phasepoint(rng, theta, hamiltonian)
 
             init_attempt_count += 1
