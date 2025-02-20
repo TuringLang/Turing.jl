@@ -3,17 +3,10 @@ module TuringDynamicHMCExt
 ### DynamicHMC backend - https://github.com/tpapp/DynamicHMC.jl
 ###
 
-if isdefined(Base, :get_extension)
-    using DynamicHMC: DynamicHMC
-    using Turing
-    using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
-else
-    import ..DynamicHMC
-    using ..Turing
-    using ..Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
-    using ..Turing.Inference: ADTypes, LogDensityProblemsAD, TYPEDFIELDS
-end
+using DynamicHMC: DynamicHMC
+using Turing
+using Turing: AbstractMCMC, Random, LogDensityProblems, DynamicPPL
+using Turing.Inference: ADTypes, TYPEDFIELDS
 
 """
     DynamicNUTS
@@ -69,10 +62,11 @@ function DynamicPPL.initialstep(
     end
 
     # Define log-density function.
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(
-            model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
-        ),
+    ℓ = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
+        adtype=spl.alg.adtype,
     )
 
     # Perform initial step.

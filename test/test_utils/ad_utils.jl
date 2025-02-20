@@ -202,7 +202,7 @@ end
 All the ADTypes on which we want to run the tests.
 """
 adbackends = [
-    Turing.AutoForwardDiff(; chunksize=0),
+    Turing.AutoForwardDiff(),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
 ]

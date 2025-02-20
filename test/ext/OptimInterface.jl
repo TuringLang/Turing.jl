@@ -143,7 +143,6 @@ using Turing
         DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
         DynamicPPL.TestUtils.demo_dot_assume_observe_matrix_index,
-        DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,

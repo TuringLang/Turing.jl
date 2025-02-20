@@ -1,14 +1,8 @@
 module TuringOptimExt
 
-if isdefined(Base, :get_extension)
-    using Turing: Turing
-    import Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
-    using Optim: Optim
-else
-    import ..Turing
-    import ..Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
-    import ..Optim
-end
+using Turing: Turing
+import Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
+using Optim: Optim
 
 ####################
 # Optim.jl methods #
@@ -42,7 +36,7 @@ function Optim.optimize(
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
-    init_vals = DynamicPPL.getparams(f)
+    init_vals = DynamicPPL.getparams(f.ldf)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -65,7 +59,7 @@ function Optim.optimize(
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
     f = Optimisation.OptimLogDensity(model, ctx)
-    init_vals = DynamicPPL.getparams(f)
+    init_vals = DynamicPPL.getparams(f.ldf)
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 function Optim.optimize(
@@ -81,7 +75,7 @@ end
 
 function _mle_optimize(model::DynamicPPL.Model, args...; kwargs...)
     ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
 
 """
@@ -112,7 +106,7 @@ function Optim.optimize(
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
-    init_vals = DynamicPPL.getparams(f)
+    init_vals = DynamicPPL.getparams(f.ldf)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -135,7 +129,7 @@ function Optim.optimize(
 )
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
     f = Optimisation.OptimLogDensity(model, ctx)
-    init_vals = DynamicPPL.getparams(f)
+    init_vals = DynamicPPL.getparams(f.ldf)
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
 function Optim.optimize(
@@ -151,18 +145,16 @@ end
 
 function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
     ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(model, Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
 end
-
 """
-    _optimize(model::Model, f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
+    _optimize(f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
 
 Estimate a mode, i.e., compute a MLE or MAP estimate.
 """
 function _optimize(
-    model::DynamicPPL.Model,
     f::Optimisation.OptimLogDensity,
-    init_vals::AbstractArray=DynamicPPL.getparams(f),
+    init_vals::AbstractArray=DynamicPPL.getparams(f.ldf),
     optimizer::Optim.AbstractOptimizer=Optim.LBFGS(),
     options::Optim.Options=Optim.Options(),
     args...;
@@ -170,9 +162,12 @@ function _optimize(
 )
     # Convert the initial values, since it is assumed that users provide them
     # in the constrained space.
-    f = Accessors.@set f.varinfo = DynamicPPL.unflatten(f.varinfo, init_vals)
-    f = Accessors.@set f.varinfo = DynamicPPL.link(f.varinfo, model)
-    init_vals = DynamicPPL.getparams(f)
+    # TODO(penelopeysm): As with in src/optimisation/Optimisation.jl, unclear
+    # whether initialisation is really necessary at all
+    vi = DynamicPPL.unflatten(f.ldf.varinfo, init_vals)
+    vi = DynamicPPL.link(vi, f.ldf.model)
+    f = Optimisation.OptimLogDensity(f.ldf.model, vi, f.ldf.context; adtype=f.ldf.adtype)
+    init_vals = DynamicPPL.getparams(f.ldf)
 
     # Optimize!
     M = Optim.optimize(Optim.only_fg!(f), init_vals, optimizer, options, args...; kwargs...)
@@ -186,12 +181,16 @@ function _optimize(
     end
 
     # Get the optimum in unconstrained space. `getparams` does the invlinking.
-    f = Accessors.@set f.varinfo = DynamicPPL.unflatten(f.varinfo, M.minimizer)
-    vns_vals_iter = Turing.Inference.getparams(model, f.varinfo)
+    vi = f.ldf.varinfo
+    vi_optimum = DynamicPPL.unflatten(vi, M.minimizer)
+    logdensity_optimum = Optimisation.OptimLogDensity(
+        f.ldf.model, vi_optimum, f.ldf.context
+    )
+    vns_vals_iter = Turing.Inference.getparams(f.ldf.model, vi_optimum)
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
-    return Optimisation.ModeResult(vmat, M, -M.minimum, f)
+    return Optimisation.ModeResult(vmat, M, -M.minimum, logdensity_optimum)
 end
 
 end # module
