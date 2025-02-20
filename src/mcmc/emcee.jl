@@ -53,7 +53,7 @@ function AbstractMCMC.step(
         length(initial_params) == n ||
             throw(ArgumentError("initial parameters have to be specified for each walker"))
         vis = map(vis, initial_params) do vi, init
-            vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
+            vi = DynamicPPL.initialize_parameters!!(vi, init, model)
 
             # Update log joint probability.
             last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))

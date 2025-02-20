@@ -188,14 +188,13 @@ A log density function for the MH sampler.
 
 This variant uses the `set_namedtuple!` function to update the `VarInfo`.
 """
-const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{
-    V,M,<:DynamicPPL.SamplingContext{<:S}
-}
+const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} =
+    Turing.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
 
 function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.getcontext(f)))
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
     lj = getlogp(vi_new)
     return lj
 end

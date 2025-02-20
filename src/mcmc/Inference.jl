@@ -173,7 +173,7 @@ end
 getADType(alg::Hamiltonian) = alg.adtype
 
 function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(getADType(DynamicPPL.getcontext(ℓ)), ℓ)
+    return LogDensityProblemsAD.ADgradient(getADType(ℓ.context), ℓ)
 end
 
 function LogDensityProblems.logdensity(

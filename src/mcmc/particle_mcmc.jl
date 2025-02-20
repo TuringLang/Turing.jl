@@ -365,7 +365,7 @@ function DynamicPPL.assume(
 
     if ~haskey(vi, vn)
         r = rand(trng, dist)
-        push!!(vi, vn, r, dist, spl)
+        push!!(vi, vn, r, dist)
     elseif is_flagged(vi, vn, "del")
         unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)

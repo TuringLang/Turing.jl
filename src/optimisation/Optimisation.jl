@@ -99,8 +99,8 @@ end
 
 A struct that stores the negative log density function of a `DynamicPPL` model.
 """
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{
-    V,M,C
+const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo,AD} = Turing.LogDensityFunction{
+    M,V,C,AD
 }
 
 """
@@ -125,9 +125,7 @@ required by Optimization.jl.
 """
 function (f::OptimLogDensity)(z::AbstractVector)
     varinfo = DynamicPPL.unflatten(f.varinfo, z)
-    return -DynamicPPL.getlogp(
-        last(DynamicPPL.evaluate!!(f.model, varinfo, DynamicPPL.getcontext(f)))
-    )
+    return -DynamicPPL.getlogp(last(DynamicPPL.evaluate!!(f.model, varinfo, f.context)))
 end
 
 (f::OptimLogDensity)(z, _) = f(z)

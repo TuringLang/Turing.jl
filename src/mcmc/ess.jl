@@ -119,16 +119,10 @@ end
 Distributions.mean(p::ESSPrior) = p.μ
 
 # Evaluate log-likelihood of proposals
-const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{
-    V,M,<:DynamicPPL.SamplingContext{<:S}
-}
+const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} =
+    Turing.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
 
-function (ℓ::ESSLogLikelihood)(f::AbstractVector)
-    sampler = DynamicPPL.getsampler(ℓ)
-    varinfo = DynamicPPL.unflatten(ℓ.varinfo, f)
-    varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
-    return getlogp(varinfo)
-end
+(ℓ::ESSLogLikelihood)(f::AbstractVector) = LogDensityProblems.logdensity(ℓ, f)
 
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, vn, vi
@@ -138,8 +132,6 @@ function DynamicPPL.tilde_assume(
     )
 end
 
-function DynamicPPL.tilde_observe(
-    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
-)
+function DynamicPPL.tilde_observe(ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vi)
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end
