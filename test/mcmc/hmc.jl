@@ -218,7 +218,7 @@ using Turing
         # https://github.com/TuringLang/Turing.jl/issues/1308
         @model function mwe3(::Type{T}=Array{Float64}) where {T}
             m = T(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
+            return m ~ filldist(MvNormal(zeros(2), I), 3)
         end
         @test sample(StableRNG(seed), mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
     end
