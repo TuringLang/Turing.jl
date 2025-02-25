@@ -14,7 +14,7 @@ concurrency:
 jobs:
   test:
     # Use matrix.test.name here to avoid it taking up the entire window width
-    name: test ${{matrix.test.name}} (${{ matrix.runner.os }}, ${{ matrix.runner.version }}, ${{ matrix.runner.arch }}, ${{ matrix.runner.num_threads }})
+    name: test ${{matrix.test.name}} (${{ matrix.runner.version }}, ${{ matrix.runner.os }}, ${{ matrix.runner.num_threads }})
     runs-on: ${{ matrix.runner.os }}
     continue-on-error: ${{ matrix.runner.version == 'pre' }}
 
@@ -42,49 +42,36 @@ jobs:
           # Default
           - version: '1'
             os: ubuntu-latest
-            arch: x64
-            num_threads: 1
-          # x86
-          - version: '1'
-            os: ubuntu-latest
-            arch: x86
             num_threads: 1
           # Multithreaded
           - version: '1'
             os: ubuntu-latest
-            arch: x64
             num_threads: 2
           # Windows
           - version: '1'
             os: windows-latest
-            arch: x64
             num_threads: 1
           # macOS
           - version: '1'
             os: macos-latest
-            arch: aarch64
             num_threads: 1
           # Minimum supported Julia version
           - version: 'min'
             os: ubuntu-latest
-            arch: x64
             num_threads: 1
           # Minimum supported Julia version, multithreaded
           - version: 'min'
             os: ubuntu-latest
-            arch: x64
             num_threads: 2
           # Pre-release Julia version
           - version: 'pre'
             os: ubuntu-latest
-            arch: x64
             num_threads: 1
 
     steps:
       - name: Print matrix variables
         run: |
           echo "OS: ${{ matrix.runner.os }}"
-          echo "Architecture: ${{ matrix.runner.arch }}"
           echo "Julia version: ${{ matrix.runner.version }}"
           echo "Number of threads: ${{ matrix.runner.num_threads }}"
           echo "Test arguments: ${{ matrix.test.args }}"
@@ -95,7 +82,6 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '${{ matrix.runner.version }}'
-          arch: ${{ matrix.runner.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       # TODO: Use julia-actions/julia-runtest when test_args are supported

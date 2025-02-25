@@ -127,7 +127,7 @@ Distributions.BernoulliLogit
 ### Predictions
 
 ```@docs
-predict
+DynamicPPL.predict
 ```
 
 ### Querying model probabilities and quantities
