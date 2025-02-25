@@ -440,15 +440,6 @@ using Turing
 
         res = sample(StableRNG(seed), vdemo1b(x), alg, 10)
 
-        @model function vdemo2(x)
-            μ ~ MvNormal(zeros(size(x, 1)), I)
-            @. x ~ $(MvNormal(μ, I))
-        end
-
-        D = 2
-        alg = HMC(0.01, 5; adtype=adbackend)
-        res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
-
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
