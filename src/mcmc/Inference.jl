@@ -48,7 +48,6 @@ import AdvancedPS
 import Accessors
 import EllipticalSliceSampling
 import LogDensityProblems
-import LogDensityProblemsAD
 import Random
 import MCMCChains
 import StatsBase: predict
@@ -158,29 +157,6 @@ function externalsampler(
     sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true
 )
     return ExternalSampler(sampler, adtype, Val(unconstrained))
-end
-
-getADType(spl::Sampler) = getADType(spl.alg)
-getADType(::SampleFromPrior) = Turing.DEFAULT_ADTYPE
-
-getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
-getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
-getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.DEFAULT_ADTYPE
-function getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext)
-    return getADType(DynamicPPL.childcontext(ctx))
-end
-
-getADType(alg::Hamiltonian) = alg.adtype
-
-function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(getADType(ℓ.context), ℓ)
-end
-
-function LogDensityProblems.logdensity(
-    f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
-    x::NamedTuple,
-)
-    return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
 end
 
 # TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.

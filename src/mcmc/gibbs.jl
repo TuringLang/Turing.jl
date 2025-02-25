@@ -438,7 +438,7 @@ function setparams_varinfo!!(
     state::TuringState,
     params::AbstractVarInfo,
 )
-    logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
+    logdensity = DynamicPPL.setmodel(state.ldf, model, sampler.alg.adtype)
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
     )

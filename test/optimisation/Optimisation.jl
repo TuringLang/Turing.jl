@@ -545,7 +545,6 @@ using Turing
         DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
         DynamicPPL.TestUtils.demo_dot_assume_observe_matrix_index,
-        DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
@@ -624,16 +623,9 @@ using Turing
         m = DynamicPPL.contextualize(
             gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
         )
-        if adbackend isa AutoForwardDiff
-            # TODO: Figure out why this is happening.
-            # https://github.com/TuringLang/Turing.jl/issues/2369
-            @test_throws DivideError maximum_likelihood(m; adtype=adbackend)
-            @test_throws DivideError maximum_a_posteriori(m; adtype=adbackend)
-        else
-            # These will error if the adbackend being used is not the one set.
-            maximum_likelihood(m; adtype=adbackend)
-            maximum_a_posteriori(m; adtype=adbackend)
-        end
+        # These will error if the adbackend being used is not the one set.
+        maximum_likelihood(m; adtype=adbackend)
+        maximum_a_posteriori(m; adtype=adbackend)
     end
 end
 

@@ -8,7 +8,6 @@ using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: I
 using LogDensityProblems: LogDensityProblems
-using LogDensityProblemsAD: LogDensityProblemsAD
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
@@ -18,16 +17,12 @@ using Turing
 using Turing.Inference: AdvancedHMC
 
 function initialize_nuts(model::Turing.Model)
-    # Create a log-density function with an implementation of the
-    # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(DynamicPPL.LogDensityFunction(model))
+    # Create a linked varinfo
+    vi = DynamicPPL.VarInfo(model)
+    linked_vi = DynamicPPL.link!!(vi, model)
 
-    # Link the varinfo.
-    f = Turing.Inference.setvarinfo(
-        f,
-        DynamicPPL.link!!(Turing.Inference.getvarinfo(f), model),
-        Turing.Inference.getADType(LogDensityProblemsAD.parent(f).context),
-    )
+    # Create a LogDensityFunction
+    f = DynamicPPL.LogDensityFunction(model, linked_vi; adtype=Turing.DEFAULT_ADTYPE)
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)
@@ -147,27 +142,6 @@ end
                     )
                 end
             end
-        end
-
-        @testset "don't drop `ADgradient` (PR: #2223)" begin
-            rng = Random.default_rng()
-            model = DynamicPPL.TestUtils.DEMO_MODELS[1]
-            sampler = initialize_nuts(model)
-            sampler_ext = externalsampler(
-                sampler; unconstrained=true, adtype=AutoForwardDiff()
-            )
-            # Initial step.
-            state = last(
-                AbstractMCMC.step(rng, model, DynamicPPL.Sampler(sampler_ext); n_adapts=0)
-            )
-            @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
-            # Subsequent step.
-            state = last(
-                AbstractMCMC.step(
-                    rng, model, DynamicPPL.Sampler(sampler_ext), state; n_adapts=0
-                ),
-            )
-            @test state.logdensity isa LogDensityProblemsAD.ADGradientWrapper
         end
     end
 
