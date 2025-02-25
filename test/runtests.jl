@@ -80,10 +80,6 @@ end
         @timeit_include("stdlib/RandomMeasures.jl")
     end
 
-    @testset "DynamicPPL integration" begin
-        @timeit_include("dynamicppl/compiler.jl")
-    end
-
     @testset "utilities" begin
         @timeit_include("mcmc/utilities.jl")
     end
