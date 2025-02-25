@@ -14,7 +14,7 @@ concurrency:
 jobs:
   test:
     # Use matrix.test.name here to avoid it taking up the entire window width
-    name: test ${{matrix.test.name}} (${{ matrix.runner.os }}, ${{ matrix.runner.version }}, ${{ matrix.runner.num_threads }})
+    name: test ${{matrix.test.name}} (${{ matrix.runner.version }}, ${{ matrix.runner.os }}, ${{ matrix.runner.num_threads }})
     runs-on: ${{ matrix.runner.os }}
     continue-on-error: ${{ matrix.runner.version == 'pre' }}
 
