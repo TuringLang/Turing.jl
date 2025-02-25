@@ -627,6 +627,65 @@ using Turing
         maximum_likelihood(m; adtype=adbackend)
         maximum_a_posteriori(m; adtype=adbackend)
     end
+
+    @testset "Collinear coeftable" begin
+        xs = [-1.0, 0.0, 1.0]
+        ys = [0.0, 0.0, 0.0]
+
+        @model function collinear(x, y)
+            a ~ Normal(0, 1)
+            b ~ Normal(0, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, 1)
+        end
+
+        model = collinear(xs, ys)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        tab = coeftable(mle_estimate)
+        @assert isnan(tab.cols[2][1])
+        @assert tab.colnms[end] == "Error notes"
+        @assert occursin("singular", tab.cols[end][1])
+    end
+
+    @testset "Negative variance" begin
+        # A model for which the likelihood has a saddle point at x=0, y=0.
+        # Creating an optimisation result for this model at the x=0, y=0 results in negative
+        # variance for one of the variables, because the variance is calculated as the
+        # diagonal of the inverse of the Hessian.
+        @model function saddle_model()
+            x ~ Normal(0, 1)
+            y ~ Normal(x, 1)
+            Turing.@addlogprob! x^2 - y^2
+            return nothing
+        end
+        m = saddle_model()
+        ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, ctx)
+        vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
+        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        ct = coeftable(m)
+        @assert isnan(ct.cols[2][1])
+        @assert ct.colnms[end] == "Error notes"
+        @assert occursin("Negative variance", ct.cols[end][1])
+    end
+
+    @testset "Same coeftable with/without numerrors_warnonly" begin
+        xs = [0.0, 1.0, 2.0]
+
+        @model function extranormal(x)
+            mean ~ Normal(0, 1)
+            return x ~ Normal(mean, 1)
+        end
+
+        model = extranormal(xs)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
+        no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
+        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
+    end
 end
 
 end
