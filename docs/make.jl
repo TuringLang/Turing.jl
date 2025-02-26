@@ -1,9 +1,9 @@
 using Documenter
 using Turing
-# Need to import Distributions and Bijectors to generate docs for functions
+# Need to import these packages to generate docs for functions
 # from those packages.
-using Distributions
 using Bijectors
+using Distributions
 using DynamicPPL
 
 using DocumenterInterLinks
@@ -17,7 +17,7 @@ links = InterLinks(
 )
 
 # Doctest setup
-DocMeta.setdocmeta!(Turing, :DocTestSetup, :(using Turing); recursive=true)
+DocMeta.setdocmeta!(Turing, :DocTestSetup, :(using Turing, DynamicPPL); recursive=true)
 
 makedocs(;
     sitename="Turing",
