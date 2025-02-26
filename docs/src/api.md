@@ -6,11 +6,10 @@ Turing.jl directly re-exports the entire public API of the following packages:
 
   - [Distributions.jl](https://juliastats.org/Distributions.jl)
   - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
-  - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
-  - [Bijectors.jl](https://turinglang.org/Bijectors.jl)
-  - [Libtask.jl](https://github.com/TuringLang/Libtask.jl)
 
 Please see the individual packages for their documentation.
+
+For convenience when constructing distributions, Turing.jl also re-exports [LinearAlgebra.I](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.I).
 
 ## Individual exports and re-exports
 
@@ -45,9 +44,12 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Inference
 
-| Exported symbol | Documentation                                                                                    | Description         |
-|:--------------- |:------------------------------------------------------------------------------------------------ |:------------------- |
-| `sample`        | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model |
+| Exported symbol   | Documentation                                                                                    | Description                        |
+|:----------------- |:------------------------------------------------------------------------------------------------ |:---------------------------------- |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model                |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                            | Run MCMC using multiple threads    |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                        | Run MCMC using multiple processes  |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                             | Run MCMC using without parallelism |
 
 ### Samplers
 
@@ -109,13 +111,6 @@ OrderedLogistic
 LogPoisson
 ```
 
-`BernoulliLogit` is part of Distributions.jl since version 0.25.77.
-If you are using an older version of Distributions where this isn't defined, Turing will export the same distribution.
-
-```@docs
-Distributions.BernoulliLogit
-```
-
 ### Tools to work with distributions
 
 | Exported symbol | Documentation                          | Description                                                    |
@@ -134,27 +129,18 @@ DynamicPPL.predict
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
-| Exported symbol            | Documentation                                                                                                                     | Description                                                     |
-|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:--------------------------------------------------------------- |
-| `generated_quantities`     | [`DynamicPPL.generated_quantities`](@extref)                                                                                      | Calculate additional quantities defined in a model              |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain              |
-| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                                   |
-| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                                   |
-| `LogDensityFunction`       | [`DynamicPPL.LogDensityFunction`](@extref)                                                                                        | Wrap a Turing model to satisfy LogDensityFunctions.jl interface |
-| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                                | Condition a model on data                                       |
-| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                              | Remove conditioning on data                                     |
-| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                               | Return the conditioned values of a model                        |
-| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                       | Fix the value of a variable                                     |
-| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                                   |
-| `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                                           |
-
-### Extra re-exports from Bijectors
-
-Note that Bijectors itself does not export `ordered`.
-
-```@docs
-Bijectors.ordered
-```
+| Exported symbol            | Documentation                                                                                                                     | Description                                        |
+|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:-------------------------------------------------- |
+| `returned`                 | [`DynamicPPL.returned`](@extref)                                                                                                  | Calculate additional quantities defined in a model |
+| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain |
+| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                      |
+| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                      |
+| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                                | Condition a model on data                          |
+| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                              | Remove conditioning on data                        |
+| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                               | Return the conditioned values of a model           |
+| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                       | Fix the value of a variable                        |
+| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                      |
+| `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                              |
 
 ### Point estimates
 
