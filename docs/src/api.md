@@ -126,9 +126,9 @@ Distributions.BernoulliLogit
 
 ### Predictions
 
-```@docs
-DynamicPPL.predict
-```
+| Exported symbol | Documentation                      | Description                                |
+|:--------------- |:---------------------------------- |:------------------------------------------ |
+| `predict`       | [`DynamicPPL.predict`](@extref)    | Generate predictions from a model          |
 
 ### Querying model probabilities and quantities
 
