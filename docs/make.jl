@@ -4,6 +4,7 @@ using Turing
 # from those packages.
 using Distributions
 using Bijectors
+using DynamicPPL
 
 using DocumenterInterLinks
 
@@ -33,5 +34,3 @@ makedocs(;
     warnonly=true,
     plugins=[links],
 )
-
-deploydocs(; repo="github.com/TuringLang/Turing.jl.git", push_preview=true)
