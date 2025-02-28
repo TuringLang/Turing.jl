@@ -440,15 +440,6 @@ using Turing
 
         res = sample(StableRNG(seed), vdemo1b(x), alg, 10)
 
-        @model function vdemo2(x)
-            μ ~ MvNormal(zeros(size(x, 1)), I)
-            @. x ~ $(MvNormal(μ, I))
-        end
-
-        D = 2
-        alg = HMC(0.01, 5; adtype=adbackend)
-        res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
-
         # Vector assumptions
         N = 10
         alg = HMC(0.2, 4; adtype=adbackend)
@@ -492,7 +483,7 @@ using Turing
         N = 3
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
-            @. x ~ [InverseGamma(2, 3) for i in 1:N]
+            x ~ filldist(InverseGamma(2, 3), N, N)
         end
 
         sample(StableRNG(seed), vdemo7(), alg, 10)

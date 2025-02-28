@@ -201,28 +201,6 @@ using Turing
         @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains
     end
 
-    @testset "Regression tests" begin
-        # https://github.com/TuringLang/DynamicPPL.jl/issues/27
-        @model function mwe1(::Type{T}=Float64) where {T<:Real}
-            m = Matrix{T}(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
-        end
-        @test sample(StableRNG(seed), mwe1(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-
-        @model function mwe2(::Type{T}=Matrix{Float64}) where {T}
-            m = T(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
-        end
-        @test sample(StableRNG(seed), mwe2(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-
-        # https://github.com/TuringLang/Turing.jl/issues/1308
-        @model function mwe3(::Type{T}=Array{Float64}) where {T}
-            m = T(undef, 2, 3)
-            return m ~ filldist(MvNormal(zeros(2), I), 3)
-        end
-        @test sample(StableRNG(seed), mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-    end
-
     # issue #1923
     @testset "reproducibility" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
