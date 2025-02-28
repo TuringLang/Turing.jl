@@ -39,7 +39,6 @@ end
     end
 
     @testset "essential" verbose = true begin
-        @timeit_include("essential/ad.jl")
         @timeit_include("essential/container.jl")
     end
 

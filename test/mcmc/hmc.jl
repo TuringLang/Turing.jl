@@ -155,11 +155,11 @@ using Turing
 
     @testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         alg = HMCDA(200, 0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         @test isa(alg, HMCDA)
@@ -174,11 +174,11 @@ using Turing
 
     @testset "nuts constructor" begin
         alg = NUTS(200, 0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
@@ -218,7 +218,7 @@ using Turing
         # https://github.com/TuringLang/Turing.jl/issues/1308
         @model function mwe3(::Type{T}=Array{Float64}) where {T}
             m = T(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
+            return m ~ filldist(MvNormal(zeros(2), I), 3)
         end
         @test sample(StableRNG(seed), mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
     end
@@ -327,7 +327,7 @@ using Turing
         algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
         @testset "$(alg)" for alg in algs
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg, gdemo_default)
+            spl = Sampler(alg)
             hmc_state = DynamicPPL.initialstep(
                 Random.default_rng(), gdemo_default, spl, DynamicPPL.VarInfo(gdemo_default)
             )[2]

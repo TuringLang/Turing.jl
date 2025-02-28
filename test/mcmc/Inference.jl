@@ -72,7 +72,7 @@ using Turing
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
+            sampler = Sampler(HMC(0.1, 7; adtype=adbackend))
             chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
             @test chains isa MCMCChains.Chains
         end
@@ -512,7 +512,7 @@ using Turing
 
         @model function vdemo2(x)
             μ ~ MvNormal(zeros(size(x, 1)), I)
-            return x .~ MvNormal(μ, I)
+            return x ~ filldist(MvNormal(μ, I), size(x, 2))
         end
 
         D = 2
@@ -560,7 +560,7 @@ using Turing
 
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
-            return x .~ [InverseGamma(2, 3) for i in 1:N]
+            return x ~ filldist(InverseGamma(2, 3), N, N)
         end
 
         sample(StableRNG(seed), vdemo7(), alg, 10)

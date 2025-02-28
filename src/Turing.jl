@@ -9,7 +9,7 @@ using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL, LogDensityFunction
-import DynamicPPL: getspace, NoDist, NamedDist
+import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
 using Accessors: Accessors
