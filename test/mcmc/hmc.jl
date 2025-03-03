@@ -162,10 +162,6 @@ using Turing
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
-        alg = HMCDA(200, 0.8, 0.75, :s; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
         @test isa(alg, HMCDA)
         @test isa(sampler, Sampler{<:Turing.Hamiltonian})
     end
@@ -182,10 +178,6 @@ using Turing
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
-
-        alg = NUTS(200, 0.65, :m; adtype=adbackend)
         sampler = Sampler(alg, gdemo_default)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end

@@ -24,26 +24,28 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "mh constructor" begin
         N = 10
         s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))
-        s2 = MH(:s, :m)
+        s2 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0))
         s3 = MH()
-        for s in (s1, s2, s3)
+        s4 = MH([1.0 0.1; 0.1 1.0])
+        for s in (s1, s2, s3, s4)
             @test DynamicPPL.alg_str(Sampler(s, gdemo_default)) == "MH"
         end
 
         c1 = sample(gdemo_default, s1, N)
         c2 = sample(gdemo_default, s2, N)
         c3 = sample(gdemo_default, s3, N)
-
-        s4 = Gibbs(:m => MH(), :s => MH())
         c4 = sample(gdemo_default, s4, N)
 
-        # s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
-        # c5 = sample(gdemo_default, s5, N)
+        s5 = Gibbs(:m => MH(), :s => MH())
+        c5 = sample(gdemo_default, s5, N)
+
+        # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
+        # c6 = sample(gdemo_default, s6, N)
 
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
         # it with `NamedTuple` instead of `AbstractVector`.
-        # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
-        # c6 = sample(gdemo_default, s6, N)
+        # s7 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
+        # c7 = sample(gdemo_default, s7, N)
     end
 
     @testset "mh inference" begin

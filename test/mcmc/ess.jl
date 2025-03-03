@@ -30,18 +30,13 @@ using Turing
         N = 10
 
         s1 = ESS()
-        s2 = ESS(:m)
-        for s in (s1, s2)
-            @test DynamicPPL.alg_str(Sampler(s, demo_default)) == "ESS"
-        end
+        @test DynamicPPL.alg_str(Sampler(s1, demo_default)) == "ESS"
 
         c1 = sample(demo_default, s1, N)
-        c2 = sample(demo_default, s2, N)
-        c3 = sample(demodot_default, s1, N)
-        c4 = sample(demodot_default, s2, N)
+        c2 = sample(demodot_default, s1, N)
 
-        s3 = Gibbs(:m => ESS(), :s => MH())
-        c5 = sample(gdemo_default, s3, N)
+        s2 = Gibbs(:m => ESS(), :s => MH())
+        c3 = sample(gdemo_default, s2, N)
     end
 
     @testset "ESS inference" begin

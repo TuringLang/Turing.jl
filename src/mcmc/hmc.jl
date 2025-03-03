@@ -53,7 +53,7 @@ sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
 sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)
 ```
 """
-struct HMC{AD,space,metricT<:AHMC.AbstractMetric} <: StaticHamiltonian
+struct HMC{AD,metricT<:AHMC.AbstractMetric} <: StaticHamiltonian
     ϵ::Float64 # leapfrog step size
     n_leapfrog::Int # leapfrog step number
     adtype::AD
@@ -62,24 +62,18 @@ end
 function HMC(
     ϵ::Float64,
     n_leapfrog::Int,
-    ::Type{metricT},
-    space::Tuple;
+    ::Type{metricT};
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 ) where {metricT<:AHMC.AbstractMetric}
-    return HMC{typeof(adtype),space,metricT}(ϵ, n_leapfrog, adtype)
+    return HMC{typeof(adtype),metricT}(ϵ, n_leapfrog, adtype)
 end
 function HMC(
     ϵ::Float64,
-    n_leapfrog::Int,
-    space::Symbol...;
+    n_leapfrog::Int;
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMC(ϵ, n_leapfrog, metricT, space; adtype=adtype)
-end
-
-function drop_space(alg::HMC{AD,space,metricT}) where {AD,space,metricT}
-    return HMC{AD,(),metricT}(alg.ϵ, alg.n_leapfrog, alg.adtype)
+    return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
@@ -336,7 +330,7 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
 setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+struct HMCDA{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
     n_adapts::Int         # number of samples with adaption for ϵ
     δ::Float64     # target accept rate
     λ::Float64     # target leapfrog length
@@ -349,11 +343,10 @@ function HMCDA(
     δ::Float64,
     λ::Float64,
     ϵ::Float64,
-    ::Type{metricT},
-    space::Tuple;
+    ::Type{metricT};
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 ) where {metricT<:AHMC.AbstractMetric}
-    return HMCDA{typeof(adtype),space,metricT}(n_adapts, δ, λ, ϵ, adtype)
+    return HMCDA{typeof(adtype),metricT}(n_adapts, δ, λ, ϵ, adtype)
 end
 
 function HMCDA(
@@ -363,7 +356,7 @@ function HMCDA(
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMCDA(-1, δ, λ, init_ϵ, metricT, (); adtype=adtype)
+    return HMCDA(-1, δ, λ, init_ϵ, metricT; adtype=adtype)
 end
 
 function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ::Tuple{}; kwargs...)
@@ -373,17 +366,12 @@ end
 function HMCDA(
     n_adapts::Int,
     δ::Float64,
-    λ::Float64,
-    space::Symbol...;
+    λ::Float64;
     init_ϵ::Float64=0.0,
     metricT=AHMC.UnitEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT, space; adtype=adtype)
-end
-
-function drop_space(alg::HMCDA{AD,space,metricT}) where {AD,space,metricT}
-    return HMCDA{AD,(),metricT}(alg.n_adapts, alg.δ, alg.λ, alg.ϵ, alg.adtype)
+    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT; adtype=adtype)
 end
 
 """
@@ -409,7 +397,7 @@ Arguments:
     If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 """
-struct NUTS{AD,space,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+struct NUTS{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
     n_adapts::Int         # number of samples with adaption for ϵ
     δ::Float64        # target accept rate
     max_depth::Int         # maximum tree depth
@@ -424,11 +412,10 @@ function NUTS(
     max_depth::Int,
     Δ_max::Float64,
     ϵ::Float64,
-    ::Type{metricT},
-    space::Tuple;
+    ::Type{metricT};
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 ) where {metricT}
-    return NUTS{typeof(adtype),space,metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
+    return NUTS{typeof(adtype),metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
 
 function NUTS(n_adapts::Int, δ::Float64, ::Tuple{}; kwargs...)
@@ -437,15 +424,14 @@ end
 
 function NUTS(
     n_adapts::Int,
-    δ::Float64,
-    space::Symbol...;
+    δ::Float64;
     max_depth::Int=10,
     Δ_max::Float64=1000.0,
     init_ϵ::Float64=0.0,
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT, space; adtype=adtype)
+    return NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
 end
 
 function NUTS(
@@ -456,21 +442,15 @@ function NUTS(
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
-    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT, (); adtype=adtype)
+    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
 end
 
 function NUTS(; kwargs...)
     return NUTS(-1, 0.65; kwargs...)
 end
 
-function drop_space(alg::NUTS{AD,space,metricT}) where {AD,space,metricT}
-    return NUTS{AD,(),metricT}(
-        alg.n_adapts, alg.δ, alg.max_depth, alg.Δ_max, alg.ϵ, alg.adtype
-    )
-end
-
 for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any,<:Any,metricT}) where {metricT} = metricT
+    @eval getmetricT(::$alg{<:Any,metricT}) where {metricT} = metricT
 end
 
 #####
@@ -515,7 +495,6 @@ end
 function DynamicPPL.assume(
     rng, spl::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
-    DynamicPPL.updategid!(vi, vn, spl)
     return DynamicPPL.assume(dist, vn, vi)
 end
 
@@ -527,7 +506,6 @@ function DynamicPPL.dot_assume(
     var::AbstractMatrix,
     vi,
 )
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dist, var, vns, vi)
 end
 function DynamicPPL.dot_assume(
@@ -538,7 +516,6 @@ function DynamicPPL.dot_assume(
     var::AbstractArray,
     vi,
 )
-    DynamicPPL.updategid!.(Ref(vi), vns, Ref(spl))
     return DynamicPPL.dot_assume(dists, var, vns, vi)
 end
 
