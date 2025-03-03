@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 import ..ADUtils
 using Distributions: sample
+import Enzyme
 import ForwardDiff
 using LinearAlgebra: dot
 import ReverseDiff
