@@ -268,6 +268,102 @@ end
     @test chain1.value == chain2.value
 end
 
+@testset "Gibbs warmup" begin
+    # An inference algorithm, for testing purposes, that records how many warm-up steps
+    # and how many non-warm-up steps haven been taken.
+    mutable struct WarmupCounter <: Inference.InferenceAlgorithm
+        warmup_init_count::Int
+        non_warmup_init_count::Int
+        warmup_count::Int
+        non_warmup_count::Int
+
+        WarmupCounter() = new(0, 0, 0, 0)
+    end
+
+    Turing.Inference.drop_space(wuc::WarmupCounter) = wuc
+    Turing.Inference.getspace(::WarmupCounter) = ()
+    Turing.Inference.isgibbscomponent(::WarmupCounter) = true
+
+    # A trivial state that holds nothing but a VarInfo, to be used with WarmupCounter.
+    struct VarInfoState{T}
+        vi::T
+    end
+
+    Turing.Inference.varinfo(state::VarInfoState) = state.vi
+    function Turing.Inference.setparams_varinfo!!(
+        ::DynamicPPL.Model,
+        ::DynamicPPL.Sampler,
+        ::VarInfoState,
+        params::DynamicPPL.AbstractVarInfo,
+    )
+        return VarInfoState(params)
+    end
+
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter};
+        kwargs...,
+    )
+        spl.alg.non_warmup_init_count += 1
+        return Turing.Inference.Transition(nothing, 0.0),
+        VarInfoState(DynamicPPL.VarInfo(model))
+    end
+
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter};
+        kwargs...,
+    )
+        spl.alg.warmup_init_count += 1
+        return Turing.Inference.Transition(nothing, 0.0),
+        VarInfoState(DynamicPPL.VarInfo(model))
+    end
+
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        ::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        s::VarInfoState;
+        kwargs...,
+    )
+        spl.alg.non_warmup_count += 1
+        return Turing.Inference.Transition(nothing, 0.0), s
+    end
+
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        ::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        s::VarInfoState;
+        kwargs...,
+    )
+        spl.alg.warmup_count += 1
+        return Turing.Inference.Transition(nothing, 0.0), s
+    end
+
+    @model f() = x ~ Normal()
+    m = f()
+
+    num_samples = 10
+    num_warmup = 3
+    wuc = WarmupCounter()
+    sample(m, Gibbs(:x => wuc), num_samples; num_warmup=num_warmup)
+    @test wuc.warmup_init_count == 1
+    @test wuc.non_warmup_init_count == 0
+    @test wuc.warmup_count == num_warmup
+    @test wuc.non_warmup_count == num_samples - 1
+
+    num_reps = 2
+    wuc = WarmupCounter()
+    sample(m, Gibbs(:x => RepeatSampler(wuc, num_reps)), num_samples; num_warmup=num_warmup)
+    @test wuc.warmup_init_count == 1
+    @test wuc.non_warmup_init_count == 0
+    @test wuc.warmup_count == num_warmup * num_reps
+    @test wuc.non_warmup_count == (num_samples - 1) * num_reps
+end
+
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @info "Starting Gibbs tests with $adbackend"
     @testset "Deprecated Gibbs constructors" begin
