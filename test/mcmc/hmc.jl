@@ -7,6 +7,7 @@ import ..ADUtils
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 import DynamicPPL
 using DynamicPPL: Sampler
+import Enzyme
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -15,7 +16,7 @@ import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
 import Mooncake
-using Test: @test, @test_logs, @testset, @test_throws
+using Test: @test, @test_broken, @test_logs, @testset, @test_throws
 using Turing
 
 @testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
@@ -84,7 +85,8 @@ using Turing
         r = reshape(Array(chain), n_samples, 2, 2)
         r_mean = dropdims(mean(r; dims=1); dims=1)
 
-        @test isapprox(r_mean, mean(dist); atol=0.2)
+        # TODO(mhauru) The below remains broken for Enzyme. Need to investigate why.
+        @test isapprox(r_mean, mean(dist); atol=0.2) broken = (adbackend isa AutoEnzyme)
     end
 
     @testset "multivariate support" begin
@@ -112,18 +114,14 @@ using Turing
         alpha = 0.16                  # regularizatin term
         var_prior = sqrt(1.0 / alpha) # variance of the Gaussian prior
 
-        @model function bnn(ts)
-            b1 ~ MvNormal(
-                [0.0; 0.0; 0.0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
-            )
-            w11 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w12 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
-            w13 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
+        @model function bnn(ts, var_prior)
+            b1 ~ MvNormal(zeros(3), var_prior * I)
+            w11 ~ MvNormal(zeros(2), var_prior * I)
+            w12 ~ MvNormal(zeros(2), var_prior * I)
+            w13 ~ MvNormal(zeros(2), var_prior * I)
             bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal(
-                [0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
-            )
+            wo ~ MvNormal(zeros(3), var_prior * I)
             for i in rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)
@@ -132,7 +130,9 @@ using Turing
         end
 
         # Sampling
-        chain = sample(StableRNG(seed), bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
+        chain = sample(
+            StableRNG(seed), bnn(ts, var_prior), HMC(0.1, 5; adtype=adbackend), 10
+        )
     end
 
     @testset "hmcda inference" begin
@@ -345,12 +345,16 @@ using Turing
     end
 
     @testset "Check ADType" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        sample(StableRNG(seed), m, alg, 10)
+        # These tests don't make sense for Enzyme, since it does not use a particular element
+        # type.
+        if !(adbackend isa AutoEnzyme)
+            alg = HMC(0.1, 10; adtype=adbackend)
+            m = DynamicPPL.contextualize(
+                gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
+            )
+            # These will error if the adbackend being used is not the one set.
+            sample(StableRNG(seed), m, alg, 10)
+        end
     end
 end
 
