@@ -11,7 +11,6 @@ using ReverseDiff
 using Test: @test, @testset
 using Turing
 using Turing: SampleFromPrior
-using Zygote
 
 function test_model_ad(model, f, syms::Vector{Symbol})
     # Set up VI.
@@ -87,20 +86,6 @@ end
             vi, ad_test_f, SampleFromPrior(), DynamicPPL.DefaultContext()
         )
         x = map(x -> Float64(x), vi[SampleFromPrior()])
-
-        zygoteℓ = LogDensityProblemsAD.ADgradient(Turing.AutoZygote(), ℓ)
-        if isdefined(Base, :get_extension)
-            @test zygoteℓ isa
-                Base.get_extension(
-                LogDensityProblemsAD, :LogDensityProblemsADZygoteExt
-            ).ZygoteGradientLogDensity
-        else
-            @test zygoteℓ isa
-                LogDensityProblemsAD.LogDensityProblemsADZygoteExt.ZygoteGradientLogDensity
-        end
-        @test zygoteℓ.ℓ === ℓ
-        ∇E2 = LogDensityProblems.logdensity_and_gradient(zygoteℓ, x)[2]
-        @test sort(∇E2) ≈ grad_FWAD atol = 1e-9
     end
 
     @testset "general AD tests" begin
@@ -135,11 +120,10 @@ end
 
         test_model_ad(wishart_ad(), logp3, [:v])
     end
-    @testset "Simplex Zygote and ReverseDiff (with and without caching) AD" begin
+    @testset "Simplex ReverseDiff (with and without caching) AD" begin
         @model function dir()
             return theta ~ Dirichlet(1 ./ fill(4, 4))
         end
-        sample(dir(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
         sample(dir(), HMC(0.01, 1; adtype=AutoReverseDiff(; compile=false)), 1000)
         sample(dir(), HMC(0.01, 1; adtype=AutoReverseDiff(; compile=true)), 1000)
     end
@@ -149,14 +133,12 @@ end
         end
 
         sample(wishart(), HMC(0.01, 1; adtype=AutoReverseDiff(; compile=false)), 1000)
-        sample(wishart(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
 
         @model function invwishart()
             return theta ~ InverseWishart(4, Matrix{Float64}(I, 4, 4))
         end
 
         sample(invwishart(), HMC(0.01, 1; adtype=AutoReverseDiff(; compile=false)), 1000)
-        sample(invwishart(), HMC(0.01, 1; adtype=AutoZygote()), 1000)
     end
     @testset "Hessian test" begin
         @model function tst(x, ::Type{TV}=Vector{Float64}) where {TV}
