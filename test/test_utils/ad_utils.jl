@@ -132,7 +132,6 @@ Check that the element types in `vi` are compatible with the ADType of `context`
 Throw an `IncompatibleADTypeError` if an incompatible element type is encountered.
 """
 function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInfo)
-
     valids = valid_eltypes(context)
     for val in vi[:]
         valtype = typeof(val)
