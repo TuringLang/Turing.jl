@@ -483,7 +483,7 @@ using Turing
         N = 3
         @model function vdemo7()
             x = Array{Real}(undef, N, N)
-            x ~ filldist(InverseGamma(2, 3), N, N)
+            return x ~ filldist(InverseGamma(2, 3), N, N)
         end
 
         sample(StableRNG(seed), vdemo7(), alg, 10)
