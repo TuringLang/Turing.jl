@@ -5,8 +5,9 @@ using DynamicPPL:
     Metadata,
     VarInfo,
     TypedVarInfo,
-    # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL. Either export it
-    # or use something else.
+    # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
+    # implemented for TypedVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
+    # or implement it for other VarInfo types and export it from DPPL.
     all_varnames_grouped_by_symbol,
     syms,
     islinked,
