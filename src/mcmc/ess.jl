@@ -26,16 +26,11 @@ struct ESS <: InferenceAlgorithm end
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
-    # Sanity check
-    vns = _getvns(vi, spl)
-    length(vns) == 1 ||
-        error("[ESS] does only support one variable ($(length(vns)) variables specified)")
-    for vn in only(vns)
+    for vn in keys(vi)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
-            error("[ESS] only supports Gaussian prior distributions")
+            error("ESS only supports Gaussian prior distributions")
     end
-
     return Transition(model, vi), vi
 end
 
@@ -54,14 +49,16 @@ function AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
             ESSPrior(model, spl, vi),
-            Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext()),
+            Turing.LogDensityFunction(
+                model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
+            ),
         ),
         EllipticalSliceSampling.ESS(),
         oldstate,
     )
 
     # update sample and log-likelihood
-    vi = setindex!!(vi, sample, spl)
+    vi = DynamicPPL.unflatten(vi, sample)
     vi = setlogp!!(vi, state.loglikelihood)
 
     return Transition(model, vi), vi
@@ -77,8 +74,8 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     function ESSPrior{M,S,V}(
         model::M, sampler::S, varinfo::V
     ) where {M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo}
-        vns = _getvns(varinfo, sampler)
-        μ = mapreduce(vcat, vns[1]) do vn
+        vns = keys(varinfo)
+        μ = mapreduce(vcat, vns) do vn
             dist = getdist(varinfo, vn)
             EllipticalSliceSampling.isgaussian(typeof(dist)) ||
                 error("[ESS] only supports Gaussian prior distributions")
@@ -100,28 +97,22 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
     # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
-    vns = _getvns(varinfo, sampler)
-    for vn in Iterators.flatten(values(vns))
+    vns = keys(varinfo)
+    for vn in vns
         set_flag!(varinfo, vn, "del")
     end
     p.model(rng, varinfo, sampler)
-    return varinfo[sampler]
+    return varinfo[:]
 end
 
 # Mean of prior distribution
 Distributions.mean(p::ESSPrior) = p.μ
 
 # Evaluate log-likelihood of proposals
-const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} = Turing.LogDensityFunction{
-    V,M,<:DynamicPPL.SamplingContext{<:S}
-}
+const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} =
+    Turing.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
 
-function (ℓ::ESSLogLikelihood)(f::AbstractVector)
-    sampler = DynamicPPL.getsampler(ℓ)
-    varinfo = setindex!!(ℓ.varinfo, f, sampler)
-    varinfo = last(DynamicPPL.evaluate!!(ℓ.model, varinfo, sampler))
-    return getlogp(varinfo)
-end
+(ℓ::ESSLogLikelihood)(f::AbstractVector) = LogDensityProblems.logdensity(ℓ, f)
 
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, vn, vi
@@ -131,22 +122,6 @@ function DynamicPPL.tilde_assume(
     )
 end
 
-function DynamicPPL.tilde_observe(
-    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
-)
+function DynamicPPL.tilde_observe(ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vi)
     return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
-end
-
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, left, vns, vi
-)
-    return DynamicPPL.dot_tilde_assume(
-        rng, LikelihoodContext(), SampleFromPrior(), right, left, vns, vi
-    )
-end
-
-function DynamicPPL.dot_tilde_observe(
-    ctx::DefaultContext, sampler::Sampler{<:ESS}, right, left, vi
-)
-    return DynamicPPL.dot_tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end

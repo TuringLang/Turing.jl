@@ -198,58 +198,6 @@ function DynamicPPL.tilde_assume(
     end
 end
 
-# Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
-# See comments there for more details.
-function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
-    child_context = DynamicPPL.childcontext(context)
-    return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(child_context, right, left, vns, vi)
-    elseif has_conditioned_gibbs(context, vns)
-        value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child_context, right, left, vns, get_global_varinfo(context)
-        )
-        value, lp, vi
-    else
-        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
-            child_context,
-            DynamicPPL.SampleFromPrior(),
-            right,
-            left,
-            vns,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
-    end
-end
-
-# As above but with an RNG.
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
-)
-    child_context = DynamicPPL.childcontext(context)
-    return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(rng, child_context, sampler, right, left, vns, vi)
-    elseif has_conditioned_gibbs(context, vns)
-        value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child_context, right, left, vns, get_global_varinfo(context)
-        )
-        value, lp, vi
-    else
-        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
-            rng,
-            child_context,
-            DynamicPPL.SampleFromPrior(),
-            right,
-            left,
-            vns,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
-    end
-end
-
 """
     make_conditional(model, target_variables, varinfo)
 
@@ -281,16 +229,8 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
-# All samplers are given the same Selector, so that they will sample all variables
-# given to them by the Gibbs sampler. This avoids conflicts between the new and the old way
-# of choosing which sampler to use.
-function set_selector(x::DynamicPPL.Sampler)
-    return DynamicPPL.Sampler(x.alg, DynamicPPL.Selector(0))
-end
-function set_selector(x::RepeatSampler)
-    return RepeatSampler(set_selector(x.sampler), x.num_repeat)
-end
-set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
+wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
+wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
 to_varname_list(x::Union{VarName,Symbol}) = [VarName(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
@@ -343,9 +283,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
             end
         end
 
-        # Ensure that samplers have the same selector, and that varnames are lists of
-        # VarNames.
-        samplers = tuple(map(set_selector, samplers)...)
+        samplers = tuple(map(wrap_in_sampler, samplers)...)
         varnames = tuple(map(to_varname_list, varnames)...)
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
@@ -500,7 +438,9 @@ function setparams_varinfo!!(
     state::TuringState,
     params::AbstractVarInfo,
 )
-    logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
+    logdensity = DynamicPPL.LogDensityFunction(
+        model, state.ldf.varinfo, state.ldf.context; adtype=sampler.alg.adtype
+    )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
     )

@@ -59,17 +59,20 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi, spl)
-        vi = DynamicPPL.link!!(vi, spl, model)
+    if !DynamicPPL.islinked(vi)
+        vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
     end
 
     # Compute initial sample and state.
     sample = Transition(model, vi)
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    ℓ = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
+        adtype=spl.alg.adtype,
     )
-    state = SGHMCState(ℓ, vi, zero(vi[spl]))
+    state = SGHMCState(ℓ, vi, zero(vi[:]))
 
     return sample, state
 end
@@ -84,7 +87,7 @@ function AbstractMCMC.step(
     # Compute gradient of log density.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
 
     # Update latent variables and velocity according to
@@ -96,7 +99,7 @@ function AbstractMCMC.step(
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
     # Save new variables and recompute log density.
-    vi = DynamicPPL.setindex!!(vi, θ, spl)
+    vi = DynamicPPL.unflatten(vi, θ)
     vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
 
     # Compute next sample and state.
@@ -219,15 +222,18 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi, spl)
-        vi = DynamicPPL.link!!(vi, spl, model)
+    if !DynamicPPL.islinked(vi)
+        vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
     end
 
     # Create first sample and state.
     sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    ℓ = DynamicPPL.LogDensityFunction(
+        model,
+        vi,
+        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
+        adtype=spl.alg.adtype,
     )
     state = SGLDState(ℓ, vi, 1)
 
@@ -240,14 +246,14 @@ function AbstractMCMC.step(
     # Perform gradient step.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
     step = state.step
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
     # Save new variables and recompute log density.
-    vi = DynamicPPL.setindex!!(vi, θ, spl)
+    vi = DynamicPPL.unflatten(vi, θ)
     vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
 
     # Compute next sample and state.
