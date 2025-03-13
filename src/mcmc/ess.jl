@@ -26,16 +26,6 @@ struct ESS <: InferenceAlgorithm end
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
 )
-    # Sanity check
-    # TODO(mhauru) What is the point of the first check? Why is it relevant that if there
-    # are multiple variables they are all under the same symbol?
-    vn_syms = syms(vi)
-    if length(vn_syms) != 1
-        msg = """
-            ESS only supports one variable symbol ($(length(vn_syms)) variables specified)\
-        """
-        error(msg)
-    end
     for vn in keys(vi)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
