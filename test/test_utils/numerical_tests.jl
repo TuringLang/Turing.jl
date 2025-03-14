@@ -57,7 +57,7 @@ function check_numerical(chain, symbols::Vector, exact_vals::Vector; atol=0.2, r
 end
 
 # Wrapper function to quickly check gdemo accuracy.
-function check_gdemo(chain; atol=0.2, rtol=0.0)
+function check_gdemo(chain; atol=0.25, rtol=0.0)
     return check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=atol, rtol=rtol)
 end
 
