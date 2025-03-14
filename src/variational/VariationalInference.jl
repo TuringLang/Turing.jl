@@ -135,9 +135,9 @@ end
 
 function fullrank_gaussian(
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:Diagonal} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:Diagonal}=nothing;
+    kwargs...,
 )
     fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
 end
