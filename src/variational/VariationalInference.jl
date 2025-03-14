@@ -33,9 +33,9 @@ function initialize_gaussian_scale(
     model::DynamicPPL.Model,
     location::AbstractVector,
     scale::AbstractMatrix;
-    num_samples::Int = 10,
-    num_max_trials::Int = 10,
-    reduce_factor = one(eltype(scale))/2
+    num_samples::Int=10,
+    num_max_trials::Int=10,
+    reduce_factor=one(eltype(scale)) / 2,
 )
     prob = make_logdensity(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
@@ -54,7 +54,7 @@ function initialize_gaussian_scale(
             error("Could not find an initial")
         end
 
-        scale = reduce_factor*scale
+        scale = reduce_factor * scale
         n_trial += 1
     end
 end
@@ -62,9 +62,9 @@ end
 function meanfield_gaussian(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:Diagonal} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:Diagonal}=nothing;
+    kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
     # Use linked `varinfo` to determine the correct number of parameters.
@@ -93,11 +93,11 @@ end
 
 function meanfield_gaussian(
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:Diagonal} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:Diagonal}=nothing;
+    kwargs...,
 )
-    meanfield_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return meanfield_gaussian(Random.default_rng(), model, location, scale; kwargs...)
 end
 
 function fullrank_gaussian(
@@ -135,23 +135,23 @@ end
 
 function fullrank_gaussian(
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:Diagonal} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:Diagonal}=nothing;
+    kwargs...,
 )
-    fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
 end
 
 function vi(
     model::DynamicPPL.Model,
     q::Bijectors.TransformedDistribution,
     n_iterations::Int;
-    objective=RepGradELBO(10, entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
     show_progress::Bool=PROGRESS[],
     optimizer=AdvancedVI.DoWG(),
     averager=AdvancedVI.PolynomialAveraging(),
     operator=AdvancedVI.ProximalLocationScaleEntropy(),
-    adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE, 
+    adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
     kwargs...
 )
     return AdvancedVI.optimize(
