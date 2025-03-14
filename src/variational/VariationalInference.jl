@@ -102,9 +102,9 @@ end
 function fullrank_gaussian(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:LowerTriangular} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:LowerTriangular}=nothing;
+    kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
     # Use linked `varinfo` to determine the correct number of parameters.
@@ -151,7 +151,7 @@ function vi(
     averager=AdvancedVI.PolynomialAveraging(),
     operator=AdvancedVI.ProximalLocationScaleEntropy(),
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
-    kwargs...
+    kwargs...,
 )
     return AdvancedVI.optimize(
         make_logdensity(model),
@@ -163,7 +163,7 @@ function vi(
         optimizer,
         averager,
         operator,
-        kwargs...
+        kwargs...,
     )
 end
 
