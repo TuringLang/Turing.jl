@@ -139,7 +139,7 @@ function fullrank_gaussian(
     scale::Union{Nothing,<:Diagonal}=nothing;
     kwargs...,
 )
-    fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
 end
 
 function vi(
