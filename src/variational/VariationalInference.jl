@@ -152,7 +152,7 @@ function vi(
     averager=AdvancedVI.PolynomialAveraging(),
     operator=AdvancedVI.ProximalLocationScaleEntropy(),
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
-    kwargs...
+    kwargs...,
 )
     return AdvancedVI.optimize(
         make_logdensity(model),
