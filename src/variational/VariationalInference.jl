@@ -97,7 +97,7 @@ function meanfield_gaussian(
     scale::Union{Nothing,<:Diagonal}=nothing;
     kwargs...,
 )
-    meanfield_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return meanfield_gaussian(Random.default_rng(), model, location, scale; kwargs...)
 end
 
 function fullrank_gaussian(
