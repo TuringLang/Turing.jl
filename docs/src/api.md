@@ -88,7 +88,6 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 |:----------------- |:------------------------------------ |:---------------------- |
 | `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend |
 | `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
-| `AutoZygote`      | [`ADTypes.AutoZygote`](@extref)      | Zygote.jl backend      |
 | `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
 
 ### Debugging

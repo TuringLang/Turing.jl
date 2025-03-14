@@ -106,7 +106,6 @@ export @model,                 # modelling
     externalsampler,
     AutoForwardDiff,        # ADTypes
     AutoReverseDiff,
-    AutoZygote,
     AutoMooncake,
     setprogress!,           # debugging
     Flat,

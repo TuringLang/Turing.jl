@@ -7,7 +7,6 @@ using ReverseDiff: ReverseDiff
 using Test: @test, @testset, @test_throws
 using Turing: Turing
 using Turing: DynamicPPL
-using Zygote: Zygote
 
 # Check that the ADTypeCheckContext works as expected.
 @testset "ADTypeCheckContext" begin
@@ -16,20 +15,12 @@ using Zygote: Zygote
     adtypes = (
         Turing.AutoForwardDiff(),
         Turing.AutoReverseDiff(),
-        Turing.AutoZygote(),
         # TODO: Mooncake
         # Turing.AutoMooncake(config=nothing),
     )
     for actual_adtype in adtypes
         sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
         for expected_adtype in adtypes
-            if (
-                actual_adtype == Turing.AutoForwardDiff() &&
-                expected_adtype == Turing.AutoZygote()
-            )
-                # TODO(mhauru) We are currently unable to check this case.
-                continue
-            end
             contextualised_tm = DynamicPPL.contextualize(
                 tm, ADTypeCheckContext(expected_adtype, tm.context)
             )
