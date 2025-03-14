@@ -54,7 +54,7 @@ function initialize_gaussian_scale(
             error("Could not find an initial")
         end
 
-        scale = reduce_factor*scale
+        scale = reduce_factor * scale
         n_trial += 1
     end
 end
