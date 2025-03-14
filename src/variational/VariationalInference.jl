@@ -103,9 +103,9 @@ end
 function fullrank_gaussian(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:LowerTriangular} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:LowerTriangular}=nothing;
+    kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
     # Use linked `varinfo` to determine the correct number of parameters.
