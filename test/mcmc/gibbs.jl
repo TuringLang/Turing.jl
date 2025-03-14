@@ -655,7 +655,7 @@ end
             # Run the Gibbs sampler and NUTS on the same model, compare statistics of the
             # chains.
             @testset "comparison with 'gold-standard' samples" begin
-                num_iterations = 1_000
+                num_iterations = 2_000
                 thinning = 10
                 num_chains = 4
 

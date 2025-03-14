@@ -172,7 +172,7 @@ using Turing
 
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
-        res = sample(StableRNG(seed), gdemo_default, alg, 500)
+        res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
     end
 
