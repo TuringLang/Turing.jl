@@ -62,9 +62,9 @@ end
 function meanfield_gaussian(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    location::Union{Nothing, <:AbstractVector} = nothing,
-    scale::Union{Nothing, <:Diagonal} = nothing;
-    kwargs...
+    location::Union{Nothing,<:AbstractVector}=nothing,
+    scale::Union{Nothing,<:Diagonal}=nothing;
+    kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
     # Use linked `varinfo` to determine the correct number of parameters.
