@@ -39,7 +39,7 @@ function AdvancedPS.advance!(
 end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
-    DynamicPPL.set_retained_vns_del_by_spl!(trace.varinfo, trace.sampler)
+    DynamicPPL.set_retained_vns_del!(trace.varinfo)
     return trace
 end
 

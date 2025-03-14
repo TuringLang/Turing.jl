@@ -178,40 +178,6 @@ function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, l
     return logp, vi
 end
 
-function DynamicPPL.dot_tilde_assume(context::ADTypeCheckContext, right, left, vn, vi)
-    value, logp, vi = DynamicPPL.dot_tilde_assume(
-        DynamicPPL.childcontext(context), right, left, vn, vi
-    )
-    check_adtype(context, vi)
-    return value, logp, vi
-end
-
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, left, vn, vi
-)
-    value, logp, vi = DynamicPPL.dot_tilde_assume(
-        rng, DynamicPPL.childcontext(context), sampler, right, left, vn, vi
-    )
-    check_adtype(context, vi)
-    return value, logp, vi
-end
-
-function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, right, left, vi)
-    logp, vi = DynamicPPL.dot_tilde_observe(
-        DynamicPPL.childcontext(context), right, left, vi
-    )
-    check_adtype(context, vi)
-    return logp, vi
-end
-
-function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
-    logp, vi = DynamicPPL.dot_tilde_observe(
-        DynamicPPL.childcontext(context), sampler, right, left, vi
-    )
-    check_adtype(context, vi)
-    return logp, vi
-end
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # List of AD backends to test.
 
@@ -219,7 +185,7 @@ end
 All the ADTypes on which we want to run the tests.
 """
 adbackends = [
-    Turing.AutoForwardDiff(; chunksize=0),
+    Turing.AutoForwardDiff(),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
 ]
