@@ -33,9 +33,9 @@ function initialize_gaussian_scale(
     model::DynamicPPL.Model,
     location::AbstractVector,
     scale::AbstractMatrix;
-    num_samples::Int = 10,
-    num_max_trials::Int = 10,
-    reduce_factor = one(eltype(scale))/2
+    num_samples::Int=10,
+    num_max_trials::Int=10,
+    reduce_factor=one(eltype(scale)) / 2,
 )
     prob = make_logdensity(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
