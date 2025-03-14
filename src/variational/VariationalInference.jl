@@ -152,8 +152,9 @@ function vi(
     averager=AdvancedVI.PolynomialAveraging(),
     operator=AdvancedVI.ProximalLocationScaleEntropy(),
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE, 
+    kwargs...
 )
-    q_avg_trans, _, stats, _ = AdvancedVI.optimize(
+    return AdvancedVI.optimize(
         make_logdensity(model),
         objective,
         q,
@@ -163,11 +164,8 @@ function vi(
         optimizer,
         averager,
         operator,
+        kwargs...
     )
-    if show_progress
-        lineplot([stat.elbo for stat in stats], ylabel="Objective", xlabel="Iteration") |> display
-    end
-    return q_avg_trans
 end
 
 end
