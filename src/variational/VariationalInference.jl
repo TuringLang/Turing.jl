@@ -164,7 +164,7 @@ function vi(
         optimizer,
         averager,
         operator,
-        kwargs...
+        kwargs...,
     )
 end
 
