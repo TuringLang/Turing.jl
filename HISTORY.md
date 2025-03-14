@@ -6,6 +6,12 @@
 
 0.37 removes the old Gibbs constructors deprecated in 0.36.
 
+### Remove Zygote support
+
+Zygote is no longer officially supported as an automatic differentiation backend, and `AutoZygote` is no longer exported. You can continue to use Zygote by importing `AutoZygote` from ADTypes and it may well continue to work, but it is no longer tested and no effort will be expended to fix it if something breaks.
+
+[Mooncake](https://github.com/compintell/Mooncake.jl/) is the recommended replacement for Zygote.
+
 ### DynamicPPL 0.35
 
 Turing.jl v0.37 uses DynamicPPL v0.35, which brings with it several breaking changes:
