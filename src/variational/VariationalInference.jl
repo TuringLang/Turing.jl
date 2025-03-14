@@ -146,7 +146,7 @@ function vi(
     model::DynamicPPL.Model,
     q::Bijectors.TransformedDistribution,
     n_iterations::Int;
-    objective=RepGradELBO(10, entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
     show_progress::Bool=PROGRESS[],
     optimizer=AdvancedVI.DoWG(),
     averager=AdvancedVI.PolynomialAveraging(),
