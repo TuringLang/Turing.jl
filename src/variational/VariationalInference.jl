@@ -7,7 +7,6 @@ using Distributions
 using LinearAlgebra
 using LogDensityProblems
 using Random
-using UnicodePlots
 
 import ..Turing: DEFAULT_ADTYPE, PROGRESS
 
