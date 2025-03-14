@@ -151,7 +151,7 @@ function vi(
     optimizer=AdvancedVI.DoWG(),
     averager=AdvancedVI.PolynomialAveraging(),
     operator=AdvancedVI.ProximalLocationScaleEntropy(),
-    adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE, 
+    adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
 )
     q_avg_trans, _, stats, _ = AdvancedVI.optimize(
         make_logdensity(model),
