@@ -312,7 +312,7 @@ function initial_varinfo(rng, model, spl, initial_params)
 
     # Update the parameters if provided.
     if initial_params !== nothing
-        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, spl, model)
+        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, model)
 
         # Update joint log probability.
         # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
