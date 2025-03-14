@@ -300,20 +300,75 @@ end
 
 varinfo(state::GibbsState) = state.vi
 
-function DynamicPPL.initialstep(
+"""
+Initialise a VarInfo for the Gibbs sampler.
+
+This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated here to
+support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
+incompatible with step_warmup.
+"""
+function initial_varinfo(rng, model, spl, initial_params)
+    vi = DynamicPPL.default_varinfo(rng, model, spl)
+
+    # Update the parameters if provided.
+    if initial_params !== nothing
+        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, spl, model)
+
+        # Update joint log probability.
+        # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
+        # and https://github.com/TuringLang/Turing.jl/issues/1563
+        # to avoid that existing variables are resampled
+        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.DefaultContext()))
+    end
+    return vi
+end
+
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
-    vi::DynamicPPL.AbstractVarInfo;
+    spl::DynamicPPL.Sampler{<:Gibbs};
     initial_params=nothing,
     kwargs...,
 )
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
+    vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
-        rng, model, varnames, samplers, vi; initial_params=initial_params, kwargs...
+        rng,
+        model,
+        AbstractMCMC.step,
+        varnames,
+        samplers,
+        vi;
+        initial_params=initial_params,
+        kwargs...,
+    )
+    return Transition(model, vi), GibbsState(vi, states)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs};
+    initial_params=nothing,
+    kwargs...,
+)
+    alg = spl.alg
+    varnames = alg.varnames
+    samplers = alg.samplers
+    vi = initial_varinfo(rng, model, spl, initial_params)
+
+    vi, states = gibbs_initialstep_recursive(
+        rng,
+        model,
+        AbstractMCMC.step_warmup,
+        varnames,
+        samplers,
+        vi;
+        initial_params=initial_params,
+        kwargs...,
     )
     return Transition(model, vi), GibbsState(vi, states)
 end
@@ -322,9 +377,20 @@ end
 Take the first step of MCMC for the first component sampler, and call the same function
 recursively on the remaining samplers, until no samplers remain. Return the global VarInfo
 and a tuple of initial states for all component samplers.
+
+The `step_function` argument should always be either AbstractMCMC.step or
+AbstractMCMC.step_warmup.
 """
 function gibbs_initialstep_recursive(
-    rng, model, varname_vecs, samplers, vi, states=(); initial_params=nothing, kwargs...
+    rng,
+    model,
+    step_function::Function,
+    varname_vecs,
+    samplers,
+    vi,
+    states=();
+    initial_params=nothing,
+    kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
@@ -345,7 +411,7 @@ function gibbs_initialstep_recursive(
     conditioned_model, context = make_conditional(model, varnames, vi)
 
     # Take initial step with the current sampler.
-    _, new_state = AbstractMCMC.step(
+    _, new_state = step_function(
         rng,
         conditioned_model,
         sampler;
@@ -365,6 +431,7 @@ function gibbs_initialstep_recursive(
     return gibbs_initialstep_recursive(
         rng,
         model,
+        step_function,
         varname_vecs_tail,
         samplers_tail,
         vi,
@@ -388,7 +455,29 @@ function AbstractMCMC.step(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vi, states = gibbs_step_recursive(rng, model, varnames, samplers, states, vi; kwargs...)
+    vi, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
+    )
+    return Transition(model, vi), GibbsState(vi, states)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs},
+    state::GibbsState;
+    kwargs...,
+)
+    vi = varinfo(state)
+    alg = spl.alg
+    varnames = alg.varnames
+    samplers = alg.samplers
+    states = state.states
+    @assert length(samplers) == length(state.states)
+
+    vi, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
+    )
     return Transition(model, vi), GibbsState(vi, states)
 end
 
@@ -517,10 +606,14 @@ end
 """
 Run a Gibbs step for the first varname/sampler/state tuple, and recursively call the same
 function on the tail, until there are no more samplers left.
+
+The `step_function` argument should always be either AbstractMCMC.step or
+AbstractMCMC.step_warmup.
 """
 function gibbs_step_recursive(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
+    step_function::Function,
     varname_vecs,
     samplers,
     states,
@@ -554,7 +647,7 @@ function gibbs_step_recursive(
     state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
 
     # Take a step with the local sampler.
-    new_state = last(AbstractMCMC.step(rng, conditioned_model, sampler, state; kwargs...))
+    new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
 
     new_vi_local = varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
@@ -565,6 +658,7 @@ function gibbs_step_recursive(
     return gibbs_step_recursive(
         rng,
         model,
+        step_function,
         varname_vecs_tail,
         samplers_tail,
         states_tail,

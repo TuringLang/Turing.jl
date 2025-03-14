@@ -3,7 +3,7 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
 
 # Cancel existing tests on the same PR if a new commit is added to a pull request
