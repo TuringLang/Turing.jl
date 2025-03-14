@@ -1,3 +1,22 @@
+# Release 0.37.0
+
+## Breaking changes
+
+### Gibbs constructors
+
+0.37 removes the old Gibbs constructors deprecated in 0.36.
+
+### DynamicPPL 0.35
+
+Turing.jl v0.37 uses DynamicPPL v0.35, which brings with it several breaking changes:
+
+  - The right hand side of `.~` must from now on be a univariate distribution.
+  - Indexing `VarInfo` objects by samplers has been removed completely.
+  - The order in which nested submodel prefixes are applied has been reversed.
+  - The arguments for the constructor of `LogDensityFunction` have changed. `LogDensityFunction` also now satisfies the `LogDensityProblems` interface, without needing a wrapper object.
+
+For more details about all of the above, see the changelog of DynamicPPL [here](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.35.0).
+
 # Release 0.36.0
 
 ## Breaking changes

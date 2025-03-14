@@ -24,8 +24,6 @@ jobs:
         test:
           # Run some of the slower test files individually. The last one catches everything
           # not included in the others.
-          - name: "essential/ad"
-            args: "essential/ad.jl"
           - name: "mcmc/gibbs"
             args: "mcmc/gibbs.jl"
           - name: "mcmc/hmc"
@@ -37,7 +35,7 @@ jobs:
           - name: "mcmc/ess"
             args: "mcmc/ess.jl"
           - name: "everything else"
-            args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
+            args: "--skip mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
         runner:
           # Default
           - version: '1'
