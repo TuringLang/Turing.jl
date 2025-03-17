@@ -18,11 +18,6 @@ using AdvancedPS: AdvancedPS
 include("container.jl")
 
 export @model,
-    @varname,
-    AutoForwardDiff,
-    AutoReverseDiff,
-    AutoMooncake,
-    @logprob_str,
-    @prob_str
+    @varname, AutoForwardDiff, AutoReverseDiff, AutoMooncake, @logprob_str, @prob_str
 
 end # module

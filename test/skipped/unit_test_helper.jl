@@ -13,7 +13,7 @@ function test_grad(turing_model, grad_f; trans=Dict())
             DynamicPPL.LogDensityFunction(
                 model_f,
                 vi,
-                DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext())
+                DynamicPPL.SamplingContext(SampleFromPrior(), DynamicPPL.DefaultContext()),
             ),
         )
         for _ in 1:10000

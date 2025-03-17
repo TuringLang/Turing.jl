@@ -271,7 +271,9 @@ using Turing
 
             # HACK: Necessary to avoid NUTS failing during adaptation.
             try
-                x ~ Bijectors.transformed(Normal(0, 1), Bijectors.inverse(Bijectors.Logit(lb, ub)))
+                x ~ Bijectors.transformed(
+                    Normal(0, 1), Bijectors.inverse(Bijectors.Logit(lb, ub))
+                )
             catch e
                 if e isa DomainError
                     Turing.@addlogprob! -Inf
