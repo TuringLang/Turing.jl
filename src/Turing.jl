@@ -8,8 +8,8 @@ using Libtask
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
-using DynamicPPL: DynamicPPL
-import DynamicPPL: getspace, NoDist, NamedDist
+using DynamicPPL: DynamicPPL, LogDensityFunction
+import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
 using Accessors: Accessors
@@ -127,7 +127,8 @@ export
     maximum_likelihood,
     MAP,
     MLE,
-    # Turing.Distributions
+    # Debugging
+    setprogress!,
     Flat,
     FlatPos,
     BinomialLogit,

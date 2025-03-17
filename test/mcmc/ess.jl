@@ -30,7 +30,7 @@ using Turing
         N = 10
 
         s1 = ESS()
-        @test DynamicPPL.alg_str(Sampler(s1, demo_default)) == "ESS"
+        @test DynamicPPL.alg_str(Sampler(s1)) == "ESS"
 
         c1 = sample(demo_default, s1, N)
         c2 = sample(demodot_default, s1, N)
@@ -87,6 +87,30 @@ using Turing
                 varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,
             )
         end
+    end
+
+    # Test that ESS can sample multiple variables regardless of whether they are under the
+    # same symbol or not.
+    @testset "Multiple variables" begin
+        @model function xy()
+            z ~ Beta(2.0, 2.0)
+            x ~ Normal(z, 2.0)
+            return y ~ Normal(-3.0, 3.0)
+        end
+
+        @model function x12()
+            z ~ Beta(2.0, 2.0)
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(z, 2.0)
+            return x[2] ~ Normal(-3.0, 3.0)
+        end
+
+        num_samples = 10_000
+        spl_x = Gibbs(@varname(z) => NUTS(), @varname(x) => ESS())
+        spl_xy = Gibbs(@varname(z) => NUTS(), (@varname(x), @varname(y)) => ESS())
+
+        @test sample(StableRNG(23), xy(), spl_xy, num_samples).value ≈
+            sample(StableRNG(23), x12(), spl_x, num_samples).value
     end
 end
 

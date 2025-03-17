@@ -41,7 +41,7 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix)},
+    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index)},
 }
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
@@ -91,7 +91,7 @@ has_dot_assume(::DynamicPPL.Model) = true
                 end
             end
 
-            # Check the type stability also in the dot_tilde pipeline.
+            # Check the type stability also when using .~.
             for k in all_varnames
                 # The map(identity, ...) part is there to concretise the eltype.
                 subkeys = map(
@@ -146,7 +146,7 @@ end
     end
 
     unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
-        DynamicPPL.Sampler(sampler.alg.inner, sampler.selector)
+        DynamicPPL.Sampler(sampler.alg.inner)
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
@@ -390,7 +390,7 @@ end
             @varname(m) => RepeatSampler(PG(10), 2),
         )
         for s in (s1, s2, s3, s4, s5, s6)
-            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
+            @test DynamicPPL.alg_str(Turing.Sampler(s)) == "Gibbs"
         end
 
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
@@ -400,7 +400,7 @@ end
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
 
-        g = Turing.Sampler(s3, gdemo_default)
+        g = Turing.Sampler(s3)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
