@@ -279,8 +279,6 @@ end
         WarmupCounter() = new(0, 0, 0, 0)
     end
 
-    Turing.Inference.drop_space(wuc::WarmupCounter) = wuc
-    Turing.Inference.getspace(::WarmupCounter) = ()
     Turing.Inference.isgibbscomponent(::WarmupCounter) = true
 
     # A trivial state that holds nothing but a VarInfo, to be used with WarmupCounter.
