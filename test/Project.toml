@@ -36,7 +36,6 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 AbstractMCMC = "5"
@@ -75,5 +74,4 @@ StableRNGs = "1"
 StatsBase = "0.33, 0.34"
 StatsFuns = "0.9.5, 1"
 TimerOutputs = "0.5"
-Zygote = "0.5.4, 0.6"
 julia = "1.10"
