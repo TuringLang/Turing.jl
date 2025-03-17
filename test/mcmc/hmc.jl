@@ -172,7 +172,7 @@ using Turing
 
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
-        res = sample(StableRNG(seed), gdemo_default, alg, 500)
+        res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
     end
 
@@ -251,7 +251,7 @@ using Turing
         gdemo_default_prior = DynamicPPL.contextualize(
             demo_hmc_prior(), DynamicPPL.PriorContext()
         )
-        chain = sample(gdemo_default_prior, alg, 500; initial_params=[3.0, 0.0])
+        chain = sample(gdemo_default_prior, alg, 5_000; initial_params=[3.0, 0.0])
         check_numerical(
             chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0]; atol=0.2
         )

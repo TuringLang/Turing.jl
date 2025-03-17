@@ -115,7 +115,7 @@ using Turing
         )
         check_gdemo(chn3)
 
-        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 2_000; resume_from=chn3)
+        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 5_000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
 
