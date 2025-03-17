@@ -100,6 +100,7 @@ export
     conditioned,
     fix,
     unfix,
+    LogDensityFunction,
     # OrderedCollections
     OrderedDict,
     # Turing.Inference
