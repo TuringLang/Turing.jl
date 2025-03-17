@@ -9,8 +9,6 @@ Turing.jl directly re-exports the entire public API of the following packages:
 
 Please see the individual packages for their documentation.
 
-For convenience when constructing distributions, Turing.jl also re-exports [LinearAlgebra.I](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.I).
-
 ## Individual exports and re-exports
 
 In this API documentation, for the sake of clarity, we have listed the module that actually defines each of the exported symbols.
@@ -73,6 +71,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
 | `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
 | `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
+| `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
 | `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
 
 ### Variational inference
@@ -117,6 +116,7 @@ LogPoisson
 
 | Exported symbol | Documentation                          | Description                                                    |
 |:--------------- |:-------------------------------------- |:-------------------------------------------------------------- |
+| `I`             | [`LinearAlgebra.I`](@extref)           | Identity matrix                                                |
 | `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
 | `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
 | `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |

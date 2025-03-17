@@ -8,7 +8,7 @@ using Libtask
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
-using DynamicPPL: DynamicPPL, LogDensityFunction
+using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
@@ -74,23 +74,69 @@ using DynamicPPL:
     fix,
     unfix,
     conditioned,
-    to_submodel
+    to_submodel,
+    LogDensityFunction
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
 # Turing essentials - modelling macros and inference algorithms
 export
-    # AbstractPPL
-    @varname,
-    # DynamicPPL
+    # DEPRECATED
+    @submodel,
+    generated_quantities,
+    # Modelling - AbstractPPL and DynamicPPL
     @model,
+    @varname,
     to_submodel,
-    @submodel,  # Deprecated in DynamicPPL
-    generated_quantities, # Deprecated in DynamicPPL
-    returned,
     prefix,
-    NamedDist,
+    LogDensityFunction,
+    # Sampling - AbstractMCMC
+    sample,
+    MCMCThreads,
+    MCMCDistributed,
+    MCMCSerial,
+    # Samplers - Turing.Inference
+    Prior,
+    MH,
+    Emcee,
+    ESS,
+    Gibbs,
+    HMC,
+    SGLD,
+    SGHMC,
+    PolynomialStepsize,
+    HMCDA,
+    NUTS,
+    IS,
+    SMC,
+    PG,
+    CSMC,
+    RepeatSampler,
+    externalsampler,
+    # Variational inference - AdvancedVI
+    vi,
+    ADVI,
+    # ADTypes
+    AutoForwardDiff,
+    AutoReverseDiff,
+    AutoMooncake,
+    # Debugging - Turing
+    setprogress!,
+    # Distributions
+    Flat,
+    FlatPos,
+    BinomialLogit,
+    OrderedLogistic,
+    LogPoisson,
+    # Tools to work with Distributions
+    I,  # LinearAlgebra
+    filldist,  # DistributionsAD
+    arraydist,  # DistributionsAD
+    NamedDist,  # DynamicPPL
+    # Predictions - DynamicPPL
     predict,
+    # Querying model probabilities - DynamicPPL
+    returned,
     pointwise_loglikelihoods,
     logprior,
     loglikelihood,
@@ -100,58 +146,12 @@ export
     conditioned,
     fix,
     unfix,
-    LogDensityFunction,
-    # OrderedCollections
-    OrderedDict,
-    # Turing.Inference
-    setprogress!,
-    Prior,
-    MH,
-    Emcee,
-    ESS,
-    Gibbs,
-    HMC,
-    SGLD,
-    SGHMC,
-    HMCDA,
-    NUTS,
-    PolynomialStepsize,
-    IS,
-    SMC,
-    CSMC,
-    PG,
-    RepeatSampler,
-    externalsampler,
-    # Turing.Optimisation
+    OrderedDict, # OrderedCollections
+    # Point estimates - Turing.Optimisation
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,
     maximum_likelihood,
     MAP,
-    MLE,
-    # Debugging
-    setprogress!,
-    Flat,
-    FlatPos,
-    BinomialLogit,
-    OrderedLogistic,
-    LogPoisson,
-    # AdvancedVI
-    vi,
-    ADVI,
-    # AbstractMCMC
-    sample,
-    MCMCThreads,
-    MCMCDistributed,
-    MCMCSerial,
-    # ADTypes
-    AutoForwardDiff,
-    AutoReverseDiff,
-    AutoZygote,
-    AutoMooncake,
-    # DistributionsAD
-    filldist,
-    arraydist,
-    # LinearAlgebra
-    I
+    MLE
 
 end
