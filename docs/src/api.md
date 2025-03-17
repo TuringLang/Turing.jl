@@ -123,26 +123,26 @@ LogPoisson
 
 ### Predictions
 
-```@docs
-DynamicPPL.predict
-```
+| Exported symbol  | Documentation                                                                     | Description                                             |
+|:---------------- |:-----------------------------                                                     |:----------------------------------------                |
+| `predict`        | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting) | Generate samples from posterior predictive distribution |
 
 ### Querying model probabilities and quantities
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
-| Exported symbol            | Documentation                                                                                                                     | Description                                        |
-|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:-------------------------------------------------- |
-| `returned`                 | [`DynamicPPL.returned`](@extref)                                                                                                  | Calculate additional quantities defined in a model |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain |
-| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                      |
-| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                      |
-| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                                | Condition a model on data                          |
-| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                              | Remove conditioning on data                        |
-| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                               | Return the conditioned values of a model           |
-| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                       | Fix the value of a variable                        |
-| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                      |
-| `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                              |
+| Exported symbol             | Documentation                                                                                                                      | Description                                         |
+|:--------------------------- |:---------------------------------------------------------------------------------------------------------------------------------- |:--------------------------------------------------- |
+| `returned`                  | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple{Model,%20NamedTuple})           | Calculate additional quantities defined in a model  |
+| `pointwise_loglikelihoods`  | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                   | Compute log likelihoods for each sample in a chain  |
+| `logprior`                  | [`DynamicPPL.logprior`](@extref)                                                                                                   | Compute log prior probability                       |
+| `logjoint`                  | [`DynamicPPL.logjoint`](@extref)                                                                                                   | Compute log joint probability                       |
+| `condition`                 | [`AbstractPPL.condition`](@extref)                                                                                                 | Condition a model on data                           |
+| `decondition`               | [`AbstractPPL.decondition`](@extref)                                                                                               | Remove conditioning on data                         |
+| `conditioned`               | [`DynamicPPL.conditioned`](@extref)                                                                                                | Return the conditioned values of a model            |
+| `fix`                       | [`DynamicPPL.fix`](@extref)                                                                                                        | Fix the value of a variable                         |
+| `unfix`                     | [`DynamicPPL.unfix`](@extref)                                                                                                      | Unfix the value of a variable                       |
+| `OrderedDict`               | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts)  | An ordered dictionary                               |
 
 ### Point estimates
 

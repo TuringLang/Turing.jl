@@ -5,13 +5,15 @@ using Turing
 using Distributions
 using Bijectors
 using DynamicPPL
+using LinearAlgebra
 
 using DocumenterInterLinks
 
 links = InterLinks(
     "DynamicPPL" => "https://turinglang.org/DynamicPPL.jl/stable/objects.inv",
+    "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/stable/objects.inv",
+    "LinearAlgebra" => "https://docs.julialang.org/en/v1/objects.inv",
     "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/objects.inv",
-    "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/dev/objects.inv",
     "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/objects.inv",
     "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/v0.2.8/objects.inv",
     "DistributionsAD" => "https://turinglang.org/DistributionsAD.jl/stable/objects.inv",
