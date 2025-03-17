@@ -13,7 +13,8 @@ For convenience when constructing distributions, Turing.jl also re-exports [Line
 
 ## Individual exports and re-exports
 
-**All** of the following symbols are exported unqualified by Turing, even though the documentation suggests that many of them are qualified.
+In this API documentation, for the sake of clarity, we have listed the module that actually defines each of the exported symbols.
+Note, however, that **all** of the following symbols are exported unqualified by Turing.
 That means, for example, you can just write
 
 ```julia
@@ -37,7 +38,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 ### Modelling
 
 | Exported symbol      | Documentation                              | Description                                                                                  |
-| :------------------- | :----------------------------------------- | :------------------------------------------------------------------------------------------- |
+|:-------------------- |:------------------------------------------ |:-------------------------------------------------------------------------------------------- |
 | `@model`             | [`DynamicPPL.@model`](@extref)             | Define a probabilistic model                                                                 |
 | `@varname`           | [`AbstractPPL.@varname`](@extref)          | Generate a `VarName` from a Julia expression                                                 |
 | `to_submodel`        | [`DynamicPPL.to_submodel`](@extref)        | Define a submodel                                                                            |
