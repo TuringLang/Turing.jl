@@ -3,10 +3,8 @@ name: Format
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
-    branches:
-      - master
   merge_group:
     types: [checks_requested]
 

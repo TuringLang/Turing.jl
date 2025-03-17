@@ -122,7 +122,7 @@ LogPoisson
 ### Predictions
 
 ```@docs
-predict
+DynamicPPL.predict
 ```
 
 ### Querying model probabilities and quantities

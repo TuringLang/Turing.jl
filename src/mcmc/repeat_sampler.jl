@@ -59,3 +59,30 @@ function AbstractMCMC.step(
     end
     return transition, state
 end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.AbstractModel,
+    sampler::RepeatSampler;
+    kwargs...,
+)
+    return AbstractMCMC.step_warmup(rng, model, sampler.sampler; kwargs...)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.AbstractModel,
+    sampler::RepeatSampler,
+    state;
+    kwargs...,
+)
+    transition, state = AbstractMCMC.step_warmup(
+        rng, model, sampler.sampler, state; kwargs...
+    )
+    for _ in 2:(sampler.num_repeat)
+        transition, state = AbstractMCMC.step_warmup(
+            rng, model, sampler.sampler, state; kwargs...
+        )
+    end
+    return transition, state
+end
