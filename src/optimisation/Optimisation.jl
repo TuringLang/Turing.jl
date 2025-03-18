@@ -139,7 +139,7 @@ struct OptimLogDensity{
     C<:OptimizationContext,
     AD<:ADTypes.AbstractADType,
 }
-    ldf::Turing.LogDensityFunction{M,V,C,AD}
+    ldf::DynamicPPL.LogDensityFunction{M,V,C,AD}
 end
 
 function OptimLogDensity(
@@ -148,7 +148,7 @@ function OptimLogDensity(
     ctx::OptimizationContext;
     adtype::ADTypes.AbstractADType=AutoForwardDiff(),
 )
-    return OptimLogDensity(Turing.LogDensityFunction(model, vi, ctx; adtype=adtype))
+    return OptimLogDensity(DynamicPPL.LogDensityFunction(model, vi, ctx; adtype=adtype))
 end
 
 # No varinfo
@@ -158,7 +158,7 @@ function OptimLogDensity(
     adtype::ADTypes.AbstractADType=AutoForwardDiff(),
 )
     return OptimLogDensity(
-        Turing.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx; adtype=adtype)
+        DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx; adtype=adtype)
     )
 end
 

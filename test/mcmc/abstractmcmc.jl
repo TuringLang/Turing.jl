@@ -1,6 +1,7 @@
 module AbstractMCMCTests
 
 import ..ADUtils
+using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
