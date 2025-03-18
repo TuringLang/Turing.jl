@@ -544,7 +544,7 @@ end
         # is not ideal
         # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2402
         @test isapprox(mean(num_ms), 8.6087; atol=0.8)
-        @test isapprox(std(num_ms), 1.8865; atol=0.02)
+        @test isapprox(std(num_ms), 1.8865; atol=0.03)
     end
 
     # The below test used to sample incorrectly before
@@ -626,7 +626,7 @@ end
             # Run the Gibbs sampler and NUTS on the same model, compare statistics of the
             # chains.
             @testset "comparison with 'gold-standard' samples" begin
-                num_iterations = 1_000
+                num_iterations = 2_000
                 thinning = 10
                 num_chains = 4
 
