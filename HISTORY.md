@@ -28,6 +28,7 @@ For more details about all of the above, see the changelog of DynamicPPL [here](
 Turing.jl's export list has been cleaned up a fair bit. You may need to import things more explicitly than before.
 
   - The `DynamicPPL` and `AbstractMCMC` modules: You will need to `import` or `using Module` yourself, which in turn means that they have to be made available in your project environment.
+
   - `@logprob_str` and `@prob_str` have been removed following a long deprecation period.
   - We no longer re-export everything from `Bijectors`. To get around this, add `using Bijectors` at the top of your script (but we prefer if you selectively import).
     
