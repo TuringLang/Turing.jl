@@ -23,6 +23,21 @@ Turing.jl v0.37 uses DynamicPPL v0.35, which brings with it several breaking cha
 
 For more details about all of the above, see the changelog of DynamicPPL [here](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.35.0).
 
+### Export list
+
+Turing.jl's export list has been cleaned up a fair bit. You may need to import things more explicitly than before.
+
+  - The `DynamicPPL` and `AbstractMCMC` modules: You will need to `import` or `using Module` yourself, which in turn means that they have to be made available in your project environment.
+  - `@logprob_str` and `@prob_str` have been removed following a long deprecation period.
+  - We no longer re-export everything from `Bijectors`. To get around this, add `using Bijectors` at the top of your script (but we prefer if you selectively import).
+    
+      + If you were using `Bijectors.ordered`, even Bijectors does not (currently) export this. You will have to manually import it with `using Bijectors: ordered`.
+
+On the other hand, we have added a few more exports:
+
+  - `DynamicPPL.returned` and `DynamicPPL.prefix` are exported (for use with submodels).
+  - `LinearAlgebra.I` is exported for convenience.
+
 # Release 0.36.0
 
 ## Breaking changes
