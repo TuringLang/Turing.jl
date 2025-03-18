@@ -25,14 +25,14 @@ For more details about all of the above, see the changelog of DynamicPPL [here](
 
 ### Export list
 
-Turing.jl's export list has been cleaned up a fair bit. You may need to import things more explicitly than before.
+Turing.jl's export list has been cleaned up a fair bit. This affects what is imported into your namespace when you do an unqualified `using Turing`. You may need to import things more explicitly than before.
 
-  - The `DynamicPPL` and `AbstractMCMC` modules: You will need to `import` or `using Module` yourself, which in turn means that they have to be made available in your project environment.
+  - The `DynamicPPL` and `AbstractMCMC` modules are no longer exported. You will need to `import DynamicPPL` or `using DynamicPPL: DynamicPPL` (likewise `AbstractMCMC`) yourself, which in turn means that they have to be made available in your project environment.
 
   - `@logprob_str` and `@prob_str` have been removed following a long deprecation period.
-  - We no longer re-export everything from `Bijectors`. To get around this, add `using Bijectors` at the top of your script (but we prefer if you selectively import).
+  - We no longer re-export everything from `Bijectors` and `Libtask`. To get around this, add `using Bijectors` or `using Libtask` at the top of your script (but we recommend using more selective imports).
     
-      + If you were using `Bijectors.ordered`, even Bijectors does not (currently) export this. You will have to manually import it with `using Bijectors: ordered`.
+      + We no longer export `Bijectors.ordered`. If you were using `ordered`, even Bijectors does not (currently) export this. You will have to manually import it with `using Bijectors: ordered`.
 
 On the other hand, we have added a few more exports:
 
