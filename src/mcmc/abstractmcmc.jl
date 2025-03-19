@@ -1,6 +1,6 @@
-struct TuringState{S,F}
+struct TuringState{S,M,V,C}
     state::S
-    logdensity::F
+    ldf::DynamicPPL.LogDensityFunction{M,V,C}
 end
 
 state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
@@ -12,20 +12,10 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     return Transition(f.model, varinfo, transition)
 end
 
-state_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, state) = TuringState(state, f)
-function transition_to_turing(f::LogDensityProblemsAD.ADGradientWrapper, transition)
-    return transition_to_turing(parent(f), transition)
-end
-
-function varinfo_from_logdensityfn(f::LogDensityProblemsAD.ADGradientWrapper)
-    return varinfo_from_logdensityfn(parent(f))
-end
-varinfo_from_logdensityfn(f::DynamicPPL.LogDensityFunction) = f.varinfo
-
 function varinfo(state::TuringState)
-    θ = getparams(DynamicPPL.getmodel(state.logdensity), state.state)
+    θ = getparams(state.ldf.model, state.state)
     # TODO: Do we need to link here first?
-    return DynamicPPL.unflatten(varinfo_from_logdensityfn(state.logdensity), θ)
+    return DynamicPPL.unflatten(state.ldf.varinfo, θ)
 end
 varinfo(state::AbstractVarInfo) = state
 
@@ -40,20 +30,6 @@ getstats(transition::AdvancedHMC.Transition) = transition.stat
 
 getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
 
-getvarinfo(f::DynamicPPL.LogDensityFunction) = f.varinfo
-function getvarinfo(f::LogDensityProblemsAD.ADGradientWrapper)
-    return getvarinfo(LogDensityProblemsAD.parent(f))
-end
-
-setvarinfo(f::DynamicPPL.LogDensityFunction, varinfo) = Accessors.@set f.varinfo = varinfo
-function setvarinfo(
-    f::LogDensityProblemsAD.ADGradientWrapper, varinfo, adtype::ADTypes.AbstractADType
-)
-    return LogDensityProblemsAD.ADgradient(
-        adtype, setvarinfo(LogDensityProblemsAD.parent(f), varinfo)
-    )
-end
-
 # TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -66,12 +42,8 @@ function AbstractMCMC.step(
     alg = sampler_wrapper.alg
     sampler = alg.sampler
 
-    # Create a log-density function with an implementation of the
-    # gradient so we ensure that we're using the same AD backend as in Turing.
-    f = LogDensityProblemsAD.ADgradient(alg.adtype, DynamicPPL.LogDensityFunction(model))
-
-    # Link the varinfo if needed.
-    varinfo = getvarinfo(f)
+    # Initialise varinfo with initial params and link the varinfo if needed.
+    varinfo = DynamicPPL.VarInfo(model)
     if requires_unconstrained_space(alg)
         if initial_params !== nothing
             # If we have initial parameters, we need to set the varinfo before linking.
@@ -82,9 +54,11 @@ function AbstractMCMC.step(
             varinfo = DynamicPPL.link(varinfo, model)
         end
     end
-    f = setvarinfo(f, varinfo, alg.adtype)
 
-    # Then just call `AdvancedHMC.step` with the right arguments.
+    # Construct LogDensityFunction
+    f = DynamicPPL.LogDensityFunction(model, varinfo; adtype=alg.adtype)
+
+    # Then just call `AbstractMCMC.step` with the right arguments.
     if initial_state === nothing
         transition_inner, state_inner = AbstractMCMC.step(
             rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params, kwargs...
@@ -111,7 +85,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     sampler = sampler_wrapper.alg.sampler
-    f = state.logdensity
+    f = state.ldf
 
     # Then just call `AdvancedHMC.step` with the right arguments.
     transition_inner, state_inner = AbstractMCMC.step(

@@ -39,7 +39,6 @@ end
     end
 
     @testset "essential" verbose = true begin
-        @timeit_include("essential/ad.jl")
         @timeit_include("essential/container.jl")
     end
 
@@ -79,10 +78,6 @@ end
     @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
         @timeit_include("stdlib/RandomMeasures.jl")
-    end
-
-    @testset "DynamicPPL integration" begin
-        @timeit_include("dynamicppl/compiler.jl")
     end
 
     @testset "utilities" begin

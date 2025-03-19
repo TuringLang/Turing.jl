@@ -13,7 +13,7 @@ Foreman-Mackey, D., Hogg, D. W., Lang, D., & Goodman, J. (2013).
 emcee: The MCMC Hammer. Publications of the Astronomical Society of the
 Pacific, 125 (925), 306. https://doi.org/10.1086/670067
 """
-struct Emcee{space,E<:AMH.Ensemble} <: InferenceAlgorithm
+struct Emcee{E<:AMH.Ensemble} <: InferenceAlgorithm
     ensemble::E
 end
 
@@ -23,10 +23,8 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     # ensemble sampling.
     prop = AMH.StretchProposal(nothing, stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
-    return Emcee{(),typeof(ensemble)}(ensemble)
+    return Emcee{typeof(ensemble)}(ensemble)
 end
-
-drop_space(alg::Emcee{space,E}) where {space,E} = Emcee{(),E}(alg.ensemble)
 
 struct EmceeState{V<:AbstractVarInfo,S}
     vi::V
@@ -55,7 +53,7 @@ function AbstractMCMC.step(
         length(initial_params) == n ||
             throw(ArgumentError("initial parameters have to be specified for each walker"))
         vis = map(vis, initial_params) do vi, init
-            vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
+            vi = DynamicPPL.initialize_parameters!!(vi, init, model)
 
             # Update log joint probability.
             last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
@@ -69,8 +67,8 @@ function AbstractMCMC.step(
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            vi = DynamicPPL.link!!(vi, spl, model)
-            AMH.Transition(vi[spl], getlogp(vi), false)
+            vi = DynamicPPL.link!!(vi, model)
+            AMH.Transition(vi[:], getlogp(vi), false)
         end,
     )
 
@@ -83,7 +81,7 @@ function AbstractMCMC.step(
     # Generate a log joint function.
     vi = state.vi
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(model, vi))
+        Base.Fix1(LogDensityProblems.logdensity, DynamicPPL.LogDensityFunction(model, vi))
     )
 
     # Compute the next states.
@@ -91,7 +89,7 @@ function AbstractMCMC.step(
 
     # Compute the next transition and state.
     transition = map(states) do _state
-        vi = setindex!!(vi, _state.params, spl)
+        vi = DynamicPPL.unflatten(vi, _state.params)
         t = Transition(getparams(model, vi), _state.lp)
         return t
     end
