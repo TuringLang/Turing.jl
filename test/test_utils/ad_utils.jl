@@ -190,8 +190,8 @@ adbackends = [
     Turing.AutoMooncake(; config=nothing),
     # TODO(mhauru) Do we want to run both? For now yes, while building up Enzyme
     # integration, but in the long term maybe not?
-    Turing.AutoEnzyme(; mode=Enzyme.Forward),
-    Turing.AutoEnzyme(; mode=Enzyme.Reverse),
+    Turing.AutoEnzyme(; mode=Enzyme.set_runtime_activity(Enzyme.Forward)),
+    Turing.AutoEnzyme(; mode=Enzyme.set_runtime_activity(Enzyme.Reverse)),
 ]
 
 end
