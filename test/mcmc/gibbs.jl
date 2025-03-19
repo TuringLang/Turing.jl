@@ -9,6 +9,7 @@ using ..NumericalTests:
     two_sample_test
 import ..ADUtils
 import Combinatorics
+using AbstractMCMC: AbstractMCMC
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
@@ -18,7 +19,7 @@ using Random: Random
 using ReverseDiff: ReverseDiff
 import Mooncake
 using StableRNGs: StableRNG
-using Test: @inferred, @test, @test_broken, @test_deprecated, @test_throws, @testset
+using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
@@ -41,7 +42,7 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
     DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix)},
+    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index)},
 }
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
@@ -91,7 +92,7 @@ has_dot_assume(::DynamicPPL.Model) = true
                 end
             end
 
-            # Check the type stability also in the dot_tilde pipeline.
+            # Check the type stability also when using .~.
             for k in all_varnames
                 # The map(identity, ...) part is there to concretise the eltype.
                 subkeys = map(
@@ -146,12 +147,11 @@ end
     end
 
     unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
-        DynamicPPL.Sampler(sampler.alg.inner, sampler.selector)
+        DynamicPPL.Sampler(sampler.alg.inner)
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
     Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
-    Inference.drop_space(wrap::AlgWrapper) = AlgWrapper(Inference.drop_space(wrap.inner))
     function Inference.setparams_varinfo!!(
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -181,7 +181,7 @@ end
     end
 
     # The methods that capture testing information for us.
-    function Turing.AbstractMCMC.step(
+    function AbstractMCMC.step(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -189,9 +189,7 @@ end
         kwargs...,
     )
         capture_targets_and_algs(sampler.alg.inner, model.context)
-        return Turing.AbstractMCMC.step(
-            rng, model, unwrap_sampler(sampler), args...; kwargs...
-        )
+        return AbstractMCMC.step(rng, model, unwrap_sampler(sampler), args...; kwargs...)
     end
 
     function Turing.DynamicPPL.initialstep(
@@ -269,33 +267,102 @@ end
     @test chain1.value == chain2.value
 end
 
+@testset "Gibbs warmup" begin
+    # An inference algorithm, for testing purposes, that records how many warm-up steps
+    # and how many non-warm-up steps haven been taken.
+    mutable struct WarmupCounter <: Inference.InferenceAlgorithm
+        warmup_init_count::Int
+        non_warmup_init_count::Int
+        warmup_count::Int
+        non_warmup_count::Int
+
+        WarmupCounter() = new(0, 0, 0, 0)
+    end
+
+    Turing.Inference.isgibbscomponent(::WarmupCounter) = true
+
+    # A trivial state that holds nothing but a VarInfo, to be used with WarmupCounter.
+    struct VarInfoState{T}
+        vi::T
+    end
+
+    Turing.Inference.varinfo(state::VarInfoState) = state.vi
+    function Turing.Inference.setparams_varinfo!!(
+        ::DynamicPPL.Model,
+        ::DynamicPPL.Sampler,
+        ::VarInfoState,
+        params::DynamicPPL.AbstractVarInfo,
+    )
+        return VarInfoState(params)
+    end
+
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter};
+        kwargs...,
+    )
+        spl.alg.non_warmup_init_count += 1
+        return Turing.Inference.Transition(nothing, 0.0),
+        VarInfoState(DynamicPPL.VarInfo(model))
+    end
+
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        model::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter};
+        kwargs...,
+    )
+        spl.alg.warmup_init_count += 1
+        return Turing.Inference.Transition(nothing, 0.0),
+        VarInfoState(DynamicPPL.VarInfo(model))
+    end
+
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        ::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        s::VarInfoState;
+        kwargs...,
+    )
+        spl.alg.non_warmup_count += 1
+        return Turing.Inference.Transition(nothing, 0.0), s
+    end
+
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        ::DynamicPPL.Model,
+        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        s::VarInfoState;
+        kwargs...,
+    )
+        spl.alg.warmup_count += 1
+        return Turing.Inference.Transition(nothing, 0.0), s
+    end
+
+    @model f() = x ~ Normal()
+    m = f()
+
+    num_samples = 10
+    num_warmup = 3
+    wuc = WarmupCounter()
+    sample(m, Gibbs(:x => wuc), num_samples; num_warmup=num_warmup)
+    @test wuc.warmup_init_count == 1
+    @test wuc.non_warmup_init_count == 0
+    @test wuc.warmup_count == num_warmup
+    @test wuc.non_warmup_count == num_samples - 1
+
+    num_reps = 2
+    wuc = WarmupCounter()
+    sample(m, Gibbs(:x => RepeatSampler(wuc, num_reps)), num_samples; num_warmup=num_warmup)
+    @test wuc.warmup_init_count == 1
+    @test wuc.non_warmup_init_count == 0
+    @test wuc.warmup_count == num_warmup * num_reps
+    @test wuc.non_warmup_count == (num_samples - 1) * num_reps
+end
+
 @testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
     @info "Starting Gibbs tests with $adbackend"
-    @testset "Deprecated Gibbs constructors" begin
-        N = 10
-        @test_deprecated s1 = Gibbs(HMC(0.1, 5, :s, :m; adtype=adbackend))
-        @test_deprecated s2 = Gibbs(PG(10, :s, :m))
-        @test_deprecated s3 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s4 = Gibbs(PG(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s5 = Gibbs(CSMC(3, :s), HMC(0.4, 8, :m; adtype=adbackend))
-        @test_deprecated s6 = Gibbs(HMC(0.1, 5, :s; adtype=adbackend), ESS(:m))
-        @test_deprecated s7 = Gibbs((HMC(0.1, 5, :s; adtype=adbackend), 2), (ESS(:m), 3))
-        for s in (s1, s2, s3, s4, s5, s6, s7)
-            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
-        end
-
-        # Check that the samplers work despite using the deprecated constructor.
-        sample(gdemo_default, s1, N)
-        sample(gdemo_default, s2, N)
-        sample(gdemo_default, s3, N)
-        sample(gdemo_default, s4, N)
-        sample(gdemo_default, s5, N)
-        sample(gdemo_default, s6, N)
-        sample(gdemo_default, s7, N)
-
-        g = Turing.Sampler(s3, gdemo_default)
-        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
-    end
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the
@@ -322,7 +389,7 @@ end
             @varname(m) => RepeatSampler(PG(10), 2),
         )
         for s in (s1, s2, s3, s4, s5, s6)
-            @test DynamicPPL.alg_str(Turing.Sampler(s, gdemo_default)) == "Gibbs"
+            @test DynamicPPL.alg_str(Turing.Sampler(s)) == "Gibbs"
         end
 
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
@@ -332,7 +399,7 @@ end
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
 
-        g = Turing.Sampler(s3, gdemo_default)
+        g = Turing.Sampler(s3)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
@@ -477,14 +544,8 @@ end
         # the posterior is analytically known? Doing 10_000 samples to run the test suite
         # is not ideal
         # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2402
-
-        # (penelopeysm) Note also the larger atol on x86 runners. This is
-        # needed because PG is not fully reproducible across architectures,
-        # even when seeded as above. See
-        # https://github.com/TuringLang/Turing.jl/issues/2446
-        mean_atol = Sys.ARCH == :i686 ? 1.3 : 0.8
-        @test isapprox(mean(num_ms), 8.6087; atol=mean_atol)
-        @test isapprox(std(num_ms), 1.8865; atol=0.02)
+        @test isapprox(mean(num_ms), 8.6087; atol=0.8)
+        @test isapprox(std(num_ms), 1.8865; atol=0.03)
     end
 
     # The below test used to sample incorrectly before
@@ -566,7 +627,7 @@ end
             # Run the Gibbs sampler and NUTS on the same model, compare statistics of the
             # chains.
             @testset "comparison with 'gold-standard' samples" begin
-                num_iterations = 1_000
+                num_iterations = 2_000
                 thinning = 10
                 num_chains = 4
 

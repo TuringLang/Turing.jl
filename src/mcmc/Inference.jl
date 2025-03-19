@@ -5,6 +5,11 @@ using DynamicPPL:
     Metadata,
     VarInfo,
     TypedVarInfo,
+    # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
+    # implemented for TypedVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
+    # or implement it for other VarInfo types and export it from DPPL.
+    all_varnames_grouped_by_symbol,
+    syms,
     islinked,
     setindex!!,
     push!!,
@@ -12,7 +17,6 @@ using DynamicPPL:
     getlogp,
     VarName,
     getsym,
-    _getvns,
     getdist,
     Model,
     Sampler,
@@ -22,9 +26,7 @@ using DynamicPPL:
     PriorContext,
     LikelihoodContext,
     set_flag!,
-    unset_flag!,
-    getspace,
-    inspace
+    unset_flag!
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -47,7 +49,6 @@ import AdvancedPS
 import Accessors
 import EllipticalSliceSampling
 import LogDensityProblems
-import LogDensityProblemsAD
 import Random
 import MCMCChains
 import StatsBase: predict
@@ -75,9 +76,7 @@ export InferenceAlgorithm,
     RepeatSampler,
     Prior,
     assume,
-    dot_assume,
     observe,
-    dot_observe,
     predict,
     externalsampler
 
@@ -90,18 +89,6 @@ abstract type ParticleInference <: InferenceAlgorithm end
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
-
-# TODO(mhauru) Remove the below function once all the space/Selector stuff has been removed.
-"""
-    drop_space(alg::InferenceAlgorithm)
-
-Return an `InferenceAlgorithm` like `alg`, but with all space information removed.
-"""
-function drop_space end
-
-function drop_space(sampler::Sampler)
-    return Sampler(drop_space(sampler.alg), sampler.selector)
-end
 
 include("repeat_sampler.jl")
 
@@ -146,11 +133,6 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     end
 end
 
-# External samplers don't have notion of space to begin with.
-drop_space(x::ExternalSampler) = x
-
-DynamicPPL.getspace(::ExternalSampler) = ()
-
 """
     requires_unconstrained_space(sampler::ExternalSampler)
 
@@ -178,29 +160,6 @@ function externalsampler(
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
-getADType(spl::Sampler) = getADType(spl.alg)
-getADType(::SampleFromPrior) = Turing.DEFAULT_ADTYPE
-
-getADType(ctx::DynamicPPL.SamplingContext) = getADType(ctx.sampler)
-getADType(ctx::DynamicPPL.AbstractContext) = getADType(DynamicPPL.NodeTrait(ctx), ctx)
-getADType(::DynamicPPL.IsLeaf, ctx::DynamicPPL.AbstractContext) = Turing.DEFAULT_ADTYPE
-function getADType(::DynamicPPL.IsParent, ctx::DynamicPPL.AbstractContext)
-    return getADType(DynamicPPL.childcontext(ctx))
-end
-
-getADType(alg::Hamiltonian) = alg.adtype
-
-function LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)
-    return LogDensityProblemsAD.ADgradient(getADType(DynamicPPL.getcontext(ℓ)), ℓ)
-end
-
-function LogDensityProblems.logdensity(
-    f::Turing.LogDensityFunction{<:AbstractVarInfo,<:Model,<:DynamicPPL.DefaultContext},
-    x::NamedTuple,
-)
-    return DynamicPPL.logjoint(f.model, DynamicPPL.unflatten(f.varinfo, x))
-end
-
 # TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.
 function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple)
     set_namedtuple!(deepcopy(vi), θ)
@@ -216,8 +175,6 @@ end
 Algorithm for sampling from the prior.
 """
 struct Prior <: InferenceAlgorithm end
-
-drop_space(x::Prior) = x
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -318,7 +275,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg, model), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -345,9 +302,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(
-        rng, model, Sampler(alg, model), ensemble, N, n_chains; kwargs...
-    )
+    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -592,13 +547,6 @@ include("emcee.jl")
 # Typing tools #
 ################
 
-for alg in (:SMC, :PG, :MH, :IS, :ESS, :Emcee)
-    @eval DynamicPPL.getspace(::$alg{space}) where {space} = space
-end
-for alg in (:HMC, :HMCDA, :NUTS, :SGLD, :SGHMC)
-    @eval DynamicPPL.getspace(::$alg{<:Any,space}) where {space} = space
-end
-
 function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
 ) where {T,N,TV<:Array{T,N}}
@@ -608,9 +556,6 @@ end
 ##############
 # Utilities  #
 ##############
-
-DynamicPPL.getspace(spl::Sampler) = getspace(spl.alg)
-DynamicPPL.inspace(vn::VarName, spl::Sampler) = inspace(vn, getspace(spl.alg))
 
 """
 
@@ -661,13 +606,15 @@ julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
  [-1.704630494695469]
 ```
 """
-function transitions_from_chain(model::Turing.Model, chain::MCMCChains.Chains; kwargs...)
+function transitions_from_chain(
+    model::DynamicPPL.Model, chain::MCMCChains.Chains; kwargs...
+)
     return transitions_from_chain(Random.default_rng(), model, chain; kwargs...)
 end
 
 function transitions_from_chain(
     rng::Random.AbstractRNG,
-    model::Turing.Model,
+    model::DynamicPPL.Model,
     chain::MCMCChains.Chains;
     sampler=DynamicPPL.SampleFromPrior(),
 )

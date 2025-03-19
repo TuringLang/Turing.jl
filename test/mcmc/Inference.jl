@@ -73,7 +73,7 @@ using Turing
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7; adtype=adbackend), gdemo_default)
+            sampler = Sampler(HMC(0.1, 7; adtype=adbackend))
             chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
             @test chains isa MCMCChains.Chains
         end
@@ -116,7 +116,7 @@ using Turing
         )
         check_gdemo(chn3)
 
-        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 2_000; resume_from=chn3)
+        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 5_000; resume_from=chn3)
         check_gdemo(chn3_contd)
     end
 
@@ -369,7 +369,7 @@ using Turing
         sample(
             StableRNG(seed),
             newinterface(obs),
-            HMC(0.75, 3, :p, :x; adtype=Turing.AutoForwardDiff(; chunksize=2)),
+            HMC(0.75, 3; adtype=Turing.AutoForwardDiff(; chunksize=2)),
             100,
         )
     end
@@ -441,15 +441,6 @@ using Turing
 
         res = sample(StableRNG(seed), vdemo1b(x), alg, 10)
 
-        @model function vdemo2(x)
-            μ ~ MvNormal(zeros(size(x, 1)), I)
-            @. x ~ $(MvNormal(μ, I))
-        end
-
-        D = 2
-        alg = HMC(0.01, 5; adtype=adbackend)
-        res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
-
         # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
         if !(adbackend isa AutoEnzyme)
             # Vector assumptions
@@ -495,7 +486,7 @@ using Turing
             N = 3
             @model function vdemo7()
                 x = Array{Real}(undef, N, N)
-                @. x ~ [InverseGamma(2, 3) for i in 1:N]
+                return x ~ filldist(InverseGamma(2, 3), N, N)
             end
 
             sample(StableRNG(seed), vdemo7(), alg, 10)
@@ -514,11 +505,6 @@ using Turing
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
-        @model function vdemo2(x)
-            μ ~ MvNormal(zeros(size(x, 1)), I)
-            return x .~ MvNormal(μ, I)
-        end
-
         D = 2
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
@@ -528,16 +514,6 @@ using Turing
             # Vector assumptions
             N = 10
             alg = HMC(0.2, 4; adtype=adbackend)
-
-            @model function vdemo3()
-                x = Vector{Real}(undef, N)
-                for i in 1:N
-                    x[i] ~ Normal(0, sqrt(4))
-                end
-            end
-
-            # TODO(mhauru) Same question as above about @elapsed.
-            t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1_000)
 
             # Test for vectorize UnivariateDistribution
             @model function vdemo4()
@@ -563,13 +539,6 @@ using Turing
             end
 
             sample(StableRNG(seed), vdemo6(), alg, 10)
-
-            @model function vdemo7()
-                x = Array{Real}(undef, N, N)
-                return x .~ [InverseGamma(2, 3) for i in 1:N]
-            end
-
-            sample(StableRNG(seed), vdemo7(), alg, 10)
         end
     end
 

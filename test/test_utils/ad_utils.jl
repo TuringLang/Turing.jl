@@ -8,7 +8,6 @@ using ReverseDiff: ReverseDiff
 using Mooncake: Mooncake
 using Turing: Turing
 using Turing: DynamicPPL
-using Zygote: Zygote
 
 export ADTypeCheckContext, adbackends
 
@@ -31,9 +30,6 @@ const eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVector,
     ),
     Turing.AutoMooncake => (Mooncake.CoDual,),
-    # Zygote.Dual is actually the same as ForwardDiff.Dual, so can't distinguish between the
-    # two by element type. However, we have other checks for Zygote, see check_adtype.
-    Turing.AutoZygote => (Zygote.Dual,),
 )
 
 """
@@ -90,7 +86,6 @@ For instance, evaluating a model with
 would throw an error if within the model a type associated with e.g. ReverseDiff was
 encountered.
 
-As a current short-coming, this context can not distinguish between ForwardDiff and Zygote.
 """
 struct ADTypeCheckContext{ADType,ChildContext<:DynamicPPL.AbstractContext} <:
        DynamicPPL.AbstractContext
@@ -134,21 +129,9 @@ end
 
 Check that the element types in `vi` are compatible with the ADType of `context`.
 
-When Zygote is being used, we also more explicitly check that `adtype(context)` is
-`AutoZygote`. This is because Zygote uses the same element type as ForwardDiff, so we can't
-discriminate between the two based on element type alone. This function will still fail to
-catch cases where Zygote is supposed to be used, but ForwardDiff is used instead.
-
-Throw an `IncompatibleADTypeError` if an incompatible element type is encountered, or
-`WrongADBackendError` if Zygote is used unexpectedly.
+Throw an `IncompatibleADTypeError` if an incompatible element type is encountered.
 """
 function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInfo)
-    Zygote.hook(vi) do _
-        if !(adtype(context) <: Turing.AutoZygote)
-            throw(WrongADBackendError(Turing.AutoZygote, adtype(context)))
-        end
-    end
-
     valids = valid_eltypes(context)
     for val in vi[:]
         valtype = typeof(val)
@@ -195,40 +178,6 @@ function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, l
     return logp, vi
 end
 
-function DynamicPPL.dot_tilde_assume(context::ADTypeCheckContext, right, left, vn, vi)
-    value, logp, vi = DynamicPPL.dot_tilde_assume(
-        DynamicPPL.childcontext(context), right, left, vn, vi
-    )
-    check_adtype(context, vi)
-    return value, logp, vi
-end
-
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, left, vn, vi
-)
-    value, logp, vi = DynamicPPL.dot_tilde_assume(
-        rng, DynamicPPL.childcontext(context), sampler, right, left, vn, vi
-    )
-    check_adtype(context, vi)
-    return value, logp, vi
-end
-
-function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, right, left, vi)
-    logp, vi = DynamicPPL.dot_tilde_observe(
-        DynamicPPL.childcontext(context), right, left, vi
-    )
-    check_adtype(context, vi)
-    return logp, vi
-end
-
-function DynamicPPL.dot_tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
-    logp, vi = DynamicPPL.dot_tilde_observe(
-        DynamicPPL.childcontext(context), sampler, right, left, vi
-    )
-    check_adtype(context, vi)
-    return logp, vi
-end
-
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # List of AD backends to test.
 
@@ -236,7 +185,7 @@ end
 All the ADTypes on which we want to run the tests.
 """
 adbackends = [
-    Turing.AutoForwardDiff(; chunksize=0),
+    Turing.AutoForwardDiff(),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
     # TODO(mhauru) Do we want to run both? For now yes, while building up Enzyme

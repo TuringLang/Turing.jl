@@ -30,18 +30,13 @@ using Turing
         N = 10
 
         s1 = ESS()
-        s2 = ESS(:m)
-        for s in (s1, s2)
-            @test DynamicPPL.alg_str(Sampler(s, demo_default)) == "ESS"
-        end
+        @test DynamicPPL.alg_str(Sampler(s1)) == "ESS"
 
         c1 = sample(demo_default, s1, N)
-        c2 = sample(demo_default, s2, N)
-        c3 = sample(demodot_default, s1, N)
-        c4 = sample(demodot_default, s2, N)
+        c2 = sample(demodot_default, s1, N)
 
-        s3 = Gibbs(:m => ESS(), :s => MH())
-        c5 = sample(gdemo_default, s3, N)
+        s2 = Gibbs(:m => ESS(), :s => MH())
+        c3 = sample(gdemo_default, s2, N)
     end
 
     @testset "ESS inference" begin
@@ -71,11 +66,7 @@ using Turing
                 @varname(mu2) => ESS(),
             )
             chain = sample(StableRNG(seed), MoGtest_default, alg, 2000)
-            # (penelopeysm) Note that the tolerance for x86 needs to be larger
-            # because CSMC (i.e. PG) is not reproducible across architectures.
-            # See https://github.com/TuringLang/Turing.jl/issues/2446.
-            atol = Sys.ARCH == :i686 ? 0.12 : 0.1
-            check_MoGtest_default(chain; atol=atol)
+            check_MoGtest_default(chain; atol=0.1)
         end
 
         @testset "TestModels" begin
@@ -96,6 +87,30 @@ using Turing
                 varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,
             )
         end
+    end
+
+    # Test that ESS can sample multiple variables regardless of whether they are under the
+    # same symbol or not.
+    @testset "Multiple variables" begin
+        @model function xy()
+            z ~ Beta(2.0, 2.0)
+            x ~ Normal(z, 2.0)
+            return y ~ Normal(-3.0, 3.0)
+        end
+
+        @model function x12()
+            z ~ Beta(2.0, 2.0)
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(z, 2.0)
+            return x[2] ~ Normal(-3.0, 3.0)
+        end
+
+        num_samples = 10_000
+        spl_x = Gibbs(@varname(z) => NUTS(), @varname(x) => ESS())
+        spl_xy = Gibbs(@varname(z) => NUTS(), (@varname(x), @varname(y)) => ESS())
+
+        @test sample(StableRNG(23), xy(), spl_xy, num_samples).value ≈
+            sample(StableRNG(23), x12(), spl_x, num_samples).value
     end
 end
 

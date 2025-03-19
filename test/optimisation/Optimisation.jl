@@ -540,17 +540,16 @@ using Turing
     # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
     # something larger than the default.
     allowed_incorrect_mle = [
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe,
+        DynamicPPL.TestUtils.demo_dot_assume_observe,
         DynamicPPL.TestUtils.demo_assume_index_observe,
         DynamicPPL.TestUtils.demo_assume_multivariate_observe,
         DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
-        DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_dot_assume_observe_matrix_index,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
-        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         Random.seed!(23)
@@ -625,16 +624,68 @@ using Turing
         m = DynamicPPL.contextualize(
             gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
         )
-        if adbackend isa AutoForwardDiff
-            # TODO: Figure out why this is happening.
-            # https://github.com/TuringLang/Turing.jl/issues/2369
-            @test_throws DivideError maximum_likelihood(m; adtype=adbackend)
-            @test_throws DivideError maximum_a_posteriori(m; adtype=adbackend)
-        else
-            # These will error if the adbackend being used is not the one set.
-            maximum_likelihood(m; adtype=adbackend)
-            maximum_a_posteriori(m; adtype=adbackend)
+        # These will error if the adbackend being used is not the one set.
+        maximum_likelihood(m; adtype=adbackend)
+        maximum_a_posteriori(m; adtype=adbackend)
+    end
+
+    @testset "Collinear coeftable" begin
+        xs = [-1.0, 0.0, 1.0]
+        ys = [0.0, 0.0, 0.0]
+
+        @model function collinear(x, y)
+            a ~ Normal(0, 1)
+            b ~ Normal(0, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, 1)
         end
+
+        model = collinear(xs, ys)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        tab = coeftable(mle_estimate)
+        @assert isnan(tab.cols[2][1])
+        @assert tab.colnms[end] == "Error notes"
+        @assert occursin("singular", tab.cols[end][1])
+    end
+
+    @testset "Negative variance" begin
+        # A model for which the likelihood has a saddle point at x=0, y=0.
+        # Creating an optimisation result for this model at the x=0, y=0 results in negative
+        # variance for one of the variables, because the variance is calculated as the
+        # diagonal of the inverse of the Hessian.
+        @model function saddle_model()
+            x ~ Normal(0, 1)
+            y ~ Normal(x, 1)
+            Turing.@addlogprob! x^2 - y^2
+            return nothing
+        end
+        m = saddle_model()
+        ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, ctx)
+        vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
+        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        ct = coeftable(m)
+        @assert isnan(ct.cols[2][1])
+        @assert ct.colnms[end] == "Error notes"
+        @assert occursin("Negative variance", ct.cols[end][1])
+    end
+
+    @testset "Same coeftable with/without numerrors_warnonly" begin
+        xs = [0.0, 1.0, 2.0]
+
+        @model function extranormal(x)
+            mean ~ Normal(0, 1)
+            return x ~ Normal(mean, 1)
+        end
+
+        model = extranormal(xs)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
+        no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
+        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
     end
 end
 

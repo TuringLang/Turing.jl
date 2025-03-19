@@ -1,6 +1,4 @@
 [deps]
-Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"

@@ -198,58 +198,6 @@ function DynamicPPL.tilde_assume(
     end
 end
 
-# Like the above tilde_assume methods, but with dot_tilde_assume and broadcasting of logpdf.
-# See comments there for more details.
-function DynamicPPL.dot_tilde_assume(context::GibbsContext, right, left, vns, vi)
-    child_context = DynamicPPL.childcontext(context)
-    return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(child_context, right, left, vns, vi)
-    elseif has_conditioned_gibbs(context, vns)
-        value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child_context, right, left, vns, get_global_varinfo(context)
-        )
-        value, lp, vi
-    else
-        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
-            child_context,
-            DynamicPPL.SampleFromPrior(),
-            right,
-            left,
-            vns,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
-    end
-end
-
-# As above but with an RNG.
-function DynamicPPL.dot_tilde_assume(
-    rng::Random.AbstractRNG, context::GibbsContext, sampler, right, left, vns, vi
-)
-    child_context = DynamicPPL.childcontext(context)
-    return if is_target_varname(context, vns)
-        DynamicPPL.dot_tilde_assume(rng, child_context, sampler, right, left, vns, vi)
-    elseif has_conditioned_gibbs(context, vns)
-        value, lp, _ = DynamicPPL.dot_tilde_assume(
-            child_context, right, left, vns, get_global_varinfo(context)
-        )
-        value, lp, vi
-    else
-        value, lp, new_global_vi = DynamicPPL.dot_tilde_assume(
-            rng,
-            child_context,
-            DynamicPPL.SampleFromPrior(),
-            right,
-            left,
-            vns,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
-    end
-end
-
 """
     make_conditional(model, target_variables, varinfo)
 
@@ -281,16 +229,8 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
-# All samplers are given the same Selector, so that they will sample all variables
-# given to them by the Gibbs sampler. This avoids conflicts between the new and the old way
-# of choosing which sampler to use.
-function set_selector(x::DynamicPPL.Sampler)
-    return DynamicPPL.Sampler(x.alg, DynamicPPL.Selector(0))
-end
-function set_selector(x::RepeatSampler)
-    return RepeatSampler(set_selector(x.sampler), x.num_repeat)
-end
-set_selector(x::InferenceAlgorithm) = DynamicPPL.Sampler(x, DynamicPPL.Selector(0))
+wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
+wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
 to_varname_list(x::Union{VarName,Symbol}) = [VarName(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
@@ -343,9 +283,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
             end
         end
 
-        # Ensure that samplers have the same selector, and that varnames are lists of
-        # VarNames.
-        samplers = tuple(map(set_selector ∘ drop_space, samplers)...)
+        samplers = tuple(map(wrap_in_sampler, samplers)...)
         varnames = tuple(map(to_varname_list, varnames)...)
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
@@ -355,49 +293,6 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
 
-# The below two constructors only provide backwards compatibility with the constructor of
-# the old Gibbs sampler. They are deprecated and will be removed in the future.
-function Gibbs(alg1::InferenceAlgorithm, other_algs::InferenceAlgorithm...)
-    algs = [alg1, other_algs...]
-    varnames = map(algs) do alg
-        space = getspace(alg)
-        if (space isa VarName)
-            space
-        elseif (space isa Symbol)
-            VarName{space}()
-        else
-            tuple((s isa Symbol ? VarName{s}() : s for s in space)...)
-        end
-    end
-    msg = (
-        "Specifying which sampler to use with which variable using syntax like " *
-        "`Gibbs(NUTS(:x), MH(:y))` is deprecated and will be removed in the future. " *
-        "Please use `Gibbs(; x=NUTS(), y=MH())` instead. If you want different iteration " *
-        "counts for different subsamplers, use e.g. " *
-        "`Gibbs(@varname(x) => RepeatSampler(NUTS(), 2), @varname(y) => MH())`"
-    )
-    Base.depwarn(msg, :Gibbs)
-    return Gibbs(varnames, map(set_selector ∘ drop_space, algs))
-end
-
-function Gibbs(
-    alg_with_iters1::Tuple{<:InferenceAlgorithm,Int},
-    other_algs_with_iters::Tuple{<:InferenceAlgorithm,Int}...,
-)
-    algs_with_iters = [alg_with_iters1, other_algs_with_iters...]
-    algs = Iterators.map(first, algs_with_iters)
-    iters = Iterators.map(last, algs_with_iters)
-    algs_duplicated = Iterators.flatten((
-        Iterators.repeated(alg, iter) for (alg, iter) in zip(algs, iters)
-    ))
-    # This calls the other deprecated constructor from above, hence no need for a depwarn
-    # here.
-    return Gibbs(algs_duplicated...)
-end
-
-# TODO: Remove when no longer needed.
-DynamicPPL.getspace(::Gibbs) = ()
-
 struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     vi::V
     states::S
@@ -405,20 +300,75 @@ end
 
 varinfo(state::GibbsState) = state.vi
 
-function DynamicPPL.initialstep(
+"""
+Initialise a VarInfo for the Gibbs sampler.
+
+This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated here to
+support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
+incompatible with step_warmup.
+"""
+function initial_varinfo(rng, model, spl, initial_params)
+    vi = DynamicPPL.default_varinfo(rng, model, spl)
+
+    # Update the parameters if provided.
+    if initial_params !== nothing
+        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, model)
+
+        # Update joint log probability.
+        # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
+        # and https://github.com/TuringLang/Turing.jl/issues/1563
+        # to avoid that existing variables are resampled
+        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.DefaultContext()))
+    end
+    return vi
+end
+
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
-    vi::DynamicPPL.AbstractVarInfo;
+    spl::DynamicPPL.Sampler{<:Gibbs};
     initial_params=nothing,
     kwargs...,
 )
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
+    vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
-        rng, model, varnames, samplers, vi; initial_params=initial_params, kwargs...
+        rng,
+        model,
+        AbstractMCMC.step,
+        varnames,
+        samplers,
+        vi;
+        initial_params=initial_params,
+        kwargs...,
+    )
+    return Transition(model, vi), GibbsState(vi, states)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs};
+    initial_params=nothing,
+    kwargs...,
+)
+    alg = spl.alg
+    varnames = alg.varnames
+    samplers = alg.samplers
+    vi = initial_varinfo(rng, model, spl, initial_params)
+
+    vi, states = gibbs_initialstep_recursive(
+        rng,
+        model,
+        AbstractMCMC.step_warmup,
+        varnames,
+        samplers,
+        vi;
+        initial_params=initial_params,
+        kwargs...,
     )
     return Transition(model, vi), GibbsState(vi, states)
 end
@@ -427,9 +377,20 @@ end
 Take the first step of MCMC for the first component sampler, and call the same function
 recursively on the remaining samplers, until no samplers remain. Return the global VarInfo
 and a tuple of initial states for all component samplers.
+
+The `step_function` argument should always be either AbstractMCMC.step or
+AbstractMCMC.step_warmup.
 """
 function gibbs_initialstep_recursive(
-    rng, model, varname_vecs, samplers, vi, states=(); initial_params=nothing, kwargs...
+    rng,
+    model,
+    step_function::Function,
+    varname_vecs,
+    samplers,
+    vi,
+    states=();
+    initial_params=nothing,
+    kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
@@ -450,7 +411,7 @@ function gibbs_initialstep_recursive(
     conditioned_model, context = make_conditional(model, varnames, vi)
 
     # Take initial step with the current sampler.
-    _, new_state = AbstractMCMC.step(
+    _, new_state = step_function(
         rng,
         conditioned_model,
         sampler;
@@ -470,6 +431,7 @@ function gibbs_initialstep_recursive(
     return gibbs_initialstep_recursive(
         rng,
         model,
+        step_function,
         varname_vecs_tail,
         samplers_tail,
         vi,
@@ -493,7 +455,29 @@ function AbstractMCMC.step(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vi, states = gibbs_step_recursive(rng, model, varnames, samplers, states, vi; kwargs...)
+    vi, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
+    )
+    return Transition(model, vi), GibbsState(vi, states)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::DynamicPPL.Sampler{<:Gibbs},
+    state::GibbsState;
+    kwargs...,
+)
+    vi = varinfo(state)
+    alg = spl.alg
+    varnames = alg.varnames
+    samplers = alg.samplers
+    states = state.states
+    @assert length(samplers) == length(state.states)
+
+    vi, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
+    )
     return Transition(model, vi), GibbsState(vi, states)
 end
 
@@ -543,7 +527,9 @@ function setparams_varinfo!!(
     state::TuringState,
     params::AbstractVarInfo,
 )
-    logdensity = DynamicPPL.setmodel(state.logdensity, model, sampler.alg.adtype)
+    logdensity = DynamicPPL.LogDensityFunction(
+        model, state.ldf.varinfo, state.ldf.context; adtype=sampler.alg.adtype
+    )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
     )
@@ -620,10 +606,14 @@ end
 """
 Run a Gibbs step for the first varname/sampler/state tuple, and recursively call the same
 function on the tail, until there are no more samplers left.
+
+The `step_function` argument should always be either AbstractMCMC.step or
+AbstractMCMC.step_warmup.
 """
 function gibbs_step_recursive(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
+    step_function::Function,
     varname_vecs,
     samplers,
     states,
@@ -657,7 +647,7 @@ function gibbs_step_recursive(
     state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
 
     # Take a step with the local sampler.
-    new_state = last(AbstractMCMC.step(rng, conditioned_model, sampler, state; kwargs...))
+    new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
 
     new_vi_local = varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
@@ -668,6 +658,7 @@ function gibbs_step_recursive(
     return gibbs_step_recursive(
         rng,
         model,
+        step_function,
         varname_vecs_tail,
         samplers_tail,
         states_tail,
