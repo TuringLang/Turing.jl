@@ -1,3 +1,44 @@
+# Release 0.37.0
+
+## Breaking changes
+
+### Gibbs constructors
+
+0.37 removes the old Gibbs constructors deprecated in 0.36.
+
+### Remove Zygote support
+
+Zygote is no longer officially supported as an automatic differentiation backend, and `AutoZygote` is no longer exported. You can continue to use Zygote by importing `AutoZygote` from ADTypes and it may well continue to work, but it is no longer tested and no effort will be expended to fix it if something breaks.
+
+[Mooncake](https://github.com/compintell/Mooncake.jl/) is the recommended replacement for Zygote.
+
+### DynamicPPL 0.35
+
+Turing.jl v0.37 uses DynamicPPL v0.35, which brings with it several breaking changes:
+
+  - The right hand side of `.~` must from now on be a univariate distribution.
+  - Indexing `VarInfo` objects by samplers has been removed completely.
+  - The order in which nested submodel prefixes are applied has been reversed.
+  - The arguments for the constructor of `LogDensityFunction` have changed. `LogDensityFunction` also now satisfies the `LogDensityProblems` interface, without needing a wrapper object.
+
+For more details about all of the above, see the changelog of DynamicPPL [here](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.35.0).
+
+### Export list
+
+Turing.jl's export list has been cleaned up a fair bit. This affects what is imported into your namespace when you do an unqualified `using Turing`. You may need to import things more explicitly than before.
+
+  - The `DynamicPPL` and `AbstractMCMC` modules are no longer exported. You will need to `import DynamicPPL` or `using DynamicPPL: DynamicPPL` (likewise `AbstractMCMC`) yourself, which in turn means that they have to be made available in your project environment.
+
+  - `@logprob_str` and `@prob_str` have been removed following a long deprecation period.
+  - We no longer re-export everything from `Bijectors` and `Libtask`. To get around this, add `using Bijectors` or `using Libtask` at the top of your script (but we recommend using more selective imports).
+    
+      + We no longer export `Bijectors.ordered`. If you were using `ordered`, even Bijectors does not (currently) export this. You will have to manually import it with `using Bijectors: ordered`.
+
+On the other hand, we have added a few more exports:
+
+  - `DynamicPPL.returned` and `DynamicPPL.prefix` are exported (for use with submodels).
+  - `LinearAlgebra.I` is exported for convenience.
+
 # Release 0.36.0
 
 ## Breaking changes

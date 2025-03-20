@@ -24,26 +24,28 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @testset "mh constructor" begin
         N = 10
         s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))
-        s2 = MH(:s, :m)
+        s2 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0))
         s3 = MH()
-        for s in (s1, s2, s3)
-            @test DynamicPPL.alg_str(Sampler(s, gdemo_default)) == "MH"
+        s4 = MH([1.0 0.1; 0.1 1.0])
+        for s in (s1, s2, s3, s4)
+            @test DynamicPPL.alg_str(Sampler(s)) == "MH"
         end
 
         c1 = sample(gdemo_default, s1, N)
         c2 = sample(gdemo_default, s2, N)
         c3 = sample(gdemo_default, s3, N)
-
-        s4 = Gibbs(:m => MH(), :s => MH())
         c4 = sample(gdemo_default, s4, N)
 
-        # s5 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
-        # c5 = sample(gdemo_default, s5, N)
+        s5 = Gibbs(:m => MH(), :s => MH())
+        c5 = sample(gdemo_default, s5, N)
+
+        # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
+        # c6 = sample(gdemo_default, s6, N)
 
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
         # it with `NamedTuple` instead of `AbstractVector`.
-        # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
-        # c6 = sample(gdemo_default, s6, N)
+        # s7 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
+        # c7 = sample(gdemo_default, s7, N)
     end
 
     @testset "mh inference" begin
@@ -114,7 +116,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
 
         model = M(zeros(2), I, 1)
-        sampler = Inference.Sampler(MH(), model)
+        sampler = Inference.Sampler(MH())
 
         dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
 
@@ -232,22 +234,22 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         alg = MH()
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test !DynamicPPL.islinked(vi, spl)
+        @test !DynamicPPL.islinked(vi)
 
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
         vi = deepcopy(vi_base)
-        d = length(vi_base[DynamicPPL.SampleFromPrior()])
+        d = length(vi_base[:])
         alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test DynamicPPL.islinked(vi, spl)
+        @test DynamicPPL.islinked(vi)
 
         # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
         vi = deepcopy(vi_base)
         alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test DynamicPPL.islinked(vi, spl)
+        @test DynamicPPL.islinked(vi)
 
         # Don't link if at least one proposal is NOT `RandomWalkProposal`.
         # TODO: make it so that only those that are using `RandomWalkProposal`
@@ -260,7 +262,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         )
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test !DynamicPPL.islinked(vi, spl)
+        @test !DynamicPPL.islinked(vi)
     end
 
     @testset "prior" begin
