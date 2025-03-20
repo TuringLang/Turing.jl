@@ -30,6 +30,7 @@ const eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVector,
     ),
     Turing.AutoMooncake => (Mooncake.CoDual,),
+    Turing.AutoEnzyme => (),
 )
 
 """
