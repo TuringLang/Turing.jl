@@ -4,9 +4,9 @@ using ..Models: gdemo_default
 using ..ADUtils: ADTypeCheckContext
 using ..NumericalTests: check_gdemo, check_numerical
 import ..ADUtils
+using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-import DynamicPPL
-using DynamicPPL: Sampler
+using DynamicPPL: DynamicPPL, Sampler
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -155,15 +155,11 @@ using Turing
 
     @testset "hmcda constructor" begin
         alg = HMCDA(0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         alg = HMCDA(200, 0.8, 0.75; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
-        alg = HMCDA(200, 0.8, 0.75, :s; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         @test isa(alg, HMCDA)
@@ -172,21 +168,17 @@ using Turing
 
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
-        res = sample(StableRNG(seed), gdemo_default, alg, 500)
+        res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
     end
 
     @testset "nuts constructor" begin
         alg = NUTS(200, 0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
         alg = NUTS(0.65; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
-
-        alg = NUTS(200, 0.65, :m; adtype=adbackend)
-        sampler = Sampler(alg, gdemo_default)
+        sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
@@ -209,28 +201,6 @@ using Turing
         @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains
     end
 
-    @testset "Regression tests" begin
-        # https://github.com/TuringLang/DynamicPPL.jl/issues/27
-        @model function mwe1(::Type{T}=Float64) where {T<:Real}
-            m = Matrix{T}(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
-        end
-        @test sample(StableRNG(seed), mwe1(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-
-        @model function mwe2(::Type{T}=Matrix{Float64}) where {T}
-            m = T(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
-        end
-        @test sample(StableRNG(seed), mwe2(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-
-        # https://github.com/TuringLang/Turing.jl/issues/1308
-        @model function mwe3(::Type{T}=Array{Float64}) where {T}
-            m = T(undef, 2, 3)
-            return m .~ MvNormal(zeros(2), I)
-        end
-        @test sample(StableRNG(seed), mwe3(), HMC(0.2, 4; adtype=adbackend), 100) isa Chains
-    end
-
     # issue #1923
     @testset "reproducibility" begin
         alg = NUTS(1000, 0.8; adtype=adbackend)
@@ -251,7 +221,7 @@ using Turing
         gdemo_default_prior = DynamicPPL.contextualize(
             demo_hmc_prior(), DynamicPPL.PriorContext()
         )
-        chain = sample(gdemo_default_prior, alg, 500; initial_params=[3.0, 0.0])
+        chain = sample(gdemo_default_prior, alg, 5_000; initial_params=[3.0, 0.0])
         check_numerical(
             chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0]; atol=0.2
         )
@@ -301,7 +271,9 @@ using Turing
 
             # HACK: Necessary to avoid NUTS failing during adaptation.
             try
-                x ~ transformed(Normal(0, 1), inverse(Bijectors.Logit(lb, ub)))
+                x ~ Bijectors.transformed(
+                    Normal(0, 1), Bijectors.inverse(Bijectors.Logit(lb, ub))
+                )
             catch e
                 if e isa DomainError
                     Turing.@addlogprob! -Inf
@@ -335,7 +307,7 @@ using Turing
         algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
         @testset "$(alg)" for alg in algs
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg, gdemo_default)
+            spl = Sampler(alg)
             hmc_state = DynamicPPL.initialstep(
                 Random.default_rng(), gdemo_default, spl, DynamicPPL.VarInfo(gdemo_default)
             )[2]

@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 import AdvancedVI
 using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
+using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
 using LinearAlgebra: I
 using MCMCChains: Chains
@@ -71,11 +72,11 @@ using Turing.Essential: TuringDiagMvNormal
         end
 
         m = dirichlet()
-        b = bijector(m)
+        b = Bijectors.bijector(m)
         x0 = m()
         z0 = b(x0)
         @test size(z0) == (1,)
-        x0_inv = inverse(b)(z0)
+        x0_inv = Bijectors.inverse(b)(z0)
         @test size(x0_inv) == size(x0)
         @test all(x0 .≈ x0_inv)
 
