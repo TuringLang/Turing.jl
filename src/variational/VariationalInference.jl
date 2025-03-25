@@ -60,9 +60,9 @@ end
 
 function meanfield_gaussian(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
+    model::DynamicPPL.Model;
     location::Union{Nothing,<:AbstractVector}=nothing,
-    scale::Union{Nothing,<:Diagonal}=nothing;
+    scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
@@ -91,19 +91,19 @@ function meanfield_gaussian(
 end
 
 function meanfield_gaussian(
-    model::DynamicPPL.Model,
+    model::DynamicPPL.Model;
     location::Union{Nothing,<:AbstractVector}=nothing,
-    scale::Union{Nothing,<:Diagonal}=nothing;
+    scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
 )
-    return meanfield_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return meanfield_gaussian(Random.default_rng(), model; location, scale, kwargs...)
 end
 
 function fullrank_gaussian(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
+    model::DynamicPPL.Model;
     location::Union{Nothing,<:AbstractVector}=nothing,
-    scale::Union{Nothing,<:LowerTriangular}=nothing;
+    scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
 )
     varinfo = DynamicPPL.VarInfo(model)
@@ -133,12 +133,12 @@ function fullrank_gaussian(
 end
 
 function fullrank_gaussian(
-    model::DynamicPPL.Model,
+    model::DynamicPPL.Model;
     location::Union{Nothing,<:AbstractVector}=nothing,
-    scale::Union{Nothing,<:Diagonal}=nothing;
+    scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
 )
-    return fullrank_gaussian(Random.default_rng(), model, location, scale; kwargs...)
+    return fullrank_gaussian(Random.default_rng(), model; location, scale, kwargs...)
 end
 
 function vi(
