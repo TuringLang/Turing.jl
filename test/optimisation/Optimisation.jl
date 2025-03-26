@@ -115,6 +115,16 @@ using Turing
         end
     end
 
+    @testset "errors on invalid model" begin
+        @model function invalid_model()
+            x ~ Normal()
+            return x ~ Beta()
+        end
+        m = invalid_model()
+        @test_throws ErrorException maximum_likelihood(m)
+        @test_throws ErrorException maximum_a_posteriori(m)
+    end
+
     @testset "gdemo" begin
         """
             check_success(result, true_value, true_logp, check_retcode=true)
