@@ -1,3 +1,9 @@
+# Release 0.38.0
+
+## Breaking changes
+
+[...]
+
 # Release 0.37.0
 
 ## Breaking changes
