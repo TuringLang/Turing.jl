@@ -7,6 +7,7 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
 using DynamicPPL: Sampler, getlogp
+import Enzyme
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
@@ -440,53 +441,56 @@ using Turing
 
         res = sample(StableRNG(seed), vdemo1b(x), alg, 10)
 
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            @model function vdemo3()
+                x = Vector{Real}(undef, N)
+                for i in 1:N
+                    x[i] ~ Normal(0, sqrt(4))
+                end
             end
+
+            # TODO(mhauru) What is the point of the below @elapsed stuff? It prints out some
+            # timings. Do we actually ever look at them?
+            t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1000)
+
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                @. x ~ Normal(0, 2)
+            end
+
+            t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1000)
+
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+            t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1000)
+
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
+
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                @. x ~ InverseGamma(2, 3)
+            end
+
+            sample(StableRNG(seed), vdemo6(), alg, 10)
+
+            N = 3
+            @model function vdemo7()
+                x = Array{Real}(undef, N, N)
+                return x ~ filldist(InverseGamma(2, 3), N, N)
+            end
+
+            sample(StableRNG(seed), vdemo7(), alg, 10)
         end
-
-        # TODO(mhauru) What is the point of the below @elapsed stuff? It prints out some
-        # timings. Do we actually ever look at them?
-        t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            @. x ~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            @. x ~ InverseGamma(2, 3)
-        end
-
-        sample(StableRNG(seed), vdemo6(), alg, 10)
-
-        N = 3
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            return x ~ filldist(InverseGamma(2, 3), N, N)
-        end
-
-        sample(StableRNG(seed), vdemo7(), alg, 10)
     end
 
     @testset "vectorization .~" begin
@@ -501,60 +505,41 @@ using Turing
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
-        @model function vdemo2(x)
-            μ ~ MvNormal(zeros(size(x, 1)), I)
-            return x ~ filldist(MvNormal(μ, I), size(x, 2))
-        end
-
         D = 2
         alg = HMC(0.01, 5; adtype=adbackend)
         res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
 
-        # Vector assumptions
-        N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        # TODO(mhauru) Type unstable getfield of tuple not supported in Enzyme yet
+        if !(adbackend isa AutoEnzyme)
+            # Vector assumptions
+            N = 10
+            alg = HMC(0.2, 4; adtype=adbackend)
 
-        @model function vdemo3()
-            x = Vector{Real}(undef, N)
-            for i in 1:N
-                x[i] ~ Normal(0, sqrt(4))
+            # Test for vectorize UnivariateDistribution
+            @model function vdemo4()
+                x = Vector{Real}(undef, N)
+                return x .~ Normal(0, 2)
             end
+
+            t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1_000)
+
+            @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
+
+            t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1_000)
+
+            println("Time for")
+            println("  Loop : ", t_loop)
+            println("  Vec  : ", t_vec)
+            println("  Mv   : ", t_mv)
+
+            # Transformed test
+            @model function vdemo6()
+                x = Vector{Real}(undef, N)
+                return x .~ InverseGamma(2, 3)
+            end
+
+            sample(StableRNG(seed), vdemo6(), alg, 10)
         end
-
-        # TODO(mhauru) Same question as above about @elapsed.
-        t_loop = @elapsed res = sample(StableRNG(seed), vdemo3(), alg, 1_000)
-
-        # Test for vectorize UnivariateDistribution
-        @model function vdemo4()
-            x = Vector{Real}(undef, N)
-            return x .~ Normal(0, 2)
-        end
-
-        t_vec = @elapsed res = sample(StableRNG(seed), vdemo4(), alg, 1_000)
-
-        @model vdemo5() = x ~ MvNormal(zeros(N), 4 * I)
-
-        t_mv = @elapsed res = sample(StableRNG(seed), vdemo5(), alg, 1_000)
-
-        println("Time for")
-        println("  Loop : ", t_loop)
-        println("  Vec  : ", t_vec)
-        println("  Mv   : ", t_mv)
-
-        # Transformed test
-        @model function vdemo6()
-            x = Vector{Real}(undef, N)
-            return x .~ InverseGamma(2, 3)
-        end
-
-        sample(StableRNG(seed), vdemo6(), alg, 10)
-
-        @model function vdemo7()
-            x = Array{Real}(undef, N, N)
-            return x ~ filldist(InverseGamma(2, 3), N, N)
-        end
-
-        sample(StableRNG(seed), vdemo7(), alg, 10)
     end
 
     @testset "Type parameters" begin

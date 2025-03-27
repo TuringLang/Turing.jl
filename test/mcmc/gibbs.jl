@@ -13,6 +13,7 @@ using AbstractMCMC: AbstractMCMC
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
+using Enzyme: Enzyme
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
