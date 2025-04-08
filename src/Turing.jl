@@ -119,6 +119,7 @@ export
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
+    AutoEnzyme,
     AutoMooncake,
     # Debugging - Turing
     setprogress!,
