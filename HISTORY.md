@@ -1,3 +1,8 @@
+# Release 0.37.1
+
+`maximum_a_posteriori` and `maximum_likelihood` now perform sanity checks on the model before running the optimisation.
+To disable this, set the keyword argument `check_model=false`.
+
 # Release 0.37.0
 
 ## Breaking changes
