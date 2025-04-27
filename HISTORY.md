@@ -1,3 +1,23 @@
+# Release 0.37.2
+
+DynamicPPL compatibility has been bumped to 0.36.
+This brings with it a number of changes: the ones most likely to affect you are submodel prefixing and conditioning.
+Variables in submodels are now represented correctly with field accessors.
+For example:
+
+```julia
+using Turing
+@model inner() = x ~ Normal()
+@model outer() = a ~ to_submodel(inner())
+```
+
+`keys(VarInfo(outer()))` now returns `[@varname(a.x)]` instead of `[@varname(var"a.x")]`
+
+Furthermore, you can now either condition on the outer model like `outer() | (@varname(a.x) => 1.0)`, or the inner model like `inner() | (@varname(x) => 1.0)`.
+If you use the conditioned inner model as a submodel, the conditioning will still apply correctly.
+
+Please see [the DynamicPPL release notes](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.36.0) for fuller details.
+
 # Release 0.37.1
 
 `maximum_a_posteriori` and `maximum_likelihood` now perform sanity checks on the model before running the optimisation.
