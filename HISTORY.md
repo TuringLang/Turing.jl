@@ -1,4 +1,4 @@
-# Release 0.37.2
+# Release 0.38.0
 
 DynamicPPL compatibility has been bumped to 0.36.
 This brings with it a number of changes: the ones most likely to affect you are submodel prefixing and conditioning.
