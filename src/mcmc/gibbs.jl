@@ -21,6 +21,11 @@ isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(::AdvancedHMC.HMC) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
 
+function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
+    return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
+end
+can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
+
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
 # 2. Computes the log-probability of the fixed variables.
@@ -68,14 +73,14 @@ struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractCont
     context::Ctx
 
     function GibbsContext{VNs}(global_varinfo, context) where {VNs}
-        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
+        if !can_be_wrapped(context)
             error("GibbsContext can only wrap a leaf context, not a $(context).")
         end
         return new{VNs,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
     end
 
     function GibbsContext(target_varnames, global_varinfo, context)
-        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
+        if !can_be_wrapped(context)
             error("GibbsContext can only wrap a leaf context, not a $(context).")
         end
         if any(vn -> DynamicPPL.getoptic(vn) != identity, target_varnames)
