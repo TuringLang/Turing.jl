@@ -232,9 +232,11 @@ end
 wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
 wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
-to_varname_list(x::Union{VarName,Symbol}) = [VarName(x)]
+to_varname(x::VarName) = x
+to_varname(x::Symbol) = VarName{x}()
+to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
-to_varname_list(t) = collect(map(VarName, t))
+to_varname_list(t) = collect(map(to_varname, t))
 
 """
     Gibbs
