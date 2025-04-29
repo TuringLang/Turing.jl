@@ -22,7 +22,9 @@ Returns a `Stacked <: Bijector` which maps from the support of the posterior to 
 denoting the dimensionality of the latent variables.
 """
 function Bijectors.bijector(
-    model::DynamicPPL.Model, ::Val{sym2ranges}=Val(false); varinfo=DynamicPPL.VarInfo(model)
+    model::DynamicPPL.Model,
+    (::Val{sym2ranges})=Val(false);
+    varinfo=DynamicPPL.VarInfo(model),
 ) where {sym2ranges}
     num_params = sum([
         size(varinfo.metadata[sym].vals, 1) for sym in keys(varinfo.metadata)
