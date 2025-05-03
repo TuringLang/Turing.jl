@@ -160,10 +160,6 @@ end
         return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
     end
 
-    function target_vns(::Inference.GibbsContext{VNs}) where {VNs}
-        return VNs
-    end
-
     # targets_and_algs will be a list of tuples, where the first element is the target_vns
     # of a component sampler, and the second element is the component sampler itself.
     # It is modified by the capture_targets_and_algs function.
@@ -174,7 +170,7 @@ end
             return nothing
         end
         if context isa Inference.GibbsContext
-            push!(targets_and_algs, (target_vns(context), sampler))
+            push!(targets_and_algs, (context.target_varnames, sampler))
         end
         return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
     end
@@ -240,14 +236,14 @@ end
     chain = sample(test_model(-1), sampler, 2)
 
     expected_targets_and_algs_per_iteration = [
-        ((:s,), mh),
-        ((:s, :m), mh),
-        ((:m,), pg),
-        ((:xs,), hmc),
-        ((:ys,), nuts),
-        ((:ys,), nuts),
-        ((:xs, :ys), hmc),
-        ((:s,), mh),
+        ((@varname(s),), mh),
+        ((@varname(s), @varname(m)), mh),
+        ((@varname(m),), pg),
+        ((@varname(xs),), hmc),
+        ((@varname(ys),), nuts),
+        ((@varname(ys),), nuts),
+        ((@varname(xs), @varname(ys)), hmc),
+        ((@varname(s),), mh),
     ]
     @test targets_and_algs == vcat(
         expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
