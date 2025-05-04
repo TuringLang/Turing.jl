@@ -723,6 +723,39 @@ end
         end
     end
 
+    @testset "non-identity varnames" begin
+        struct Wrap{T}
+            a::T
+        end
+        @model function model1(::Type{T}=Float64) where {T}
+            x = Vector{T}(undef, 1)
+            x[1] ~ Normal()
+            y = Wrap{T}(0.0)
+            return y.a ~ Normal()
+        end
+        model = model1()
+        spl = Gibbs(@varname(x[1]) => HMC(0.5, 10), @varname(y.a) => MH())
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+        spl = Gibbs((@varname(x[1]), @varname(y.a)) => HMC(0.5, 10))
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+    end
+
+    @testset "submodels" begin
+        @model inner() = x ~ Normal()
+        @model function outer()
+            a ~ to_submodel(inner())
+            _ignored ~ to_submodel(prefix(inner(), @varname(b)), false)
+            return _also_ignored ~ to_submodel(inner(), false)
+        end
+        model = outer()
+        spl = Gibbs(
+            @varname(a.x) => HMC(0.5, 10), @varname(b.x) => MH(), @varname(x) => MH()
+        )
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+        spl = Gibbs((@varname(a.x), @varname(b.x), @varname(x)) => MH())
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+    end
+
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
