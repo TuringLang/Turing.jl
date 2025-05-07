@@ -79,7 +79,7 @@ struct GibbsContext{
 
     function GibbsContext(target_varnames, global_varinfo, context)
         if !can_be_wrapped(context)
-            error("GibbsContext can only wrap a leaf context, not a $(context).")
+            error("GibbsContext can only wrap a leaf or prefix context, not a $(context).")
         end
         target_varnames = tuple(target_varnames...)  # Allow vectors.
         return new{typeof(target_varnames),typeof(global_varinfo),typeof(context)}(
