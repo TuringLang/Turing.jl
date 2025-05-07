@@ -1,5 +1,7 @@
 # Release 0.38.0
 
+## DynamicPPL version
+
 DynamicPPL compatibility has been bumped to 0.36.
 This brings with it a number of changes: the ones most likely to affect you are submodel prefixing and conditioning.
 Variables in submodels are now represented correctly with field accessors.
@@ -17,6 +19,24 @@ Furthermore, you can now either condition on the outer model like `outer() | (@v
 If you use the conditioned inner model as a submodel, the conditioning will still apply correctly.
 
 Please see [the DynamicPPL release notes](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.36.0) for fuller details.
+
+## Gibbs sampler
+
+Turing's Gibbs sampler now allows for more complex `VarName`s, such as `x[1]` or `x.a`, to be used.
+For example, you can now do this:
+
+```julia
+@model function f()
+    x = Vector{Float64}(undef, 2)
+    x[1] ~ Normal()
+    return x[2] ~ Normal()
+end
+sample(f(), Gibbs(@varname(x[1]) => MH(), @varname(x[2]) => MH()), 100)
+```
+
+Performance for the cases which used to previously work (i.e. `VarName`s like `x` which only consist of a single symbol) is unaffected, and `VarNames` with only field accessors (e.g. `x.a`) should be equally fast.
+It is possible that `VarNames` with indexing (e.g. `x[1]`) may be slower (although this is still an improvement over not working at all!).
+If you find any cases where you think the performance is worse than it should be, please do file an issue.
 
 # Release 0.37.1
 
