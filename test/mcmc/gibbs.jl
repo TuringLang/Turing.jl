@@ -48,6 +48,10 @@ has_dot_assume(::DynamicPPL.Model) = true
 
 @testset "GibbsContext" begin
     @testset "type stability" begin
+        struct Wrapper{T<:Real}
+            a::T
+        end
+
         # A test model that has multiple features in one package:
         # Floats, Ints, arguments, observations, loops, dot_tildes.
         @model function test_model(obs1, obs2, num_vars, mean)
@@ -59,13 +63,19 @@ has_dot_assume(::DynamicPPL.Model) = true
                 y[i] ~ Poisson(Int(round(z[i])))
             end
             s = sum(y) - sum(z)
-            obs1 ~ Normal(s, 1)
+            q = Wrapper(0.0)
+            q.a ~ Normal(s, 1)
+            r = Vector{Float64}(undef, 1)
+            r[1] ~ Normal(q.a, 1)
+            obs1 ~ Normal(r[1], 1)
             obs2 ~ Poisson(y[3])
             return obs1, obs2, variance, z, y, s
         end
 
         model = test_model(1.2, 2, 10, 2.5)
-        all_varnames = DynamicPPL.VarName[@varname(variance), @varname(z), @varname(y)]
+        all_varnames = DynamicPPL.VarName[
+            @varname(variance), @varname(z), @varname(y), @varname(q.a), @varname(r[1])
+        ]
         # All combinations of elements in all_varnames.
         target_vn_combinations = Iterators.flatten(
             Iterators.map(
@@ -200,6 +210,10 @@ end
         )
     end
 
+    struct Wrapper{T<:Real}
+        a::T
+    end
+
     # A test model that includes several different kinds of tilde syntax.
     @model function test_model(val, ::Type{M}=Vector{Float64}) where {M}
         s ~ Normal(0.1, 0.2)
@@ -215,6 +229,12 @@ end
 
         ys = M(undef, 2)
         ys .~ Beta(1.0, 1.0)
+
+        q = Wrapper(0.0)
+        q.a ~ Normal(s, 1)
+        r = M(undef, 1)
+        r[1] ~ Normal(q.a, 1)
+
         return sum(xs), sum(ys), n
     end
 
@@ -229,9 +249,13 @@ end
         @varname(m) => AlgWrapper(pg),
         @varname(xs) => AlgWrapper(hmc),
         @varname(ys) => AlgWrapper(nuts),
+        @varname(q) => AlgWrapper(hmc),
+        @varname(r) => AlgWrapper(hmc),
         @varname(ys) => AlgWrapper(nuts),
         (@varname(xs), @varname(ys)) => AlgWrapper(hmc),
         @varname(s) => AlgWrapper(mh),
+        @varname(q.a) => AlgWrapper(mh),
+        @varname(r[1]) => AlgWrapper(mh),
     )
     chain = sample(test_model(-1), sampler, 2)
 
@@ -241,9 +265,13 @@ end
         ((@varname(m),), pg),
         ((@varname(xs),), hmc),
         ((@varname(ys),), nuts),
+        ((@varname(q),), hmc),
+        ((@varname(r),), hmc),
         ((@varname(ys),), nuts),
         ((@varname(xs), @varname(ys)), hmc),
         ((@varname(s),), mh),
+        ((@varname(q.a),), mh),
+        ((@varname(r[1]),), mh),
     ]
     @test targets_and_algs == vcat(
         expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
