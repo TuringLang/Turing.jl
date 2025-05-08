@@ -21,6 +21,11 @@ isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(::AdvancedHMC.HMC) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
 
+function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
+    return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
+end
+can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
+
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
 # 2. Computes the log-probability of the fixed variables.
@@ -54,8 +59,13 @@ for type stability of `tilde_assume`.
 # Fields
 $(FIELDS)
 """
-struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext} <:
-       DynamicPPL.AbstractContext
+struct GibbsContext{
+    VNs<:Tuple{Vararg{VarName}},GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
+} <: DynamicPPL.AbstractContext
+    """
+    the VarNames being sampled
+    """
+    target_varnames::VNs
     """
     a `Ref` to the global `AbstractVarInfo` object that holds values for all variables, both
     those fixed and those being sampled. We use a `Ref` because this field may need to be
@@ -67,26 +77,14 @@ struct GibbsContext{VNs,GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractCont
     """
     context::Ctx
 
-    function GibbsContext{VNs}(global_varinfo, context) where {VNs}
-        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
-            error("GibbsContext can only wrap a leaf context, not a $(context).")
-        end
-        return new{VNs,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
-    end
-
     function GibbsContext(target_varnames, global_varinfo, context)
-        if !(DynamicPPL.NodeTrait(context) isa DynamicPPL.IsLeaf)
-            error("GibbsContext can only wrap a leaf context, not a $(context).")
+        if !can_be_wrapped(context)
+            error("GibbsContext can only wrap a leaf or prefix context, not a $(context).")
         end
-        if any(vn -> DynamicPPL.getoptic(vn) != identity, target_varnames)
-            msg =
-                "All Gibbs target variables must have identity lenses. " *
-                "For example, you can't have `@varname(x.a[1])` as a target variable, " *
-                "only `@varname(x)`."
-            error(msg)
-        end
-        vn_sym = tuple(unique((DynamicPPL.getsym(vn) for vn in target_varnames))...)
-        return new{vn_sym,typeof(global_varinfo),typeof(context)}(global_varinfo, context)
+        target_varnames = tuple(target_varnames...)  # Allow vectors.
+        return new{typeof(target_varnames),typeof(global_varinfo),typeof(context)}(
+            target_varnames, global_varinfo, context
+        )
     end
 end
 
@@ -96,8 +94,10 @@ end
 
 DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
-function DynamicPPL.setchildcontext(context::GibbsContext{VNs}, childcontext) where {VNs}
-    return GibbsContext{VNs}(Ref(context.global_varinfo[]), childcontext)
+function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
+    return GibbsContext(
+        context.target_varnames, Ref(context.global_varinfo[]), childcontext
+    )
 end
 
 get_global_varinfo(context::GibbsContext) = context.global_varinfo[]
@@ -129,7 +129,9 @@ function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
     return map(Base.Fix1(get_conditioned_gibbs, context), vns)
 end
 
-is_target_varname(::GibbsContext{VNs}, ::VarName{sym}) where {VNs,sym} = sym in VNs
+function is_target_varname(ctx::GibbsContext, vn::VarName)
+    return any(Base.Fix2(subsumes, vn), ctx.target_varnames)
+end
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
     num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
@@ -145,6 +147,37 @@ end
 # Tilde pipeline
 function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
     child_context = DynamicPPL.childcontext(context)
+
+    # Note that `child_context` may contain `PrefixContext`s -- in which case
+    # we need to make sure that vn is appropriately prefixed before we handle
+    # the `GibbsContext` behaviour below. For example, consider the following:
+    #      @model inner() = x ~ Normal()
+    #      @model outer() = a ~ to_submodel(inner())
+    # If we run this with `Gibbs(@varname(a.x) => MH())`, then when we are
+    # executing the submodel, the `context` will contain the `@varname(a.x)`
+    # variable; `child_context` will contain `PrefixContext(@varname(a))`; and
+    # `vn` will just be `@varname(x)`. If we just simply run
+    # `is_target_varname(context, vn)`, it will return false, and everything
+    # will be messed up.
+    # TODO(penelopeysm): This 'problem' could be solved if we made GibbsContext a
+    # leaf context and wrapped the PrefixContext _above_ the GibbsContext, so
+    # that the prefixing would be handled by tilde_assume(::PrefixContext, ...)
+    # _before_ we hit this method.
+    # In the current state of GibbsContext, doing this would require
+    # special-casing the way PrefixContext is used to wrap the leaf context.
+    # This is very inconvenient because PrefixContext's behaviour is defined in
+    # DynamicPPL, and we would basically have to create a new method in Turing
+    # and override it for GibbsContext. Indeed, a better way to do this would
+    # be to make GibbsContext a leaf context. In this case, we would be able to
+    # rely on the existing behaviour of DynamicPPL.make_evaluate_args_and_kwargs
+    # to correctly wrap the PrefixContext around the GibbsContext. This is very
+    # tricky to correctly do now, but once we remove the other leaf contexts
+    # (i.e. PriorContext and LikelihoodContext), we should be able to do this.
+    # This is already implemented in
+    # https://github.com/TuringLang/DynamicPPL.jl/pull/885/ but not yet
+    # released. Exciting!
+    vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
+
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
@@ -177,6 +210,8 @@ function DynamicPPL.tilde_assume(
 )
     # See comment in the above, rng-less version of this method for an explanation.
     child_context = DynamicPPL.childcontext(context)
+    vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
+
     return if is_target_varname(context, vn)
         DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
@@ -232,9 +267,11 @@ end
 wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
 wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
 
-to_varname_list(x::Union{VarName,Symbol}) = [VarName(x)]
+to_varname(x::VarName) = x
+to_varname(x::Symbol) = VarName{x}()
+to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
 # Any other value is assumed to be an iterable of VarNames and Symbols.
-to_varname_list(t) = collect(map(VarName, t))
+to_varname_list(t) = collect(map(to_varname, t))
 
 """
     Gibbs

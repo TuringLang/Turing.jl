@@ -71,13 +71,9 @@ using Turing
         end
 
         @testset "With prefixes" begin
-            function prefix_μ(model)
-                return DynamicPPL.contextualize(
-                    model, DynamicPPL.PrefixContext{:inner}(model.context)
-                )
-            end
-            m1 = prefix_μ(model1(x))
-            m2 = prefix_μ(model2() | (var"inner.x"=x,))
+            vn = @varname(inner)
+            m1 = prefix(model1(x), vn)
+            m2 = prefix((model2() | (x=x,)), vn)
             ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
                 Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
