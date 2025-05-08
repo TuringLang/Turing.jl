@@ -117,7 +117,9 @@ function q_fullrank_gaussian(
     scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
 )
-    return q_init(rng, model; location, scale, meanfield=false, basedist=Normal(), kwargs...)
+    return q_init(
+        rng, model; location, scale, meanfield=false, basedist=Normal(), kwargs...
+    )
 end
 
 function vi(
