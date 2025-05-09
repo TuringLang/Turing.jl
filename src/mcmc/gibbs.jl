@@ -39,22 +39,16 @@ can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
 """
-    GibbsContext{VNs}(global_varinfo, context)
+    GibbsContext(target_varnames, global_varinfo, context)
 
 A context used in the implementation of the Turing.jl Gibbs sampler.
 
 There will be one `GibbsContext` for each iteration of a component sampler.
 
-`VNs` is a a tuple of symbols for `VarName`s that the current component
-sampler is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
-calls to its child context. For other variables, their values will be fixed to the values
-they have in `global_varinfo`.
-
-The naive implementation of `GibbsContext` would simply have a field `target_varnames` that
-would be a collection of `VarName`s that the current component sampler is sampling. The
-reason we instead have a `Tuple` type parameter listing `Symbol`s is to allow
-`is_target_varname` to benefit from compile time constant propagation. This is important
-for type stability of `tilde_assume`.
+`target_varnames` is a a tuple of `VarName`s that the current component sampler
+is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
+calls to its child context. For other variables, their values will be fixed to
+the values they have in `global_varinfo`.
 
 # Fields
 $(FIELDS)
@@ -292,9 +286,6 @@ Gibbs(:x => NUTS(), :y => MH())
 Gibbs(@varname(x) => NUTS(), @varname(y) => MH())
 Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
-
-Currently only variable names without indexing are supported, so for instance
-`Gibbs(@varname(x[1]) => NUTS())` does not work. This will hopefully change in the future.
 
 # Fields
 $(TYPEDFIELDS)
