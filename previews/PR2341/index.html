@@ -35,6 +35,8 @@
         --item-color: rgb(165, 165, 165);
         --primary-bg: #073c44;
         --hover-color: #8faad2;
+        --deprecated-bg: #ff4d4d;
+        --deprecated-text: white;
     }
 
     .ext-navigation {
@@ -132,6 +134,8 @@
 
     .ext-dropdown ul li {
         text-align: left;
+        display: flex;
+        align-items: center;
     }
 
     .navbar-sub-item {
@@ -153,6 +157,16 @@
     .ext-dropdown-item-heading {
         color: var(--heading-color);
         text-align: center;
+    }
+
+    .deprecated-badge {
+        background-color: var(--deprecated-bg);
+        color: var(--deprecated-text);
+        font-size: 0.75rem;
+        padding: 0.125rem 0.375rem;
+        border-radius: 3px;
+        margin-left: 0.5rem;
+        line-height: 1;
     }
 
     /* Responsive styling */
@@ -212,6 +226,7 @@
 
         .ext-dropdown ul li {
             text-align: center;
+            /* justify-content: center; */
         }
 
         .ext-dropdown ul a li {
@@ -329,7 +344,8 @@
                 </ul>
                 <ul>
                     <li class="ext-dropdown-item-heading ext-navbar-item-single">
-                        <a href="https://turinglang.org/TuringBenchmarking.jl/">TuringBenchmarking</a>
+                        <a href="https://turinglang.org/Deprecated/TuringBenchmarking/">TuringBenchmarking</a>
+                        <span class="deprecated-badge">Deprecated</span>
                     </li>
                 </ul>
             </div>
