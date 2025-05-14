@@ -111,6 +111,10 @@ function q_meanfield_gaussian(
     return q_init(rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...)
 end
 
+function q_meanfield_gaussian(model::DynamicPPL.Model; kwargs...)
+    return q_meanfield_gaussian(Random.default_rng(), model; kwargs...)
+end
+
 function q_fullrank_gaussian(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model;
@@ -123,9 +127,14 @@ function q_fullrank_gaussian(
     )
 end
 
+function q_fullrank_gaussian(model::DynamicPPL.Model; kwargs...)
+    return q_fullrank_gaussian(Random.default_rng(), model; kwargs...)
+end
+
 function vi(
+    rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    q::Bijectors.TransformedDistribution,
+    q,
     n_iterations::Int;
     objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
     show_progress::Bool=PROGRESS[],
@@ -136,6 +145,7 @@ function vi(
     kwargs...,
 )
     return AdvancedVI.optimize(
+        rng,
         make_logdensity(model),
         objective,
         q,
@@ -147,6 +157,10 @@ function vi(
         operator,
         kwargs...,
     )
+end
+
+function vi(model::DynamicPPL.Model, q, n_iterations::Int; kwargs...)
+    return vi(Random.default_rng(), model, q, n_iterations; kwargs...)
 end
 
 end
