@@ -20,6 +20,7 @@ export RepGradELBO, ScoreGradELBO, DoG, DoWG
 export vi, q_init, q_meanfield_gaussian, q_fullrank_gaussian
 
 include("bijectors.jl")
+include("deprecated.jl")
 
 function make_logdensity(model::DynamicPPL.Model)
     weight = 1.0
