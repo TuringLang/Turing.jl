@@ -2,6 +2,8 @@
 import DistributionsAD
 export ADVI
 
+Base.@deprecate meanfield(model) q_meanfield_gaussian(model) 
+
 struct ADVI{AD}
     "Number of samples used to estimate the ELBO in each optimization step."
     samples_per_step::Int
