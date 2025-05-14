@@ -71,10 +71,6 @@ end
         end
     end
 
-    @testset "variational optimisers" begin
-        @timeit_include("variational/optimisers.jl")
-    end
-
     @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
         @timeit_include("stdlib/RandomMeasures.jl")

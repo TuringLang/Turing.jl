@@ -1,9 +1,9 @@
+
 module AdvancedVITests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
-import AdvancedVI
-using AdvancedVI: TruncatedADAGrad, DecayedADAGrad
+using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
 using LinearAlgebra: I
@@ -11,56 +11,93 @@ using MCMCChains: Chains
 import Random
 using Test: @test, @testset
 using Turing
-using Turing.Essential: TuringDiagMvNormal
+using Turing.Variational
 
-@testset "advi.jl" begin
-    @testset "advi constructor" begin
+@testset "ADVI" begin
+    @testset "default interface" begin
         Random.seed!(0)
         N = 500
 
-        s1 = ADVI()
-        q = vi(gdemo_default, s1)
-        c1 = rand(q, N)
+        for q0 in [q_meanfield_gaussian(gdemo_default), q_fullrank_gaussian(gdemo_default)]
+            _, q, _, _ = vi(gdemo_default, q0, N; show_progress=Turing.PROGRESS[])
+            c1 = rand(q, N)
+        end
     end
-    @testset "advi inference" begin
-        @testset for opt in [TruncatedADAGrad(), DecayedADAGrad()]
-            Random.seed!(1)
-            N = 500
 
-            alg = ADVI(10, 5000)
-            q = vi(gdemo_default, alg; optimizer=opt)
-            samples = transpose(rand(q, N))
+    @testset "custom interface $name" for (name, objective, operator, optimizer) in [
+        (
+            "ADVI with closed-form entropy",
+            RepGradELBO(10),
+            AdvancedVI.ProximalLocationScaleEntropy(),
+            DoG(),
+        ),
+        (
+            "ADVI with proximal entropy",
+            RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+            AdvancedVI.ClipScale(),
+            DoG(),
+        ),
+        (
+            "ADVI with STL entropy",
+            RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
+            AdvancedVI.ClipScale(),
+            DoG(),
+        ),
+    ]
+        Random.seed!(0)
+        T = 1000
+        q, q_avg, _, _ = vi(
+            gdemo_default,
+            q_meanfield_gaussian(gdemo_default),
+            T;
+            objective,
+            optimizer,
+            operator,
+            show_progress=Turing.PROGRESS[],
+        )
+
+        N = 1000
+        c1 = rand(q_avg, N)
+        c2 = rand(q, N)
+    end
+
+    @testset "inference $name" for (name, objective, operator, optimizer) in [
+        (
+            "ADVI with closed-form entropy",
+            RepGradELBO(10),
+            AdvancedVI.ProximalLocationScaleEntropy(),
+            DoG(),
+        ),
+        (
+            "ADVI with proximal entropy",
+            RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+            AdvancedVI.ClipScale(),
+            DoG(),
+        ),
+        (
+            "ADVI with STL entropy",
+            RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
+            AdvancedVI.ClipScale(),
+            DoG(),
+        ),
+    ]
+        Random.seed!(0)
+        T = 1000
+        q, q_avg, _, _ = vi(
+            gdemo_default,
+            q_meanfield_gaussian(gdemo_default),
+            T;
+            optimizer,
+            show_progress=Turing.PROGRESS[],
+        )
+
+        N = 1000
+        for q_out in [q_avg, q]
+            samples = transpose(rand(q_out, N))
             chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
 
-            # TODO: uhmm, seems like a large `eps` here...
             check_gdemo(chn; atol=0.5)
         end
-    end
-
-    @testset "advi different interfaces" begin
-        Random.seed!(1234)
-
-        target = MvNormal(zeros(2), I)
-        logπ(z) = logpdf(target, z)
-        advi = ADVI(10, 1000)
-
-        # Using a function z ↦ q(⋅∣z)
-        getq(θ) = TuringDiagMvNormal(θ[1:2], exp.(θ[3:4]))
-        q = vi(logπ, advi, getq, randn(4))
-
-        xs = rand(target, 10)
-        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.07
-
-        # OR: implement `update` and pass a `Distribution`
-        function AdvancedVI.update(d::TuringDiagMvNormal, θ::AbstractArray{<:Real})
-            return TuringDiagMvNormal(θ[1:length(q)], exp.(θ[(length(q) + 1):end]))
-        end
-
-        q0 = TuringDiagMvNormal(zeros(2), ones(2))
-        q = vi(logπ, advi, q0, randn(4))
-
-        xs = rand(target, 10)
-        @test mean(abs2, logpdf(q, xs) - logpdf(target, xs)) ≤ 0.05
     end
 
     # regression test for:
@@ -70,6 +107,7 @@ using Turing.Essential: TuringDiagMvNormal
             x ~ Dirichlet([1.0, 1.0])
             return x
         end
+        Random.seed!(0)
 
         m = dirichlet()
         b = Bijectors.bijector(m)
@@ -81,7 +119,7 @@ using Turing.Essential: TuringDiagMvNormal
         @test all(x0 .≈ x0_inv)
 
         # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
-        q = vi(m, ADVI(10, 1000))
+        _, q, _, _ = vi(m, q_meanfield_gaussian(m), 1000)
         x = rand(q, 1000)
         @test mean(eachcol(x)) ≈ [0.5, 0.5] atol = 0.1
     end
@@ -94,7 +132,7 @@ using Turing.Essential: TuringDiagMvNormal
         end
 
         model = demo_issue2205() | (y=1.0,)
-        q = vi(model, ADVI(10, 1000))
+        _, q, _, _ = vi(model, q_meanfield_gaussian(model), 1000)
         # True mean.
         mean_true = 1 / 2
         var_true = 1 / 2
