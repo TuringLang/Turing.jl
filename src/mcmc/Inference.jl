@@ -4,9 +4,8 @@ using ..Essential
 using DynamicPPL:
     Metadata,
     VarInfo,
-    TypedVarInfo,
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
-    # implemented for TypedVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
+    # implemented for NTVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
     # or implement it for other VarInfo types and export it from DPPL.
     all_varnames_grouped_by_symbol,
     syms,
@@ -161,7 +160,7 @@ function externalsampler(
 end
 
 # TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.
-function DynamicPPL.unflatten(vi::TypedVarInfo, θ::NamedTuple)
+function DynamicPPL.unflatten(vi::DynamicPPL.NTVarInfo, θ::NamedTuple)
     set_namedtuple!(deepcopy(vi), θ)
     return vi
 end

@@ -48,6 +48,10 @@ has_dot_assume(::DynamicPPL.Model) = true
 
 @testset "GibbsContext" begin
     @testset "type stability" begin
+        struct Wrapper{T<:Real}
+            a::T
+        end
+
         # A test model that has multiple features in one package:
         # Floats, Ints, arguments, observations, loops, dot_tildes.
         @model function test_model(obs1, obs2, num_vars, mean)
@@ -59,13 +63,19 @@ has_dot_assume(::DynamicPPL.Model) = true
                 y[i] ~ Poisson(Int(round(z[i])))
             end
             s = sum(y) - sum(z)
-            obs1 ~ Normal(s, 1)
+            q = Wrapper(0.0)
+            q.a ~ Normal(s, 1)
+            r = Vector{Float64}(undef, 1)
+            r[1] ~ Normal(q.a, 1)
+            obs1 ~ Normal(r[1], 1)
             obs2 ~ Poisson(y[3])
             return obs1, obs2, variance, z, y, s
         end
 
         model = test_model(1.2, 2, 10, 2.5)
-        all_varnames = DynamicPPL.VarName[@varname(variance), @varname(z), @varname(y)]
+        all_varnames = DynamicPPL.VarName[
+            @varname(variance), @varname(z), @varname(y), @varname(q.a), @varname(r[1])
+        ]
         # All combinations of elements in all_varnames.
         target_vn_combinations = Iterators.flatten(
             Iterators.map(
@@ -160,10 +170,6 @@ end
         return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
     end
 
-    function target_vns(::Inference.GibbsContext{VNs}) where {VNs}
-        return VNs
-    end
-
     # targets_and_algs will be a list of tuples, where the first element is the target_vns
     # of a component sampler, and the second element is the component sampler itself.
     # It is modified by the capture_targets_and_algs function.
@@ -174,7 +180,7 @@ end
             return nothing
         end
         if context isa Inference.GibbsContext
-            push!(targets_and_algs, (target_vns(context), sampler))
+            push!(targets_and_algs, (context.target_varnames, sampler))
         end
         return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
     end
@@ -204,6 +210,10 @@ end
         )
     end
 
+    struct Wrapper{T<:Real}
+        a::T
+    end
+
     # A test model that includes several different kinds of tilde syntax.
     @model function test_model(val, ::Type{M}=Vector{Float64}) where {M}
         s ~ Normal(0.1, 0.2)
@@ -219,6 +229,12 @@ end
 
         ys = M(undef, 2)
         ys .~ Beta(1.0, 1.0)
+
+        q = Wrapper(0.0)
+        q.a ~ Normal(s, 1)
+        r = M(undef, 1)
+        r[1] ~ Normal(q.a, 1)
+
         return sum(xs), sum(ys), n
     end
 
@@ -233,21 +249,29 @@ end
         @varname(m) => AlgWrapper(pg),
         @varname(xs) => AlgWrapper(hmc),
         @varname(ys) => AlgWrapper(nuts),
+        @varname(q) => AlgWrapper(hmc),
+        @varname(r) => AlgWrapper(hmc),
         @varname(ys) => AlgWrapper(nuts),
         (@varname(xs), @varname(ys)) => AlgWrapper(hmc),
         @varname(s) => AlgWrapper(mh),
+        @varname(q.a) => AlgWrapper(mh),
+        @varname(r[1]) => AlgWrapper(mh),
     )
     chain = sample(test_model(-1), sampler, 2)
 
     expected_targets_and_algs_per_iteration = [
-        ((:s,), mh),
-        ((:s, :m), mh),
-        ((:m,), pg),
-        ((:xs,), hmc),
-        ((:ys,), nuts),
-        ((:ys,), nuts),
-        ((:xs, :ys), hmc),
-        ((:s,), mh),
+        ((@varname(s),), mh),
+        ((@varname(s), @varname(m)), mh),
+        ((@varname(m),), pg),
+        ((@varname(xs),), hmc),
+        ((@varname(ys),), nuts),
+        ((@varname(q),), hmc),
+        ((@varname(r),), hmc),
+        ((@varname(ys),), nuts),
+        ((@varname(xs), @varname(ys)), hmc),
+        ((@varname(s),), mh),
+        ((@varname(q.a),), mh),
+        ((@varname(r[1]),), mh),
     ]
     @test targets_and_algs == vcat(
         expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
@@ -725,6 +749,39 @@ end
                 check_transition_varnames(transition, vns)
             end
         end
+    end
+
+    @testset "non-identity varnames" begin
+        struct Wrap{T}
+            a::T
+        end
+        @model function model1(::Type{T}=Float64) where {T}
+            x = Vector{T}(undef, 1)
+            x[1] ~ Normal()
+            y = Wrap{T}(0.0)
+            return y.a ~ Normal()
+        end
+        model = model1()
+        spl = Gibbs(@varname(x[1]) => HMC(0.5, 10), @varname(y.a) => MH())
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+        spl = Gibbs((@varname(x[1]), @varname(y.a)) => HMC(0.5, 10))
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+    end
+
+    @testset "submodels" begin
+        @model inner() = x ~ Normal()
+        @model function outer()
+            a ~ to_submodel(inner())
+            _ignored ~ to_submodel(prefix(inner(), @varname(b)), false)
+            return _also_ignored ~ to_submodel(inner(), false)
+        end
+        model = outer()
+        spl = Gibbs(
+            @varname(a.x) => HMC(0.5, 10), @varname(b.x) => MH(), @varname(x) => MH()
+        )
+        @test sample(model, spl, 10) isa MCMCChains.Chains
+        spl = Gibbs((@varname(a.x), @varname(b.x), @varname(x)) => MH())
+        @test sample(model, spl, 10) isa MCMCChains.Chains
     end
 
     @testset "CSMC + ESS" begin
