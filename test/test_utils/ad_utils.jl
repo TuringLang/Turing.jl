@@ -147,35 +147,27 @@ end
 # child context.
 
 function DynamicPPL.tilde_assume(context::ADTypeCheckContext, right, vn, vi)
-    value, logp, vi = DynamicPPL.tilde_assume(
+    value, vi = DynamicPPL.tilde_assume(
         DynamicPPL.childcontext(context), right, vn, vi
     )
     check_adtype(context, vi)
-    return value, logp, vi
+    return value, vi
 end
 
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, vn, vi
 )
-    value, logp, vi = DynamicPPL.tilde_assume(
+    value, vi = DynamicPPL.tilde_assume(
         rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
     )
     check_adtype(context, vi)
-    return value, logp, vi
+    return value, vi
 end
 
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(DynamicPPL.childcontext(context), right, left, vi)
+function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, right, left, vn, vi)
+    left, vi = DynamicPPL.tilde_observe(DynamicPPL.childcontext(context), right, left, vn, vi)
     check_adtype(context, vi)
-    return logp, vi
-end
-
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(
-        DynamicPPL.childcontext(context), sampler, right, left, vi
-    )
-    check_adtype(context, vi)
-    return logp, vi
+    return left, vi
 end
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
