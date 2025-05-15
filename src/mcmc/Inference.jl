@@ -22,8 +22,6 @@ using DynamicPPL:
     SampleFromPrior,
     SampleFromUniform,
     DefaultContext,
-    PriorContext,
-    LikelihoodContext,
     set_flag!,
     unset_flag!
 using Distributions, Libtask, Bijectors
@@ -75,7 +73,6 @@ export InferenceAlgorithm,
     RepeatSampler,
     Prior,
     assume,
-    observe,
     predict,
     externalsampler
 
@@ -182,12 +179,10 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
+    vi = VarInfo()
+    vi = DynamicPPL.setaccs!!(vi, (DynamicPPL.LogPriorAccumulator(),))
     vi = last(
-        DynamicPPL.evaluate!!(
-            model,
-            VarInfo(),
-            SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
-        ),
+        DynamicPPL.evaluate!!(model, vi, SamplingContext(rng, DynamicPPL.SampleFromPrior())),
     )
     return vi, nothing
 end
