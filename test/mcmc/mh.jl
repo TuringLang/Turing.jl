@@ -262,6 +262,8 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @test !DynamicPPL.islinked(vi)
     end
 
+    # TODO(mhauru) Do we give up being able to sample from only prior/likelihood like this,
+    # or do we implement some way to pass `whichlogprob=:LogPrior` through `sample`?
     @testset "prior" begin
         alg = MH()
         gdemo_default_prior = DynamicPPL.contextualize(

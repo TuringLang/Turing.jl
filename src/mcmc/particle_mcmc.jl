@@ -450,10 +450,11 @@ function DynamicPPL.assume(
     return r, lp, vi
 end
 
-function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
-    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
+#     # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
+#     return logpdf(dist, value), trace_local_varinfo_maybe(vi)
+# end
 
 function DynamicPPL.acclogp!!(
     context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
@@ -462,12 +463,13 @@ function DynamicPPL.acclogp!!(
     return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
 end
 
-function DynamicPPL.acclogp_observe!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
-)
-    Libtask.produce(logp)
-    return trace_local_varinfo_maybe(varinfo)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.acclogp_observe!!(
+#     context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+# )
+#     Libtask.produce(logp)
+#     return trace_local_varinfo_maybe(varinfo)
+# end
 
 # Convenient constructor
 function AdvancedPS.Trace(

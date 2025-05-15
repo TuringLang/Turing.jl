@@ -33,7 +33,7 @@ can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
 #
 # Purpose: avoid triggering resampling of variables we're conditioning on.
 # - Using standard `DynamicPPL.condition` results in conditioned variables being treated
-#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe`.
+#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe!!`.
 # - But `observe` is overloaded by some samplers, e.g. `CSMC`, which can lead to
 #   undesirable behavior, e.g. `CSMC` triggering a resampling for every conditioned variable
 #   rather than only for the "true" observations.
@@ -178,16 +178,18 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # Short-circuit the tilde assume if `vn` is present in `context`.
-        value, lp, _ = DynamicPPL.tilde_assume(
+        # TODO(mhauru) Fix accumulation here. In this branch anything that gets
+        # accumulated just gets discarded with `_`.
+        value, _ = DynamicPPL.tilde_assume(
             child_context, right, vn, get_global_varinfo(context)
         )
-        value, lp, vi
+        value, vi
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        value, new_global_vi = DynamicPPL.tilde_assume(
             child_context,
             DynamicPPL.SampleFromPrior(),
             right,
@@ -195,7 +197,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 

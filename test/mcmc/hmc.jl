@@ -171,6 +171,8 @@ using Turing
         @test Array(res1) == Array(res2) == Array(res3)
     end
 
+    # TODO(mhauru) Do we give up being able to sample from only prior/likelihood like this,
+    # or do we implement some way to pass `whichlogprob=:LogPrior` through `sample`?
     @testset "prior" begin
         # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
         # which means that it's _very_ difficult to find a good tolerance in the test below:)

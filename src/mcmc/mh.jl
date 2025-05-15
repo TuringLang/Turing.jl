@@ -392,7 +392,3 @@ function DynamicPPL.assume(
     retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
     return retval
 end
-
-function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
-end

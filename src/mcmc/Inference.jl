@@ -26,9 +26,6 @@ using DynamicPPL:
     SampleFromPrior,
     SampleFromUniform,
     DefaultContext,
-    PriorContext,
-    LikelihoodContext,
-    SamplingContext,
     set_flag!,
     unset_flag!
 using Distributions, Libtask, Bijectors

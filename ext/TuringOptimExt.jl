@@ -34,8 +34,8 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-    f = Optimisation.OptimLogDensity(model, ctx)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
     init_vals = DynamicPPL.getparams(f.ldf)
     optimizer = Optim.LBFGS()
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -57,8 +57,8 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-    f = Optimisation.OptimLogDensity(model, ctx)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
     init_vals = DynamicPPL.getparams(f.ldf)
     return _mle_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -74,8 +74,9 @@ function Optim.optimize(
 end
 
 function _mle_optimize(model::DynamicPPL.Model, args...; kwargs...)
-    ctx = Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
+    return _optimize(f, args...; kwargs...)
 end
 
 """
@@ -104,8 +105,8 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-    f = Optimisation.OptimLogDensity(model, ctx)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (LogPriorWithoutJacobianAccumulator(), DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
     init_vals = DynamicPPL.getparams(f.ldf)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -127,8 +128,8 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-    f = Optimisation.OptimLogDensity(model, ctx)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (LogPriorWithoutJacobianAccumulator(), DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
     init_vals = DynamicPPL.getparams(f.ldf)
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -144,9 +145,11 @@ function Optim.optimize(
 end
 
 function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
-    ctx = Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-    return _optimize(Optimisation.OptimLogDensity(model, ctx), args...; kwargs...)
+    vi = DynamicPPL.setaccs!!(VarInfo(model), (LogPriorWithoutJacobianAccumulator(), DynamicPPL.LogLikelihoodAccumulator(),))
+    f = Optimisation.OptimLogDensity(model, vi)
+    return _optimize(f, args...; kwargs...)
 end
+
 """
     _optimize(f::OptimLogDensity, optimizer=Optim.LBFGS(), args...; kwargs...)
 
@@ -166,7 +169,7 @@ function _optimize(
     # whether initialisation is really necessary at all
     vi = DynamicPPL.unflatten(f.ldf.varinfo, init_vals)
     vi = DynamicPPL.link(vi, f.ldf.model)
-    f = Optimisation.OptimLogDensity(f.ldf.model, vi, f.ldf.context; adtype=f.ldf.adtype)
+    f = Optimisation.OptimLogDensity(f.ldf.model, vi; adtype=f.ldf.adtype)
     init_vals = DynamicPPL.getparams(f.ldf)
 
     # Optimize!
@@ -183,9 +186,7 @@ function _optimize(
     # Get the optimum in unconstrained space. `getparams` does the invlinking.
     vi = f.ldf.varinfo
     vi_optimum = DynamicPPL.unflatten(vi, M.minimizer)
-    logdensity_optimum = Optimisation.OptimLogDensity(
-        f.ldf.model, vi_optimum, f.ldf.context
-    )
+    logdensity_optimum = Optimisation.OptimLogDensity(f.ldf.model, vi_optimum; adtype=f.ldf.adtype)
     vns_vals_iter = Turing.Inference.getparams(f.ldf.model, vi_optimum)
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)

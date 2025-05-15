@@ -516,10 +516,6 @@ function DynamicPPL.assume(
     return DynamicPPL.assume(dist, vn, vi)
 end
 
-function DynamicPPL.observe(::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
-    return DynamicPPL.observe(d, value, vi)
-end
-
 ####
 #### Default HMC stepsize and mass matrix adaptor
 ####

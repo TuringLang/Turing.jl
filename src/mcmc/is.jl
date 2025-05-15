@@ -55,7 +55,3 @@ function DynamicPPL.assume(rng, ::Sampler{<:IS}, dist::Distribution, vn::VarName
     end
     return r, 0, vi
 end
-
-function DynamicPPL.observe(::Sampler{<:IS}, dist::Distribution, value, vi)
-    return logpdf(dist, value), vi
-end

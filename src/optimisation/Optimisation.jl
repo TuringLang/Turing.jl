@@ -43,75 +43,87 @@ Concrete type for maximum a posteriori estimation. Only used for the Optim.jl in
 """
 struct MAP <: ModeEstimator end
 
+# Most of these functions for LogPriorWithoutJacobianAccumulator are copied from
+# LogPriorAccumulator. The only one that is different is the accumulate_assume!! one.
 """
-    OptimizationContext{C<:AbstractContext} <: AbstractContext
+    LogPriorWithoutJacobianAccumulator{T} <: DynamicPPL.AbstractAccumulator
 
-The `OptimizationContext` transforms variables to their constrained space, but
-does not use the density with respect to the transformation. This context is
-intended to allow an optimizer to sample in R^n freely.
+Exactly like DynamicPPL.LogPriorAccumulator, but does not include the log determinant of the
+Jacobian of any variable transformations.
+
+Used for MAP optimisation.
 """
-struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
-    context::C
-
-    function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(
-            context isa Union{
-                DynamicPPL.DefaultContext,
-                DynamicPPL.LikelihoodContext,
-                DynamicPPL.PriorContext,
-            }
-        )
-            msg = """
-                `OptimizationContext` supports only leaf contexts of type
-                `DynamicPPL.DefaultContext`, `DynamicPPL.LikelihoodContext`,
-                and `DynamicPPL.PriorContext` (given: `$(typeof(context)))`
-            """
-            throw(ArgumentError(msg))
-        end
-        return new{C}(context)
-    end
+struct LogPriorWithoutJacobianAccumulator{T} <: DynamicPPL.AbstractAccumulator
+    logp::T
 end
 
-OptimizationContext(ctx::DynamicPPL.AbstractContext) = OptimizationContext{typeof(ctx)}(ctx)
+"""
+    LogPriorWithoutJacobianAccumulator{T}()
 
-DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
+Create a new `LogPriorWithoutJacobianAccumulator` accumulator with the log prior initialized to zero.
+"""
+LogPriorWithoutJacobianAccumulator{T}() where {T<:Real} = LogPriorWithoutJacobianAccumulator(zero(T))
+LogPriorWithoutJacobianAccumulator() = LogPriorWithoutJacobianAccumulator{DynamicPPL.LogProbType}()
 
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
-    r = vi[vn, dist]
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        Distributions.logpdf(dist, r)
-    else
-        # MLE
-        0
-    end
-    return r, lp, vi
+function Base.show(io::IO, acc::LogPriorWithoutJacobianAccumulator)
+    return print(io, "LogPriorWithoutJacobianAccumulator($(repr(acc.logp)))")
 end
 
-function DynamicPPL.tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.tilde_observe(ctx.context, args...)
+# We use the same name for LogPriorWithoutJacobianAccumulator as for LogPriorAccumulator.
+# This has three effects:
+# 1. You can't have a VarInfo with both accumulator types.
+# 2. When you call functions like `getlogprior` on a VarInfo, it will return the one without
+# the Jacobian term, as if that was the usual log prior.
+# 3. This may cause a small number of invalidations in DynamicPPL. I haven't checked, but I
+# suspect they will be negligible.
+# TODO(mhauru) Not sure I like this solution. It's kinda glib, but might confuse a reader
+# of the code who expects things like `getlogprior` to always get the LogPriorAccumulator
+# contents. Another solution would be welcome, but would need to play nicely with how
+# LogDenssityFunction works, since it calls `getlogprior` explictily.
+DynamicPPL.accumulator_name(::Type{<:LogPriorWithoutJacobianAccumulator}) = :LogPrior
+
+DynamicPPL.split(::LogPriorWithoutJacobianAccumulator{T}) where {T} = LogPriorWithoutJacobianAccumulator(zero(T))
+
+function DynamicPPL.combine(acc::LogPriorWithoutJacobianAccumulator, acc2::LogPriorWithoutJacobianAccumulator)
+    return LogPriorWithoutJacobianAccumulator(acc.logp + acc2.logp)
+end
+
+function Base.:+(acc1::LogPriorWithoutJacobianAccumulator, acc2::LogPriorWithoutJacobianAccumulator)
+    return LogPriorWithoutJacobianAccumulator(acc1.logp + acc2.logp)
+end
+
+Base.zero(acc::LogPriorWithoutJacobianAccumulator) = LogPriorWithoutJacobianAccumulator(zero(acc.logp))
+
+function DynamicPPL.accumulate_assume!!(acc::LogPriorWithoutJacobianAccumulator, val, logjac, vn, right)
+    return acc + LogPriorWithoutJacobianAccumulator(Distributions.logpdf(right, val))
+end
+DynamicPPL.accumulate_observe!!(acc::LogPriorWithoutJacobianAccumulator, right, left, vn) = acc
+
+function Base.convert(::Type{LogPriorWithoutJacobianAccumulator{T}}, acc::LogPriorWithoutJacobianAccumulator) where {T}
+    return LogPriorWithoutJacobianAccumulator(convert(T, acc.logp))
+end
+
+function DynamicPPL.convert_eltype(::Type{T}, acc::LogPriorWithoutJacobianAccumulator) where {T}
+    return LogPriorWithoutJacobianAccumulator(convert(T, acc.logp))
 end
 
 """
     OptimLogDensity{
         M<:DynamicPPL.Model,
-        V<:DynamicPPL.VarInfo,
-        C<:OptimizationContext,
+        V<:DynamicPPL.AbstractVarInfo,
         AD<:ADTypes.AbstractADType
     }
 
 A struct that wraps a single LogDensityFunction. Can be invoked either using
 
 ```julia
-OptimLogDensity(model, varinfo, ctx; adtype=adtype)
+OptimLogDensity(model, varinfo; adtype=adtype)
 ```
 
 or
 
 ```julia
-OptimLogDensity(model, ctx; adtype=adtype)
+OptimLogDensity(model; adtype=adtype)
 ```
 
 If not specified, `adtype` defaults to `AutoForwardDiff()`.
@@ -129,37 +141,20 @@ the underlying LogDensityFunction at the point `z`. This is done to satisfy
 the Optim.jl interface.
 
 ```julia
-optim_ld = OptimLogDensity(model, varinfo, ctx)
+optim_ld = OptimLogDensity(model, varinfo)
 optim_ld(z)  # returns -logp
 ```
 """
 struct OptimLogDensity{
     M<:DynamicPPL.Model,
-    V<:DynamicPPL.VarInfo,
-    C<:OptimizationContext,
+    V<:DynamicPPL.AbstractVarInfo,
     AD<:ADTypes.AbstractADType,
 }
-    ldf::DynamicPPL.LogDensityFunction{M,V,C,AD}
+    ldf::DynamicPPL.LogDensityFunction{M,V,AD}
 end
 
-function OptimLogDensity(
-    model::DynamicPPL.Model,
-    vi::DynamicPPL.VarInfo,
-    ctx::OptimizationContext;
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
-)
-    return OptimLogDensity(DynamicPPL.LogDensityFunction(model, vi, ctx; adtype=adtype))
-end
-
-# No varinfo
-function OptimLogDensity(
-    model::DynamicPPL.Model,
-    ctx::OptimizationContext;
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
-)
-    return OptimLogDensity(
-        DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx; adtype=adtype)
-    )
+function OptimLogDensity(model::DynamicPPL.Model, vi::DynamicPPL.AbstractVarInfo=DynamicPPL.VarInfo(model); adtype=AutoForwardDiff())
+    return OptimLogDensity(DynamicPPL.LogDensityFunction(model, vi; adtype=adtype))
 end
 
 """
@@ -325,10 +320,11 @@ function StatsBase.informationmatrix(
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    linked = DynamicPPL.istrans(m.f.ldf.varinfo)
+    old_ldf = m.f.ldf
+    linked = DynamicPPL.istrans(old_ldf.varinfo)
     if linked
-        new_vi = DynamicPPL.invlink!!(m.f.ldf.varinfo, m.f.ldf.model)
-        new_f = OptimLogDensity(m.f.ldf.model, new_vi, m.f.ldf.context)
+        new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
+        new_f = OptimLogDensity(old_ldf.model, new_vi; adtype=old_ldf.adtype)
         m = Accessors.@set m.f = new_f
     end
 
@@ -339,8 +335,9 @@ function StatsBase.informationmatrix(
 
     # Link it back if we invlinked it.
     if linked
-        new_vi = DynamicPPL.link!!(m.f.ldf.varinfo, m.f.ldf.model)
-        new_f = OptimLogDensity(m.f.ldf.model, new_vi, m.f.ldf.context)
+        invlinked_ldf = m.f.ldf
+        new_vi = DynamicPPL.link!!(invlinked_ldf.varinfo, invlinked_ldf.model)
+        new_f = OptimLogDensity(invlinked_ldf.model, new_vi; adtype=invlinked_ldf.adtype)
         m = Accessors.@set m.f = new_f
     end
 
@@ -560,12 +557,11 @@ function estimate_mode(
 
     # Create an OptimLogDensity object that can be used to evaluate the objective function,
     # i.e. the negative log density.
-    inner_context = if estimator isa MAP
-        DynamicPPL.DefaultContext()
+    accs = if estimator isa MAP
+        (LogPriorWithoutJacobianAccumulator(), DynamicPPL.LogLikelihoodAccumulator())
     else
-        DynamicPPL.LikelihoodContext()
+        (DynamicPPL.LogLikelihoodAccumulator(),)
     end
-    ctx = OptimizationContext(inner_context)
 
     # Set its VarInfo to the initial parameters.
     # TODO(penelopeysm): Unclear if this is really needed? Any time that logp is calculated
@@ -574,6 +570,7 @@ function estimate_mode(
     # directly on the fields of the LogDensityFunction
     vi = DynamicPPL.VarInfo(model)
     vi = DynamicPPL.unflatten(vi, initial_params)
+    vi = DynamicPPL.setaccs!!(vi, accs)
 
     # Link the varinfo if needed.
     # TODO(mhauru) We currently couple together the questions of whether the user specified
@@ -585,7 +582,7 @@ function estimate_mode(
         vi = DynamicPPL.link(vi, model)
     end
 
-    log_density = OptimLogDensity(model, vi, ctx)
+    log_density = OptimLogDensity(model, vi)
 
     prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
     solution = Optimization.solve(prob, solver; kwargs...)
