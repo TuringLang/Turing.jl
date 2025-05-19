@@ -1,3 +1,7 @@
+# Release 0.38.1
+
+The method `Bijectors.bijector(::DynamicPPL.Model)` was moved to DynamicPPL.jl.
+
 # Release 0.38.0
 
 ## DynamicPPL version
