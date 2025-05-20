@@ -24,7 +24,7 @@ using Turing
     hasstats(result) = result.optim_result.stats !== nothing
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
-    @testset "OptimizationContext" begin
+    @testset "OptimLogDensity and contexts" begin
         @model function model1(x)
             μ ~ Uniform(0, 2)
             return x ~ LogNormal(μ, 1)
@@ -41,34 +41,44 @@ using Turing
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x=x,)
-            @test Turing.Optimisation.OptimLogDensity(m1)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2)(w)
+            # Doesn't matter if we use getlogjoint or getlogjoint_without_jacobian since the
+            # VarInfo isn't linked.
+            ld1 = Turing.Optimisation.OptimLogDensity(
+                m1, Turing.Optimisation.getlogjoint_without_jacobian
+            )
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint)
+            @test ld1(w) == ld2(w)
         end
 
         @testset "With prefixes" begin
             vn = @varname(inner)
             m1 = prefix(model1(x), vn)
             m2 = prefix((model2() | (x=x,)), vn)
-            @test Turing.Optimisation.OptimLogDensity(m1)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2)(w)
+            ld1 = Turing.Optimisation.OptimLogDensity(
+                m1, Turing.Optimisation.getlogjoint_without_jacobian
+            )
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint)
+            @test ld1(w) == ld2(w)
         end
 
-        @testset "Default, Likelihood, Prior Contexts" begin
+        @testset "Joint, prior, and likelihood" begin
             m1 = model1(x)
-            vi = DynamicPPL.VarInfo(m1)
-            vi_joint = DynamicPPL.setaccs!!(deepcopy(vi), (LogPriorWithoutJacobianAccumulator(), LogLikelihoodAccumulator()))
-            vi_prior = DynamicPPL.setaccs!!(deepcopy(vi), (LogPriorWithoutJacobianAccumulator(),))
-            vi_likelihood = DynamicPPL.setaccs!!(deepcopy(vi), (LogLikelihoodAccumulator(),))
             a = [0.3]
-
-            @test Turing.Optimisation.OptimLogDensity(m1, vi_joint)(a) ==
-                Turing.Optimisation.OptimLogDensity(m1, vi_prior)(a) +
-                  Turing.Optimisation.OptimLogDensity(m1, vi_likelihood)(a)
+            ld_joint = Turing.Optimisation.OptimLogDensity(
+                m1, Turing.Optimisation.getlogjoint_without_jacobian
+            )
+            ld_prior = Turing.Optimisation.OptimLogDensity(
+                m1, Turing.Optimisation.getlogprior_without_jacobian
+            )
+            ld_likelihood = Turing.Optimisation.OptimLogDensity(
+                m1, DynamicPPL.getloglikelihood
+            )
+            @test ld_joint(a) == ld_prior(a) + ld_likelihood(a)
 
             # test that the prior accumulator is calculating the right thing
-            @test Turing.Optimisation.OptimLogDensity(m1, vi_prior)([0.3]) ≈
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), 0.3)
-            @test Turing.Optimisation.OptimLogDensity(m1, vi_prior)([-0.3]) ≈
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([-0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), -0.3)
         end
     end
@@ -616,8 +626,7 @@ using Turing
             return nothing
         end
         m = saddle_model()
-        vi = DynamicPPL.setaccs!!(DynamicPPL.VarInfo(m), (LogLikelihoodAccumulator(),))
-        optim_ld = Turing.Optimisation.OptimLogDensity(m, vi)
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
         vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
         m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
         ct = coeftable(m)

@@ -18,6 +18,7 @@ using DynamicPPL:
     push!!,
     setlogp!!,
     getlogp,
+    getlogjoint,
     VarName,
     getsym,
     getdist,
@@ -136,7 +137,7 @@ end
 Transition(θ, lp) = Transition(θ, lp, nothing)
 function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t)
     θ = getparams(model, vi)
-    lp = getlogp(vi)
+    lp = getlogjoint(vi)
     return Transition(θ, lp, getstats(t))
 end
 
@@ -149,10 +150,10 @@ function metadata(t::Transition)
     end
 end
 
-DynamicPPL.getlogp(t::Transition) = t.lp
+DynamicPPL.getlogjoint(t::Transition) = t.lp
 
 # Metadata of VarInfo object
-metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
+metadata(vi::AbstractVarInfo) = (lp=getlogjoint(vi),)
 
 ##########################
 # Chain making utilities #
@@ -215,7 +216,7 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
 end
 
 function get_transition_extras(ts::AbstractVector{<:VarInfo})
-    valmat = reshape([getlogp(t) for t in ts], :, 1)
+    valmat = reshape([getlogjoint(t) for t in ts], :, 1)
     return [:lp], valmat
 end
 
@@ -434,7 +435,7 @@ julia> chain = Chains(randn(2, 1, 1), ["m"]); # 2 samples of `m`
 
 julia> transitions = Turing.Inference.transitions_from_chain(m, chain);
 
-julia> [Turing.Inference.getlogp(t) for t in transitions] # extract the logjoints
+julia> [Turing.Inference.getlogjoint(t) for t in transitions] # extract the logjoints
 2-element Array{Float64,1}:
  -3.6294991938628374
  -2.5697948166987845

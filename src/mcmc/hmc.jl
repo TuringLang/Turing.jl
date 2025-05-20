@@ -214,7 +214,7 @@ function DynamicPPL.initialstep(
     theta = vi[:]
 
     # Cache current log density.
-    log_density_old = getlogp(vi)
+    log_density_old = getloglikelihood(vi)
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
@@ -242,10 +242,12 @@ function DynamicPPL.initialstep(
     # Update `vi` based on acceptance
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
+        # TODO(mhauru) Is setloglikelihood! the right thing here?
+        vi = setloglikelihood!!(vi, t.stat.log_density)
     else
         vi = DynamicPPL.unflatten(vi, theta)
-        vi = setlogp!!(vi, log_density_old)
+        # TODO(mhauru) Is setloglikelihood! the right thing here?
+        vi = setloglikelihood!!(vi, log_density_old)
     end
 
     transition = Transition(model, vi, t)
@@ -290,7 +292,8 @@ function AbstractMCMC.step(
     vi = state.vi
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
+        # TODO(mhauru) Is setloglikelihood! the right thing here?
+        vi = setloglikelihood!!(vi, t.stat.log_density)
     end
 
     # Compute next transition and state.

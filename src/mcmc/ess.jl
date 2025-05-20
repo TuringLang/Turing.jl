@@ -114,6 +114,8 @@ function DynamicPPL.tilde_assume(
     return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, vi)
 end
 
-function DynamicPPL.tilde_observe!!(ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vn, vi)
+function DynamicPPL.tilde_observe!!(
+    ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vn, vi
+)
     return DynamicPPL.tilde_observe!!(ctx, SampleFromPrior(), right, left, vn, vi)
 end
