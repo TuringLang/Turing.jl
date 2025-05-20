@@ -147,9 +147,7 @@ end
 # child context.
 
 function DynamicPPL.tilde_assume(context::ADTypeCheckContext, right, vn, vi)
-    value, vi = DynamicPPL.tilde_assume(
-        DynamicPPL.childcontext(context), right, vn, vi
-    )
+    value, vi = DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     check_adtype(context, vi)
     return value, vi
 end
@@ -165,7 +163,9 @@ function DynamicPPL.tilde_assume(
 end
 
 function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, right, left, vn, vi)
-    left, vi = DynamicPPL.tilde_observe(DynamicPPL.childcontext(context), right, left, vn, vi)
+    left, vi = DynamicPPL.tilde_observe!!(
+        DynamicPPL.childcontext(context), right, left, vn, vi
+    )
     check_adtype(context, vi)
     return left, vi
 end
