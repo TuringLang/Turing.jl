@@ -83,7 +83,7 @@ using Turing
         alg2 = PG(20)
         alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4; adtype=adbackend))
 
-        chn1 = sample(StableRNG(seed), gdemo_default, alg1, 2_000; save_state=true)
+        chn1 = sample(StableRNG(seed), gdemo_default, alg1, 10_000; save_state=true)
         check_gdemo(chn1)
 
         chn1_contd = sample(StableRNG(seed), gdemo_default, alg1, 2_000; resume_from=chn1)
