@@ -655,6 +655,15 @@ using Turing
         @test gparams[2] == (@varname(y), gvi[@varname(y)])
         @test length(gparams) == 2
     end
+
+    @testset "empty model" begin
+        @model function e(x=1.0)
+            return x ~ Normal()
+        end
+        # Can't test with HMC/NUTS because some AD backends error; see 
+        # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
+        @test sample(e(), IS(), 100) isa MCMCChains.Chains
+    end
 end
 
 end
