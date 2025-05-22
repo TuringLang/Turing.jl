@@ -1,3 +1,7 @@
+# Release 0.38.2
+
+`getparams(::Model, ::AbstractVarInfo)` now returns an empty `Float64` if the VarInfo contains no parameters.
+
 # Release 0.38.1
 
 The method `Bijectors.bijector(::DynamicPPL.Model)` was moved to DynamicPPL.jl.

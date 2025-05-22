@@ -631,6 +631,30 @@ using Turing
             StableRNG(seed), demo_incorrect_missing([missing]), NUTS(), 10; check_model=true
         )
     end
+
+    @testset "getparams" begin
+        @model function e(x=1.0)
+            return x ~ Normal()
+        end
+        evi = Turing.VarInfo(e())
+        @test isempty(Turing.Inference.getparams(e(), evi))
+
+        @model function f()
+            return x ~ Normal()
+        end
+        fvi = Turing.VarInfo(f())
+        @test only(Turing.Inference.getparams(f(), fvi)) == (@varname(x), fvi[@varname(x)])
+
+        @model function g()
+            x ~ Normal()
+            return y ~ Poisson()
+        end
+        gvi = Turing.VarInfo(g())
+        gparams = Turing.Inference.getparams(g(), gvi)
+        @test gparams[1] == (@varname(x), gvi[@varname(x)])
+        @test gparams[2] == (@varname(y), gvi[@varname(y)])
+        @test length(gparams) == 2
+    end
 end
 
 end
