@@ -598,7 +598,7 @@ end
         @model function dynamic_model_with_dot_tilde(
             num_zs=10, ::Type{M}=Vector{Float64}
         ) where {M}
-            z = M(undef, num_zs)
+            z = Vector{Int}(undef, num_zs)
             z .~ Poisson(1.0)
             num_ms = sum(z)
             m = M(undef, num_ms)
@@ -842,7 +842,7 @@ end
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
-    @testset "externsalsampler" begin
+    @testset "externalsampler" begin
         @model function demo_gibbs_external()
             m1 ~ Normal()
             m2 ~ Normal()
