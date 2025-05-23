@@ -176,7 +176,9 @@ function q_meanfield_gaussian(
     scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
 )
-    return q_locationscale(rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...)
+    return q_locationscale(
+        rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...
+    )
 end
 
 function q_meanfield_gaussian(model::DynamicPPL.Model; kwargs...)
@@ -248,7 +250,9 @@ function vi(
     model::DynamicPPL.Model,
     q,
     n_iterations::Int;
-    objective=AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    objective=AdvancedVI.RepGradELBO(
+        10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()
+    ),
     show_progress::Bool=PROGRESS[],
     optimizer=AdvancedVI.DoWG(),
     averager=AdvancedVI.PolynomialAveraging(),
