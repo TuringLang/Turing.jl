@@ -23,7 +23,6 @@ using Turing.Variational
 
         μ = ones(d)
         q = q_meanfield_gaussian(m; location=μ)
-        println(q.dist.location)
         @assert mean(q.dist) ≈ μ
 
         q = q_fullrank_gaussian(m; location=μ)
@@ -36,8 +35,6 @@ using Turing.Variational
 
         L = LowerTriangular(tril(0.01*ones(d, d) + I))
         q = q_fullrank_gaussian(m; scale=L)
-        println(cov(q.dist))
-        println(L*L')
         @assert cov(q.dist) ≈ L*L'
     end
 
