@@ -13,7 +13,7 @@ import ..Turing: DEFAULT_ADTYPE, PROGRESS
 import AdvancedVI
 import Bijectors
 
-export vi, q_init, q_meanfield_gaussian, q_fullrank_gaussian
+export vi, q_locationscale, q_meanfield_gaussian, q_fullrank_gaussian
 
 include("deprecated.jl")
 
@@ -23,11 +23,12 @@ function make_logdensity(model::DynamicPPL.Model)
     return DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx)
 end
 
-function initialize_gaussian_scale(
+function q_initialize_scale(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     location::AbstractVector,
-    scale::AbstractMatrix;
+    scale::AbstractMatrix,
+    basedist::Distributions.UnivariateDistribution;
     num_samples::Int=10,
     num_max_trials::Int=10,
     reduce_factor=one(eltype(scale)) / 2,
@@ -38,7 +39,7 @@ function initialize_gaussian_scale(
 
     n_trial = 0
     while true
-        q = AdvancedVI.MvLocationScale(location, scale, Normal())
+        q = AdvancedVI.MvLocationScale(location, scale, basedist)
         b = Bijectors.bijector(model; varinfo=varinfo)
         q_trans = Bijectors.transformed(q, Bijectors.inverse(b))
         energy = mean(ℓπ, eachcol(rand(rng, q_trans, num_samples)))
@@ -54,7 +55,7 @@ function initialize_gaussian_scale(
     end
 end
 
-function q_init(
+function q_locationscale(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model;
     location::Union{Nothing,<:AbstractVector}=nothing,
@@ -78,10 +79,10 @@ function q_init(
 
     L = if isnothing(scale)
         if meanfield
-            initialize_gaussian_scale(rng, model, μ, Diagonal(ones(num_params)); kwargs...)
+            q_initialize_scale(rng, model, μ, Diagonal(ones(num_params)), basedist; kwargs...)
         else
             L0 = LowerTriangular(Matrix{Float64}(I, num_params, num_params))
-            initialize_gaussian_scale(rng, model, μ, L0; kwargs...)
+            q_initialize_scale(rng, model, μ, L0, basedist; kwargs...)
         end
     else
         @assert size(scale) == (num_params, num_params) "Dimensions of the provided scale matrix, $(size(scale)), does not match the dimension of the target distribution, $(num_params)."
@@ -103,7 +104,7 @@ function q_meanfield_gaussian(
     scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
 )
-    return q_init(rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...)
+    return q_locationscale_init(rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...)
 end
 
 function q_meanfield_gaussian(model::DynamicPPL.Model; kwargs...)
@@ -117,7 +118,7 @@ function q_fullrank_gaussian(
     scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
 )
-    return q_init(
+    return q_locationscale_init(
         rng, model; location, scale, meanfield=false, basedist=Normal(), kwargs...
     )
 end
