@@ -1,7 +1,7 @@
 # Release 0.38.2
 
-- Bump compat for `MCMCChains` to `7.0.0`.
-- `describe()` from MCMCChains is now a pure IO function and no longer returns anything.
+  - Bump compat for `MCMCChains` to `7`.
+  - `describe()` from MCMCChains is now a pure IO function and no longer returns anything.
 
 # Release 0.38.1
 
