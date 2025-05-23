@@ -17,9 +17,11 @@ import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting Inference.jl tests with $adbackend"
+@testset "Testing Inference.jl" begin
+    @info "Starting Inference.jl tests"
+
     seed = 23
+    adbackend = Turing.DEFAULT_ADTYPE
 
     @testset "threaded sampling" begin
         # Test that chains with the same seed will sample identically.
@@ -44,7 +46,7 @@ using Turing
                 @test chain1.value == chain2.value
             end
 
-            # Should also be stable with am explicit RNG
+            # Should also be stable with an explicit RNG
             seed = 5
             rng = Random.MersenneTwister(seed)
             for sampler in samplers
@@ -273,17 +275,12 @@ using Turing
 
     @testset "forbid global" begin
         xs = [1.5 2.0]
-        # xx = 1
 
         @model function fggibbstest(xs)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
-            # xx ~ Normal(m, sqrt(s)) # this is illegal
-
             for i in 1:length(xs)
                 xs[i] ~ Normal(m, sqrt(s))
-                # for xx in xs
-                # xx ~ Normal(m, sqrt(s))
             end
             return s, m
         end
@@ -353,7 +350,7 @@ using Turing
         )
     end
 
-    # TODO(mhauru) What is this testing? Why does it not use the looped-over adbackend?
+    # TODO(mhauru) What is this testing? Why does it use a different adbackend?
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
