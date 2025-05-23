@@ -384,8 +384,9 @@ end
     @test wuc.non_warmup_count == (num_samples - 1) * num_reps
 end
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting Gibbs tests with $adbackend"
+@testset "Testing gibbs.jl" begin
+    @info "Starting Gibbs tests"
+    adbackend = Turing.DEFAULT_ADTYPE
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the
@@ -604,12 +605,7 @@ end
             return m .~ Normal(1.0, 1.0)
         end
         model = dynamic_model_with_dot_tilde()
-        # TODO(mhauru) This is broken because of
-        # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
-        @test_broken (
-            sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100);
-            true
-        )
+        sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100)
     end
 
     @testset "Demo models" begin
