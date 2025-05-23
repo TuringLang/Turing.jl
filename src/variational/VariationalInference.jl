@@ -13,10 +13,6 @@ import ..Turing: DEFAULT_ADTYPE, PROGRESS
 import AdvancedVI
 import Bijectors
 
-# Reexports
-using AdvancedVI: RepGradELBO, ScoreGradELBO, DoG, DoWG
-export RepGradELBO, ScoreGradELBO, DoG, DoWG
-
 export vi, q_init, q_meanfield_gaussian, q_fullrank_gaussian
 
 include("deprecated.jl")
@@ -135,7 +131,7 @@ function vi(
     model::DynamicPPL.Model,
     q,
     n_iterations::Int;
-    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    objective=AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
     show_progress::Bool=PROGRESS[],
     optimizer=AdvancedVI.DoWG(),
     averager=AdvancedVI.PolynomialAveraging(),

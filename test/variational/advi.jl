@@ -6,7 +6,7 @@ using ..NumericalTests: check_gdemo
 using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
-using LinearAlgebra: I
+using LinearAlgebra
 using MCMCChains: Chains
 import Random
 using Test: @test, @testset
@@ -17,24 +17,28 @@ using Turing.Variational
     @testset "q initialization" begin
         m = gdemo_default
         d = length(Turing.DynamicPPL.VarInfo(m)[:])
-        for q0 in [q_meanfield_gaussian(m), q_fullrank_gaussian(m)]
+        for q in [q_meanfield_gaussian(m), q_fullrank_gaussian(m)]
             rand(q)
         end
 
         μ = ones(d)
         q = q_meanfield_gaussian(m; location=μ)
-        @assert mean(q) == μ
+        println(q.dist.location)
+        @assert mean(q.dist) ≈ μ
 
         q = q_fullrank_gaussian(m; location=μ)
-        @assert mean(q) == μ
+        println(q.dist.location)
+        @assert mean(q.dist) ≈ μ
 
         L = Diagonal(fill(0.1, d))
         q = q_meanfield_gaussian(m; scale=L)
-        @assert cov(q) ≈ L*L
+        @assert cov(q.dist) ≈ L*L
 
-        L = LowerTriangular(tril(0.001*I + I))
-        q = q_fullrank_gaussian(m; location=μ)
-        @assert cov(q) ≈ L*L'
+        L = LowerTriangular(tril(0.01*ones(d,d) + I))
+        q = q_fullrank_gaussian(m; scale=L)
+        println(cov(q.dist))
+        println(L*L')
+        @assert cov(q.dist) ≈ L*L'
     end
 
     @testset "default interface" begin
@@ -50,21 +54,21 @@ using Turing.Variational
     @testset "custom interface $name" for (name, objective, operator, optimizer) in [
         (
             "ADVI with closed-form entropy",
-            RepGradELBO(10),
+            AdvancedVI.RepGradELBO(10),
             AdvancedVI.ProximalLocationScaleEntropy(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
         (
             "ADVI with proximal entropy",
-            RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
             AdvancedVI.ClipScale(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
         (
             "ADVI with STL entropy",
-            RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
+            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
             AdvancedVI.ClipScale(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
     ]
         Random.seed!(0)
@@ -87,21 +91,21 @@ using Turing.Variational
     @testset "inference $name" for (name, objective, operator, optimizer) in [
         (
             "ADVI with closed-form entropy",
-            RepGradELBO(10),
+            AdvancedVI.RepGradELBO(10),
             AdvancedVI.ProximalLocationScaleEntropy(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
         (
             "ADVI with proximal entropy",
             RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
             AdvancedVI.ClipScale(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
         (
             "ADVI with STL entropy",
-            RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
+            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
             AdvancedVI.ClipScale(),
-            DoG(),
+            AdvancedVI.DoG(),
         ),
     ]
         Random.seed!(0)
