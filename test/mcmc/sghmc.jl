@@ -15,12 +15,17 @@ import Mooncake
 using Test: @test, @testset
 using Turing
 
-@testset "AD with SGHMC / SGLD" begin
+@testset "AD / sghmc.jl" begin
+    # AD tests need to be run with SamplingContext because samplers can potentially
+    # use this to define custom behaviour in the tilde-pipeline and thus change the
+    # code executed during model evaluation.
     @testset "adtype=$adtype" for adtype in ADUtils.adbackends
         @testset "alg=$alg" for alg in [
             SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=adtype),
             SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adtype),
         ]
+            @info "Testing AD for $alg"
+
             @testset "model=$(model.f)" for model in DEMO_MODELS
                 rng = StableRNG(123)
                 ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))

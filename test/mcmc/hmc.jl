@@ -7,6 +7,8 @@ import ..ADUtils
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL, Sampler
+using DynamicPPL.TestUtils.AD: run_ad
+using DynamicPPL.TestUtils: DEMO_MODELS
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -18,9 +20,41 @@ import Mooncake
 using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 
-@testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting HMC tests with $adbackend"
+@testset "AD / hmc.jl" begin
+    # AD tests need to be run with SamplingContext because samplers can potentially
+    # use this to define custom behaviour in the tilde-pipeline and thus change the
+    # code executed during model evaluation.
+    @testset "adtype=$adtype" for adtype in ADUtils.adbackends
+        @testset "alg=$alg" for alg in [
+            HMC(0.1, 10; adtype=adtype),
+            HMCDA(0.8, 0.75; adtype=adtype),
+            NUTS(1000, 0.8; adtype=adtype),
+        ]
+            @info "Testing AD for $alg"
+
+            @testset "model=$(model.f)" for model in DEMO_MODELS
+                rng = StableRNG(123)
+                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+            end
+        end
+
+        @testset "Check ADType" begin
+            seed = 123
+            alg = HMC(0.1, 10; adtype=adtype)
+            m = DynamicPPL.contextualize(
+                gdemo_default, ADTypeCheckContext(adtype, gdemo_default.context)
+            )
+            # These will error if the adbackend being used is not the one set.
+            sample(StableRNG(seed), m, alg, 10)
+        end
+    end
+end
+
+@testset "Testing hmc.jl" begin
+    @info "Starting HMC tests"
     seed = 123
+    adbackend = Turing.DEFAULT_ADTYPE
 
     @testset "constrained bounded" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
@@ -63,12 +97,6 @@ using Turing
         )
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
-    end
-
-    @testset "hmc reverse diff" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        res = sample(StableRNG(seed), gdemo_default, alg, 4_000)
-        check_gdemo(res; rtol=0.1)
     end
 
     # Test the sampling of a matrix-value distribution.
@@ -211,10 +239,12 @@ using Turing
     end
 
     @testset "prior" begin
+        # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
+        # which means that it's _very_ difficult to find a good tolerance in the test below:)
+        prior_dist = truncated(Normal(3, 1); lower=0)
+
         @model function demo_hmc_prior()
-            # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
-            # which means that it's _very_ difficult to find a good tolerance in the test below:)
-            s ~ truncated(Normal(3, 1); lower=0)
+            s ~ prior_dist
             return m ~ Normal(0, sqrt(s))
         end
         alg = NUTS(1000, 0.8; adtype=adbackend)
@@ -222,9 +252,7 @@ using Turing
             demo_hmc_prior(), DynamicPPL.PriorContext()
         )
         chain = sample(gdemo_default_prior, alg, 5_000; initial_params=[3.0, 0.0])
-        check_numerical(
-            chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0]; atol=0.2
-        )
+        check_numerical(chain, [:s, :m], [mean(prior_dist), 0]; atol=0.2)
     end
 
     @testset "warning for difficult init params" begin
@@ -292,8 +320,8 @@ using Turing
 
         # Extract the `x` like this because running `generated_quantities` was how
         # the issue was discovered, hence we also want to make sure that it works.
-        results = generated_quantities(model, chain)
-        results_prior = generated_quantities(model, chain_prior)
+        results = returned(model, chain)
+        results_prior = returned(model, chain_prior)
 
         # Make sure none of the samples in the chains resulted in errors.
         @test all(!isnothing, results)
@@ -314,15 +342,6 @@ using Turing
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
         end
-    end
-
-    @testset "Check ADType" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        sample(StableRNG(seed), m, alg, 10)
     end
 end
 
