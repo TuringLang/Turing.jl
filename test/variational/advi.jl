@@ -14,6 +14,29 @@ using Turing
 using Turing.Variational
 
 @testset "ADVI" begin
+    @testset "q initialization" begin
+        m = gdemo_default
+        d = length(Turing.DynamicPPL.VarInfo(m)[:])
+        for q0 in [q_meanfield_gaussian(m), q_fullrank_gaussian(m)]
+            rand(q)
+        end
+
+        μ = ones(d)
+        q = q_meanfield_gaussian(m; location=μ)
+        @assert mean(q) == μ
+
+        q = q_fullrank_gaussian(m; location=μ)
+        @assert mean(q) == μ
+
+        L = Diagonal(fill(0.1, d))
+        q = q_meanfield_gaussian(m; scale=L)
+        @assert cov(q) ≈ L*L
+
+        L = LowerTriangular(tril(0.001*I + I))
+        q = q_fullrank_gaussian(m; location=μ)
+        @assert cov(q) ≈ L*L'
+    end
+
     @testset "default interface" begin
         Random.seed!(0)
         N = 500
