@@ -3,6 +3,9 @@ module SGHMCTests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 import ..ADUtils
+using DynamicPPL.TestUtils.AD: run_ad
+using DynamicPPL.TestUtils: DEMO_MODELS
+using DynamicPPL: DynamicPPL
 using Distributions: sample
 import ForwardDiff
 using LinearAlgebra: dot
@@ -11,6 +14,21 @@ using StableRNGs: StableRNG
 import Mooncake
 using Test: @test, @testset
 using Turing
+
+@testset "AD with SGHMC / SGLD" begin
+    @testset "adtype=$adtype" for adtype in ADUtils.adbackends
+        @testset "alg=$alg" for alg in [
+            SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=adtype),
+            SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adtype),
+        ]
+            @testset "model=$(model.f)" for model in DEMO_MODELS
+                rng = StableRNG(123)
+                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+            end
+        end
+    end
+end
 
 @testset "Testing sghmc.jl" begin
     @testset "sghmc constructor" begin
