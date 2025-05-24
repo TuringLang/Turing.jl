@@ -24,7 +24,16 @@ function make_logdensity(model::DynamicPPL.Model)
 end
 
 """
-    q_initialize_scale([rng, ]model, location, scale, basedist; num_samples, num_max_trials, reduce_factor)
+    q_initialize_scale(
+        [rng::Random.AbstractRNG,]
+        model::DynamicPPL.Model,
+        location::AbstractVector,
+        scale::AbstractMatrix,
+        basedist::Distributions.UnivariateDistribution;
+        num_samples::Int=10,
+        num_max_trials::Int=10,
+        reduce_factor::Real=one(eltype(scale)) / 2
+    )
 
 Given an initial location-scale distribution `q` formed by `location`, `scale`, and `basedist`, shrink `scale` until the expectation of log-densities of `model` taken over `q` are finite.
 If the log-densities are not finite even after `num_max_trials`, throw an error.
@@ -36,15 +45,15 @@ z = scale * u + location
 ```
 
 # Arguments
-- `model::DynamicPPL.Model`: The target `DynamicPPL.Model`.
-- `location::AbstractVector`: The location parameter of the initialization.
-- `scale::AbstractMatrix`: The scale parameter of the initialization.
-- `basedist::Distributions.UnivariateDistribution`: The base distribution of the location-scale family.
+- `model`: The target `DynamicPPL.Model`.
+- `location`: The location parameter of the initialization.
+- `scale`: The scale parameter of the initialization.
+- `basedist`: The base distribution of the location-scale family.
 
 # Keyword Arguments
-- `num_samples::Int`: Number of samples used to compute the average log-density at each trial. (Default: `10`.)
-- `num_max_trials::Int`: Number of trials until throwing an error. (Default: `10`.)
-- `reduce_factor::Real`: Factor for shrinking the scale. After `n` trials, the scale is then `scale*reduce_factor^n`. (Default: `0.5`.)
+- `num_samples`: Number of samples used to compute the average log-density at each trial.
+- `num_max_trials`: Number of trials until throwing an error.
+- `reduce_factor`: Factor for shrinking the scale. After `n` trials, the scale is then `scale*reduce_factor^n`.
 
 # Returns 
 - `scale_adj`: The adjusted scale matrix matching the type of `scale`.
@@ -82,7 +91,14 @@ function q_initialize_scale(
 end
 
 """
-    q_locationscale([rng, ]model; location, scale, meanfield, basedist)
+    q_locationscale(
+        [rng::Random.AbstractRNG,]
+        model::DynamicPPL.Model;
+        location::Union{Nothing,<:AbstractVector},
+        scale::Union{Nothing,<:Diagonal,<:LowerTriangular},
+        meanfield::Bool=true,
+        basedist::Distributions.UnivariateDistribution
+    )
 
 Find a numerically non-degenerate variational distribution `q` for approximating the  target `model` within the location-scale variational family formed by the type of `scale` and `basedist`.
 
@@ -98,12 +114,13 @@ z = scale * u + location
 ```
 
 # Arguments
-- `model::DynamicPPL.Model`: The target `DynamicPPL.Model`.
+- `model`: The target `DynamicPPL.Model`.
 
 # Keyword Arguments
-- `location::Union{Nothing,<:AbstractVector}`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
-- `scale::Union{Nothing,<:Diagonal,<:LowerTriangular}`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
-- `basedist::Distributions.UnivariateDistribution`: The distribution 
+- `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
+- `scale`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
+- `meanfield`: Whether to use the mean-field approximation. If `true`, `scale` is converted into a `Diagonal` matrix. Otherwise, it is converted into a `LowerTriangular` matrix.
+- `basedist`: The base distribution of the location-scale family.
 
 The remaining keywords are passed to `q_initialize_scale`.
 
@@ -144,12 +161,16 @@ function q_locationscale(
         if meanfield
             Diagonal(diag(scale))
         else
-            scale
+            LowerTriangular(Matrix(scale))
         end
     end
     q = AdvancedVI.MvLocationScale(μ, L, basedist)
     b = Bijectors.bijector(model; varinfo=varinfo)
     return Bijectors.transformed(q, Bijectors.inverse(b))
+end
+
+function q_locationscale(model::DynamicPPL.Model; kwargs...)
+    return q_locationscale(Random.default_rng(), model; kwargs...)
 end
 
 """

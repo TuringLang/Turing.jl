@@ -26,7 +26,6 @@ using Turing.Variational
         @assert mean(q.dist) ≈ μ
 
         q = q_fullrank_gaussian(m; location=μ)
-        println(q.dist.location)
         @assert mean(q.dist) ≈ μ
 
         L = Diagonal(fill(0.1, d))
