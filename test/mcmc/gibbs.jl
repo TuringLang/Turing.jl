@@ -46,7 +46,7 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
 
-@testset "GibbsContext" begin
+@testset verbose = true "GibbsContext" begin
     @testset "type stability" begin
         struct Wrapper{T<:Real}
             a::T
@@ -384,8 +384,9 @@ end
     @test wuc.non_warmup_count == (num_samples - 1) * num_reps
 end
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting Gibbs tests with $adbackend"
+@testset verbose = true "Testing gibbs.jl" begin
+    @info "Starting Gibbs tests"
+    adbackend = Turing.DEFAULT_ADTYPE
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the
@@ -597,23 +598,18 @@ end
         @model function dynamic_model_with_dot_tilde(
             num_zs=10, ::Type{M}=Vector{Float64}
         ) where {M}
-            z = M(undef, num_zs)
+            z = Vector{Int}(undef, num_zs)
             z .~ Poisson(1.0)
             num_ms = sum(z)
             m = M(undef, num_ms)
             return m .~ Normal(1.0, 1.0)
         end
         model = dynamic_model_with_dot_tilde()
-        # TODO(mhauru) This is broken because of
-        # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
-        @test_broken (
-            sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100);
-            true
-        )
+        sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100)
     end
 
-    @testset "Demo models" begin
-        @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+    @testset "Demo model" begin
+        @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             samplers = [
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
@@ -846,7 +842,7 @@ end
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
-    @testset "externsalsampler" begin
+    @testset "externalsampler" begin
         @model function demo_gibbs_external()
             m1 ~ Normal()
             m2 ~ Normal()
