@@ -33,7 +33,7 @@ using Turing.Variational
         q = q_meanfield_gaussian(m; scale=L)
         @assert cov(q.dist) ≈ L * L
 
-        L = LowerTriangular(tril(0.01*ones(d, d) + I))
+        L = LowerTriangular(tril(0.01 * ones(d, d) + I))
         q = q_fullrank_gaussian(m; scale=L)
         @assert cov(q.dist) ≈ L*L'
     end
