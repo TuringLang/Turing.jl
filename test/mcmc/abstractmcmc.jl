@@ -110,7 +110,7 @@ function test_initial_params(
     end
 end
 
-@testset "External samplers" begin
+@testset verbose = true "External samplers" begin
     @testset "AdvancedHMC.jl" begin
         @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             adtype = Turing.DEFAULT_ADTYPE

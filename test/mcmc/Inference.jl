@@ -17,7 +17,7 @@ import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing Inference.jl" begin
+@testset verbose = true "Testing Inference.jl" begin
     @info "Starting Inference.jl tests"
 
     seed = 23

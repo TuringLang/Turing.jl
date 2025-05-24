@@ -51,7 +51,7 @@ using Turing
     end
 end
 
-@testset "Testing hmc.jl" begin
+@testset verbose = true "Testing hmc.jl" begin
     @info "Starting HMC tests"
     seed = 123
     adbackend = Turing.DEFAULT_ADTYPE

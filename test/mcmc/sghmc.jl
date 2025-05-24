@@ -35,7 +35,7 @@ using Turing
     end
 end
 
-@testset "Testing sghmc.jl" begin
+@testset verbose = true "Testing sghmc.jl" begin
     @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=Turing.DEFAULT_ADTYPE)
         @test alg isa SGHMC

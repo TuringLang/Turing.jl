@@ -46,7 +46,7 @@ const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
 has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
 has_dot_assume(::DynamicPPL.Model) = true
 
-@testset "GibbsContext" begin
+@testset verbose = true "GibbsContext" begin
     @testset "type stability" begin
         struct Wrapper{T<:Real}
             a::T
@@ -384,7 +384,7 @@ end
     @test wuc.non_warmup_count == (num_samples - 1) * num_reps
 end
 
-@testset "Testing gibbs.jl" begin
+@testset verbose = true "Testing gibbs.jl" begin
     @info "Starting Gibbs tests"
     adbackend = Turing.DEFAULT_ADTYPE
 
@@ -608,8 +608,8 @@ end
         sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100)
     end
 
-    @testset "Demo models" begin
-        @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+    @testset "Demo model" begin
+        @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             samplers = [
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
