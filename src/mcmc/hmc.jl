@@ -78,31 +78,20 @@ end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
-# Handle setting `nadapts` and `discard_initial`
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:AdaptiveHamiltonian},
-    N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
-    nadapts=sampler.alg.n_adapts,
-    discard_adapt=true,
-    discard_initial=-1,
-    kwargs...,
-)
-    if resume_from === nothing
-        # If `nadapts` is `-1`, then the user called a convenience
-        # constructor like `NUTS()` or `NUTS(0.65)`,
-        # and we should set a default for them.
+function update_sample_kwargs(alg::AdaptiveHamiltonian, N::Integer, kwargs)
+    resume_from = get(kwargs, :resume_from, nothing)
+    nadapts = get(kwargs, :nadapts, alg.n_adapts)
+    discard_adapt = get(kwargs, :discard_adapt, true)
+    discard_initial = get(kwargs, :discard_initial, -1)
+
+    return if resume_from === nothing
+        # If `nadapts` is `-1`, then the user called a convenience constructor
+        # like `NUTS()` or `NUTS(0.65)`, and we should set a default for them.
         if nadapts == -1
-            _nadapts = min(1000, N ÷ 2)
+            _nadapts = min(1000, N ÷ 2)  # Default to 1000 if not specified
         else
             _nadapts = nadapts
         end
-
         # If `discard_initial` is `-1`, then users did not specify the keyword argument.
         if discard_initial == -1
             _discard_initial = discard_adapt ? _nadapts : 0
@@ -110,31 +99,9 @@ function AbstractMCMC.sample(
             _discard_initial = discard_initial
         end
 
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            progress=progress,
-            nadapts=_nadapts,
-            discard_initial=_discard_initial,
-            kwargs...,
-        )
+        (nadapts=_nadapts, discard_initial=_discard_initial, kwargs...)
     else
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            initial_state=initial_state,
-            progress=progress,
-            nadapts=0,
-            discard_adapt=false,
-            discard_initial=0,
-            kwargs...,
-        )
+        (nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
     end
 end
 

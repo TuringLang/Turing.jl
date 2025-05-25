@@ -4,7 +4,12 @@ using AbstractMCMC: AbstractMCMC, AbstractMCMCEnsemble
 using DynamicPPL: DynamicPPL, Sampler, LogDensityFunction, Model
 using MCMCChains: Chains
 using Random: Random
-using ..Inference: update_sample_kwargs, InferenceAlgorithm, get_adtype, RepeatSampler
+using ..Inference:
+    InferenceAlgorithm,
+    RepeatSampler,
+    update_sample_kwargs,
+    get_adtype,
+    requires_unconstrained_space
 using ...Turing: PROGRESS
 
 # This file contains the basic methods for `AbstractMCMC.sample`.
@@ -37,6 +42,8 @@ function AbstractMCMC.sample(
     check_model::Bool=true,
     chain_type=Chains,
     progress=PROGRESS[],
+    resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     kwargs...,
 )
     # TODO: Right now, only generic checks are run. We could in principle
@@ -44,10 +51,17 @@ function AbstractMCMC.sample(
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
     # Some samplers need to update the kwargs with additional information,
     # e.g. HMC.
-    new_kwargs = update_sample_kwargs(spl, kwargs)
+    new_kwargs = update_sample_kwargs(spl, N, kwargs)
     # Forward to the main sampling function
     return AbstractMCMC.mcmcsample(
-        rng, ldf, spl, N; chain_type=chain_type, progress=progress, new_kwargs...
+        rng,
+        ldf,
+        spl,
+        N;
+        initial_state=initial_state,
+        chain_type=chain_type,
+        progress=progress,
+        new_kwargs...,
     )
 end
 
@@ -64,6 +78,8 @@ function AbstractMCMC.sample(
     check_model::Bool=true,
     chain_type=Chains,
     progress=PROGRESS[],
+    resume_from=nothing,
+    initial_state=DynamicPPL.loadstate(resume_from),
     kwargs...,
 )
     # TODO: Right now, only generic checks are run. We could in principle
@@ -71,7 +87,7 @@ function AbstractMCMC.sample(
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
     # Some samplers need to update the kwargs with additional information,
     # e.g. HMC.
-    new_kwargs = update_sample_kwargs(spl, kwargs)
+    new_kwargs = update_sample_kwargs(spl, N, kwargs)
     # Forward to the main sampling function
     return AbstractMCMC.mcmcsample(
         rng,
@@ -80,6 +96,7 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
+        initial_state=initial_state,
         chain_type=chain_type,
         progress=progress,
         kwargs...,
@@ -122,6 +139,9 @@ function AbstractMCMC.sample(
     N::Integer;
     kwargs...,
 )
+    initial_params = get(kwargs, :initial_params, nothing)
+    link = requires_unconstrained_space(spl)
+    vi = DynamicPPL.default_varinfo(rng, model, spl, initial_params, link)
     ldf = LogDensityFunction(model; adtype=get_adtype(spl))
     return AbstractMCMC.sample(rng, ldf, spl, N; kwargs...)
 end
@@ -172,6 +192,9 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     kwargs...,
 )
+    initial_params = get(kwargs, :initial_params, nothing)
+    link = requires_unconstrained_space(spl)
+    vi = DynamicPPL.default_varinfo(rng, model, spl, initial_params, link)
     ldf = LogDensityFunction(model; adtype=get_adtype(spl))
     return AbstractMCMC.sample(rng, ldf, spl, ensemble, N, n_chains; kwargs...)
 end

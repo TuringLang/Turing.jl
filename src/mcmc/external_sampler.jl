@@ -40,15 +40,6 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
 end
 
 """
-    requires_unconstrained_space(sampler::ExternalSampler)
-
-Return `true` if the sampler requires unconstrained space, and `false` otherwise.
-"""
-requires_unconstrained_space(
-    ::ExternalSampler{<:Any,<:Any,Unconstrained}
-) where {Unconstrained} = Unconstrained
-
-"""
     externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
 
 Wrap a sampler so it can be used as an inference algorithm.
@@ -64,6 +55,12 @@ function externalsampler(
     sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true
 )
     return ExternalSampler(sampler, adtype, Val(unconstrained))
+end
+
+function requires_unconstrained_space(
+    ::ExternalSampler{<:Any,<:Any,Unconstrained}
+) where {Unconstrained}
+    return Unconstrained
 end
 
 get_adtype(spl::ExternalSampler) = spl.adtype

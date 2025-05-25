@@ -87,3 +87,5 @@ end
 update_sample_kwargs(spl::RepeatSampler, kwargs) = update_sample_kwargs(spl.sampler, kwargs)
 
 get_adtype(spl::RepeatSampler) = get_adtype(spl.sampler)
+
+requires_unconstrained_space(spl::RepeatSampler) = requires_unconstrained_space(spl.sampler)
