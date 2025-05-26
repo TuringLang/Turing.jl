@@ -30,9 +30,9 @@ end
         location::AbstractVector,
         scale::AbstractMatrix,
         basedist::Distributions.UnivariateDistribution;
-        num_samples::Int=10,
-        num_max_trials::Int=10,
-        reduce_factor::Real=one(eltype(scale)) / 2
+        num_samples::Int = 10,
+        num_max_trials::Int = 10,
+        reduce_factor::Real = one(eltype(scale)) / 2
     )
 
 Given an initial location-scale distribution `q` formed by `location`, `scale`, and `basedist`, shrink `scale` until the expectation of log-densities of `model` taken over `q` are finite.
@@ -94,10 +94,10 @@ end
     q_locationscale(
         [rng::Random.AbstractRNG,]
         model::DynamicPPL.Model;
-        location::Union{Nothing,<:AbstractVector},
-        scale::Union{Nothing,<:Diagonal,<:LowerTriangular},
-        meanfield::Bool=true,
-        basedist::Distributions.UnivariateDistribution
+        location::Union{Nothing,<:AbstractVector} = nothing,
+        scale::Union{Nothing,<:Diagonal,<:LowerTriangular} = nothing,
+        meanfield::Bool = true,
+        basedist::Distributions.UnivariateDistribution = Normal()
     )
 
 Find a numerically non-degenerate variational distribution `q` for approximating the  target `model` within the location-scale variational family formed by the type of `scale` and `basedist`.
@@ -177,8 +177,8 @@ end
     q_meanfield_gaussian(
         [rng::Random.AbstractRNG,]
         model::DynamicPPL.Model;
-        location::Union{Nothing,<:AbstractVector},
-        scale::Union{Nothing,<:Diagonal},
+        location::Union{Nothing,<:AbstractVector} = nothing,
+        scale::Union{Nothing,<:Diagonal} = nothing,
         kwargs...
     )
 
@@ -216,8 +216,8 @@ end
     q_fullrank_gaussian(
         [rng::Random.AbstractRNG,]
         model::DynamicPPL.Model;
-        location::Union{Nothing,<:AbstractVector},
-        scale::Union{Nothing,<:LowerTriangular},
+        location::Union{Nothing,<:AbstractVector} = nothing,
+        scale::Union{Nothing,<:LowerTriangular} = nothing,
         kwargs...
     )
 
@@ -257,14 +257,14 @@ end
         model::DynamicPPL.Model;
         q,
         n_iterations::Int;
-        objective::AdvancedVI.AbstractVariationalObjective=AdvancedVI.RepGradELBO(
-            10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()
+        objective::AdvancedVI.AbstractVariationalObjective = AdvancedVI.RepGradELBO(
+            10; entropy = AdvancedVI.ClosedFormEntropyZeroGradient()
         ),
-        show_progress::Bool=Turing.PROGRESS[],
-        optimizer::Optimisers.AbstractRule=AdvancedVI.DoWG(),
-        averager::AdvancedVI.AbstractAverager=AdvancedVI.PolynomialAveraging(),
-        operator::AdvancedVI.AbstractOperator=AdvancedVI.ProximalLocationScaleEntropy(),
-        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+        show_progress::Bool = Turing.PROGRESS[],
+        optimizer::Optimisers.AbstractRule = AdvancedVI.DoWG(),
+        averager::AdvancedVI.AbstractAverager = AdvancedVI.PolynomialAveraging(),
+        operator::AdvancedVI.AbstractOperator = AdvancedVI.ProximalLocationScaleEntropy(),
+        adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE,
         kwargs...
     )
 
