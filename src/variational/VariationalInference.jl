@@ -174,16 +174,22 @@ function q_locationscale(model::DynamicPPL.Model; kwargs...)
 end
 
 """
-    q_meanfield_gaussian([rng, ]model; location, scale, kwargs...)
+    q_meanfield_gaussian(
+        [rng::Random.AbstractRNG,]
+        model::DynamicPPL.Model;
+        location::Union{Nothing,<:AbstractVector},
+        scale::Union{Nothing,<:Diagonal},
+        kwargs...
+    )
 
 Find a numerically non-degenerate mean-field Gaussian `q` for approximating the  target `model`.
 
 # Arguments
-- `model::DynamicPPL.Model`: The target `DynamicPPL.Model`.
+- `model`: The target `DynamicPPL.Model`.
 
 # Keyword Arguments
-- `location::Union{Nothing,<:AbstractVector}`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
-- `scale::Union{Nothing,<:Diagonal}`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
+- `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
+- `scale`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
 
 The remaining keyword arguments are passed to `q_locationscale`.
 
@@ -207,16 +213,22 @@ function q_meanfield_gaussian(model::DynamicPPL.Model; kwargs...)
 end
 
 """
-    q_fullrank_gaussian([rng, ]model; location, scale, kwargs...)
+    q_fullrank_gaussian(
+        [rng::Random.AbstractRNG,]
+        model::DynamicPPL.Model;
+        location::Union{Nothing,<:AbstractVector},
+        scale::Union{Nothing,<:LowerTriangular},
+        kwargs...
+    )
 
-Find a numerically non-degenerate Gaussian `q` with a dense scale (traditionally referred to as "full-rank") for approximating the target `model`.
+Find a numerically non-degenerate Gaussian `q` with a scale with full-rank factors (traditionally referred to as a "full-rank family") for approximating the target `model`.
 
 # Arguments
-- `model::DynamicPPL.Model`: The target `DynamicPPL.Model`.
+- `model`: The target `DynamicPPL.Model`.
 
 # Keyword Arguments
-- `location::Union{Nothing,<:AbstractVector}`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
-- `scale::Union{Nothing,<:LowerTriangular}`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
+- `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
+- `scale`: The scale parameter of the initialization. If `nothing`, an identity matrix is used.
 
 The remaining keyword arguments are passed to `q_locationscale`.
 
@@ -240,23 +252,37 @@ function q_fullrank_gaussian(model::DynamicPPL.Model; kwargs...)
 end
 
 """
-    vi([rng, ]model, q, n_iterations; objective, show_progress, optimizer, averager, operator, adtype, kwargs...)
+    vi(
+        [rng::Random.AbstractRNG,]
+        model::DynamicPPL.Model;
+        q,
+        n_iterations::Int;
+        objective::AdvancedVI.AbstractVariationalObjective=AdvancedVI.RepGradELBO(
+            10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()
+        ),
+        show_progress::Bool=Turing.PROGRESS[],
+        optimizer::Optimisers.AbstractRule=AdvancedVI.DoWG(),
+        averager::AdvancedVI.AbstractAverager=AdvancedVI.PolynomialAveraging(),
+        operator::AdvancedVI.AbstractOperator=AdvancedVI.ProximalLocationScaleEntropy(),
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+        kwargs...
+    )
 
 Approximating the target `model` via variational inference by optimizing `objective` with the initialization `q`.
 This is a thin wrapper around `AdvancedVI.optimize`.
 
 # Arguments
-- `model::DynamicPPL.Model`: The target `DynamicPPL.Model`.
+- `model`: The target `DynamicPPL.Model`.
 - `q`: The initial variational approximation.
-- `n_iterations::Int`: Number of optimization steps.
+- `n_iterations`: Number of optimization steps.
 
 # Keyword Arguments
-- `objective::AdvancedVI.AbstractVariationalObjective`: Variational objective to be optimized.
-- `show_progress::Bool`: Whether to show the progress bar. (Default: `Turing.PROGRESS[]`.)
-- `optimizer::Optimisers.AbstractRule`: Optimization algorithm. (Default: `AdvancedVI.DoWG`.)
-- `averager::AdvancedVI.AbstractAverager`: Parameter averaging strategy. (Default: `AdvancedVI.PolynomialAveraging()`) 
-- `operator::AdvancedVI.AbstractOperator`: Operator applied after each optimization step. (Default: `AdvancedVI.ProximalLocationScaleEntropy()`.) 
-- `adtype::ADTypes.AbstractADType`: Automatic differentiation backend. (Default: `Turing.DEFAULT_ADTYPE`)
+- `objective`: Variational objective to be optimized.
+- `show_progress`: Whether to show the progress bar.
+- `optimizer`: Optimization algorithm.
+- `averager`: Parameter averaging strategy.
+- `operator`: Operator applied after each optimization step.
+- `adtype`: Automatic differentiation backend.
 
 See the docs of `AvancedVI.optimize` for additional keyword arguments.
 
