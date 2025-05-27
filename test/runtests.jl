@@ -38,6 +38,10 @@ end
         @timeit_include("Aqua.jl")
     end
 
+    @testset "AD" verbose = true begin
+        @timeit_include("ad.jl")
+    end
+
     @testset "essential" verbose = true begin
         @timeit_include("essential/container.jl")
     end

@@ -7,8 +7,6 @@ import ..ADUtils
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL, Sampler
-using DynamicPPL.TestUtils.AD: run_ad
-using DynamicPPL.TestUtils: DEMO_MODELS
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -19,37 +17,6 @@ using StatsFuns: logistic
 import Mooncake
 using Test: @test, @test_logs, @testset, @test_throws
 using Turing
-
-@testset "AD / hmc.jl" begin
-    # AD tests need to be run with SamplingContext because samplers can potentially
-    # use this to define custom behaviour in the tilde-pipeline and thus change the
-    # code executed during model evaluation.
-    @testset "adtype=$adtype" for adtype in ADUtils.adbackends
-        @testset "alg=$alg" for alg in [
-            HMC(0.1, 10; adtype=adtype),
-            HMCDA(0.8, 0.75; adtype=adtype),
-            NUTS(1000, 0.8; adtype=adtype),
-        ]
-            @info "Testing AD for $alg"
-
-            @testset "model=$(model.f)" for model in DEMO_MODELS
-                rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
-                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
-            end
-        end
-
-        @testset "Check ADType" begin
-            seed = 123
-            alg = HMC(0.1, 10; adtype=adtype)
-            m = DynamicPPL.contextualize(
-                gdemo_default, ADTypeCheckContext(adtype, gdemo_default.context)
-            )
-            # These will error if the adbackend being used is not the one set.
-            sample(StableRNG(seed), m, alg, 10)
-        end
-    end
-end
 
 @testset verbose = true "Testing hmc.jl" begin
     @info "Starting HMC tests"
