@@ -1,4 +1,5 @@
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
 AbstractPPL = "7a57a42e-76ec-4ea3-a279-07e840d6d9cf"
 AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
