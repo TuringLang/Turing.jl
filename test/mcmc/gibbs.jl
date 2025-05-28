@@ -33,18 +33,6 @@ function check_transition_varnames(transition::Turing.Inference.Transition, pare
     end
 end
 
-const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index)},
-}
-has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
-has_dot_assume(::DynamicPPL.Model) = true
-
 @testset verbose = true "GibbsContext" begin
     @testset "type stability" begin
         struct Wrapper{T<:Real}
@@ -614,18 +602,9 @@ end
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => ESS()),
+                Turing.Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
+                Turing.Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
             ]
-
-            if !has_dot_assume(model)
-                # Add in some MH samplers, which are not compatible with `.~`.
-                append!(
-                    samplers,
-                    [
-                        Turing.Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
-                        Turing.Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
-                    ],
-                )
-            end
 
             @testset "$sampler" for sampler in samplers
                 # Check that taking steps performs as expected.
