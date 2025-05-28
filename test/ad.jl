@@ -190,8 +190,7 @@ ADTYPES = [
     adtypes = (
         Turing.AutoForwardDiff(),
         Turing.AutoReverseDiff(),
-        # TODO: Mooncake
-        # Turing.AutoMooncake(config=nothing),
+        # Don't need to test Mooncake as it doesn't use tracer types
     )
     for actual_adtype in adtypes
         sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
