@@ -444,12 +444,6 @@ function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
     return setinfo(c, merge(nt, c.info))
 end
 
-####################################
-# Generic sample() method dispatch #
-####################################
-
-include("sample.jl")
-
 #######################################
 # Concrete algorithm implementations. #
 #######################################
@@ -463,6 +457,12 @@ include("particle_mcmc.jl")
 include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
+
+####################################
+# Generic sample() method dispatch #
+####################################
+
+include("sample.jl")
 
 ################
 # Typing tools #
