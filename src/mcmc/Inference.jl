@@ -331,7 +331,7 @@ getlogevidence(transitions, sampler, state) = missing
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
-    ldf::DynamicPPL.LogDensityFunction,
+    model_or_ldf::Union{AbstractModel,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
@@ -343,7 +343,11 @@ function AbstractMCMC.bundle_samples(
     thinning=1,
     kwargs...,
 )
-    model = ldf.model
+    if model_or_ldf isa LogDensityFunction
+        model = model_or_ldf.model
+    else
+        model = model_or_ldf
+    end
 
     # Convert transitions to array format.
     # Also retrieve the variable names.
@@ -396,13 +400,17 @@ end
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
-    ldf::DynamicPPL.LogDensityFunction,
+    model_or_ldf::Union{AbstractModel,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
 )
-    model = ldf.model
+    if model_or_ldf isa LogDensityFunction
+        model = model_or_ldf.model
+    else
+        model = model_or_ldf
+    end
     return map(ts) do t
         # Construct a dictionary of pairs `vn => value`.
         params = OrderedDict(getparams(model, t))
