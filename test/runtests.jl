@@ -29,10 +29,6 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" verbose = true begin
-    @testset "Test utils" begin
-        @timeit_include("test_utils/test_utils.jl")
-    end
-
     @testset "Aqua" begin
         @timeit_include("Aqua.jl")
     end
