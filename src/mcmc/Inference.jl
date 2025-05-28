@@ -242,7 +242,10 @@ getlogevidence(transitions, sampler, state) = missing
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
-    model_or_ldf::Union{AbstractModel,LogDensityFunction},
+    # TODO(penelopeysm): Eventually we want this to be LDF only. However, for
+    # now, we need to keep Model inside so that it works with the unmodified
+    # samplers.
+    model_or_ldf::Union{Model,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
@@ -311,6 +314,9 @@ end
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
+    # TODO(penelopeysm): Eventually we want this to be LDF only. However, for
+    # now, we need to keep Model inside so that it works with the unmodified
+    # samplers.
     model_or_ldf::Union{AbstractModel,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
