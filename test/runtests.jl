@@ -29,63 +29,63 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" verbose = true begin
-    # @testset "Test utils" begin
-    #     @timeit_include("test_utils/test_utils.jl")
-    # end
-    #
-    # @testset "Aqua" begin
-    #     @timeit_include("Aqua.jl")
-    # end
+    @testset "Test utils" begin
+        @timeit_include("test_utils/test_utils.jl")
+    end
+
+    @testset "Aqua" begin
+        @timeit_include("Aqua.jl")
+    end
 
     @testset "AD" verbose = true begin
         @timeit_include("ad.jl")
     end
 
-    # @testset "essential" verbose = true begin
-    #     @timeit_include("essential/container.jl")
-    # end
-    #
-    # @testset "samplers (without AD)" verbose = true begin
-    #     @timeit_include("mcmc/particle_mcmc.jl")
-    #     @timeit_include("mcmc/emcee.jl")
-    #     @timeit_include("mcmc/ess.jl")
-    #     @timeit_include("mcmc/is.jl")
-    # end
-    #
-    # @timeit TIMEROUTPUT "inference" begin
-    #     @testset "inference with samplers" verbose = true begin
-    #         @timeit_include("mcmc/gibbs.jl")
-    #         @timeit_include("mcmc/hmc.jl")
-    #         @timeit_include("mcmc/Inference.jl")
-    #         @timeit_include("mcmc/sghmc.jl")
-    #         @timeit_include("mcmc/abstractmcmc.jl")
-    #         @timeit_include("mcmc/mh.jl")
-    #         @timeit_include("ext/dynamichmc.jl")
-    #         @timeit_include("mcmc/repeat_sampler.jl")
-    #     end
-    #
-    #     @testset "variational algorithms" begin
-    #         @timeit_include("variational/advi.jl")
-    #     end
-    #
-    #     @testset "mode estimation" verbose = true begin
-    #         @timeit_include("optimisation/Optimisation.jl")
-    #         @timeit_include("ext/OptimInterface.jl")
-    #     end
-    # end
-    #
-    # @testset "variational optimisers" begin
-    #     @timeit_include("variational/optimisers.jl")
-    # end
-    #
-    # @testset "stdlib" verbose = true begin
-    #     @timeit_include("stdlib/distributions.jl")
-    #     @timeit_include("stdlib/RandomMeasures.jl")
-    # end
-    #
-    # @testset "utilities" begin
-    #     @timeit_include("mcmc/utilities.jl")
-    # end
+    @testset "essential" verbose = true begin
+        @timeit_include("essential/container.jl")
+    end
+
+    @testset "samplers (without AD)" verbose = true begin
+        @timeit_include("mcmc/particle_mcmc.jl")
+        @timeit_include("mcmc/emcee.jl")
+        @timeit_include("mcmc/ess.jl")
+        @timeit_include("mcmc/is.jl")
+    end
+
+    @timeit TIMEROUTPUT "inference" begin
+        @testset "inference with samplers" verbose = true begin
+            @timeit_include("mcmc/gibbs.jl")
+            @timeit_include("mcmc/hmc.jl")
+            @timeit_include("mcmc/Inference.jl")
+            @timeit_include("mcmc/sghmc.jl")
+            @timeit_include("mcmc/abstractmcmc.jl")
+            @timeit_include("mcmc/mh.jl")
+            @timeit_include("ext/dynamichmc.jl")
+            @timeit_include("mcmc/repeat_sampler.jl")
+        end
+
+        @testset "variational algorithms" begin
+            @timeit_include("variational/advi.jl")
+        end
+
+        @testset "mode estimation" verbose = true begin
+            @timeit_include("optimisation/Optimisation.jl")
+            @timeit_include("ext/OptimInterface.jl")
+        end
+    end
+
+    @testset "variational optimisers" begin
+        @timeit_include("variational/optimisers.jl")
+    end
+
+    @testset "stdlib" verbose = true begin
+        @timeit_include("stdlib/distributions.jl")
+        @timeit_include("stdlib/RandomMeasures.jl")
+    end
+
+    @testset "utilities" begin
+        @timeit_include("mcmc/utilities.jl")
+    end
 end
 
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)
