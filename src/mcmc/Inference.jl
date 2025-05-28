@@ -169,15 +169,15 @@ struct Prior <: InferenceAlgorithm end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
+    model::Model,
     sampler::DynamicPPL.Sampler{<:Prior},
     state=nothing;
     kwargs...,
 )
     vi = last(
         DynamicPPL.evaluate!!(
-            ldf.model,
-            ldf.varinfo,
+            model,
+            VarInfo(),
             SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
         ),
     )

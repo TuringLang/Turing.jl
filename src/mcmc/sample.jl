@@ -276,17 +276,13 @@ end
 # TODO: Remove these when all samplers are updated.      #
 ##########################################################
 
-using AbstractMCMC: AbstractModel
-
-function AbstractMCMC.sample(
-    model::AbstractModel, alg::InferenceAlgorithm, N::Integer; kwargs...
-)
+function AbstractMCMC.sample(model::Model, alg::InferenceAlgorithm, N::Integer; kwargs...)
     return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
-    model::AbstractModel,
+    model::Model,
     alg::InferenceAlgorithm,
     N::Integer;
     check_model::Bool=true,
@@ -297,7 +293,7 @@ function AbstractMCMC.sample(
 end
 
 function AbstractMCMC.sample(
-    model::AbstractModel,
+    model::Model,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -311,7 +307,7 @@ end
 
 function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
-    model::AbstractModel,
+    model::Model,
     alg::InferenceAlgorithm,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
@@ -325,7 +321,7 @@ end
 
 function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
-    model::AbstractModel,
+    model::Model,
     sampler::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
