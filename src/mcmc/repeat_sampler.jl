@@ -9,7 +9,7 @@ $(FIELDS)
 # Examples
 ```julia
 repeated_sampler = RepeatSampler(sampler, 10)
-AbstractMCMC.step(rng, ldf, repeated_sampler) # take 10 steps of `sampler`
+AbstractMCMC.step(rng, model, repeated_sampler) # take 10 steps of `sampler`
 ```
 """
 struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSampler
@@ -28,7 +28,10 @@ function RepeatSampler(alg::InferenceAlgorithm, num_repeat::Int)
     return RepeatSampler(Sampler(alg), num_repeat)
 end
 
+getADType(spl::RepeatSampler) = getADType(spl.sampler)
 DynamicPPL.default_chain_type(sampler::RepeatSampler) = default_chain_type(sampler.sampler)
+# TODO(mhauru) Remove the below once DynamicPPL has removed all its Selector stuff.
+DynamicPPL.inspace(vn::VarName, spl::RepeatSampler) = inspace(vn, spl.sampler)
 
 function setparams_varinfo!!(model::DynamicPPL.Model, sampler::RepeatSampler, state, params)
     return setparams_varinfo!!(model, sampler.sampler, state, params)
@@ -36,56 +39,50 @@ end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
+    model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler;
     kwargs...,
 )
-    return AbstractMCMC.step(rng, ldf, sampler.sampler; kwargs...)
+    return AbstractMCMC.step(rng, model, sampler.sampler; kwargs...)
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
+    model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler,
     state;
     kwargs...,
 )
-    transition, state = AbstractMCMC.step(rng, ldf, sampler.sampler, state; kwargs...)
+    transition, state = AbstractMCMC.step(rng, model, sampler.sampler, state; kwargs...)
     for _ in 2:(sampler.num_repeat)
-        transition, state = AbstractMCMC.step(rng, ldf, sampler.sampler, state; kwargs...)
+        transition, state = AbstractMCMC.step(rng, model, sampler.sampler, state; kwargs...)
     end
     return transition, state
 end
 
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
+    model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler;
     kwargs...,
 )
-    return AbstractMCMC.step_warmup(rng, ldf, sampler.sampler; kwargs...)
+    return AbstractMCMC.step_warmup(rng, model, sampler.sampler; kwargs...)
 end
 
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
+    model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler,
     state;
     kwargs...,
 )
     transition, state = AbstractMCMC.step_warmup(
-        rng, ldf, sampler.sampler, state; kwargs...
+        rng, model, sampler.sampler, state; kwargs...
     )
     for _ in 2:(sampler.num_repeat)
         transition, state = AbstractMCMC.step_warmup(
-            rng, ldf, sampler.sampler, state; kwargs...
+            rng, model, sampler.sampler, state; kwargs...
         )
     end
     return transition, state
 end
-
-update_sample_kwargs(spl::RepeatSampler, kwargs) = update_sample_kwargs(spl.sampler, kwargs)
-
-get_adtype(spl::RepeatSampler) = get_adtype(spl.sampler)
-
-requires_unconstrained_space(spl::RepeatSampler) = requires_unconstrained_space(spl.sampler)
