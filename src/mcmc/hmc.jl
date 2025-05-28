@@ -78,6 +78,8 @@ end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
+get_adtype(alg::Hamiltonian) = alg.adtype
+
 function update_sample_kwargs(alg::AdaptiveHamiltonian, N::Integer, kwargs)
     resume_from = get(kwargs, :resume_from, nothing)
     nadapts = get(kwargs, :nadapts, alg.n_adapts)
@@ -135,34 +137,28 @@ function find_initial_params(
     )
 end
 
-function DynamicPPL.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:Hamiltonian},
-    vi_original::AbstractVarInfo;
+    ldf::LogDensityFunction,
+    spl::Sampler{<:Hamiltonian};
+    # The initial_params will already have been set in the LogDensityFunction --
+    # however, we need to catch it here just to check if we need to
+    # automatically find a starting point for sampling. Its value isn't actually used.
     initial_params=nothing,
     nadapts=0,
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = DynamicPPL.link(vi_original, model)
+    ldf.adtype === nothing &&
+        error("Hamiltonian sampler received a LogDensityFunction without an AD backend")
 
     # Extract parameters.
-    theta = vi[:]
+    theta = ldf.varinfo[:]
+
+    has_initial_params = initial_params !== nothing
 
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
-    )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
@@ -170,7 +166,7 @@ function DynamicPPL.initialstep(
     # If no initial parameters are provided, resample until the log probability
     # and its gradient are finite. Otherwise, just use the existing parameters.
     vi, z = if initial_params === nothing
-        find_initial_params(rng, model, vi, hamiltonian)
+        find_initial_params(rng, ldf.model, ldf.varinfo, hamiltonian)
     else
         vi, AHMC.phasepoint(rng, theta, hamiltonian)
     end
@@ -211,7 +207,7 @@ function DynamicPPL.initialstep(
         vi = setlogp!!(vi, log_density_old)
     end
 
-    transition = Transition(model, vi, t)
+    transition = Transition(ldf.model, vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
@@ -219,7 +215,7 @@ end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
+    ldf::LogDensityFunction,
     spl::Sampler{<:Hamiltonian},
     state::HMCState;
     nadapts=0,
@@ -257,7 +253,7 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = Transition(model, vi, t)
+    transition = Transition(ldf.model, vi, t)
     newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate

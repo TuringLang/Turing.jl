@@ -142,7 +142,7 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = DynamicPPL.default_varinfo(rng, model, spl, initial_params, link)
-    ldf = LogDensityFunction(model; adtype=get_adtype(spl))
+    ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
     return AbstractMCMC.sample(rng, ldf, spl, N; kwargs...)
 end
 
@@ -195,7 +195,7 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = DynamicPPL.default_varinfo(rng, model, spl, initial_params, link)
-    ldf = LogDensityFunction(model; adtype=get_adtype(spl))
+    ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
     return AbstractMCMC.sample(rng, ldf, spl, ensemble, N, n_chains; kwargs...)
 end
 
