@@ -279,4 +279,14 @@ end
     end
 end
 
+@testset verbose = true "AD / Gibbs sampling" begin
+    # Make sure that Gibbs sampling doesn't fall over when using AD.
+    spl = Gibbs(@varname(s) => HMC(0.1, 10), @varname(m) => HMC(0.1, 10))
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        @testset "model=$(model.f)" for model in DEMO_MODELS
+            @test sample(model, spl, 2) isa Any
+        end
+    end
+end
+
 end # module
