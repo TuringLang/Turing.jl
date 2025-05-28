@@ -270,6 +270,4 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(rng, ldf, spl, ensemble, N, n_chains; kwargs...)
 end
 
-include("deprecated.jl")
-
 end # module

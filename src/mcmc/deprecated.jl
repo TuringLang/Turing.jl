@@ -1,3 +1,12 @@
+module SampleDeprecated
+
+using AbstractMCMC: AbstractMCMC, AbstractMCMCEnsemble
+using DynamicPPL: DynamicPPL, Sampler, Model
+using MCMCChains: MCMCChains
+using Random: Random
+using ..Inference: Hamiltonian, InferenceAlgorithm, RepeatSampler
+using ...Turing: PROGRESS
+
 ##########################################################
 # OLD DEFINITIONS - Need to keep these for compatibility #
 # so that unfixed samplers still work.                   #
@@ -94,3 +103,5 @@ function DynamicPPL.initialstep(
     )
     return AbstractMCMC.step(rng, ldf, spl; kwargs...)
 end
+
+end # module

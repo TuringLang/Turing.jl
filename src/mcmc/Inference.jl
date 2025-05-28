@@ -389,6 +389,7 @@ include("prior.jl")
 ####################################
 
 include("sample.jl")
+include("deprecated.jl")
 
 ################
 # Typing tools #
