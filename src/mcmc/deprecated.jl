@@ -80,9 +80,9 @@ end
 
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
-    model::AbstractModel,
+    model::Model,
     spl::Sampler{<:Hamiltonian},
-    vi_original::AbstractVarInfo;
+    vi_original::DynamicPPL.AbstractVarInfo;
     kwargs...,
 )
     vi = DynamicPPL.link(vi_original, model)
@@ -92,5 +92,5 @@ function DynamicPPL.initialstep(
         DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
         adtype=spl.alg.adtype,
     )
-    return AbstractMCMC.step(rng, ldf, spl; kwargs)
+    return AbstractMCMC.step(rng, ldf, spl; kwargs...)
 end
