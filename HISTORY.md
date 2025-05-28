@@ -1,3 +1,12 @@
+# Release 0.38.3
+
+`getparams(::Model, ::AbstractVarInfo)` now returns an empty `Float64[]` if the VarInfo contains no parameters.
+
+# Release 0.38.2
+
+Bump compat for `MCMCChains` to `7`.
+By default, summary statistics and quantiles for chains are no longer printed; to access these you should use `describe(chain)`.
+
 # Release 0.38.1
 
 The method `Bijectors.bijector(::DynamicPPL.Model)` was moved to DynamicPPL.jl.
