@@ -2,7 +2,6 @@ module InferenceTests
 
 using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
-import ..ADUtils
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL

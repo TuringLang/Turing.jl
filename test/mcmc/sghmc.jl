@@ -2,7 +2,6 @@ module SGHMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
-import ..ADUtils
 using DynamicPPL.TestUtils.AD: run_ad
 using DynamicPPL.TestUtils: DEMO_MODELS
 using DynamicPPL: DynamicPPL

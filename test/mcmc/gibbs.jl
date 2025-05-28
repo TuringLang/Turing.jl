@@ -7,7 +7,6 @@ using ..NumericalTests:
     check_gdemo,
     check_numerical,
     two_sample_test
-import ..ADUtils
 import Combinatorics
 using AbstractMCMC: AbstractMCMC
 using Distributions: InverseGamma, Normal

@@ -4,9 +4,11 @@ using Turing
 using DynamicPPL
 using DynamicPPL.TestUtils: DEMO_MODELS
 using DynamicPPL.TestUtils.AD: run_ad
+using Random: Random
 using StableRNGs: StableRNG
 using Test
 using ..Models: gdemo_default
+import ForwardDiff, ReverseDiff, Mooncake
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -181,10 +183,40 @@ ADTYPES = [
     Turing.AutoMooncake(; config=nothing),
 ]
 
+# Check that ADTypeCheckContext itself works as expected.
+@testset "ADTypeCheckContext" begin
+    @model test_model() = x ~ Normal(0, 1)
+    tm = test_model()
+    adtypes = (
+        Turing.AutoForwardDiff(),
+        Turing.AutoReverseDiff(),
+        # TODO: Mooncake
+        # Turing.AutoMooncake(config=nothing),
+    )
+    for actual_adtype in adtypes
+        sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
+        for expected_adtype in adtypes
+            contextualised_tm = DynamicPPL.contextualize(
+                tm, ADTypeCheckContext(expected_adtype, tm.context)
+            )
+            @testset "Expected: $expected_adtype, Actual: $actual_adtype" begin
+                if actual_adtype == expected_adtype
+                    # Check that this does not throw an error.
+                    Turing.sample(contextualised_tm, sampler, 2)
+                else
+                    @test_throws AbstractWrongADBackendError Turing.sample(
+                        contextualised_tm, sampler, 2
+                    )
+                end
+            end
+        end
+    end
+end
+
 @testset verbose = true "AD / ADTypeCheckContext" begin
-    # This testset ensures that samplers don't accidentally override the AD
-    # backend set in it.
-    @testset "Check ADType" begin
+    # This testset ensures that samplers or optimisers don't accidentally
+    # override the AD backend set in it.
+    @testset "adtype=$adtype" for adtype in ADTYPES
         seed = 123
         alg = HMC(0.1, 10; adtype=adtype)
         m = DynamicPPL.contextualize(
@@ -192,6 +224,8 @@ ADTYPES = [
         )
         # These will error if the adbackend being used is not the one set.
         sample(StableRNG(seed), m, alg, 10)
+        maximum_likelihood(m; adtype=adtype)
+        maximum_a_posteriori(m; adtype=adtype)
     end
 end
 

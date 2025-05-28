@@ -1,9 +1,7 @@
 module HMCTests
 
 using ..Models: gdemo_default
-using ..ADUtils: ADTypeCheckContext
 using ..NumericalTests: check_gdemo, check_numerical
-import ..ADUtils
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL, Sampler
