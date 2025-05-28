@@ -161,30 +161,6 @@ function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
 end
 
 """
-    Prior()
-
-Algorithm for sampling from the prior.
-"""
-struct Prior <: InferenceAlgorithm end
-
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::Model,
-    sampler::DynamicPPL.Sampler{<:Prior},
-    state=nothing;
-    kwargs...,
-)
-    vi = last(
-        DynamicPPL.evaluate!!(
-            model,
-            VarInfo(),
-            SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
-        ),
-    )
-    return vi, nothing
-end
-
-"""
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
 
 Decide if a proposal ``x'`` with log probability ``\\log p(x') = logp_proposal`` and
@@ -242,7 +218,6 @@ metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 # Chain making utilities #
 ##########################
 
-DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
 DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
 
 """
@@ -465,6 +440,7 @@ include("particle_mcmc.jl")
 include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
+include("prior.jl")
 
 ####################################
 # Generic sample() method dispatch #
