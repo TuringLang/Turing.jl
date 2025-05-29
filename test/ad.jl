@@ -15,6 +15,7 @@ const IS_PRERELEASE = !isempty(VERSION.prerelease)
 const INCLUDE_MOONCAKE = !IS_PRERELEASE
 
 if INCLUDE_MOONCAKE
+    import Pkg
     Pkg.add("Mooncake")
     using Mooncake: Mooncake
 end
