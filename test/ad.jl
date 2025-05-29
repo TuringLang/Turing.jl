@@ -1,18 +1,14 @@
-module ADUtils
+module TuringADTests
 
-using ForwardDiff: ForwardDiff
-using Pkg: Pkg
+using Turing
+using DynamicPPL
+using DynamicPPL.TestUtils: DEMO_MODELS
+using DynamicPPL.TestUtils.AD: run_ad
 using Random: Random
-using ReverseDiff: ReverseDiff
-using Mooncake: Mooncake
-using Test: Test
-using Turing: Turing
-using Turing: DynamicPPL
-
-export ADTypeCheckContext, adbackends
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# Stuff for checking that the right AD backend is being used.
+using StableRNGs: StableRNG
+using Test
+using ..Models: gdemo_default
+import ForwardDiff, ReverseDiff, Mooncake
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -178,16 +174,122 @@ function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, l
     return logp, vi
 end
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# List of AD backends to test.
-
 """
 All the ADTypes on which we want to run the tests.
 """
-adbackends = [
+ADTYPES = [
     Turing.AutoForwardDiff(),
     Turing.AutoReverseDiff(; compile=false),
     Turing.AutoMooncake(; config=nothing),
 ]
 
+# Check that ADTypeCheckContext itself works as expected.
+@testset "ADTypeCheckContext" begin
+    @model test_model() = x ~ Normal(0, 1)
+    tm = test_model()
+    adtypes = (
+        Turing.AutoForwardDiff(),
+        Turing.AutoReverseDiff(),
+        # Don't need to test Mooncake as it doesn't use tracer types
+    )
+    for actual_adtype in adtypes
+        sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
+        for expected_adtype in adtypes
+            contextualised_tm = DynamicPPL.contextualize(
+                tm, ADTypeCheckContext(expected_adtype, tm.context)
+            )
+            @testset "Expected: $expected_adtype, Actual: $actual_adtype" begin
+                if actual_adtype == expected_adtype
+                    # Check that this does not throw an error.
+                    Turing.sample(contextualised_tm, sampler, 2)
+                else
+                    @test_throws AbstractWrongADBackendError Turing.sample(
+                        contextualised_tm, sampler, 2
+                    )
+                end
+            end
+        end
+    end
 end
+
+@testset verbose = true "AD / ADTypeCheckContext" begin
+    # This testset ensures that samplers or optimisers don't accidentally
+    # override the AD backend set in it.
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        seed = 123
+        alg = HMC(0.1, 10; adtype=adtype)
+        m = DynamicPPL.contextualize(
+            gdemo_default, ADTypeCheckContext(adtype, gdemo_default.context)
+        )
+        # These will error if the adbackend being used is not the one set.
+        sample(StableRNG(seed), m, alg, 10)
+        maximum_likelihood(m; adtype=adtype)
+        maximum_a_posteriori(m; adtype=adtype)
+    end
+end
+
+@testset verbose = true "AD / SamplingContext" begin
+    # AD tests for gradient-based samplers need to be run with SamplingContext
+    # because samplers can potentially use this to define custom behaviour in
+    # the tilde-pipeline and thus change the code executed during model
+    # evaluation.
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        @testset "alg=$alg" for alg in [
+            HMC(0.1, 10; adtype=adtype),
+            HMCDA(0.8, 0.75; adtype=adtype),
+            NUTS(1000, 0.8; adtype=adtype),
+            SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=adtype),
+            SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adtype),
+        ]
+            @info "Testing AD for $alg"
+
+            @testset "model=$(model.f)" for model in DEMO_MODELS
+                rng = StableRNG(123)
+                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+            end
+        end
+    end
+end
+
+@testset verbose = true "AD / GibbsContext" begin
+    # Gibbs sampling also needs extra AD testing because the models are
+    # executed with GibbsContext and a subsetted varinfo. (see e.g.
+    # `gibbs_initialstep_recursive` and `gibbs_step_recursive` in
+    # src/mcmc/gibbs.jl -- the code here mimics what happens in those
+    # functions)
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        @testset "model=$(model.f)" for model in DEMO_MODELS
+            # All the demo models have variables `s` and `m`, so we'll pretend
+            # that we're using a Gibbs sampler where both of them are sampled
+            # with a gradient-based sampler (say HMC(0.1, 10)).
+            # This means we need to construct one with only `s`, and one model with
+            # only `m`.
+            global_vi = DynamicPPL.VarInfo(model)
+            @testset for varnames in ([@varname(s)], [@varname(m)])
+                @info "Testing Gibbs AD with model=$(model.f), varnames=$varnames"
+                conditioned_model = Turing.Inference.make_conditional(
+                    model, varnames, deepcopy(global_vi)
+                )
+                rng = StableRNG(123)
+                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
+                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+            end
+        end
+    end
+end
+
+@testset verbose = true "AD / Gibbs sampling" begin
+    # Make sure that Gibbs sampling doesn't fall over when using AD.
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        spl = Gibbs(
+            @varname(s) => HMC(0.1, 10; adtype=adtype),
+            @varname(m) => HMC(0.1, 10; adtype=adtype),
+        )
+        @testset "model=$(model.f)" for model in DEMO_MODELS
+            @test sample(model, spl, 2) isa Any
+        end
+    end
+end
+
+end # module

@@ -7,7 +7,6 @@ using ..NumericalTests:
     check_gdemo,
     check_numerical,
     two_sample_test
-import ..ADUtils
 import Combinatorics
 using AbstractMCMC: AbstractMCMC
 using Distributions: InverseGamma, Normal
@@ -34,19 +33,7 @@ function check_transition_varnames(transition::Turing.Inference.Transition, pare
     end
 end
 
-const DEMO_MODELS_WITHOUT_DOT_ASSUME = Union{
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_index_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_dot_observe_literal)},
-    DynamicPPL.Model{typeof(DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index)},
-}
-has_dot_assume(::DEMO_MODELS_WITHOUT_DOT_ASSUME) = false
-has_dot_assume(::DynamicPPL.Model) = true
-
-@testset "GibbsContext" begin
+@testset verbose = true "GibbsContext" begin
     @testset "type stability" begin
         struct Wrapper{T<:Real}
             a::T
@@ -384,23 +371,23 @@ end
     @test wuc.non_warmup_count == (num_samples - 1) * num_reps
 end
 
-@testset "Testing gibbs.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting Gibbs tests with $adbackend"
+@testset verbose = true "Testing gibbs.jl" begin
+    @info "Starting Gibbs tests"
 
     @testset "Gibbs constructors" begin
         # Create Gibbs samplers with various configurations and ways of passing the
         # arguments, and run them all on the `gdemo_default` model, see that nothing breaks.
         N = 10
         # Two variables being sampled by one sampler.
-        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5; adtype=adbackend))
+        s1 = Gibbs((@varname(s), @varname(m)) => HMC(0.1, 5))
         s2 = Gibbs((@varname(s), :m) => PG(10))
         # As above but different samplers and using kwargs.
-        s3 = Gibbs(:s => CSMC(3), :m => HMCDA(200, 0.65, 0.15; adtype=adbackend))
-        s4 = Gibbs(@varname(s) => HMC(0.1, 5; adtype=adbackend), @varname(m) => ESS())
+        s3 = Gibbs(:s => CSMC(3), :m => HMCDA(200, 0.65, 0.15))
+        s4 = Gibbs(@varname(s) => HMC(0.1, 5), @varname(m) => ESS())
         # Multiple instnaces of the same sampler. This implements running, in this case,
         # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
         s5 = begin
-            hmc = HMC(0.1, 5; adtype=adbackend)
+            hmc = HMC(0.1, 5)
             pg = PG(10)
             vns = @varname(s)
             vnm = @varname(m)
@@ -408,7 +395,7 @@ end
         end
         # Same thing but using RepeatSampler.
         s6 = Gibbs(
-            @varname(s) => RepeatSampler(HMC(0.1, 5; adtype=adbackend), 3),
+            @varname(s) => RepeatSampler(HMC(0.1, 5), 3),
             @varname(m) => RepeatSampler(PG(10), 2),
         )
         for s in (s1, s2, s3, s4, s5, s6)
@@ -430,7 +417,7 @@ end
     # posterior mean.
     @testset "Gibbs inference" begin
         @testset "CSMC and HMC on gdemo" begin
-            alg = Gibbs(:s => CSMC(15), :m => HMC(0.2, 4; adtype=adbackend))
+            alg = Gibbs(:s => CSMC(15), :m => HMC(0.2, 4))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:m], [7 / 6]; atol=0.15)
             # Be more relaxed with the tolerance of the variance.
@@ -438,7 +425,7 @@ end
         end
 
         @testset "MH and HMCDA on gdemo" begin
-            alg = Gibbs(:s => MH(), :m => HMCDA(200, 0.65, 0.3; adtype=adbackend))
+            alg = Gibbs(:s => MH(), :m => HMCDA(200, 0.65, 0.3))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
@@ -459,7 +446,7 @@ end
         @testset "PG and HMC on MoGtest_default" begin
             gibbs = Gibbs(
                 (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
-                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3),
             )
             chain = sample(MoGtest_default, gibbs, 2_000)
             check_MoGtest_default(chain; atol=0.15)
@@ -472,8 +459,8 @@ end
                 (@varname(s), @varname(m)) => MH(),
                 @varname(m) => ESS(),
                 @varname(s) => RepeatSampler(MH(), 3),
-                @varname(m) => HMC(0.2, 4; adtype=adbackend),
-                (@varname(m), @varname(s)) => HMC(0.2, 4; adtype=adbackend),
+                @varname(m) => HMC(0.2, 4),
+                (@varname(m), @varname(s)) => HMC(0.2, 4),
             )
             chain = sample(gdemo(1.5, 2.0), alg, 500)
             check_gdemo(chain; atol=0.15)
@@ -483,7 +470,7 @@ end
             gibbs = Gibbs(
                 (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => PG(15),
                 (@varname(z1), @varname(z2)) => PG(15),
-                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3; adtype=adbackend),
+                (@varname(mu1), @varname(mu2)) => HMC(0.15, 3),
                 (@varname(z3), @varname(z4)) => RepeatSampler(PG(15), 2),
                 (@varname(mu1)) => ESS(),
                 (@varname(mu2)) => ESS(),
@@ -521,7 +508,7 @@ end
             return nothing
         end
 
-        alg = Gibbs(:s => MH(), :m => HMC(0.2, 4; adtype=adbackend))
+        alg = Gibbs(:s => MH(), :m => HMC(0.2, 4))
         sample(model, alg, 100; callback=callback)
     end
 
@@ -551,10 +538,7 @@ end
         # https://github.com/TuringLang/Turing.jl/issues/1725
         # sample(model, Gibbs(:z => MH(), :m => HMC(0.01, 4)), 100);
         chn = sample(
-            StableRNG(23),
-            model,
-            Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)),
-            num_samples,
+            StableRNG(23), model, Gibbs(:z => PG(10), :m => HMC(0.01, 4)), num_samples
         )
         # The number of m variables that have a non-zero value in a sample.
         num_ms = count(ismissing.(Array(chn[:, (num_zs + 1):end, 1])); dims=2)
@@ -597,40 +581,26 @@ end
         @model function dynamic_model_with_dot_tilde(
             num_zs=10, ::Type{M}=Vector{Float64}
         ) where {M}
-            z = M(undef, num_zs)
+            z = Vector{Int}(undef, num_zs)
             z .~ Poisson(1.0)
             num_ms = sum(z)
             m = M(undef, num_ms)
             return m .~ Normal(1.0, 1.0)
         end
         model = dynamic_model_with_dot_tilde()
-        # TODO(mhauru) This is broken because of
-        # https://github.com/TuringLang/DynamicPPL.jl/issues/700.
-        @test_broken (
-            sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4; adtype=adbackend)), 100);
-            true
-        )
+        sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4)), 100)
     end
 
-    @testset "Demo models" begin
-        @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+    @testset "Demo model" begin
+        @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             samplers = [
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
                 Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => ESS()),
+                Turing.Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
+                Turing.Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
             ]
-
-            if !has_dot_assume(model)
-                # Add in some MH samplers, which are not compatible with `.~`.
-                append!(
-                    samplers,
-                    [
-                        Turing.Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
-                        Turing.Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
-                    ],
-                )
-            end
 
             @testset "$sampler" for sampler in samplers
                 # Check that taking steps performs as expected.
@@ -846,7 +816,7 @@ end
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
-    @testset "externsalsampler" begin
+    @testset "externalsampler" begin
         @model function demo_gibbs_external()
             m1 ~ Normal()
             m2 ~ Normal()
