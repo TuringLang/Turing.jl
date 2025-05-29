@@ -133,9 +133,7 @@ using Turing
     # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
         Random.seed!(12345)
-        alg = Gibbs(
-            :s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05, adtype=adbackend)
-        )
+        alg = Gibbs(:s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05))
         res = sample(StableRNG(123), gdemo_default, alg, 3000; discard_initial=1000)
         check_gdemo(res)
     end
