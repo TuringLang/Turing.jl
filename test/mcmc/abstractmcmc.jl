@@ -11,7 +11,6 @@ using LogDensityProblems: LogDensityProblems
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
-import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
