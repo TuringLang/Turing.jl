@@ -20,7 +20,6 @@ using Turing
     @info "Starting Inference.jl tests"
 
     seed = 23
-    adbackend = Turing.DEFAULT_ADTYPE
 
     @testset "threaded sampling" begin
         # Test that chains with the same seed will sample identically.
@@ -28,12 +27,12 @@ using Turing
             model = gdemo_default
 
             samplers = (
-                HMC(0.1, 7; adtype=adbackend),
+                HMC(0.1, 7),
                 PG(10),
                 IS(),
                 MH(),
-                Gibbs(:s => PG(3), :m => HMC(0.4, 8; adtype=adbackend)),
-                Gibbs(:s => HMC(0.1, 5; adtype=adbackend), :m => ESS()),
+                Gibbs(:s => PG(3), :m => HMC(0.4, 8)),
+                Gibbs(:s => HMC(0.1, 5), :m => ESS()),
             )
             for sampler in samplers
                 Random.seed!(5)
@@ -62,27 +61,22 @@ using Turing
         # Smoke test for default sample call.
         @testset "gdemo_default" begin
             chain = sample(
-                StableRNG(seed),
-                gdemo_default,
-                HMC(0.1, 7; adtype=adbackend),
-                MCMCThreads(),
-                1_000,
-                4,
+                StableRNG(seed), gdemo_default, HMC(0.1, 7), MCMCThreads(), 1_000, 4
             )
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7; adtype=adbackend))
+            sampler = Sampler(HMC(0.1, 7))
             chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
             @test chains isa MCMCChains.Chains
         end
     end
 
     @testset "chain save/resume" begin
-        alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
+        alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
-        alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4; adtype=adbackend))
+        alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4))
 
         chn1 = sample(StableRNG(seed), gdemo_default, alg1, 10_000; save_state=true)
         check_gdemo(chn1)
@@ -261,7 +255,7 @@ using Turing
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(:p => HMC(0.2, 3; adtype=adbackend), :x => PG(10))
+        gibbs = Gibbs(:p => HMC(0.2, 3), :x => PG(10))
 
         chn_s = sample(StableRNG(seed), testbb(obs), smc, 200)
         chn_p = sample(StableRNG(seed), testbb(obs), pg, 200)
@@ -284,7 +278,7 @@ using Turing
             return s, m
         end
 
-        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8; adtype=adbackend))
+        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8))
         chain = sample(StableRNG(seed), fggibbstest(xs), gibbs, 2)
     end
 
@@ -378,9 +372,7 @@ using Turing
             end
         end
 
-        chain = sample(
-            StableRNG(seed), noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000
-        )
+        chain = sample(StableRNG(seed), noreturn([1.5 2.0]), HMC(0.1, 10), 4000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
 
@@ -411,7 +403,7 @@ using Turing
     end
 
     @testset "sample" begin
-        alg = Gibbs(:m => HMC(0.2, 3; adtype=adbackend), :s => PG(10))
+        alg = Gibbs(:m => HMC(0.2, 3), :s => PG(10))
         chn = sample(StableRNG(seed), gdemo_default, alg, 10)
     end
 
@@ -423,7 +415,7 @@ using Turing
             return s, m
         end
 
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
@@ -438,7 +430,7 @@ using Turing
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        alg = HMC(0.2, 4)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -493,7 +485,7 @@ using Turing
             return s, m
         end
 
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
@@ -503,12 +495,12 @@ using Turing
         end
 
         D = 2
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        alg = HMC(0.2, 4)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -555,7 +547,7 @@ using Turing
 
     @testset "Type parameters" begin
         N = 10
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(1000)
         @model function vdemo1(::Type{T}=Float64) where {T}
             x = Vector{T}(undef, N)

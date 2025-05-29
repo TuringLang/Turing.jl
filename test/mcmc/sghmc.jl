@@ -16,20 +16,20 @@ using Turing
 
 @testset verbose = true "Testing sghmc.jl" begin
     @testset "sghmc constructor" begin
-        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=Turing.DEFAULT_ADTYPE)
+        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1)
         @test alg isa SGHMC
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
 
-        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1, adtype=Turing.DEFAULT_ADTYPE)
+        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1)
         @test alg isa SGHMC
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGHMC}
     end
+
     @testset "sghmc inference" begin
         rng = StableRNG(123)
-
-        alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=Turing.DEFAULT_ADTYPE)
+        alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5)
         chain = sample(rng, gdemo_default, alg, 10_000)
         check_gdemo(chain; atol=0.1)
     end
@@ -37,12 +37,12 @@ end
 
 @testset "Testing sgld.jl" begin
     @testset "sgld constructor" begin
-        alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=Turing.DEFAULT_ADTYPE)
+        alg = SGLD(; stepsize=PolynomialStepsize(0.25))
         @test alg isa SGLD
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGLD}
 
-        alg = SGLD(; stepsize=PolynomialStepsize(0.25), adtype=Turing.DEFAULT_ADTYPE)
+        alg = SGLD(; stepsize=PolynomialStepsize(0.25))
         @test alg isa SGLD
         sampler = Turing.Sampler(alg)
         @test sampler isa Turing.Sampler{<:SGLD}
