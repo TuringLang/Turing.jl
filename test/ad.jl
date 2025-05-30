@@ -202,6 +202,7 @@ end
             @varname(m) => HMC(0.1, 10; adtype=adtype),
         )
         @testset "model=$(model.f)" for model in DEMO_MODELS
+            @info "Testing Gibbs sampling with model=$(model.f), adtype=$adtype"
             @test sample(model, spl, 2) isa Any
         end
     end
