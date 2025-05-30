@@ -1,3 +1,7 @@
+abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type StaticHamiltonian <: Hamiltonian end
+abstract type AdaptiveHamiltonian <: Hamiltonian end
+
 ###
 ### Sampler states
 ###
