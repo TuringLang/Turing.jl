@@ -2,6 +2,7 @@ name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 version = "0.39.0"
 
+
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
@@ -83,7 +84,7 @@ Statistics = "1.6"
 StatsAPI = "1.6"
 StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
-julia = "1.10"
+julia = "1.10.2"
 
 [extras]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
