@@ -2,7 +2,6 @@ module InferenceTests
 
 using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
-import ..ADUtils
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
@@ -13,12 +12,12 @@ import MCMCChains
 import Random
 import ReverseDiff
 using StableRNGs: StableRNG
-import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 
-@testset "Testing inference.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting Inference.jl tests with $adbackend"
+@testset verbose = true "Testing Inference.jl" begin
+    @info "Starting Inference.jl tests"
+
     seed = 23
 
     @testset "threaded sampling" begin
@@ -27,12 +26,12 @@ using Turing
             model = gdemo_default
 
             samplers = (
-                HMC(0.1, 7; adtype=adbackend),
+                HMC(0.1, 7),
                 PG(10),
                 IS(),
                 MH(),
-                Gibbs(:s => PG(3), :m => HMC(0.4, 8; adtype=adbackend)),
-                Gibbs(:s => HMC(0.1, 5; adtype=adbackend), :m => ESS()),
+                Gibbs(:s => PG(3), :m => HMC(0.4, 8)),
+                Gibbs(:s => HMC(0.1, 5), :m => ESS()),
             )
             for sampler in samplers
                 Random.seed!(5)
@@ -44,7 +43,7 @@ using Turing
                 @test chain1.value == chain2.value
             end
 
-            # Should also be stable with am explicit RNG
+            # Should also be stable with an explicit RNG
             seed = 5
             rng = Random.MersenneTwister(seed)
             for sampler in samplers
@@ -61,27 +60,22 @@ using Turing
         # Smoke test for default sample call.
         @testset "gdemo_default" begin
             chain = sample(
-                StableRNG(seed),
-                gdemo_default,
-                HMC(0.1, 7; adtype=adbackend),
-                MCMCThreads(),
-                1_000,
-                4,
+                StableRNG(seed), gdemo_default, HMC(0.1, 7), MCMCThreads(), 1_000, 4
             )
             check_gdemo(chain)
 
             # run sampler: progress logging should be disabled and
             # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7; adtype=adbackend))
+            sampler = Sampler(HMC(0.1, 7))
             chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
             @test chains isa MCMCChains.Chains
         end
     end
 
     @testset "chain save/resume" begin
-        alg1 = HMCDA(1000, 0.65, 0.15; adtype=adbackend)
+        alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
-        alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4; adtype=adbackend))
+        alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4))
 
         chn1 = sample(StableRNG(seed), gdemo_default, alg1, 10_000; save_state=true)
         check_gdemo(chn1)
@@ -260,7 +254,7 @@ using Turing
 
         smc = SMC()
         pg = PG(10)
-        gibbs = Gibbs(:p => HMC(0.2, 3; adtype=adbackend), :x => PG(10))
+        gibbs = Gibbs(:p => HMC(0.2, 3), :x => PG(10))
 
         chn_s = sample(StableRNG(seed), testbb(obs), smc, 200)
         chn_p = sample(StableRNG(seed), testbb(obs), pg, 200)
@@ -273,22 +267,17 @@ using Turing
 
     @testset "forbid global" begin
         xs = [1.5 2.0]
-        # xx = 1
 
         @model function fggibbstest(xs)
             s ~ InverseGamma(2, 3)
             m ~ Normal(0, sqrt(s))
-            # xx ~ Normal(m, sqrt(s)) # this is illegal
-
             for i in 1:length(xs)
                 xs[i] ~ Normal(m, sqrt(s))
-                # for xx in xs
-                # xx ~ Normal(m, sqrt(s))
             end
             return s, m
         end
 
-        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8; adtype=adbackend))
+        gibbs = Gibbs(:s => PG(10), :m => HMC(0.4, 8))
         chain = sample(StableRNG(seed), fggibbstest(xs), gibbs, 2)
     end
 
@@ -353,7 +342,7 @@ using Turing
         )
     end
 
-    # TODO(mhauru) What is this testing? Why does it not use the looped-over adbackend?
+    # TODO(mhauru) What is this testing? Why does it use a different adbackend?
     @testset "new interface" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
@@ -382,9 +371,7 @@ using Turing
             end
         end
 
-        chain = sample(
-            StableRNG(seed), noreturn([1.5 2.0]), HMC(0.1, 10; adtype=adbackend), 4000
-        )
+        chain = sample(StableRNG(seed), noreturn([1.5 2.0]), HMC(0.1, 10), 4000)
         check_numerical(chain, [:s, :m], [49 / 24, 7 / 6])
     end
 
@@ -415,7 +402,7 @@ using Turing
     end
 
     @testset "sample" begin
-        alg = Gibbs(:m => HMC(0.2, 3; adtype=adbackend), :s => PG(10))
+        alg = Gibbs(:m => HMC(0.2, 3), :s => PG(10))
         chn = sample(StableRNG(seed), gdemo_default, alg, 10)
     end
 
@@ -427,7 +414,7 @@ using Turing
             return s, m
         end
 
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
@@ -442,7 +429,7 @@ using Turing
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        alg = HMC(0.2, 4)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -497,7 +484,7 @@ using Turing
             return s, m
         end
 
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(100)
         res = sample(StableRNG(seed), vdemo1(x), alg, 10)
 
@@ -507,12 +494,12 @@ using Turing
         end
 
         D = 2
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         res = sample(StableRNG(seed), vdemo2(randn(D, 100)), alg, 10)
 
         # Vector assumptions
         N = 10
-        alg = HMC(0.2, 4; adtype=adbackend)
+        alg = HMC(0.2, 4)
 
         @model function vdemo3()
             x = Vector{Real}(undef, N)
@@ -559,7 +546,7 @@ using Turing
 
     @testset "Type parameters" begin
         N = 10
-        alg = HMC(0.01, 5; adtype=adbackend)
+        alg = HMC(0.01, 5)
         x = randn(1000)
         @model function vdemo1(::Type{T}=Float64) where {T}
             x = Vector{T}(undef, N)
