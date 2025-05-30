@@ -194,6 +194,19 @@ if INCLUDE_MOONCAKE
     push!(ADTYPES, Turing.AutoMooncake(; config=nothing))
 end
 
+@testset verbose = true "AD / Gibbs sampling" begin
+    # Make sure that Gibbs sampling doesn't fall over when using AD.
+    @testset "adtype=$adtype" for adtype in ADTYPES
+        spl = Gibbs(
+            @varname(s) => HMC(0.1, 10; adtype=adtype),
+            @varname(m) => HMC(0.1, 10; adtype=adtype),
+        )
+        @testset "model=$(model.f)" for model in DEMO_MODELS
+            @test sample(model, spl, 2) isa Any
+        end
+    end
+end
+
 # Check that ADTypeCheckContext itself works as expected.
 @testset "ADTypeCheckContext" begin
     @model test_model() = x ~ Normal(0, 1)
@@ -286,19 +299,6 @@ end
                 ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
                 @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
             end
-        end
-    end
-end
-
-@testset verbose = true "AD / Gibbs sampling" begin
-    # Make sure that Gibbs sampling doesn't fall over when using AD.
-    @testset "adtype=$adtype" for adtype in ADTYPES
-        spl = Gibbs(
-            @varname(s) => HMC(0.1, 10; adtype=adtype),
-            @varname(m) => HMC(0.1, 10; adtype=adtype),
-        )
-        @testset "model=$(model.f)" for model in DEMO_MODELS
-            @test sample(model, spl, 2) isa Any
         end
     end
 end
