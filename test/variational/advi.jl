@@ -3,12 +3,14 @@ module AdvancedVITests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
+
 using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
 using LinearAlgebra
 using MCMCChains: Chains
-import Random
+using Random
+using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
 using Turing.Variational
@@ -38,12 +40,9 @@ using Turing.Variational
     end
 
     @testset "default interface" begin
-        Random.seed!(0)
-        N = 500
-
         for q0 in [q_meanfield_gaussian(gdemo_default), q_fullrank_gaussian(gdemo_default)]
-            _, q, _, _ = vi(gdemo_default, q0, N; show_progress=Turing.PROGRESS[])
-            c1 = rand(q, N)
+            _, q, _, _ = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[])
+            c1 = rand(q, 10)
         end
     end
 
@@ -67,7 +66,6 @@ using Turing.Variational
             AdvancedVI.DoG(),
         ),
     ]
-        Random.seed!(0)
         T = 1000
         q, q_avg, _, _ = vi(
             gdemo_default,
@@ -104,9 +102,11 @@ using Turing.Variational
             AdvancedVI.DoG(),
         ),
     ]
-        Random.seed!(0)
+        rng = StableRNG(0x517e1d9bf89bf94f)
+
         T = 1000
         q, q_avg, _, _ = vi(
+            rng,
             gdemo_default,
             q_meanfield_gaussian(gdemo_default),
             T;
@@ -116,7 +116,7 @@ using Turing.Variational
 
         N = 1000
         for q_out in [q_avg, q]
-            samples = transpose(rand(q_out, N))
+            samples = transpose(rand(rng, q_out, N))
             chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
 
             check_gdemo(chn; atol=0.5)
@@ -126,11 +126,12 @@ using Turing.Variational
     # regression test for:
     # https://github.com/TuringLang/Turing.jl/issues/2065
     @testset "simplex bijector" begin
+        rng = StableRNG(0x517e1d9bf89bf94f)
+
         @model function dirichlet()
             x ~ Dirichlet([1.0, 1.0])
             return x
         end
-        Random.seed!(0)
 
         m = dirichlet()
         b = Bijectors.bijector(m)
@@ -142,25 +143,27 @@ using Turing.Variational
         @test all(x0 .≈ x0_inv)
 
         # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
-        _, q, _, _ = vi(m, q_meanfield_gaussian(m), 1000)
-        x = rand(q, 1000)
+        _, q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000)
+        x = rand(rng, q, 1000)
         @test mean(eachcol(x)) ≈ [0.5, 0.5] atol = 0.1
     end
 
     # Ref: https://github.com/TuringLang/Turing.jl/issues/2205
     @testset "with `condition` (issue #2205)" begin
+        rng = StableRNG(0x517e1d9bf89bf94f)
+
         @model function demo_issue2205()
             x ~ Normal()
             return y ~ Normal(x, 1)
         end
 
         model = demo_issue2205() | (y=1.0,)
-        _, q, _, _ = vi(model, q_meanfield_gaussian(model), 1000)
+        _, q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000)
         # True mean.
         mean_true = 1 / 2
         var_true = 1 / 2
         # Check the mean and variance of the posterior.
-        samples = rand(q, 1000)
+        samples = rand(rng, q, 1000)
         mean_est = mean(samples)
         var_est = var(samples)
         @test mean_est ≈ mean_true atol = 0.2
