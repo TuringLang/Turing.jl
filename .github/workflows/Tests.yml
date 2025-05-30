@@ -30,10 +30,8 @@ jobs:
             args: "mcmc/Inference.jl"
           - name: "ad"
             args: "ad.jl"
-          - name: "stdlib/distributions"
-            args: "stdlib/distributions.jl"
           - name: "everything else"
-            args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl stdlib/distributions.jl"
+            args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
           # Default
           - version: '1'
