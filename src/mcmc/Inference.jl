@@ -79,85 +79,13 @@ export InferenceAlgorithm,
     predict,
     externalsampler
 
-#######################
-# Sampler abstraction #
-#######################
+include("algorithm.jl")
+
 abstract type AbstractAdapter end
-abstract type InferenceAlgorithm end
 abstract type ParticleInference <: InferenceAlgorithm end
-abstract type Hamiltonian <: InferenceAlgorithm end
-abstract type StaticHamiltonian <: Hamiltonian end
-abstract type AdaptiveHamiltonian <: Hamiltonian end
 
 include("repeat_sampler.jl")
-
-"""
-    ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
-
-Represents a sampler that is not an implementation of `InferenceAlgorithm`.
-
-The `Unconstrained` type-parameter is to indicate whether the sampler requires unconstrained space.
-
-# Fields
-$(TYPEDFIELDS)
-"""
-struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <:
-       InferenceAlgorithm
-    "the sampler to wrap"
-    sampler::S
-    "the automatic differentiation (AD) backend to use"
-    adtype::AD
-
-    """
-        ExternalSampler(sampler::AbstractSampler, adtype::ADTypes.AbstractADType, ::Val{unconstrained})
-
-    Wrap a sampler so it can be used as an inference algorithm.
-
-    # Arguments
-    - `sampler::AbstractSampler`: The sampler to wrap.
-    - `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
-    - `unconstrained::Val=Val{true}()`: Value type containing a boolean indicating whether the sampler requires unconstrained space.
-    """
-    function ExternalSampler(
-        sampler::AbstractSampler,
-        adtype::ADTypes.AbstractADType,
-        ::Val{unconstrained}=Val(true),
-    ) where {unconstrained}
-        if !(unconstrained isa Bool)
-            throw(
-                ArgumentError("Expected Val{true} or Val{false}, got Val{$unconstrained}")
-            )
-        end
-        return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
-    end
-end
-
-"""
-    requires_unconstrained_space(sampler::ExternalSampler)
-
-Return `true` if the sampler requires unconstrained space, and `false` otherwise.
-"""
-requires_unconstrained_space(
-    ::ExternalSampler{<:Any,<:Any,Unconstrained}
-) where {Unconstrained} = Unconstrained
-
-"""
-    externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
-
-Wrap a sampler so it can be used as an inference algorithm.
-
-# Arguments
-- `sampler::AbstractSampler`: The sampler to wrap.
-
-# Keyword Arguments
-- `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
-- `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
-"""
-function externalsampler(
-    sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true
-)
-    return ExternalSampler(sampler, adtype, Val(unconstrained))
-end
+include("external_sampler.jl")
 
 # TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.
 function DynamicPPL.unflatten(vi::DynamicPPL.NTVarInfo, θ::NamedTuple)
@@ -166,30 +94,6 @@ function DynamicPPL.unflatten(vi::DynamicPPL.NTVarInfo, θ::NamedTuple)
 end
 function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
     return SimpleVarInfo(θ, vi.logp, vi.transformation)
-end
-
-"""
-    Prior()
-
-Algorithm for sampling from the prior.
-"""
-struct Prior <: InferenceAlgorithm end
-
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:Prior},
-    state=nothing;
-    kwargs...,
-)
-    vi = last(
-        DynamicPPL.evaluate!!(
-            model,
-            VarInfo(),
-            SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
-        ),
-    )
-    return vi, nothing
 end
 
 """
@@ -246,93 +150,10 @@ DynamicPPL.getlogp(t::Transition) = t.lp
 # Metadata of VarInfo object
 metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 
-# TODO: Implement additional checks for certain samplers, e.g.
-# HMC not supporting discrete parameters.
-function _check_model(model::DynamicPPL.Model)
-    return DynamicPPL.check_model(model; error_on_failure=true)
-end
-function _check_model(model::DynamicPPL.Model, alg::InferenceAlgorithm)
-    return _check_model(model)
-end
-
-#########################################
-# Default definitions for the interface #
-#########################################
-
-function AbstractMCMC.sample(
-    model::AbstractModel, alg::InferenceAlgorithm, N::Integer; kwargs...
-)
-    return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::InferenceAlgorithm,
-    N::Integer;
-    check_model::Bool=true,
-    kwargs...,
-)
-    check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    model::AbstractModel,
-    alg::InferenceAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(
-        Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
-    )
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    alg::InferenceAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    check_model::Bool=true,
-    kwargs...,
-)
-    check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
-    kwargs...,
-)
-    return AbstractMCMC.mcmcsample(
-        rng,
-        model,
-        sampler,
-        ensemble,
-        N,
-        n_chains;
-        chain_type=chain_type,
-        progress=progress,
-        kwargs...,
-    )
-end
-
 ##########################
 # Chain making utilities #
 ##########################
 
-DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
 DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
 
 """
@@ -421,7 +242,10 @@ getlogevidence(transitions, sampler, state) = missing
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
-    model::AbstractModel,
+    # TODO(penelopeysm): Eventually we want this to be LDF only. However, for
+    # now, we need to keep Model inside so that it works with the unmodified
+    # samplers.
+    model_or_ldf::Union{Model,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
@@ -433,6 +257,12 @@ function AbstractMCMC.bundle_samples(
     thinning=1,
     kwargs...,
 )
+    if model_or_ldf isa LogDensityFunction
+        model = model_or_ldf.model
+    else
+        model = model_or_ldf
+    end
+
     # Convert transitions to array format.
     # Also retrieve the variable names.
     varnames, vals = _params_to_array(model, ts)
@@ -484,12 +314,20 @@ end
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
-    model::AbstractModel,
+    # TODO(penelopeysm): Eventually we want this to be LDF only. However, for
+    # now, we need to keep Model inside so that it works with the unmodified
+    # samplers.
+    model_or_ldf::Union{AbstractModel,LogDensityFunction},
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
 )
+    if model_or_ldf isa LogDensityFunction
+        model = model_or_ldf.model
+    else
+        model = model_or_ldf
+    end
     return map(ts) do t
         # Construct a dictionary of pairs `vn => value`.
         params = OrderedDict(getparams(model, t))
@@ -544,6 +382,14 @@ include("particle_mcmc.jl")
 include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
+include("prior.jl")
+
+####################################
+# Generic sample() method dispatch #
+####################################
+
+include("sample.jl")
+include("deprecated.jl")
 
 ################
 # Typing tools #
