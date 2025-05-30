@@ -284,7 +284,7 @@ This is a thin wrapper around `AdvancedVI.optimize`.
 - `operator`: Operator applied after each optimization step.
 - `adtype`: Automatic differentiation backend.
 
-See the docs of `AvancedVI.optimize` for additional keyword arguments.
+See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
 # Returns 
 - `q`: Variational distribution formed by the last iterate of the optimization run.
