@@ -12,7 +12,6 @@ import MCMCChains
 import Random
 import ReverseDiff
 using StableRNGs: StableRNG
-import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 

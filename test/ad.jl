@@ -8,13 +8,23 @@ using Random: Random
 using StableRNGs: StableRNG
 using Test
 using ..Models: gdemo_default
-import ForwardDiff, ReverseDiff, Mooncake
+import ForwardDiff, ReverseDiff
+
+# Detect if prerelease version, if so, we skip some tests
+const IS_PRERELEASE = !isempty(VERSION.prerelease)
+const INCLUDE_MOONCAKE = !IS_PRERELEASE
+
+if INCLUDE_MOONCAKE
+    import Pkg
+    Pkg.add("Mooncake")
+    using Mooncake: Mooncake
+end
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
 """A dictionary mapping ADTypes to the element types they use."""
-const eltypes_by_adtype = Dict(
+eltypes_by_adtype = Dict(
     Turing.AutoForwardDiff => (ForwardDiff.Dual,),
     Turing.AutoReverseDiff => (
         ReverseDiff.TrackedArray,
@@ -25,8 +35,10 @@ const eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
-    Turing.AutoMooncake => (Mooncake.CoDual,),
 )
+if INCLUDE_MOONCAKE
+    eltypes_by_adtype[Turing.AutoMooncake] = (Mooncake.CoDual,)
+end
 
 """
     AbstractWrongADBackendError
@@ -177,11 +189,10 @@ end
 """
 All the ADTypes on which we want to run the tests.
 """
-ADTYPES = [
-    Turing.AutoForwardDiff(),
-    Turing.AutoReverseDiff(; compile=false),
-    Turing.AutoMooncake(; config=nothing),
-]
+ADTYPES = [Turing.AutoForwardDiff(), Turing.AutoReverseDiff(; compile=false)]
+if INCLUDE_MOONCAKE
+    push!(ADTYPES, Turing.AutoMooncake(; config=nothing))
+end
 
 # Check that ADTypeCheckContext itself works as expected.
 @testset "ADTypeCheckContext" begin

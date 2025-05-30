@@ -12,7 +12,6 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-import Mooncake
 using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 

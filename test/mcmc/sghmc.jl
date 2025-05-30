@@ -10,7 +10,6 @@ import ForwardDiff
 using LinearAlgebra: dot
 import ReverseDiff
 using StableRNGs: StableRNG
-import Mooncake
 using Test: @test, @testset
 using Turing
 

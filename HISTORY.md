@@ -1,3 +1,8 @@
+# Release 0.38.4
+
+The minimum Julia version was increased to 1.10.2 (from 1.10.0).
+On versions before 1.10.2, `sample()` took an excessively long time to run (probably due to compilation).
+
 # Release 0.38.3
 
 `getparams(::Model, ::AbstractVarInfo)` now returns an empty `Float64[]` if the VarInfo contains no parameters.
