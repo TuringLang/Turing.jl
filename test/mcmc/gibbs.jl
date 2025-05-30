@@ -15,7 +15,6 @@ using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
-import Mooncake
 using StableRNGs: StableRNG
 using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
