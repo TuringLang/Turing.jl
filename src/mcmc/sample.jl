@@ -1,12 +1,3 @@
-module Sample
-
-using AbstractMCMC: AbstractMCMC, AbstractMCMCEnsemble, AbstractModel
-using DynamicPPL: DynamicPPL, Sampler, Model
-using MCMCChains: MCMCChains
-using Random: Random, AbstractRNG
-using ..Inference: Hamiltonian, InferenceAlgorithm, RepeatSampler
-using ...Turing: PROGRESS
-
 # TODO: Implement additional checks for certain samplers, e.g.
 # HMC not supporting discrete parameters.
 function _check_model(model::DynamicPPL.Model)
@@ -88,5 +79,3 @@ function AbstractMCMC.sample(
         kwargs...,
     )
 end
-
-end # module
