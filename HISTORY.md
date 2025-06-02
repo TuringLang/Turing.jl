@@ -1,3 +1,13 @@
+
+# Release 0.39
+The interface for `AdvancedVI` was updated to match v0.4 version v0.2 of `AdvancedVI`.
+The v0.4 version of `AdvancedVI` introduces various new features:
+- location-scale families with dense scale matrices,
+- parameter-free stochastic optimization algorithms like `DoG` and `DoWG`,
+- proximal operators for stable optimization,
+- the sticking-the-landing control variate for faster convergence, and
+- the score gradient estimator for non-differentiable targets.
+
 # Release 0.38.4
 
 The minimum Julia version was increased to 1.10.2 (from 1.10.0).
