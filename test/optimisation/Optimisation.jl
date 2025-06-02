@@ -1,13 +1,10 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
-using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
-using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
-using Mooncake: Mooncake
 using Random: Random
 using Optimization
 using Optimization: Optimization
@@ -622,16 +619,6 @@ using Turing
         @assert get_b[:b] == get_ab[:b]
         @assert vcat(get_a[:a], get_b[:b]) == result.values.array
         @assert get(result, :c) == (; :c => Array{Float64}[])
-    end
-
-    @testset "ADType test with $adbackend" for adbackend in ADUtils.adbackends
-        Random.seed!(222)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        maximum_likelihood(m; adtype=adbackend)
-        maximum_a_posteriori(m; adtype=adbackend)
     end
 
     @testset "Collinear coeftable" begin

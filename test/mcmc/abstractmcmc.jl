@@ -1,6 +1,5 @@
 module AbstractMCMCTests
 
-import ..ADUtils
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
@@ -12,7 +11,6 @@ using LogDensityProblems: LogDensityProblems
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
-import Mooncake
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
@@ -110,38 +108,38 @@ function test_initial_params(
     end
 end
 
-@testset "External samplers" begin
+@testset verbose = true "External samplers" begin
     @testset "AdvancedHMC.jl" begin
-        @testset "adtype=$adtype" for adtype in ADUtils.adbackends
-            @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-                # Need some functionality to initialize the sampler.
-                # TODO: Remove this once the constructors in the respective packages become "lazy".
-                sampler = initialize_nuts(model)
-                sampler_ext = DynamicPPL.Sampler(
-                    externalsampler(sampler; adtype, unconstrained=true)
-                )
-                # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
-                # @testset "initial_params" begin
-                #     test_initial_params(model, sampler_ext; n_adapts=0)
-                # end
+        @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
+            adtype = Turing.DEFAULT_ADTYPE
 
-                sample_kwargs = (
-                    n_adapts=1_000,
-                    discard_initial=1_000,
-                    # FIXME: Remove this once we can run `test_initial_params` above.
-                    initial_params=DynamicPPL.VarInfo(model)[:],
-                )
+            # Need some functionality to initialize the sampler.
+            # TODO: Remove this once the constructors in the respective packages become "lazy".
+            sampler = initialize_nuts(model)
+            sampler_ext = DynamicPPL.Sampler(
+                externalsampler(sampler; adtype, unconstrained=true)
+            )
+            # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
+            # @testset "initial_params" begin
+            #     test_initial_params(model, sampler_ext; n_adapts=0)
+            # end
 
-                @testset "inference" begin
-                    DynamicPPL.TestUtils.test_sampler(
-                        [model],
-                        sampler_ext,
-                        2_000;
-                        rtol=0.2,
-                        sampler_name="AdvancedHMC",
-                        sample_kwargs...,
-                    )
-                end
+            sample_kwargs = (
+                n_adapts=1_000,
+                discard_initial=1_000,
+                # FIXME: Remove this once we can run `test_initial_params` above.
+                initial_params=DynamicPPL.VarInfo(model)[:],
+            )
+
+            @testset "inference" begin
+                DynamicPPL.TestUtils.test_sampler(
+                    [model],
+                    sampler_ext,
+                    2_000;
+                    rtol=0.2,
+                    sampler_name="AdvancedHMC",
+                    sample_kwargs...,
+                )
             end
         end
     end

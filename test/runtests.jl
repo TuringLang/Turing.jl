@@ -9,9 +9,8 @@ import Turing
 # Fix the global Random.seed for reproducibility.
 seed!(23)
 
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
-include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
+include("test_utils/models.jl")
+include("test_utils/numerical_tests.jl")
 
 Turing.setprogress!(false)
 included_paths, excluded_paths = parse_args(ARGS)
@@ -30,12 +29,12 @@ macro timeit_include(path::AbstractString)
 end
 
 @testset "Turing" verbose = true begin
-    @testset "Test utils" begin
-        @timeit_include("test_utils/test_utils.jl")
-    end
-
     @testset "Aqua" begin
         @timeit_include("Aqua.jl")
+    end
+
+    @testset "AD" verbose = true begin
+        @timeit_include("ad.jl")
     end
 
     @testset "essential" verbose = true begin
