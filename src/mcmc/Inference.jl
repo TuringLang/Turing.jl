@@ -123,7 +123,6 @@ end
 # Default Transition #
 ######################
 # Default
-# Extended in contrib/inference/abstractmcmc.jl
 getstats(t) = nothing
 
 abstract type AbstractTransition end
@@ -359,7 +358,6 @@ end
 # Concrete algorithm implementations. #
 #######################################
 
-include("abstractmcmc.jl")
 include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
