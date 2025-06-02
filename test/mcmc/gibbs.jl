@@ -74,7 +74,7 @@ end
             target_vns = collect(target_vns)
             local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
             ctx = Turing.Inference.GibbsContext(
-                target_vns, Ref(global_varinfo), Turing.DefaultContext()
+                target_vns, Ref(global_varinfo), DynamicPPL.DefaultContext()
             )
 
             # Check that the correct varnames are conditioned, and that getting their
@@ -151,7 +151,7 @@ end
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
         state,
-        params::Turing.AbstractVarInfo,
+        params::DynamicPPL.AbstractVarInfo,
     )
         return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
     end
@@ -183,7 +183,7 @@ end
         return AbstractMCMC.step(rng, model, unwrap_sampler(sampler), args...; kwargs...)
     end
 
-    function Turing.DynamicPPL.initialstep(
+    function DynamicPPL.initialstep(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -191,7 +191,7 @@ end
         kwargs...,
     )
         capture_targets_and_algs(sampler.alg.inner, model.context)
-        return Turing.DynamicPPL.initialstep(
+        return DynamicPPL.initialstep(
             rng, model, unwrap_sampler(sampler), args...; kwargs...
         )
     end
@@ -398,7 +398,7 @@ end
             @varname(m) => RepeatSampler(PG(10), 2),
         )
         for s in (s1, s2, s3, s4, s5, s6)
-            @test DynamicPPL.alg_str(Turing.Sampler(s)) == "Gibbs"
+            @test DynamicPPL.alg_str(DynamicPPL.Sampler(s)) == "Gibbs"
         end
 
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
@@ -408,7 +408,7 @@ end
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
 
-        g = Turing.Sampler(s3)
+        g = DynamicPPL.Sampler(s3)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
@@ -493,7 +493,7 @@ end
         @nospecialize function AbstractMCMC.bundle_samples(
             samples::Vector,
             ::typeof(model),
-            ::Turing.Sampler{<:Gibbs},
+            ::DynamicPPL.Sampler{<:Gibbs},
             state,
             ::Type{MCMCChains.Chains};
             kwargs...,
