@@ -11,7 +11,7 @@ using MCMCChains: Chains
 import Random
 using Test: @test, @testset
 using Turing
-using Turing.Essential: TuringDiagMvNormal
+using DistributionsAD: TuringDiagMvNormal
 
 @testset "advi.jl" begin
     @testset "advi constructor" begin
