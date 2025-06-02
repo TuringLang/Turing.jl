@@ -1,5 +1,5 @@
 
-# Release 0.39
+# Release 0.39.0
 The interface for `AdvancedVI` was updated to match v0.4 version v0.2 of `AdvancedVI`.
 The v0.4 version of `AdvancedVI` introduces various new features:
 - location-scale families with dense scale matrices,
