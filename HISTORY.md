@@ -1,12 +1,16 @@
-
 # Release 0.39.0
-The interface for `AdvancedVI` was updated to match v0.4 version v0.2 of `AdvancedVI`.
-The v0.4 version of `AdvancedVI` introduces various new features:
-- location-scale families with dense scale matrices,
-- parameter-free stochastic optimization algorithms like `DoG` and `DoWG`,
-- proximal operators for stable optimization,
-- the sticking-the-landing control variate for faster convergence, and
-- the score gradient estimator for non-differentiable targets.
+
+Turing's variational inference interface was updated to match version 0.4 version of AdvancedVI.jl.
+
+AdvancedVI v0.4 introduces various new features:
+
+  - location-scale families with dense scale matrices,
+  - parameter-free stochastic optimization algorithms like `DoG` and `DoWG`,
+  - proximal operators for stable optimization,
+  - the sticking-the-landing control variate for faster convergence, and
+  - the score gradient estimator for non-differentiable targets.
+
+Please see the [Turing API documentation](https://turinglang.org/Turing.jl/stable/api/#Variational-inference), and [AdvancedVI's documentation](https://turinglang.org/AdvancedVI.jl/stable/), for more details.
 
 # Release 0.38.4
 
