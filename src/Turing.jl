@@ -75,7 +75,8 @@ using DynamicPPL:
     conditioned,
     @submodel,
     to_submodel,
-    LogDensityFunction
+    LogDensityFunction,
+    @addlogprob!
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
@@ -90,6 +91,7 @@ export
     to_submodel,
     prefix,
     LogDensityFunction,
+    @addlogprob!,
     # Sampling - AbstractMCMC
     sample,
     MCMCThreads,
