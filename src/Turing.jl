@@ -23,7 +23,7 @@ using Printf: Printf
 using Random: Random
 using LinearAlgebra: I
 
-using ADTypes: ADTypes
+using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
@@ -47,8 +47,6 @@ end
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("essential/Essential.jl")
-using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
@@ -57,13 +55,13 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
-include("deprecated.jl") # to be removed in the next minor version release
-
 ###########
 # Exports #
 ###########
 # `using` statements for stuff to re-export
 using DynamicPPL:
+    @model,
+    @varname,
     pointwise_loglikelihoods,
     generated_quantities,
     returned,
@@ -73,7 +71,9 @@ using DynamicPPL:
     decondition,
     fix,
     unfix,
+    prefix,
     conditioned,
+    @submodel,
     to_submodel,
     LogDensityFunction
 using StatsBase: predict

@@ -1,3 +1,10 @@
+# Release 0.39.0
+
+## Removal of Turing.Essential
+
+The Turing.Essential module has been removed.
+Anything exported from there can be imported from either `Turing` or `DynamicPPL`.
+
 # Release 0.38.4
 
 The minimum Julia version was increased to 1.10.2 (from 1.10.0).
