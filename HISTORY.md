@@ -1,6 +1,7 @@
 # Release 0.39.0
 
 ## Update to the AdvancedVI interface
+
 Turing's variational inference interface was updated to match version 0.4 version of AdvancedVI.jl.
 
 AdvancedVI v0.4 introduces various new features:
