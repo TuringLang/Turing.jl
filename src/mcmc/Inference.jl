@@ -368,11 +368,11 @@ include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
 
-####################################
-# Generic sample() method dispatch #
-####################################
+#################################################
+# Generic AbstractMCMC.sample() method dispatch #
+#################################################
 
-include("sample.jl")
+include("abstractmcmc.jl")
 
 ################
 # Typing tools #
