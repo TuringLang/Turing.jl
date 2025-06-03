@@ -369,7 +369,7 @@ include("emcee.jl")
 include("prior.jl")
 
 #################################################
-# Generic AbstractMCMC.sample() method dispatch #
+# Generic AbstractMCMC methods dispatch #
 #################################################
 
 include("abstractmcmc.jl")
