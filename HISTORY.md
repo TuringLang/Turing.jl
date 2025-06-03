@@ -1,5 +1,6 @@
 # Release 0.39.0
 
+## Update to the AdvancedVI interface
 Turing's variational inference interface was updated to match version 0.4 version of AdvancedVI.jl.
 
 AdvancedVI v0.4 introduces various new features:
@@ -11,6 +12,15 @@ AdvancedVI v0.4 introduces various new features:
   - the score gradient estimator for non-differentiable targets.
 
 Please see the [Turing API documentation](https://turinglang.org/Turing.jl/stable/api/#Variational-inference), and [AdvancedVI's documentation](https://turinglang.org/AdvancedVI.jl/stable/), for more details.
+
+## Removal of Turing.Essential
+
+The Turing.Essential module has been removed.
+Anything exported from there can be imported from either `Turing` or `DynamicPPL`.
+
+## `@addlogprob!`
+
+The `@addlogprob!` macro is now exported from Turing, making it officially part of the public interface.
 
 # Release 0.38.4
 

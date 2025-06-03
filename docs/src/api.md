@@ -42,6 +42,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `to_submodel`        | [`DynamicPPL.to_submodel`](@extref)        | Define a submodel                                                                            |
 | `prefix`             | [`DynamicPPL.prefix`](@extref)             | Prefix all variable names in a model with a given VarName                                    |
 | `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
+| `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
 
 ### Inference
 

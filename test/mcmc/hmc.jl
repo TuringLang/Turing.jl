@@ -147,7 +147,7 @@ using Turing
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
         @test isa(alg, HMCDA)
-        @test isa(sampler, Sampler{<:Turing.Hamiltonian})
+        @test isa(sampler, Sampler{<:Turing.Inference.Hamiltonian})
     end
 
     @testset "nuts inference" begin
@@ -216,7 +216,7 @@ using Turing
         @model function demo_warn_initial_params()
             x ~ Normal()
             if (attempt += 1) < 30
-                Turing.@addlogprob! -Inf
+                @addlogprob! -Inf
             end
         end
 
@@ -231,7 +231,7 @@ using Turing
     @testset "error for impossible model" begin
         @model function demo_impossible()
             x ~ Normal()
-            Turing.@addlogprob! -Inf
+            @addlogprob! -Inf
         end
 
         @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
@@ -260,7 +260,7 @@ using Turing
                 )
             catch e
                 if e isa DomainError
-                    Turing.@addlogprob! -Inf
+                    @addlogprob! -Inf
                     return nothing
                 else
                     rethrow()

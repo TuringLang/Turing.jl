@@ -1,7 +1,7 @@
 module Inference
 
-using ..Essential
 using DynamicPPL:
+    @model,
     Metadata,
     VarInfo,
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only

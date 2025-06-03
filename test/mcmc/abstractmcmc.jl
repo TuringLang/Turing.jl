@@ -6,7 +6,6 @@ using Distributions: sample
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
-using LinearAlgebra: I
 using LogDensityProblems: LogDensityProblems
 using Random: Random
 using ReverseDiff: ReverseDiff
@@ -15,7 +14,7 @@ using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
 
-function initialize_nuts(model::Turing.Model)
+function initialize_nuts(model::DynamicPPL.Model)
     # Create a linked varinfo
     vi = DynamicPPL.VarInfo(model)
     linked_vi = DynamicPPL.link!!(vi, model)
