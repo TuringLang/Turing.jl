@@ -39,8 +39,6 @@ function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
     AbstractMCMC.setprogress!(progress; silent=true)
-    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
-    AdvancedVI.turnprogress(progress)
     return progress
 end
 
@@ -118,6 +116,9 @@ export
     # Variational inference - AdvancedVI
     vi,
     ADVI,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
