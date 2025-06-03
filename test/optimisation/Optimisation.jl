@@ -647,7 +647,7 @@ using Turing
         @model function saddle_model()
             x ~ Normal(0, 1)
             y ~ Normal(x, 1)
-            Turing.@addlogprob! x^2 - y^2
+            @addlogprob! x^2 - y^2
             return nothing
         end
         m = saddle_model()
