@@ -6,6 +6,8 @@ on:
       - main
     tags: '*'
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
   # Skip intermediate builds: always.

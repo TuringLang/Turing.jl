@@ -75,6 +75,8 @@ function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG, args...; kw
     return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...; kwargs...)
 end
 
+abstract type ParticleInference <: InferenceAlgorithm end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####

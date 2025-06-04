@@ -23,6 +23,10 @@ Anything exported from there can be imported from either `Turing` or `DynamicPPL
 
 The `@addlogprob!` macro is now exported from Turing, making it officially part of the public interface.
 
+# Release 0.38.5
+
+Added compatibility with ForwardDiff v1.
+
 # Release 0.38.4
 
 The minimum Julia version was increased to 1.10.2 (from 1.10.0).

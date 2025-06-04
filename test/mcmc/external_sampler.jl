@@ -1,4 +1,4 @@
-module AbstractMCMCTests
+module ExternalSamplerTests
 
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH

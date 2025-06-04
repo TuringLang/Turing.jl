@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 # Cancel existing tests on the same PR if a new commit is added to a pull request
 concurrency:
