@@ -1,3 +1,7 @@
+abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type StaticHamiltonian <: Hamiltonian end
+abstract type AdaptiveHamiltonian <: Hamiltonian end
+
 ###
 ### Sampler states
 ###
@@ -138,6 +142,36 @@ function AbstractMCMC.sample(
     end
 end
 
+function find_initial_params(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    varinfo::DynamicPPL.AbstractVarInfo,
+    hamiltonian::AHMC.Hamiltonian;
+    max_attempts::Int=1000,
+)
+    varinfo = deepcopy(varinfo)  # Don't mutate
+
+    for attempts in 1:max_attempts
+        theta = varinfo[:]
+        z = AHMC.phasepoint(rng, theta, hamiltonian)
+        isfinite(z) && return varinfo, z
+
+        attempts == 10 &&
+            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing explicit initial parameters using the `initial_params` keyword"
+
+        # Resample and try again.
+        # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
+        varinfo = last(
+            DynamicPPL.evaluate!!(model, rng, varinfo, DynamicPPL.SampleFromUniform())
+        )
+    end
+
+    # if we failed to find valid initial parameters, error
+    return error(
+        "failed to find valid initial parameters in $(max_attempts) tries. This may indicate an error with the model or AD backend; please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+    )
+end
+
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -170,33 +204,14 @@ function DynamicPPL.initialstep(
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # Compute phase point z.
-    z = AHMC.phasepoint(rng, theta, hamiltonian)
-
     # If no initial parameters are provided, resample until the log probability
-    # and its gradient are finite.
-    if initial_params === nothing
-        init_attempt_count = 1
-        while !isfinite(z)
-            if init_attempt_count == 10
-                @warn "failed to find valid initial parameters in $(init_attempt_count) tries; consider providing explicit initial parameters using the `initial_params` keyword"
-            end
-            if init_attempt_count == 1000
-                error(
-                    "failed to find valid initial parameters in $(init_attempt_count) tries. This may indicate an error with the model or AD backend; please open an issue at https://github.com/TuringLang/Turing.jl/issues",
-                )
-            end
-
-            # NOTE: This will sample in the unconstrained space.
-            vi = last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromUniform()))
-            theta = vi[:]
-
-            hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-            z = AHMC.phasepoint(rng, theta, hamiltonian)
-
-            init_attempt_count += 1
-        end
+    # and its gradient are finite. Otherwise, just use the existing parameters.
+    vi, z = if initial_params === nothing
+        find_initial_params(rng, model, vi, hamiltonian)
+    else
+        vi, AHMC.phasepoint(rng, theta, hamiltonian)
     end
+    theta = vi[:]
 
     # Cache current log density.
     log_density_old = getlogp(vi)

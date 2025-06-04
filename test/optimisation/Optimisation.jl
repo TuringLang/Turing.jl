@@ -1,13 +1,10 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
-using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
-using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
-using Mooncake: Mooncake
 using Random: Random
 using Optimization
 using Optimization: Optimization
@@ -71,13 +68,9 @@ using Turing
         end
 
         @testset "With prefixes" begin
-            function prefix_μ(model)
-                return DynamicPPL.contextualize(
-                    model, DynamicPPL.PrefixContext{:inner}(model.context)
-                )
-            end
-            m1 = prefix_μ(model1(x))
-            m2 = prefix_μ(model2() | (var"inner.x"=x,))
+            vn = @varname(inner)
+            m1 = prefix(model1(x), vn)
+            m2 = prefix((model2() | (x=x,)), vn)
             ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
             @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
                 Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
@@ -113,6 +106,16 @@ using Turing
             @test Turing.Optimisation.OptimLogDensity(m1, prictx)([-0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), -0.3)
         end
+    end
+
+    @testset "errors on invalid model" begin
+        @model function invalid_model()
+            x ~ Normal()
+            return x ~ Beta()
+        end
+        m = invalid_model()
+        @test_throws ErrorException maximum_likelihood(m)
+        @test_throws ErrorException maximum_a_posteriori(m)
     end
 
     @testset "gdemo" begin
@@ -616,16 +619,6 @@ using Turing
         @assert get_b[:b] == get_ab[:b]
         @assert vcat(get_a[:a], get_b[:b]) == result.values.array
         @assert get(result, :c) == (; :c => Array{Float64}[])
-    end
-
-    @testset "ADType test with $adbackend" for adbackend in ADUtils.adbackends
-        Random.seed!(222)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        maximum_likelihood(m; adtype=adbackend)
-        maximum_a_posteriori(m; adtype=adbackend)
     end
 
     @testset "Collinear coeftable" begin

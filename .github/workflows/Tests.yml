@@ -5,6 +5,8 @@ on:
     branches:
       - main
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 # Cancel existing tests on the same PR if a new commit is added to a pull request
 concurrency:
@@ -26,16 +28,12 @@ jobs:
           # not included in the others.
           - name: "mcmc/gibbs"
             args: "mcmc/gibbs.jl"
-          - name: "mcmc/hmc"
-            args: "mcmc/hmc.jl"
-          - name: "mcmc/abstractmcmc"
-            args: "mcmc/abstractmcmc.jl"
           - name: "mcmc/Inference"
             args: "mcmc/Inference.jl"
-          - name: "mcmc/ess"
-            args: "mcmc/ess.jl"
+          - name: "ad"
+            args: "ad.jl"
           - name: "everything else"
-            args: "--skip mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl mcmc/ess.jl"
+            args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
           # Default
           - version: '1'

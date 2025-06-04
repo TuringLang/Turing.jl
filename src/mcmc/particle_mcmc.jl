@@ -2,6 +2,8 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+abstract type ParticleInference <: InferenceAlgorithm end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####

@@ -1,3 +1,66 @@
+# Release 0.38.4
+
+The minimum Julia version was increased to 1.10.2 (from 1.10.0).
+On versions before 1.10.2, `sample()` took an excessively long time to run (probably due to compilation).
+
+# Release 0.38.3
+
+`getparams(::Model, ::AbstractVarInfo)` now returns an empty `Float64[]` if the VarInfo contains no parameters.
+
+# Release 0.38.2
+
+Bump compat for `MCMCChains` to `7`.
+By default, summary statistics and quantiles for chains are no longer printed; to access these you should use `describe(chain)`.
+
+# Release 0.38.1
+
+The method `Bijectors.bijector(::DynamicPPL.Model)` was moved to DynamicPPL.jl.
+
+# Release 0.38.0
+
+## DynamicPPL version
+
+DynamicPPL compatibility has been bumped to 0.36.
+This brings with it a number of changes: the ones most likely to affect you are submodel prefixing and conditioning.
+Variables in submodels are now represented correctly with field accessors.
+For example:
+
+```julia
+using Turing
+@model inner() = x ~ Normal()
+@model outer() = a ~ to_submodel(inner())
+```
+
+`keys(VarInfo(outer()))` now returns `[@varname(a.x)]` instead of `[@varname(var"a.x")]`
+
+Furthermore, you can now either condition on the outer model like `outer() | (@varname(a.x) => 1.0)`, or the inner model like `inner() | (@varname(x) => 1.0)`.
+If you use the conditioned inner model as a submodel, the conditioning will still apply correctly.
+
+Please see [the DynamicPPL release notes](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.36.0) for fuller details.
+
+## Gibbs sampler
+
+Turing's Gibbs sampler now allows for more complex `VarName`s, such as `x[1]` or `x.a`, to be used.
+For example, you can now do this:
+
+```julia
+@model function f()
+    x = Vector{Float64}(undef, 2)
+    x[1] ~ Normal()
+    return x[2] ~ Normal()
+end
+sample(f(), Gibbs(@varname(x[1]) => MH(), @varname(x[2]) => MH()), 100)
+```
+
+Performance for the cases which used to previously work (i.e. `VarName`s like `x` which only consist of a single symbol) is unaffected, and `VarNames` with only field accessors (e.g. `x.a`) should be equally fast.
+It is possible that `VarNames` with indexing (e.g. `x[1]`) may be slower (although this is still an improvement over not working at all!).
+If you find any cases where you think the performance is worse than it should be, please do file an issue.
+
+# Release 0.37.1
+
+`maximum_a_posteriori` and `maximum_likelihood` now perform sanity checks on the model before running the optimisation.
+To disable this, set the keyword argument `check_model=false`.
+
 # Release 0.37.0
 
 ## Breaking changes

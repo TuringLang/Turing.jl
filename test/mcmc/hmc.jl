@@ -1,9 +1,7 @@
 module HMCTests
 
 using ..Models: gdemo_default
-using ..ADUtils: ADTypeCheckContext
 using ..NumericalTests: check_gdemo, check_numerical
-import ..ADUtils
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL, Sampler
@@ -14,12 +12,11 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-import Mooncake
 using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 
-@testset "Testing hmc.jl with $adbackend" for adbackend in ADUtils.adbackends
-    @info "Starting HMC tests with $adbackend"
+@testset verbose = true "Testing hmc.jl" begin
+    @info "Starting HMC tests"
     seed = 123
 
     @testset "constrained bounded" begin
@@ -36,7 +33,7 @@ using Turing
         chain = sample(
             StableRNG(seed),
             constrained_test(obs),
-            HMC(1.5, 3; adtype=adbackend),# using a large step size (1.5)
+            HMC(1.5, 3),# using a large step size (1.5)
             1_000,
         )
 
@@ -55,20 +52,9 @@ using Turing
             return ps
         end
 
-        chain = sample(
-            StableRNG(seed),
-            constrained_simplex_test(obs12),
-            HMC(0.75, 2; adtype=adbackend),
-            1000,
-        )
+        chain = sample(StableRNG(seed), constrained_simplex_test(obs12), HMC(0.75, 2), 1000)
 
         check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
-    end
-
-    @testset "hmc reverse diff" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        res = sample(StableRNG(seed), gdemo_default, alg, 4_000)
-        check_gdemo(res; rtol=0.1)
     end
 
     # Test the sampling of a matrix-value distribution.
@@ -78,7 +64,7 @@ using Turing
         model_f = hmcmatrixsup()
         n_samples = 1_000
 
-        chain = sample(StableRNG(24), model_f, HMC(0.15, 7; adtype=adbackend), n_samples)
+        chain = sample(StableRNG(24), model_f, HMC(0.15, 7), n_samples)
         # Reshape the chain into an array of 2x2 matrices, one per sample. Then compute
         # the average of the samples, as a matrix
         r = reshape(Array(chain), n_samples, 2, 2)
@@ -132,11 +118,11 @@ using Turing
         end
 
         # Sampling
-        chain = sample(StableRNG(seed), bnn(ts), HMC(0.1, 5; adtype=adbackend), 10)
+        chain = sample(StableRNG(seed), bnn(ts), HMC(0.1, 5), 10)
     end
 
     @testset "hmcda inference" begin
-        alg1 = HMCDA(500, 0.8, 0.015; adtype=adbackend)
+        alg1 = HMCDA(500, 0.8, 0.015)
         res1 = sample(StableRNG(seed), gdemo_default, alg1, 3_000)
         check_gdemo(res1)
     end
@@ -146,19 +132,17 @@ using Turing
     # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
         Random.seed!(12345)
-        alg = Gibbs(
-            :s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05, adtype=adbackend)
-        )
+        alg = Gibbs(:s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05))
         res = sample(StableRNG(123), gdemo_default, alg, 3000; discard_initial=1000)
         check_gdemo(res)
     end
 
     @testset "hmcda constructor" begin
-        alg = HMCDA(0.8, 0.75; adtype=adbackend)
+        alg = HMCDA(0.8, 0.75)
         sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
-        alg = HMCDA(200, 0.8, 0.75; adtype=adbackend)
+        alg = HMCDA(200, 0.8, 0.75)
         sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "HMCDA"
 
@@ -167,23 +151,23 @@ using Turing
     end
 
     @testset "nuts inference" begin
-        alg = NUTS(1000, 0.8; adtype=adbackend)
+        alg = NUTS(1000, 0.8)
         res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
     end
 
     @testset "nuts constructor" begin
-        alg = NUTS(200, 0.65; adtype=adbackend)
+        alg = NUTS(200, 0.65)
         sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
 
-        alg = NUTS(0.65; adtype=adbackend)
+        alg = NUTS(0.65)
         sampler = Sampler(alg)
         @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
     @testset "check discard" begin
-        alg = NUTS(100, 0.8; adtype=adbackend)
+        alg = NUTS(100, 0.8)
 
         c1 = sample(StableRNG(seed), gdemo_default, alg, 500; discard_adapt=true)
         c2 = sample(StableRNG(seed), gdemo_default, alg, 500; discard_adapt=false)
@@ -193,9 +177,9 @@ using Turing
     end
 
     @testset "AHMC resize" begin
-        alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65; adtype=adbackend))
-        alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3; adtype=adbackend))
-        alg3 = Gibbs(:m => PG(10), :s => HMCDA(100, 0.65, 0.3; adtype=adbackend))
+        alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65))
+        alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3))
+        alg3 = Gibbs(:m => PG(10), :s => HMCDA(100, 0.65, 0.3))
         @test sample(StableRNG(seed), gdemo_default, alg1, 10) isa Chains
         @test sample(StableRNG(seed), gdemo_default, alg2, 10) isa Chains
         @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains
@@ -203,7 +187,7 @@ using Turing
 
     # issue #1923
     @testset "reproducibility" begin
-        alg = NUTS(1000, 0.8; adtype=adbackend)
+        alg = NUTS(1000, 0.8)
         res1 = sample(StableRNG(seed), gdemo_default, alg, 10)
         res2 = sample(StableRNG(seed), gdemo_default, alg, 10)
         res3 = sample(StableRNG(seed), gdemo_default, alg, 10)
@@ -211,20 +195,20 @@ using Turing
     end
 
     @testset "prior" begin
+        # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
+        # which means that it's _very_ difficult to find a good tolerance in the test below:)
+        prior_dist = truncated(Normal(3, 1); lower=0)
+
         @model function demo_hmc_prior()
-            # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
-            # which means that it's _very_ difficult to find a good tolerance in the test below:)
-            s ~ truncated(Normal(3, 1); lower=0)
+            s ~ prior_dist
             return m ~ Normal(0, sqrt(s))
         end
-        alg = NUTS(1000, 0.8; adtype=adbackend)
+        alg = NUTS(1000, 0.8)
         gdemo_default_prior = DynamicPPL.contextualize(
             demo_hmc_prior(), DynamicPPL.PriorContext()
         )
         chain = sample(gdemo_default_prior, alg, 5_000; initial_params=[3.0, 0.0])
-        check_numerical(
-            chain, [:s, :m], [mean(truncated(Normal(3, 1); lower=0)), 0]; atol=0.2
-        )
+        check_numerical(chain, [:s, :m], [mean(prior_dist), 0]; atol=0.2)
     end
 
     @testset "warning for difficult init params" begin
@@ -240,7 +224,7 @@ using Turing
             :warn,
             "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `initial_params` keyword",
         ) (:info,) match_mode = :any begin
-            sample(demo_warn_initial_params(), NUTS(; adtype=adbackend), 5)
+            sample(demo_warn_initial_params(), NUTS(), 5)
         end
     end
 
@@ -250,7 +234,7 @@ using Turing
             Turing.@addlogprob! -Inf
         end
 
-        @test_throws ErrorException sample(demo_impossible(), NUTS(; adtype=adbackend), 5)
+        @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
     end
 
     @testset "(partially) issue: #2095" begin
@@ -292,8 +276,8 @@ using Turing
 
         # Extract the `x` like this because running `generated_quantities` was how
         # the issue was discovered, hence we also want to make sure that it works.
-        results = generated_quantities(model, chain)
-        results_prior = generated_quantities(model, chain_prior)
+        results = returned(model, chain)
+        results_prior = returned(model, chain_prior)
 
         # Make sure none of the samples in the chains resulted in errors.
         @test all(!isnothing, results)
@@ -314,15 +298,6 @@ using Turing
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
         end
-    end
-
-    @testset "Check ADType" begin
-        alg = HMC(0.1, 10; adtype=adbackend)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        # These will error if the adbackend being used is not the one set.
-        sample(StableRNG(seed), m, alg, 10)
     end
 end
 

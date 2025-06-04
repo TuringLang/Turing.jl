@@ -246,6 +246,7 @@ end
     ]
     return expr
 end
+_val_tuple(::VarInfo, ::Tuple{}) = ()
 
 @generated function _dist_tuple(
     props::NamedTuple{propnames}, vi::VarInfo, vns::NamedTuple{names}
@@ -267,6 +268,7 @@ end
     ]
     return expr
 end
+_dist_tuple(::@NamedTuple{}, ::VarInfo, ::Tuple{}) = ()
 
 # Utility functions to link
 should_link(varinfo, sampler, proposal) = false

@@ -6,6 +6,8 @@ on:
       - main
     tags: '*'
   pull_request:
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
   # Skip intermediate builds: always.
@@ -15,7 +17,7 @@ concurrency:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   docs:
