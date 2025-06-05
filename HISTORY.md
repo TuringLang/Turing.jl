@@ -27,8 +27,6 @@ The `@addlogprob!` macro is now exported from Turing, making it officially part 
 
 Added compatibility with AdvancedHMC 0.8.
 
-> > > > > > > main
-
 # Release 0.38.5
 
 Added compatibility with ForwardDiff v1.
