@@ -1,3 +1,7 @@
+# Release 0.38.6
+
+Added compatibility with AdvancedHMC 0.8.
+
 # Release 0.38.5
 
 Added compatibility with ForwardDiff v1.
