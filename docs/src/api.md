@@ -42,6 +42,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `to_submodel`        | [`DynamicPPL.to_submodel`](@extref)        | Define a submodel                                                                            |
 | `prefix`             | [`DynamicPPL.prefix`](@extref)             | Prefix all variable names in a model with a given VarName                                    |
 | `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
+| `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
 
 ### Inference
 
@@ -76,12 +77,14 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Variational inference
 
-See the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a walkthrough on how to use these.
+See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) for detailed usage and the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a basic walkthrough.
 
-| Exported symbol | Documentation                | Description                             |
-|:--------------- |:---------------------------- |:--------------------------------------- |
-| `vi`            | [`AdvancedVI.vi`](@extref)   | Perform variational inference           |
-| `ADVI`          | [`AdvancedVI.ADVI`](@extref) | Construct an instance of a VI algorithm |
+| Exported symbol        | Documentation                                     | Description                                                                              |
+|:---------------------- |:------------------------------------------------- |:---------------------------------------------------------------------------------------- |
+| `vi`                   | [`Turing.vi`](@ref)                               | Perform variational inference                                                            |
+| `q_locationscale`      | [`Turing.Variational.q_locationscale`](@ref)      | Find a numerically non-degenerate initialization for a location-scale variational family |
+| `q_meanfield_gaussian` | [`Turing.Variational.q_meanfield_gaussian`](@ref) | Find a numerically non-degenerate initialization for a mean-field Gaussian family        |
+| `q_fullrank_gaussian`  | [`Turing.Variational.q_fullrank_gaussian`](@ref)  | Find a numerically non-degenerate initialization for a full-rank Gaussian family         |
 
 ### Automatic differentiation types
 

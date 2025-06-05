@@ -23,8 +23,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "API" => "api.md",
-        "Submodule APIs" =>
-            ["Inference" => "api/Inference.md", "Optimisation" => "api/Optimisation.md"],
+        "Submodule APIs" => [
+            "Inference" => "api/Inference.md",
+            "Optimisation" => "api/Optimisation.md",
+            "Variational " => "api/Variational.md",
+        ],
     ],
     checkdocs=:exports,
     doctest=false,
