@@ -1,3 +1,11 @@
+# Release 0.38.6
+
+Added compatibility with AdvancedHMC 0.8.
+
+# Release 0.38.5
+
+Added compatibility with ForwardDiff v1.
+
 # Release 0.38.4
 
 The minimum Julia version was increased to 1.10.2 (from 1.10.0).
