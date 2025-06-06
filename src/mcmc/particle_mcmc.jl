@@ -25,9 +25,8 @@ function TracedModel(
             "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
         )
     end
-    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
-        model, sampler, varinfo, (model.f, args...)
-    )
+    evaluator = (model.f, args...)
+    return TracedModel(model, sampler, varinfo, evaluator)
 end
 
 function AdvancedPS.advance!(
@@ -71,8 +70,10 @@ function AdvancedPS.update_rng!(
     return trace
 end
 
-function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG, args...; kwargs...) # RNG ?
-    return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...; kwargs...)
+function Libtask.TapedTask(taped_globals, model::TracedModel, args...; kwargs...) # RNG ?
+    return Libtask.TapedTask(
+        taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
+    )
 end
 
 abstract type ParticleInference <: InferenceAlgorithm end
@@ -402,11 +403,11 @@ end
 
 function trace_local_varinfo_maybe(varinfo)
     try
-        trace = AdvancedPS.current_trace()
-        return trace.model.f.varinfo
+        trace = Libtask.get_taped_globals(Any).other
+        return (trace === nothing ? varinfo : trace.model.f.varinfo)::AbstractVarInfo
     catch e
         # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
+        if e == KeyError(:task_variable)
             return varinfo
         else
             rethrow(e)
@@ -416,11 +417,10 @@ end
 
 function trace_local_rng_maybe(rng::Random.AbstractRNG)
     try
-        trace = AdvancedPS.current_trace()
-        return trace.rng
+        return Libtask.get_taped_globals(Any).rng
     catch e
         # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
+        if e == KeyError(:task_variable)
             return rng
         else
             rethrow(e)
@@ -485,6 +485,6 @@ function AdvancedPS.Trace(
 
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
-    AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
+    AdvancedPS.addreference!(newtrace.model.ctask, newtrace)
     return newtrace
 end
