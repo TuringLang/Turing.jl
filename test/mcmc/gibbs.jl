@@ -141,8 +141,9 @@ end
         inner::Alg
     end
 
-    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
-        DynamicPPL.Sampler(sampler.alg.inner)
+    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) = DynamicPPL.Sampler(
+        sampler.alg.inner
+    )
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
@@ -201,7 +202,7 @@ end
     end
 
     # A test model that includes several different kinds of tilde syntax.
-    @model function test_model(val, ::Type{M}=Vector{Float64}) where {M}
+    @model function test_model(val, (::Type{M})=Vector{Float64}) where {M}
         s ~ Normal(0.1, 0.2)
         m ~ Poisson()
         val ~ Normal(s, 1)
@@ -517,9 +518,9 @@ end
         # When b=1: two parameters θ₁, θ₂ where we observe their sum
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
-            
+
             if b == 0
-                θ = Vector{Float64}(undef, 1) 
+                θ = Vector{Float64}(undef, 1)
                 θ[1] ~ Normal(0.0, 1.0)
                 y_obs ~ Normal(θ[1], 0.5)
             else
@@ -533,25 +534,28 @@ end
         # Run the sampler - focus on testing that it works rather than exact convergence
         model = dynamic_bernoulli_normal(2.0)
         chn = sample(
-            StableRNG(42), model, Gibbs(:b => MH(), :θ => HMC(0.1, 10)), 1000;
-            discard_initial=500
+            StableRNG(42),
+            model,
+            Gibbs(:b => MH(), :θ => HMC(0.1, 10)),
+            1000;
+            discard_initial=500,
         )
-        
+
         # Test that sampling completes without error
         @test size(chn, 1) == 1000
-        
+
         # Test that both states are explored (basic functionality test)
         b_samples = chn[:b]
         unique_b_values = unique(skipmissing(b_samples))
         @test length(unique_b_values) >= 1  # At least one value should be sampled
-        
+
         # Test that θ[1] values are reasonable when they exist
         theta1_samples = collect(skipmissing(chn[:, Symbol("θ[1]"), 1]))
         if length(theta1_samples) > 0
             @test all(isfinite, theta1_samples)  # All samples should be finite
             @test std(theta1_samples) > 0.1     # Should show some variation
         end
-        
+
         # Test that when b=0, only θ[1] exists, and when b=1, both θ[1] and θ[2] exist
         theta2_col_exists = Symbol("θ[2]") in names(chn)
         if theta2_col_exists
@@ -559,7 +563,7 @@ end
             # θ[2] should have some missing values (when b=0) and some non-missing (when b=1)
             n_missing_theta2 = sum(ismissing.(theta2_samples))
             n_present_theta2 = sum(.!ismissing.(theta2_samples))
-            
+
             # At least some θ[2] values should be missing (corresponding to b=0 states)
             # This is a basic structural test - we're not testing exact analytical results
             @test n_missing_theta2 > 0 || n_present_theta2 > 0  # One of these should be true
@@ -596,7 +600,7 @@ end
 
     @testset "dynamic model with dot tilde" begin
         @model function dynamic_model_with_dot_tilde(
-            num_zs=10, ::Type{M}=Vector{Float64}
+            num_zs=10, (::Type{M})=Vector{Float64}
         ) where {M}
             z = Vector{Int}(undef, num_zs)
             z .~ Poisson(1.0)
@@ -742,7 +746,7 @@ end
         struct Wrap{T}
             a::T
         end
-        @model function model1(::Type{T}=Float64) where {T}
+        @model function model1((::Type{T})=Float64) where {T}
             x = Vector{T}(undef, 1)
             x[1] ~ Normal()
             y = Wrap{T}(0.0)

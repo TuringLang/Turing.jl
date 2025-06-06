@@ -107,9 +107,8 @@ using Turing
             w13 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
             bo ~ Normal(0, var_prior)
 
-            wo ~ MvNormal(
-                [0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
-            )
+            wo ~
+            MvNormal([0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior])
             for i in rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)
@@ -238,7 +237,7 @@ using Turing
     end
 
     @testset "(partially) issue: #2095" begin
-        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+        @model function vector_of_dirichlet((::Type{TV})=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
             xs[1] ~ Dirichlet(ones(5))
             return xs[2] ~ Dirichlet(ones(5))

@@ -3,7 +3,7 @@ using Turing, Test
 N = 5
 alg = HMC(0.2, 4)
 
-@model function vdemo(::Type{T}=Float64) where {T}
+@model function vdemo((::Type{T})=Float64) where {T}
     v = Vector{Matrix{T}}(undef, N)
     @. v ~ Wishart(7, [1 0.5; 0.5 1])
 end
