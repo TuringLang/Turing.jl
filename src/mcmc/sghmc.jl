@@ -45,50 +45,37 @@ function SGHMC(;
     return SGHMC(_learning_rate, _momentum_decay, adtype)
 end
 
-struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
-    logdensity::L
+struct SGHMCState{V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
     vi::V
     velocity::T
 end
 
-function DynamicPPL.initialstep(
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:SGHMC},
-    vi::AbstractVarInfo;
+    ldf::DynamicPPL.LogDensityFunction,
+    spl::Sampler{<:SGHMC};
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi)
-        vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
-    end
+    vi = ldf.varinfo
 
     # Compute initial sample and state.
-    sample = Transition(model, vi)
-    ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
-    )
-    state = SGHMCState(ℓ, vi, zero(vi[:]))
+    sample = Transition(ldf.model, vi)
+    state = SGHMCState(vi, zero(vi[:]))
 
     return sample, state
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
+    ldf::DynamicPPL.LogDensityFunction,
     spl::Sampler{<:SGHMC},
     state::SGHMCState;
     kwargs...,
 )
     # Compute gradient of log density.
-    ℓ = state.logdensity
     vi = state.vi
     θ = vi[:]
-    grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
+    grad = last(LogDensityProblems.logdensity_and_gradient(ldf, θ))
 
     # Update latent variables and velocity according to
     # equation (15) of Chen et al. (2014)
@@ -100,11 +87,11 @@ function AbstractMCMC.step(
 
     # Save new variables and recompute log density.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    vi = last(DynamicPPL.evaluate!!(ldf.model, vi, DynamicPPL.SamplingContext(rng, spl)))
 
     # Compute next sample and state.
-    sample = Transition(model, vi)
-    newstate = SGHMCState(ℓ, vi, newv)
+    sample = Transition(ldf.model, vi)
+    newstate = SGHMCState(vi, newv)
 
     return sample, newstate
 end
@@ -208,57 +195,45 @@ metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
 
 DynamicPPL.getlogp(t::SGLDTransition) = t.lp
 
-struct SGLDState{L,V<:AbstractVarInfo}
-    logdensity::L
+struct SGLDState{V<:AbstractVarInfo}
     vi::V
     step::Int
 end
 
-function DynamicPPL.initialstep(
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:SGLD},
-    vi::AbstractVarInfo;
+    ldf::DynamicPPL.LogDensityFunction,
+    spl::Sampler{<:SGLD};
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi)
-        vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
-    end
-
     # Create first sample and state.
-    sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
-    ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
-    )
-    state = SGLDState(ℓ, vi, 1)
-
+    vi = ldf.varinfo
+    sample = SGLDTransition(ldf.model, vi, zero(spl.alg.stepsize(0)))
+    state = SGLDState(vi, 1)
     return sample, state
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:SGLD}, state::SGLDState; kwargs...
+    rng::Random.AbstractRNG,
+    ldf::LogDensityFunction,
+    spl::Sampler{<:SGLD},
+    state::SGLDState;
+    kwargs...,
 )
     # Perform gradient step.
-    ℓ = state.logdensity
     vi = state.vi
     θ = vi[:]
-    grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
+    grad = last(LogDensityProblems.logdensity_and_gradient(ldf, θ))
     step = state.step
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
     # Save new variables and recompute log density.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    vi = last(DynamicPPL.evaluate!!(ldf.model, vi, DynamicPPL.SamplingContext(rng, spl)))
 
     # Compute next sample and state.
-    sample = SGLDTransition(model, vi, stepsize)
-    newstate = SGLDState(ℓ, vi, state.step + 1)
-
+    sample = SGLDTransition(ldf.model, vi, stepsize)
+    newstate = SGLDState(vi, state.step + 1)
     return sample, newstate
 end
