@@ -265,13 +265,19 @@ function AbstractMCMC.sample(
     model::Model,
     spl::Sampler{<:LDFCompatibleAlgorithm},
     N::Integer;
+    check_model::Bool=true,
     kwargs...,
 )
+    # Annoying: Need to run check_model before initialise_varinfo so that
+    # errors in the model are caught gracefully (as initialise_varinfo also
+    # runs the model and will throw ugly errors if the model is incorrect).
+    check_model && DynamicPPL.check_model(model; error_on_failure=true)
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
     ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
-    return AbstractMCMC.sample(rng, ldf, spl, N; kwargs...)
+    # No need to run check_model again
+    return AbstractMCMC.sample(rng, ldf, spl, N; kwargs..., check_model=false)
 end
 
 function AbstractMCMC.sample(
@@ -357,13 +363,21 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
+    check_model::Bool=true,
     kwargs...,
 )
+    # Annoying: Need to run check_model before initialise_varinfo so that
+    # errors in the model are caught gracefully (as initialise_varinfo also
+    # runs the model and will throw ugly errors if the model is incorrect).
+    check_model && DynamicPPL.check_model(model; error_on_failure=true)
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
     ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
-    return AbstractMCMC.sample(rng, ldf, spl, ensemble, N, n_chains; kwargs...)
+    # No need to run check_model again
+    return AbstractMCMC.sample(
+        rng, ldf, spl, ensemble, N, n_chains; kwargs..., check_model=false
+    )
 end
 
 ########################################################
