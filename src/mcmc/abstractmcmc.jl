@@ -1,12 +1,3 @@
-# TODO: Implement additional checks for certain samplers, e.g.
-# HMC not supporting discrete parameters.
-function _check_model(model::DynamicPPL.Model)
-    return DynamicPPL.check_model(model; error_on_failure=true)
-end
-function _check_model(model::DynamicPPL.Model, alg::InferenceAlgorithm)
-    return _check_model(model)
-end
-
 #########################################
 # Default definitions for the interface #
 #########################################
@@ -25,7 +16,7 @@ function AbstractMCMC.sample(
     check_model::Bool=true,
     kwargs...,
 )
-    check_model && _check_model(model, alg)
+    check_model && DynamicPPL.check_model(model)
     return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
 end
 
@@ -52,7 +43,7 @@ function AbstractMCMC.sample(
     check_model::Bool=true,
     kwargs...,
 )
-    check_model && _check_model(model, alg)
+    check_model && DynamicPPL.check_model(model)
     return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
 end
 
