@@ -193,10 +193,10 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
-    reset_num_produce!(vi)
-    set_retained_vns_del!(vi)
-    resetlogp!!(vi)
-    empty!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
+    DynamicPPL.resetlogp!!(vi)
+    DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -327,9 +327,9 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo before new sweep
-    reset_num_produce!(vi)
-    set_retained_vns_del!(vi)
-    resetlogp!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
+    DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -359,14 +359,14 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    reset_num_produce!(vi)
-    resetlogp!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    set_retained_vns_del!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -429,11 +429,7 @@ function trace_local_rng_maybe(rng::Random.AbstractRNG)
 end
 
 function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:Union{PG,SMC}},
-    dist::Distribution,
-    vn::VarName,
-    _vi::AbstractVarInfo,
+    rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, _vi::AbstractVarInfo
 )
     vi = trace_local_varinfo_maybe(_vi)
     trng = trace_local_rng_maybe(rng)
@@ -441,11 +437,11 @@ function DynamicPPL.assume(
     if ~haskey(vi, vn)
         r = rand(trng, dist)
         push!!(vi, vn, r, dist)
-    elseif is_flagged(vi, vn, "del")
-        unset_flag!(vi, vn, "del") # Reference particle parent
+    elseif DynamicPPL.is_flagged(vi, vn, "del")
+        DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)
         vi[vn] = DynamicPPL.tovec(r)
-        setorder!(vi, vn, get_num_produce(vi))
+        DynamicPPL.setorder!(vi, vn, DynamicPPL.get_num_produce(vi))
     else
         r = vi[vn]
     end

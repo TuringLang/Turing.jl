@@ -289,7 +289,7 @@ end
 
 function maybe_link!!(varinfo, sampler, proposal, model)
     return if should_link(varinfo, sampler, proposal)
-        link!!(varinfo, model)
+        DynamicPPL.link!!(varinfo, model)
     else
         varinfo
     end
