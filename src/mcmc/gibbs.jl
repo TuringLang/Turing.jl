@@ -124,7 +124,7 @@ function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
 end
 
 function is_target_varname(ctx::GibbsContext, vn::VarName)
-    return any(Base.Fix2(subsumes, vn), ctx.target_varnames)
+    return any(Base.Fix2(AbstractPPL.subsumes, vn), ctx.target_varnames)
 end
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
@@ -660,7 +660,7 @@ function gibbs_step_recursive(
 
     # Construct the conditional model and the varinfo that this sampler should use.
     conditioned_model, context = make_conditional(model, varnames, global_vi)
-    vi = subset(global_vi, varnames)
+    vi = DynamicPPL.subset(global_vi, varnames)
     vi = match_linking!!(vi, state, model)
 
     # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not

@@ -1,6 +1,43 @@
+# InferenceAlgorithm interface
+
 abstract type Hamiltonian <: InferenceAlgorithm end
+
+DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
+requires_unconstrained_space(::Hamiltonian) = true
+# TODO(penelopeysm): This is really quite dangerous code because it implicitly
+# assumes that any concrete type that subtypes `Hamiltonian` has an adtype
+# field.
+get_adtype(alg::Hamiltonian) = alg.adtype
+
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
+
+function update_sample_kwargs(alg::AdaptiveHamiltonian, N::Integer, kwargs)
+    resume_from = get(kwargs, :resume_from, nothing)
+    nadapts = get(kwargs, :nadapts, alg.n_adapts)
+    discard_adapt = get(kwargs, :discard_adapt, true)
+    discard_initial = get(kwargs, :discard_initial, -1)
+
+    return if resume_from === nothing
+        # If `nadapts` is `-1`, then the user called a convenience constructor
+        # like `NUTS()` or `NUTS(0.65)`, and we should set a default for them.
+        if nadapts == -1
+            _nadapts = min(1000, N ÷ 2)  # Default to 1000 if not specified
+        else
+            _nadapts = nadapts
+        end
+        # If `discard_initial` is `-1`, then users did not specify the keyword argument.
+        if discard_initial == -1
+            _discard_initial = discard_adapt ? _nadapts : 0
+        else
+            _discard_initial = discard_initial
+        end
+
+        (nadapts=_nadapts, discard_initial=_discard_initial, kwargs...)
+    else
+        (nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
+    end
+end
 
 ###
 ### Sampler states
@@ -80,68 +117,6 @@ function HMC(
     return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
-DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
-
-# Handle setting `nadapts` and `discard_initial`
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:AdaptiveHamiltonian},
-    N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
-    nadapts=sampler.alg.n_adapts,
-    discard_adapt=true,
-    discard_initial=-1,
-    kwargs...,
-)
-    if resume_from === nothing
-        # If `nadapts` is `-1`, then the user called a convenience
-        # constructor like `NUTS()` or `NUTS(0.65)`,
-        # and we should set a default for them.
-        if nadapts == -1
-            _nadapts = min(1000, N ÷ 2)
-        else
-            _nadapts = nadapts
-        end
-
-        # If `discard_initial` is `-1`, then users did not specify the keyword argument.
-        if discard_initial == -1
-            _discard_initial = discard_adapt ? _nadapts : 0
-        else
-            _discard_initial = discard_initial
-        end
-
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            progress=progress,
-            nadapts=_nadapts,
-            discard_initial=_discard_initial,
-            kwargs...,
-        )
-    else
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            initial_state=initial_state,
-            progress=progress,
-            nadapts=0,
-            discard_adapt=false,
-            discard_initial=0,
-            kwargs...,
-        )
-    end
-end
-
 function find_initial_params(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -172,34 +147,24 @@ function find_initial_params(
     )
 end
 
-function DynamicPPL.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:Hamiltonian},
-    vi_original::AbstractVarInfo;
+    ldf::LogDensityFunction,
+    spl::Sampler{<:Hamiltonian};
     initial_params=nothing,
     nadapts=0,
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = DynamicPPL.link(vi_original, model)
+    ldf.adtype === nothing &&
+        error("Hamiltonian sampler received a LogDensityFunction without an AD backend")
 
-    # Extract parameters.
-    theta = vi[:]
+    theta = ldf.varinfo[:]
+
+    has_initial_params = initial_params !== nothing
 
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
-    )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
@@ -207,9 +172,9 @@ function DynamicPPL.initialstep(
     # If no initial parameters are provided, resample until the log probability
     # and its gradient are finite. Otherwise, just use the existing parameters.
     vi, z = if initial_params === nothing
-        find_initial_params(rng, model, vi, hamiltonian)
+        find_initial_params(rng, ldf.model, ldf.varinfo, hamiltonian)
     else
-        vi, AHMC.phasepoint(rng, theta, hamiltonian)
+        ldf.varinfo, AHMC.phasepoint(rng, theta, hamiltonian)
     end
     theta = vi[:]
 
@@ -248,7 +213,7 @@ function DynamicPPL.initialstep(
         vi = setlogp!!(vi, log_density_old)
     end
 
-    transition = Transition(model, vi, t)
+    transition = Transition(ldf.model, vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
 
     return transition, state
@@ -256,15 +221,12 @@ end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
+    ldf::LogDensityFunction,
     spl::Sampler{<:Hamiltonian},
     state::HMCState;
     nadapts=0,
     kwargs...,
 )
-    # Get step size
-    @debug "current ϵ" getstepsize(spl, state)
-
     # Compute transition.
     hamiltonian = state.hamiltonian
     z = state.z
@@ -294,13 +256,15 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = Transition(model, vi, t)
+    transition = Transition(ldf.model, vi, t)
     newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
 
     return transition, newstate
 end
 
 function get_hamiltonian(model, spl, vi, state, n)
+    # TODO(penelopeysm): This is used by the Gibbs sampler, we can
+    # simplify it to use LDF when Gibbs is reworked
     metric = gen_metric(n, spl, state)
     ldf = DynamicPPL.LogDensityFunction(
         model,
@@ -467,9 +431,9 @@ function NUTS(; kwargs...)
     return NUTS(-1, 0.65; kwargs...)
 end
 
-for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any,metricT}) where {metricT} = metricT
-end
+getmetricT(::HMC{<:Any,metricT}) where {metricT} = metricT
+getmetricT(::HMCDA{<:Any,metricT}) where {metricT} = metricT
+getmetricT(::NUTS{<:Any,metricT}) where {metricT} = metricT
 
 #####
 ##### HMC core functions
