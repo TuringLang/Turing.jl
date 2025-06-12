@@ -1,9 +1,13 @@
 module Inference
 
 using DynamicPPL:
+    DynamicPPL,
     @model,
     Metadata,
     VarInfo,
+    LogDensityFunction,
+    SimpleVarInfo,
+    AbstractVarInfo,
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
     # implemented for NTVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
     # or implement it for other VarInfo types and export it from DPPL.
@@ -24,6 +28,7 @@ using DynamicPPL:
     DefaultContext,
     PriorContext,
     LikelihoodContext,
+    SamplingContext,
     set_flag!,
     unset_flag!
 using Distributions, Libtask, Bijectors
@@ -32,14 +37,14 @@ using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
-using DynamicPPL
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
-using DataStructures: OrderedSet
+using DataStructures: OrderedSet, OrderedDict
 using Accessors: Accessors
 
 import ADTypes
 import AbstractMCMC
+import AbstractPPL
 import AdvancedHMC
 const AHMC = AdvancedHMC
 import AdvancedMH
@@ -74,8 +79,6 @@ export InferenceAlgorithm,
     PG,
     RepeatSampler,
     Prior,
-    assume,
-    observe,
     predict,
     externalsampler
 
