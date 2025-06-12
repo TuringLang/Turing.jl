@@ -1,3 +1,7 @@
+# Release 0.40.0
+
+[...]
+
 # Release 0.39.1
 
 No changes from 0.39.0 — this patch is released just to re-trigger a Documenter.jl run.
