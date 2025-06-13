@@ -74,7 +74,7 @@ end
             target_vns = collect(target_vns)
             local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
             ctx = Turing.Inference.GibbsContext(
-                target_vns, Ref(global_varinfo), Turing.DefaultContext()
+                target_vns, Ref(global_varinfo), DynamicPPL.DefaultContext()
             )
 
             # Check that the correct varnames are conditioned, and that getting their
@@ -151,7 +151,7 @@ end
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
         state,
-        params::Turing.AbstractVarInfo,
+        params::DynamicPPL.AbstractVarInfo,
     )
         return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
     end
@@ -183,7 +183,7 @@ end
         return AbstractMCMC.step(rng, model, unwrap_sampler(sampler), args...; kwargs...)
     end
 
-    function Turing.DynamicPPL.initialstep(
+    function DynamicPPL.initialstep(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         sampler::DynamicPPL.Sampler{<:AlgWrapper},
@@ -191,7 +191,7 @@ end
         kwargs...,
     )
         capture_targets_and_algs(sampler.alg.inner, model.context)
-        return Turing.DynamicPPL.initialstep(
+        return DynamicPPL.initialstep(
             rng, model, unwrap_sampler(sampler), args...; kwargs...
         )
     end
@@ -398,7 +398,7 @@ end
             @varname(m) => RepeatSampler(PG(10), 2),
         )
         for s in (s1, s2, s3, s4, s5, s6)
-            @test DynamicPPL.alg_str(Turing.Sampler(s)) == "Gibbs"
+            @test DynamicPPL.alg_str(DynamicPPL.Sampler(s)) == "Gibbs"
         end
 
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
@@ -408,7 +408,7 @@ end
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
 
-        g = Turing.Sampler(s3)
+        g = DynamicPPL.Sampler(s3)
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
@@ -493,7 +493,7 @@ end
         @nospecialize function AbstractMCMC.bundle_samples(
             samples::Vector,
             ::typeof(model),
-            ::Turing.Sampler{<:Gibbs},
+            ::DynamicPPL.Sampler{<:Gibbs},
             state,
             ::Type{MCMCChains.Chains};
             kwargs...,
@@ -594,11 +594,11 @@ end
         @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             vns = DynamicPPL.TestUtils.varnames(model)
             samplers = [
-                Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
-                Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
-                Turing.Gibbs(@varname(s) => NUTS(), @varname(m) => ESS()),
-                Turing.Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
-                Turing.Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
+                Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
+                Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
+                Gibbs(@varname(s) => NUTS(), @varname(m) => ESS()),
+                Gibbs(@varname(s) => HMC(0.01, 4), @varname(m) => MH()),
+                Gibbs(@varname(s) => MH(), @varname(m) => HMC(0.01, 4)),
             ]
 
             @testset "$sampler" for sampler in samplers
@@ -634,7 +634,7 @@ end
 
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)
-                sampler = Turing.Gibbs(@varname(s) => hmc, @varname(m) => hmc)
+                sampler = Gibbs(@varname(s) => hmc, @varname(m) => hmc)
                 Random.seed!(42)
                 chain = sample(
                     model,
@@ -685,7 +685,7 @@ end
         @testset "with both `s` and `m` as random" begin
             model = gdemo(1.5, 2.0)
             vns = (@varname(s), @varname(m))
-            alg = Turing.Gibbs(vns => MH())
+            alg = Gibbs(vns => MH())
 
             # `step`
             transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
@@ -706,7 +706,7 @@ end
         @testset "without `m` as random" begin
             model = gdemo(1.5, 2.0) | (m=7 / 6,)
             vns = (@varname(s),)
-            alg = Turing.Gibbs(vns => MH())
+            alg = Gibbs(vns => MH())
 
             # `step`
             transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
@@ -756,7 +756,7 @@ end
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
-        alg = Turing.Gibbs(
+        alg = Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
             @varname(mu1) => ESS(),
             @varname(mu2) => ESS(),
@@ -788,9 +788,7 @@ end
     @testset "CSMC + ESS (usage of implicit varname)" begin
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
-        alg = Turing.Gibbs(
-            @varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS()
-        )
+        alg = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
         vns = (
             @varname(z[1]),
             @varname(z[2]),
@@ -836,9 +834,7 @@ end
             ),
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
-            sampler = Turing.Gibbs(
-                @varname(m1) => sampler_inner, @varname(m2) => sampler_inner
-            )
+            sampler = Gibbs(@varname(m1) => sampler_inner, @varname(m2) => sampler_inner)
             Random.seed!(42)
             chain = sample(
                 model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0

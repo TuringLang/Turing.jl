@@ -25,8 +25,8 @@ const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Ration
 
 """A dictionary mapping ADTypes to the element types they use."""
 eltypes_by_adtype = Dict(
-    Turing.AutoForwardDiff => (ForwardDiff.Dual,),
-    Turing.AutoReverseDiff => (
+    AutoForwardDiff => (ForwardDiff.Dual,),
+    AutoReverseDiff => (
         ReverseDiff.TrackedArray,
         ReverseDiff.TrackedMatrix,
         ReverseDiff.TrackedReal,
@@ -37,7 +37,7 @@ eltypes_by_adtype = Dict(
     ),
 )
 if INCLUDE_MOONCAKE
-    eltypes_by_adtype[Turing.AutoMooncake] = (Mooncake.CoDual,)
+    eltypes_by_adtype[AutoMooncake] = (Mooncake.CoDual,)
 end
 
 """
@@ -189,9 +189,9 @@ end
 """
 All the ADTypes on which we want to run the tests.
 """
-ADTYPES = [Turing.AutoForwardDiff(), Turing.AutoReverseDiff(; compile=false)]
+ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false)]
 if INCLUDE_MOONCAKE
-    push!(ADTYPES, Turing.AutoMooncake(; config=nothing))
+    push!(ADTYPES, AutoMooncake(; config=nothing))
 end
 
 # Check that ADTypeCheckContext itself works as expected.
@@ -199,12 +199,12 @@ end
     @model test_model() = x ~ Normal(0, 1)
     tm = test_model()
     adtypes = (
-        Turing.AutoForwardDiff(),
-        Turing.AutoReverseDiff(),
+        AutoForwardDiff(),
+        AutoReverseDiff(),
         # Don't need to test Mooncake as it doesn't use tracer types
     )
     for actual_adtype in adtypes
-        sampler = Turing.HMC(0.1, 5; adtype=actual_adtype)
+        sampler = HMC(0.1, 5; adtype=actual_adtype)
         for expected_adtype in adtypes
             contextualised_tm = DynamicPPL.contextualize(
                 tm, ADTypeCheckContext(expected_adtype, tm.context)
@@ -212,9 +212,9 @@ end
             @testset "Expected: $expected_adtype, Actual: $actual_adtype" begin
                 if actual_adtype == expected_adtype
                     # Check that this does not throw an error.
-                    Turing.sample(contextualised_tm, sampler, 2)
+                    sample(contextualised_tm, sampler, 2)
                 else
-                    @test_throws AbstractWrongADBackendError Turing.sample(
+                    @test_throws AbstractWrongADBackendError sample(
                         contextualised_tm, sampler, 2
                     )
                 end
