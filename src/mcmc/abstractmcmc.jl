@@ -44,11 +44,13 @@ const LDFCompatibleSampler = Union{Sampler{<:LDFCompatibleAlgorithm}}
         kwargs...
     )
 
-Perform MCMC sampling on the given `model` or `ldf` using the specified `alg`, for `N` iterations.
+Perform MCMC sampling on the given `model` or `ldf` using the specified `alg`,
+for `N` iterations.
 
 If a `DynamicPPL.Model` is passed as the `model` argument, it will be converted
 into a `DynamicPPL.LogDensityFunction` internally, which is then used for
-sampling.
+sampling. If necessary, the AD backend used for sampling will be inferred from
+the sampler.
 
 A `LogDensityFunction` contains both a model as well as a `VarInfo` object. In
 the case where a `DynamicPPL.Model` is passed, the associated `varinfo` is
@@ -56,6 +58,11 @@ created using the `initialise_varinfo` function; by default, this generates a
 `DynamicPPL.VarInfo{<:NamedTuple}` object (i.e. a 'typed VarInfo'). If you need
 to customise the type of VarInfo used during sampling, you can construct a
 `LogDensityFunction` yourself and pass it to this method.
+
+If you are passing an `ldf::LogDensityFunction` to a gradient-based sampler,
+`ldf.adtype` must be set to an `AbstractADType` (using the constructor
+`LogDensityFunction(model, varinfo; adtype=adtype)`). Any `adtype` information
+in the sampler will be ignored, in favour of the one in the `ldf`.
 
 For a list of typical keyword arguments to `sample`, please see
 https://turinglang.org/AbstractMCMC.jl/stable/api/#Common-keyword-arguments.
