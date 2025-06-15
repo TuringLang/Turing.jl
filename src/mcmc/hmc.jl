@@ -33,9 +33,11 @@ function update_sample_kwargs(alg::AdaptiveHamiltonian, N::Integer, kwargs)
             _discard_initial = discard_initial
         end
 
-        (nadapts=_nadapts, discard_initial=_discard_initial, kwargs...)
+        # Have to put kwargs first so that the later keyword arguments
+        # override anything that's already inside it.
+        (kwargs..., nadapts=_nadapts, discard_initial=_discard_initial)
     else
-        (nadapts=0, discard_adapt=false, discard_initial=0, kwargs...)
+        (kwargs..., nadapts=0, discard_adapt=false, discard_initial=0)
     end
 end
 

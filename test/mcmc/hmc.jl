@@ -20,6 +20,162 @@ using Turing
     @info "Starting HMC tests"
     seed = 123
 
+    @testset "InferenceAlgorithm interface" begin
+        # Check that the various Hamiltonian samplers implement the
+        # Turing.Inference.InferenceAlgorithm interface correctly.
+        algs = [HMC(0.1, 3), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
+
+        @testset "get_adtype" begin
+            # Default
+            for alg in algs
+                @test Turing.Inference.get_adtype(alg) == Turing.DEFAULT_ADTYPE
+            end
+            # Manual
+            for adtype in (AutoReverseDiff(), AutoMooncake(; config=nothing))
+                alg1 = HMC(0.1, 3; adtype=adtype)
+                alg2 = HMCDA(0.8, 0.75; adtype=adtype)
+                alg3 = NUTS(0.5; adtype=adtype)
+                @test Turing.Inference.get_adtype(alg1) == adtype
+                @test Turing.Inference.get_adtype(alg2) == adtype
+                @test Turing.Inference.get_adtype(alg3) == adtype
+            end
+        end
+
+        @testset "requires_unconstrained_space" begin
+            # Hamiltonian samplers always need it
+            for alg in algs
+                @test Turing.Inference.requires_unconstrained_space(alg)
+            end
+        end
+
+        @testset "update_sample_kwargs" begin
+            # Static Hamiltonian
+            static_alg = HMC(0.1, 3)
+            # Adaptive Hamiltonian, where the number of adaptations is
+            # explicitly specified (here 200)
+            adaptive_alg_explicit_nadapts = HMCDA(200, 0.8, 0.75)
+            # Adaptive Hamiltonian, where the number of adaptations is
+            # implicit
+            adaptive_alg_implicit_nadapts = NUTS(0.5)
+
+            # chain length
+            N = 1000
+
+            # convenience function to check NamedTuple equality up to ordering, i.e.
+            # we want (a=1, b=2) to be equal to (b=2, a=1)
+            nt_eq(nt1, nt2) = Dict(pairs(nt1)) == Dict(pairs(nt2))
+
+            # We don't test every single possibility of keyword arguments here,
+            # just some typical cases that reflect common usage.
+
+            # Case 1: no relevant kwargs. The adaptive algorithms need to add
+            # in the number of adaptations and set discard_initial equal to
+            # that. The static algorithm does not need to do anything.
+            kwargs = (; _foo="bar")
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(static_alg, N, kwargs), kwargs
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_explicit_nadapts, N, kwargs
+                ),
+                (nadapts=200, discard_initial=200, _foo="bar"),
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_implicit_nadapts, N, kwargs
+                ),
+                # by default the adaptive algorithm takes N / 2 adaptations, or
+                # 1000, whichever is smaller. In this case since N = 1000, we
+                # expect the number of adaptations to be 500.
+                (nadapts=500, discard_initial=500, _foo="bar"),
+            )
+
+            # Case 2: When resuming from an earlier chain. In this case, no
+            # adaptation is needed.
+            chn = Chains([1.0], [:a])
+            kwargs = (; resume_from=chn)
+            kwargs_without_adapts = (
+                nadapts=0, discard_initial=0, discard_adapt=false, resume_from=chn
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(static_alg, N, kwargs), kwargs
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_explicit_nadapts, N, kwargs
+                ),
+                kwargs_without_adapts,
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_implicit_nadapts, N, kwargs
+                ),
+                kwargs_without_adapts,
+            )
+
+            # Case 3: user manually specifies number of adaptations.
+            kwargs = (; nadapts=500)
+            kwargs_with_adapts = (nadapts=500, discard_initial=500)
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(static_alg, N, kwargs), kwargs
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_explicit_nadapts, N, kwargs
+                ),
+                kwargs_with_adapts,
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_implicit_nadapts, N, kwargs
+                ),
+                kwargs_with_adapts,
+            )
+
+            # Case 4: user wants to keep the adaptations
+            kwargs = (; discard_adapt=false)
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(static_alg, N, kwargs), kwargs
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_explicit_nadapts, N, kwargs
+                ),
+                (nadapts=200, discard_initial=0, discard_adapt=false),
+            )
+            @test nt_eq(
+                Turing.Inference.update_sample_kwargs(
+                    adaptive_alg_implicit_nadapts, N, kwargs
+                ),
+                (nadapts=500, discard_initial=0, discard_adapt=false),
+            )
+        end
+    end
+
+    @testset "sample() interface" begin
+        @model function demo_normal(x)
+            a ~ Normal()
+            return x ~ Normal(a)
+        end
+        model = demo_normal(2.0)
+        # note: passing LDF to a Hamiltonian sampler requires explicit adtype
+        ldf = LogDensityFunction(model; adtype=AutoForwardDiff())
+        sampling_objects = Dict("DynamicPPL.Model" => model, "LogDensityFunction" => ldf)
+        algs = [HMC(0.1, 3), HMCDA(0.8, 0.75), NUTS(0.5)]
+        seed = 468
+        @testset "sampling with $name" for (name, model_or_ldf) in sampling_objects
+            @testset "$alg" for alg in algs
+                # check sampling works without rng
+                @test sample(model_or_ldf, alg, 5) isa Chains
+                # check reproducibility with rng
+                chn1 = sample(Random.Xoshiro(seed), model_or_ldf, alg, 5)
+                chn2 = sample(Random.Xoshiro(seed), model_or_ldf, alg, 5)
+                @test mean(chn1[:a]) == mean(chn2[:a])
+            end
+        end
+    end
+
     @testset "constrained bounded" begin
         obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
 
