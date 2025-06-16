@@ -282,7 +282,8 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
-    ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
+    ctx = SamplingContext(rng, spl)
+    ldf = LogDensityFunction(model, vi, ctx; adtype=get_adtype(spl))
     # No need to run check_model again
     return AbstractMCMC.sample(rng, ldf, spl, N; kwargs..., check_model=false)
 end
@@ -380,7 +381,8 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
-    ldf = LogDensityFunction(model, vi; adtype=get_adtype(spl))
+    ctx = SamplingContext(rng, spl)
+    ldf = LogDensityFunction(model, vi, ctx; adtype=get_adtype(spl))
     # No need to run check_model again
     return AbstractMCMC.sample(
         rng, ldf, spl, ensemble, N, n_chains; kwargs..., check_model=false
