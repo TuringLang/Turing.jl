@@ -79,6 +79,20 @@ function AbstractMCMC.sample(
     initial_state=DynamicPPL.loadstate(resume_from),
     kwargs...,
 )
+    # LDF needs to be set with SamplingContext, or else samplers cannot
+    # overload the tilde-pipeline.
+    if !(ldf.context isa SamplingContext)
+        ldf = LogDensityFunction(
+            ldf.model, ldf.varinfo, SamplingContext(rng, spl); adtype=ldf.adtype
+        )
+    end
+    # Note that, in particular, sampling can mutate the variables in the LDF's
+    # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
+    # ldf.varinfo)`. Furthermore, the first call to `AbstractMCMC.step` assumes
+    # that the parameters in the LDF are the initial parameters. So, we need to
+    # deepcopy the LDF here to ensure that sample(rng, ldf, ...) is
+    # reproducible.
+    ldf = deepcopy(ldf)
     # TODO: Right now, only generic checks are run. We could in principle
     # specialise this to check for e.g. discrete variables with HMC
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
@@ -144,6 +158,20 @@ function AbstractMCMC.sample(
     initial_state=DynamicPPL.loadstate(resume_from),
     kwargs...,
 )
+    # LDF needs to be set with SamplingContext, or else samplers cannot
+    # overload the tilde-pipeline.
+    if !(ldf.context isa SamplingContext)
+        ldf = LogDensityFunction(
+            ldf.model, ldf.varinfo, SamplingContext(rng, spl); adtype=ldf.adtype
+        )
+    end
+    # Note that, in particular, sampling can mutate the variables in the LDF's
+    # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
+    # ldf.varinfo)`. Furthermore, the first call to `AbstractMCMC.step` assumes
+    # that the parameters in the LDF are the initial parameters. So, we need to
+    # deepcopy the LDF here to ensure that sample(rng, ldf, ...) is
+    # reproducible.
+    ldf = deepcopy(ldf)
     # TODO: Right now, only generic checks are run. We could in principle
     # specialise this to check for e.g. discrete variables with HMC
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
