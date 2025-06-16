@@ -1,8 +1,8 @@
-# InferenceAlgorithm interface
+# AbstractSampler interface for Turing
 
-abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type Hamiltonian <: AbstractMCMC.AbstractSampler end
 
-DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
+DynamicPPL.initialsampler(::Hamiltonian) = DynamicPPL.SampleFromUniform()
 requires_unconstrained_space(::Hamiltonian) = true
 # TODO(penelopeysm): This is really quite dangerous code because it implicitly
 # assumes that any concrete type that subtypes `Hamiltonian` has an adtype
@@ -152,7 +152,7 @@ end
 function AbstractMCMC.step(
     rng::AbstractRNG,
     ldf::LogDensityFunction,
-    spl::Sampler{<:Hamiltonian};
+    spl::Hamiltonian;
     initial_params=nothing,
     nadapts=0,
     kwargs...,
@@ -165,7 +165,7 @@ function AbstractMCMC.step(
     has_initial_params = initial_params !== nothing
 
     # Create a Hamiltonian.
-    metricT = getmetricT(spl.alg)
+    metricT = getmetricT(spl)
     metric = metricT(length(theta))
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -184,23 +184,23 @@ function AbstractMCMC.step(
     log_density_old = getlogp(vi)
 
     # Find good eps if not provided one
-    if iszero(spl.alg.ϵ)
+    if iszero(spl.ϵ)
         ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)
         @info "Found initial step size" ϵ
     else
-        ϵ = spl.alg.ϵ
+        ϵ = spl.ϵ
     end
 
     # Generate a kernel.
-    kernel = make_ahmc_kernel(spl.alg, ϵ)
+    kernel = make_ahmc_kernel(spl, ϵ)
 
     # Create initial transition and state.
     # Already perform one step since otherwise we don't get any statistics.
     t = AHMC.transition(rng, hamiltonian, kernel, z)
 
     # Adaptation
-    adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
-    if spl.alg isa AdaptiveHamiltonian
+    adaptor = AHMCAdaptor(spl, hamiltonian.metric; ϵ=ϵ)
+    if spl isa AdaptiveHamiltonian
         hamiltonian, kernel, _ = AHMC.adapt!(
             hamiltonian, kernel, adaptor, 1, nadapts, t.z.θ, t.stat.acceptance_rate
         )
@@ -224,7 +224,7 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     ldf::LogDensityFunction,
-    spl::Sampler{<:Hamiltonian},
+    spl::Hamiltonian,
     state::HMCState;
     nadapts=0,
     kwargs...,
@@ -236,7 +236,7 @@ function AbstractMCMC.step(
 
     # Adaptation
     i = state.i + 1
-    if spl.alg isa AdaptiveHamiltonian
+    if spl isa AdaptiveHamiltonian
         hamiltonian, kernel, _ = AHMC.adapt!(
             hamiltonian,
             state.kernel,
@@ -276,7 +276,7 @@ function get_hamiltonian(model, spl, vi, state, n)
         # using leafcontext(model.context) so could we just remove the argument
         # entirely?)
         DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
+        adtype=spl.adtype,
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -441,17 +441,17 @@ getmetricT(::NUTS{<:Any,metricT}) where {metricT} = metricT
 ##### HMC core functions
 #####
 
-getstepsize(sampler::Sampler{<:Hamiltonian}, state) = sampler.alg.ϵ
-getstepsize(sampler::Sampler{<:AdaptiveHamiltonian}, state) = AHMC.getϵ(state.adaptor)
+getstepsize(sampler::Hamiltonian, state) = sampler.ϵ
+getstepsize(sampler::AdaptiveHamiltonian, state) = AHMC.getϵ(state.adaptor)
 function getstepsize(
-    sampler::Sampler{<:AdaptiveHamiltonian},
+    sampler::AdaptiveHamiltonian,
     state::HMCState{TV,TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
 ) where {TV,TKernel,THam,PhType}
     return state.kernel.τ.integrator.ϵ
 end
 
-gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
-function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
+gen_metric(dim::Int, spl::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
+function gen_metric(dim::Int, spl::AdaptiveHamiltonian, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
 
@@ -476,13 +476,11 @@ end
 ####
 #### Compiler interface, i.e. tilde operators.
 ####
-function DynamicPPL.assume(
-    rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
-)
+function DynamicPPL.assume(rng, ::Hamiltonian, dist::Distribution, vn::VarName, vi)
     return DynamicPPL.assume(dist, vn, vi)
 end
 
-function DynamicPPL.observe(::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
+function DynamicPPL.observe(::Hamiltonian, d::Distribution, value, vi)
     return DynamicPPL.observe(d, value, vi)
 end
 

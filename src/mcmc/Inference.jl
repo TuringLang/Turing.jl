@@ -248,7 +248,7 @@ getlogevidence(transitions, sampler, state) = missing
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model_or_ldf::Union{DynamicPPL.Model,DynamicPPL.LogDensityFunction},
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::AbstractSampler,
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -316,7 +316,7 @@ end
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
     model_or_ldf::Union{DynamicPPL.Model,DynamicPPL.LogDensityFunction},
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::AbstractSampler,
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,

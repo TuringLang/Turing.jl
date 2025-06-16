@@ -245,18 +245,18 @@ end
     # the tilde-pipeline and thus change the code executed during model
     # evaluation.
     @testset "adtype=$adtype" for adtype in ADTYPES
-        @testset "alg=$alg" for alg in [
+        @testset "spl=$spl" for spl in [
             HMC(0.1, 10; adtype=adtype),
             HMCDA(0.8, 0.75; adtype=adtype),
             NUTS(1000, 0.8; adtype=adtype),
             SGHMC(; learning_rate=0.02, momentum_decay=0.5, adtype=adtype),
             SGLD(; stepsize=PolynomialStepsize(0.25), adtype=adtype),
         ]
-            @info "Testing AD for $alg"
+            @info "Testing AD for $spl"
 
             @testset "model=$(model.f)" for model in DEMO_MODELS
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                ctx = DynamicPPL.SamplingContext(rng, spl)
                 @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
             end
         end
@@ -283,7 +283,7 @@ end
                     model, varnames, deepcopy(global_vi)
                 )
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
+                ctx = DynamicPPL.SamplingContext(rng, HMC(0.1, 10))
                 @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
             end
         end

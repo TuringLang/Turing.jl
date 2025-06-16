@@ -22,11 +22,7 @@
 # Because this is a pain to implement all at once, we do it for one sampler at a time.
 # This type tells us which samplers have been 'updated' to the new interface.
 
-# TODO: Eventually, we want to broaden this to InferenceAlgorithm
-const LDFCompatibleAlgorithm = Union{Hamiltonian}
-# TODO: Eventually, we want to broaden this to
-# Union{Sampler{<:InferenceAlgorithm},RepeatSampler}.
-const LDFCompatibleSampler = Union{Sampler{<:LDFCompatibleAlgorithm}}
+const LDFCompatibleSampler = Union{Hamiltonian}
 
 """
     sample(
@@ -251,54 +247,20 @@ end
 ### Everything below this is boring boilerplate for the new interface. ###
 ##########################################################################
 
-function AbstractMCMC.sample(
-    model::Model, alg::LDFCompatibleAlgorithm, N::Integer; kwargs...
-)
-    return AbstractMCMC.sample(Random.default_rng(), model, alg, N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    ldf::LogDensityFunction, alg::LDFCompatibleAlgorithm, N::Integer; kwargs...
-)
-    return AbstractMCMC.sample(Random.default_rng(), ldf, alg, N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    model::Model, spl::Sampler{<:LDFCompatibleAlgorithm}, N::Integer; kwargs...
-)
+function AbstractMCMC.sample(model::Model, spl::LDFCompatibleSampler, N::Integer; kwargs...)
     return AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
-    ldf::LogDensityFunction, spl::Sampler{<:LDFCompatibleAlgorithm}, N::Integer; kwargs...
+    ldf::LogDensityFunction, spl::LDFCompatibleSampler, N::Integer; kwargs...
 )
     return AbstractMCMC.sample(Random.default_rng(), ldf, spl, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
     rng::Random.AbstractRNG,
-    ldf::LogDensityFunction,
-    alg::LDFCompatibleAlgorithm,
-    N::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(rng, ldf, Sampler(alg), N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
     model::Model,
-    alg::LDFCompatibleAlgorithm,
-    N::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:LDFCompatibleAlgorithm},
+    spl::LDFCompatibleSampler,
     N::Integer;
     check_model::Bool=true,
     kwargs...,
@@ -318,33 +280,7 @@ end
 
 function AbstractMCMC.sample(
     model::Model,
-    alg::LDFCompatibleAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(
-        Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
-    )
-end
-
-function AbstractMCMC.sample(
-    ldf::LogDensityFunction,
-    alg::LDFCompatibleAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(
-        Random.default_rng(), ldf, alg, ensemble, N, n_chains; kwargs...
-    )
-end
-
-function AbstractMCMC.sample(
-    model::Model,
-    spl::Sampler{<:LDFCompatibleAlgorithm},
+    spl::LDFCompatibleSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -357,7 +293,7 @@ end
 
 function AbstractMCMC.sample(
     ldf::LogDensityFunction,
-    spl::Sampler{<:LDFCompatibleAlgorithm},
+    spl::LDFCompatibleSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
@@ -366,30 +302,6 @@ function AbstractMCMC.sample(
     return AbstractMCMC.sample(
         Random.default_rng(), ldf, spl, ensemble, N, n_chains; kwargs...
     )
-end
-
-function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
-    ldf::LogDensityFunction,
-    alg::LDFCompatibleAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(rng, ldf, Sampler(alg), ensemble, N, n_chains; kwargs...)
-end
-
-function AbstractMCMC.sample(
-    rng::Random.AbstractRNG,
-    model::Model,
-    alg::LDFCompatibleAlgorithm,
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    kwargs...,
-)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
 end
 
 function AbstractMCMC.sample(
