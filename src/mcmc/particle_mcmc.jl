@@ -2,6 +2,79 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+### AdvancedPS models and interface
+
+struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
+       AdvancedPS.AbstractGenericModel
+    model::M
+    sampler::S
+    varinfo::V
+    evaluator::E
+end
+
+function TracedModel(
+    model::Model,
+    sampler::AbstractSampler,
+    varinfo::AbstractVarInfo,
+    rng::Random.AbstractRNG,
+)
+    context = SamplingContext(rng, sampler, DefaultContext())
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    if kwargs !== nothing && !isempty(kwargs)
+        error(
+            "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
+        )
+    end
+    return TracedModel{AbstractSampler,AbstractVarInfo,Model,Tuple}(
+        model, sampler, varinfo, (model.f, args...)
+    )
+end
+
+function AdvancedPS.advance!(
+    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
+)
+    # Make sure we load/reset the rng in the new replaying mechanism
+    DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
+    isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
+    score = consume(trace.model.ctask)
+    if score === nothing
+        return nothing
+    else
+        return score + DynamicPPL.getlogp(trace.model.f.varinfo)
+    end
+end
+
+function AdvancedPS.delete_retained!(trace::TracedModel)
+    DynamicPPL.set_retained_vns_del!(trace.varinfo)
+    return trace
+end
+
+function AdvancedPS.reset_model(trace::TracedModel)
+    DynamicPPL.reset_num_produce!(trace.varinfo)
+    return trace
+end
+
+function AdvancedPS.reset_logprob!(trace::TracedModel)
+    DynamicPPL.resetlogp!!(trace.model.varinfo)
+    return trace
+end
+
+function AdvancedPS.update_rng!(
+    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}
+)
+    # Extract the `args`.
+    args = trace.model.ctask.args
+    # From `args`, extract the `SamplingContext`, which contains the RNG.
+    sampling_context = args[3]
+    rng = sampling_context.rng
+    trace.rng = rng
+    return trace
+end
+
+function Libtask.TapedTask(model::TracedModel, ::Random.AbstractRNG, args...; kwargs...) # RNG ?
+    return Libtask.TapedTask(model.evaluator[1], model.evaluator[2:end]...; kwargs...)
+end
+
 abstract type ParticleInference <: InferenceAlgorithm end
 
 ####
@@ -120,10 +193,10 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
-    reset_num_produce!(vi)
-    set_retained_vns_del!(vi)
-    resetlogp!!(vi)
-    empty!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
+    DynamicPPL.resetlogp!!(vi)
+    DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -254,9 +327,9 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo before new sweep
-    reset_num_produce!(vi)
-    set_retained_vns_del!(vi)
-    resetlogp!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
+    DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -286,14 +359,14 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    reset_num_produce!(vi)
-    resetlogp!!(vi)
+    DynamicPPL.reset_num_produce!(vi)
+    DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    set_retained_vns_del!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -356,11 +429,7 @@ function trace_local_rng_maybe(rng::Random.AbstractRNG)
 end
 
 function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:Union{PG,SMC}},
-    dist::Distribution,
-    vn::VarName,
-    _vi::AbstractVarInfo,
+    rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, _vi::AbstractVarInfo
 )
     vi = trace_local_varinfo_maybe(_vi)
     trng = trace_local_rng_maybe(rng)
@@ -368,11 +437,11 @@ function DynamicPPL.assume(
     if ~haskey(vi, vn)
         r = rand(trng, dist)
         push!!(vi, vn, r, dist)
-    elseif is_flagged(vi, vn, "del")
-        unset_flag!(vi, vn, "del") # Reference particle parent
+    elseif DynamicPPL.is_flagged(vi, vn, "del")
+        DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)
         vi[vn] = DynamicPPL.tovec(r)
-        setorder!(vi, vn, get_num_produce(vi))
+        DynamicPPL.setorder!(vi, vn, DynamicPPL.get_num_produce(vi))
     else
         r = vi[vn]
     end
@@ -410,7 +479,7 @@ function AdvancedPS.Trace(
     newvarinfo = deepcopy(varinfo)
     DynamicPPL.reset_num_produce!(newvarinfo)
 
-    tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
+    tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
     AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
     return newtrace

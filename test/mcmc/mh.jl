@@ -118,7 +118,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         model = M(zeros(2), I, 1)
         sampler = Inference.Sampler(MH())
 
-        dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
+        dt, vt = Inference.dist_val_tuple(sampler, DynamicPPL.VarInfo(model))
 
         @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
         @test dt[:m] isa

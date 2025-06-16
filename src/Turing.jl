@@ -23,7 +23,7 @@ using Printf: Printf
 using Random: Random
 using LinearAlgebra: I
 
-using ADTypes: ADTypes
+using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
@@ -39,16 +39,12 @@ function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
     AbstractMCMC.setprogress!(progress; silent=true)
-    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
-    AdvancedVI.turnprogress(progress)
     return progress
 end
 
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("essential/Essential.jl")
-using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
@@ -57,13 +53,13 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
-include("deprecated.jl") # to be removed in the next minor version release
-
 ###########
 # Exports #
 ###########
 # `using` statements for stuff to re-export
 using DynamicPPL:
+    @model,
+    @varname,
     pointwise_loglikelihoods,
     generated_quantities,
     returned,
@@ -73,9 +69,12 @@ using DynamicPPL:
     decondition,
     fix,
     unfix,
+    prefix,
     conditioned,
+    @submodel,
     to_submodel,
-    LogDensityFunction
+    LogDensityFunction,
+    @addlogprob!
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
@@ -90,6 +89,7 @@ export
     to_submodel,
     prefix,
     LogDensityFunction,
+    @addlogprob!,
     # Sampling - AbstractMCMC
     sample,
     MCMCThreads,
@@ -116,6 +116,9 @@ export
     # Variational inference - AdvancedVI
     vi,
     ADVI,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
