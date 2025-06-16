@@ -20,22 +20,26 @@ Mean
 │ 1   │ m          │ 0.824853 │
 ```
 """
-struct ESS <: InferenceAlgorithm end
+struct ESS <: AbstractSampler end
+
+DynamicPPL.initialsampler(::ESS) = DynamicPPL.SampleFromPrior()
+update_sample_kwargs(::ESS, ::Integer, kwargs) = kwargs
+get_adtype(::ESS) = nothing
+requires_unconstrained_space(::ESS) = false
 
 # always accept in the first step
-function DynamicPPL.initialstep(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
-)
+function AbstractMCMC.step(rng::AbstractRNG, ldf::LogDensityFunction, spl::ESS; kwargs...)
+    vi = ldf.varinfo
     for vn in keys(vi)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    return Transition(model, vi), vi
+    return Transition(ldf.model, vi), vi
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG, ldf::LogDensityFunction, spl::ESS, vi::AbstractVarInfo; kwargs...
 )
     # obtain previous sample
     f = vi[:]
@@ -45,14 +49,13 @@ function AbstractMCMC.step(
     oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi), nothing)
 
     # compute next state
+    # Note: `f_loglikelihood` effectively calculates the log-likelihood (not
+    # log-joint, despite the use of `LDP.logdensity`) because `tilde_assume` is
+    # overloaded on `SamplingContext(rng, ESS(), ...)` below.
+    f_loglikelihood = Base.Fix1(LogDensityProblems.logdensity, ldf)
     sample, state = AbstractMCMC.step(
         rng,
-        EllipticalSliceSampling.ESSModel(
-            ESSPrior(model, spl, vi),
-            DynamicPPL.LogDensityFunction(
-                model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
-            ),
-        ),
+        EllipticalSliceSampling.ESSModel(ESSPrior(ldf.model, spl, vi), f_loglikelihood),
         EllipticalSliceSampling.ESS(),
         oldstate,
     )
@@ -61,19 +64,19 @@ function AbstractMCMC.step(
     vi = DynamicPPL.unflatten(vi, sample)
     vi = setlogp!!(vi, state.loglikelihood)
 
-    return Transition(model, vi), vi
+    return Transition(ldf.model, vi), vi
 end
 
 # Prior distribution of considered random variable
-struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
+struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
     model::M
-    sampler::S
+    sampler::ESS
     varinfo::V
     μ::T
 
-    function ESSPrior{M,S,V}(
-        model::M, sampler::S, varinfo::V
-    ) where {M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo}
+    function ESSPrior{M,V}(
+        model::M, sampler::ESS, varinfo::V
+    ) where {M<:Model,V<:AbstractVarInfo}
         vns = keys(varinfo)
         μ = mapreduce(vcat, vns) do vn
             dist = getdist(varinfo, vn)
@@ -81,12 +84,12 @@ struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
                 error("[ESS] only supports Gaussian prior distributions")
             DynamicPPL.tovec(mean(dist))
         end
-        return new{M,S,V,typeof(μ)}(model, sampler, varinfo, μ)
+        return new{M,V,typeof(μ)}(model, sampler, varinfo, μ)
     end
 end
 
-function ESSPrior(model::Model, sampler::Sampler{<:ESS}, varinfo::AbstractVarInfo)
-    return ESSPrior{typeof(model),typeof(sampler),typeof(varinfo)}(model, sampler, varinfo)
+function ESSPrior(model::Model, sampler::ESS, varinfo::AbstractVarInfo)
+    return ESSPrior{typeof(model),typeof(varinfo)}(model, sampler, varinfo)
 end
 
 # Ensure that the prior is a Gaussian distribution (checked in the constructor)
@@ -94,34 +97,24 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    sampler = p.sampler
-    varinfo = p.varinfo
-    # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
-    vns = keys(varinfo)
-    for vn in vns
-        set_flag!(varinfo, vn, "del")
+    # TODO(penelopeysm): This is ugly -- need to set 'del' flag because
+    # otherwise DynamicPPL.SampleWithPrior will just use the existing
+    # parameters in the varinfo. In general SampleWithPrior etc. need to be
+    # reworked.
+    for vn in keys(p.varinfo)
+        set_flag!(p.varinfo, vn, "del")
     end
-    p.model(rng, varinfo, sampler)
-    return varinfo[:]
+    _, vi = DynamicPPL.evaluate!!(p.model, p.varinfo, SamplingContext(rng, p.sampler))
+    return vi[:]
 end
 
 # Mean of prior distribution
 Distributions.mean(p::ESSPrior) = p.μ
 
-# Evaluate log-likelihood of proposals
-const ESSLogLikelihood{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo} =
-    DynamicPPL.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
-
-(ℓ::ESSLogLikelihood)(f::AbstractVector) = LogDensityProblems.logdensity(ℓ, f)
-
 function DynamicPPL.tilde_assume(
-    rng::Random.AbstractRNG, ::DefaultContext, ::Sampler{<:ESS}, right, vn, vi
+    rng::Random.AbstractRNG, ::DefaultContext, ::ESS, right, vn, vi
 )
     return DynamicPPL.tilde_assume(
         rng, LikelihoodContext(), SampleFromPrior(), right, vn, vi
     )
-end
-
-function DynamicPPL.tilde_observe(ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vi)
-    return DynamicPPL.tilde_observe(ctx, SampleFromPrior(), right, left, vi)
 end

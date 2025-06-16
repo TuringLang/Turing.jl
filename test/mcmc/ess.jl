@@ -13,6 +13,41 @@ using Turing
 @testset "ESS" begin
     @info "Starting ESS tests"
 
+    @testset "InferenceAlgorithm interface" begin
+        alg = ESS()
+        @test Turing.Inference.get_adtype(alg) === nothing
+        @test !Turing.Inference.requires_unconstrained_space(alg)
+        kwargs = (; _foo="bar")
+        @test Turing.Inference.update_sample_kwargs(alg, 1000, kwargs) == kwargs
+    end
+
+    @testset "sample() interface" begin
+        @model function demo_normal(x)
+            a ~ Normal()
+            return x ~ Normal(a)
+        end
+        model = demo_normal(2.0)
+        ldf = LogDensityFunction(model)
+        sampling_objects = Dict("DynamicPPL.Model" => model, "LogDensityFunction" => ldf)
+        seed = 468
+
+        @testset "sampling with $name" for (name, model_or_ldf) in sampling_objects
+            spl = ESS()
+            # check sampling works without rng
+            @test sample(model_or_ldf, spl, 5) isa Chains
+            # check reproducibility with rng
+            chn1 = sample(Random.Xoshiro(seed), model_or_ldf, spl, 5)
+            chn2 = sample(Random.Xoshiro(seed), model_or_ldf, spl, 5)
+            @test mean(chn1[:a]) == mean(chn2[:a])
+        end
+
+        @testset "check that initial_params are respected" begin
+            a0 = 5.0
+            chn = sample(model, ESS(), 5; initial_params=[a0])
+            @test chn[:a][1] == a0
+        end
+    end
+
     @model function demo(x)
         m ~ Normal()
         return x ~ Normal(m, 0.5)
