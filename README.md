@@ -58,3 +58,51 @@ In particular, it takes the ability to specify probabilistic models with [Dynami
   - Markov Chain Monte Carlo (both an abstract interface: [AbstractMCMC.jl](https://github.com/TuringLang/AbstractMCMC.jl), and individual samplers, such as [AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl), [AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl), and more).
   - Variational inference using [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl).
   - Mode estimation techniques, which rely on SciML's [Optimization.jl interface](https://github.com/SciML/Optimization.jl).
+
+## Citing Turing.jl
+
+If you have used Turing.jl in your work, we would be very grateful if you could cite the following:
+
+[**Turing.jl: a general-purpose probabilistic programming language**](https://doi.org/10.1145/3711897)  
+Tor Erlend Fjelde, Kai Xu, David Widmann, Mohamed Tarek, Cameron Pfiffer, Martin Trapp, Seth D. Axen, Xianda Sun, Markus Hauru, Penelope Yong, Will Tebbutt, Zoubin Ghahramani, Hong Ge  
+ACM Transactions on Probabilistic Machine Learning, 2025 (_Just Accepted_)  
+
+[**Turing: A Language for Flexible Probabilistic Inference**](https://proceedings.mlr.press/v84/ge18b.html)  
+Hong Ge, Kai Xu, Zoubin Ghahramani  
+Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics, PMLR 84:1682-1690, 2018.
+
+<details>
+
+<summary>Expand for BibTeX</summary>
+
+```bibtex
+@article{10.1145/3711897,
+author = {Fjelde, Tor Erlend and Xu, Kai and Widmann, David and Tarek, Mohamed and Pfiffer, Cameron and Trapp, Martin and Axen, Seth D. and Sun, Xianda and Hauru, Markus and Yong, Penelope and Tebbutt, Will and Ghahramani, Zoubin and Ge, Hong},
+title = {Turing.jl: a general-purpose probabilistic programming language},
+year = {2025},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3711897},
+doi = {10.1145/3711897},
+note = {Just Accepted},
+journal = {ACM Trans. Probab. Mach. Learn.},
+month = feb,
+}
+
+@InProceedings{pmlr-v84-ge18b,
+  title = 	 {Turing: A Language for Flexible Probabilistic Inference},
+  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
+  booktitle = 	 {Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics},
+  pages = 	 {1682--1690},
+  year = 	 {2018},
+  editor = 	 {Storkey, Amos and Perez-Cruz, Fernando},
+  volume = 	 {84},
+  series = 	 {Proceedings of Machine Learning Research},
+  month = 	 {09--11 Apr},
+  publisher =    {PMLR},
+  pdf = 	 {http://proceedings.mlr.press/v84/ge18b/ge18b.pdf},
+  url = 	 {https://proceedings.mlr.press/v84/ge18b.html},
+}
+```
+
+</details>
