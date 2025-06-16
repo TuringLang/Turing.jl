@@ -9,7 +9,6 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
-
 ## 📚 Documentation
 
 **https://turinglang.org** contains the documentation for the broader TuringLang ecosystem.
@@ -48,6 +47,12 @@ If you do not have an invitation to Julia's Slack, you can get one from [the off
 There are also often threads on [Julia Discourse](https://discourse.julialang.org) (you can search using, e.g., [the `turing` tag](https://discourse.julialang.org/tag/turing)).
 
 We are most active on GitHub, but we do also keep an eye on both Slack and Discourse.
+
+## 🔄 What's changed recently?
+
+We publish a fortnightly newsletter summarising recent updates in the TuringLang ecosystem, which you can view on [our website](https://turinglang.org/news/), [GitHub](https://github.com/TuringLang/Turing.jl/issues/2498), or [Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
+
+For Turing.jl specifically, you can see a full changelog in [`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md) or [our GitHub releases](https://github.com/TuringLang/Turing.jl/releases).
 
 ## 🧩 Where does Turing.jl sit in the TuringLang ecosystem?
 
