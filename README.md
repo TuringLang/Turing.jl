@@ -36,7 +36,9 @@ If you have not received any feedback on an issue or PR for a while, please feel
 ### Discussions
 
 This repository also has a [Discussions page](https://github.com/TuringLang/Turing.jl/discussions), where you can create discussions and ask questions about statistical applications and theory.
-In practice, we don't monitor this as often: you're more likely to get a response through an issue.
+
+> [!WARNING]  
+> The discussions page is not monitored often. We recommend you open an issue (for bugs or feature requests) or to post on Discourse or Slack (for general Bayesian modelling questions).
 
 ## 💬 Other channels
 
