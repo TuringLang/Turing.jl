@@ -1,5 +1,13 @@
 <p align="center"><img src="https://raw.githubusercontent.com/TuringLang/turinglang.github.io/refs/heads/main/assets/images/turing-logo.svg" alt="Turing.jl logo" width="200" /></p>
 <h1 align="center">Turing.jl</h1>
+<p align="center">
+[![Tutorials](https://img.shields.io/badge/docs-tutorials-blue.svg)](https://turinglang.org/Turing.jl/stable)
+[![API docs](https://img.shields.io/badge/docs-API-blue.svg)](https://turinglang.org/Turing.jl/stable)
+[![Tests](https://github.com/TuringLang/Turing.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/TuringLang/Turing.jl/actions/workflows/Tests.yml)
+[![Coverage Status](https://coveralls.io/repos/github/TuringLang/Turing.jl/badge.svg?branch=main)](https://coveralls.io/github/TuringLang/Turing.jl?branch=main)
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+</p>
+
 
 **Turing.jl** is a framework for probabilistic programming and Bayesian inference in Julia.
 
