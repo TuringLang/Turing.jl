@@ -9,11 +9,34 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
-## 📚 Documentation
+## 🚀 Get started
 
-**https://turinglang.org** contains the documentation for the broader TuringLang ecosystem.
+Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10 will be required for the latest version of Turing.jl.
+Then, launch a Julia REPL and run:
 
-**https://turinglang.org/Turing.jl/** specifically contains the API documentation for anything exported by Turing.jl.
+```julia
+julia> using Pkg; Pkg.add("Turing")
+```
+
+You can define models using the `@model` macro, and then perform Markov chain Monte Carlo sampling using the `sample` function:
+
+```julia
+julia> using Turing
+
+julia> @model function my_first_model(data)
+           mean ~ Normal(0, 1)
+           sd ~ Exponential(1)
+           data ~ Normal(mean, sd)
+       end
+
+julia> model = my_first_model(randn())
+
+julia> chain = sample(model, NUTS(), 1000)
+```
+
+For more information about how to use the features of Turing.jl, and a number of example applications, please see the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org).
+
+API documentation for Turing.jl is specifically available at [**https://turinglang.org/Turing.jl/stable**](https://turinglang.org/Turing.jl/stable/).
 
 ## 🛠️ Contributing
 
