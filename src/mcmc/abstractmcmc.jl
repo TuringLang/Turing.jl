@@ -77,18 +77,23 @@ function AbstractMCMC.sample(
 )
     # LDF needs to be set with SamplingContext, or else samplers cannot
     # overload the tilde-pipeline.
-    if !(ldf.context isa SamplingContext)
-        ldf = LogDensityFunction(
-            ldf.model, ldf.varinfo, SamplingContext(rng, spl); adtype=ldf.adtype
-        )
+    ctx = if ldf.context isa SamplingContext
+        ldf.context
+    else
+        SamplingContext(rng, spl)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
     # ldf.varinfo)`. Furthermore, the first call to `AbstractMCMC.step` assumes
     # that the parameters in the LDF are the initial parameters. So, we need to
-    # deepcopy the LDF here to ensure that sample(rng, ldf, ...) is
+    # deepcopy the varinfo here to ensure that sample(rng, ldf, ...) is
     # reproducible.
-    ldf = deepcopy(ldf)
+    vi = deepcopy(ldf.varinfo)
+    # TODO(penelopeysm): Unsure if model needes to be deepcopied as well.
+    # Note that deepcopying the entire LDF is risky as it may include e.g.
+    # Mooncake or Enzyme types that don't deepcopy well. I ran into an issue
+    # where Mooncake errored when deepcopying an LDF.
+    ldf = LogDensityFunction(ldf.model, vi, ctx; adtype=ldf.adtype)
     # TODO: Right now, only generic checks are run. We could in principle
     # specialise this to check for e.g. discrete variables with HMC
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
@@ -156,18 +161,23 @@ function AbstractMCMC.sample(
 )
     # LDF needs to be set with SamplingContext, or else samplers cannot
     # overload the tilde-pipeline.
-    if !(ldf.context isa SamplingContext)
-        ldf = LogDensityFunction(
-            ldf.model, ldf.varinfo, SamplingContext(rng, spl); adtype=ldf.adtype
-        )
+    ctx = if ldf.context isa SamplingContext
+        ldf.context
+    else
+        SamplingContext(rng, spl)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
     # ldf.varinfo)`. Furthermore, the first call to `AbstractMCMC.step` assumes
     # that the parameters in the LDF are the initial parameters. So, we need to
-    # deepcopy the LDF here to ensure that sample(rng, ldf, ...) is
+    # deepcopy the varinfo here to ensure that sample(rng, ldf, ...) is
     # reproducible.
-    ldf = deepcopy(ldf)
+    vi = deepcopy(ldf.varinfo)
+    # TODO(penelopeysm): Unsure if model needes to be deepcopied as well.
+    # Note that deepcopying the entire LDF is risky as it may include e.g.
+    # Mooncake or Enzyme types that don't deepcopy well. I ran into an issue
+    # where Mooncake errored when deepcopying an LDF.
+    ldf = LogDensityFunction(ldf.model, vi, ctx; adtype=ldf.adtype)
     # TODO: Right now, only generic checks are run. We could in principle
     # specialise this to check for e.g. discrete variables with HMC
     check_model && DynamicPPL.check_model(ldf.model; error_on_failure=true)
