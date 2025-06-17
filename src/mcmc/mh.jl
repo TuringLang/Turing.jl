@@ -275,22 +275,6 @@ _val_tuple(::VarInfo, ::Tuple{}) = ()
 end
 _dist_tuple(::@NamedTuple{}, ::VarInfo, ::Tuple{}) = ()
 
-should_link(varinfo, proposals) = false
-function should_link(varinfo, proposals::NamedTuple{(),Tuple{}})
-    # If it's an empty `NamedTuple`, we're using the priors as proposals
-    # in which case we shouldn't link.
-    return false
-end
-function should_link(varinfo, proposals::AdvancedMH.RandomWalkProposal)
-    return true
-end
-# FIXME: This won't be hit unless `vals` are all the exactly same concrete type of `AdvancedMH.RandomWalkProposal`!
-function should_link(
-    varinfo, proposals::NamedTuple{names,vals}
-) where {names,vals<:NTuple{<:Any,<:AdvancedMH.RandomWalkProposal}}
-    return true
-end
-
 # Make a proposal if we don't have a covariance proposal matrix (the default).
 function propose!!(
     rng::AbstractRNG, vi::AbstractVarInfo, ldf::LogDensityFunction, spl::MH, proposal
