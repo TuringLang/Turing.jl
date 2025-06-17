@@ -14,10 +14,6 @@ using Turing
 @testset "TuringDynamicHMCExt" begin
     spl = externalsampler(DynamicHMC.NUTS())
 
-    @testset "alg_str" begin
-        @test DynamicPPL.alg_str(Sampler(spl)) == "DynamicNUTS"
-    end
-
     @testset "sample() interface" begin
         @model function demo_normal(x)
             a ~ Normal()

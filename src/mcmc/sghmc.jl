@@ -51,10 +51,7 @@ struct SGHMCState{V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
-    spl::Sampler{<:SGHMC};
-    kwargs...,
+    rng::Random.AbstractRNG, ldf::DynamicPPL.LogDensityFunction, spl::SGHMC; kwargs...
 )
     vi = ldf.varinfo
 
@@ -68,7 +65,7 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     ldf::DynamicPPL.LogDensityFunction,
-    spl::Sampler{<:SGHMC},
+    spl::SGHMC,
     state::SGHMCState;
     kwargs...,
 )
@@ -81,8 +78,8 @@ function AbstractMCMC.step(
     # equation (15) of Chen et al. (2014)
     v = state.velocity
     θ .+= v
-    η = spl.alg.learning_rate
-    α = spl.alg.momentum_decay
+    η = spl.learning_rate
+    α = spl.momentum_decay
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
     # Save new variables and recompute log density.
@@ -201,31 +198,24 @@ struct SGLDState{V<:AbstractVarInfo}
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
-    spl::Sampler{<:SGLD};
-    kwargs...,
+    rng::Random.AbstractRNG, ldf::DynamicPPL.LogDensityFunction, spl::SGLD; kwargs...
 )
     # Create first sample and state.
     vi = ldf.varinfo
-    sample = SGLDTransition(ldf.model, vi, zero(spl.alg.stepsize(0)))
+    sample = SGLDTransition(ldf.model, vi, zero(spl.stepsize(0)))
     state = SGLDState(vi, 1)
     return sample, state
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    ldf::LogDensityFunction,
-    spl::Sampler{<:SGLD},
-    state::SGLDState;
-    kwargs...,
+    rng::Random.AbstractRNG, ldf::LogDensityFunction, spl::SGLD, state::SGLDState; kwargs...
 )
     # Perform gradient step.
     vi = state.vi
     θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ldf, θ))
     step = state.step
-    stepsize = spl.alg.stepsize(step)
+    stepsize = spl.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
     # Save new variables and recompute log density.

@@ -43,15 +43,12 @@ struct DynamicNUTSState{V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
+function DynamicPPL.initialsampler(::DynamicNUTS)
     return DynamicPPL.SampleFromUniform()
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    ldf::DynamicPPL.LogDensityFunction,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS};
-    kwargs...,
+    rng::Random.AbstractRNG, ldf::DynamicPPL.LogDensityFunction, spl::DynamicNUTS; kwargs...
 )
     vi = ldf.varinfo
 
@@ -76,13 +73,13 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     ldf::DynamicPPL.LogDensityFunction,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS},
+    spl::DynamicNUTS,
     state::DynamicNUTSState;
     kwargs...,
 )
     # Compute next sample.
     vi = state.vi
-    steps = DynamicHMC.mcmc_steps(rng, spl.alg.sampler, state.metric, ldf, state.stepsize)
+    steps = DynamicHMC.mcmc_steps(rng, spl.sampler, state.metric, ldf, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.

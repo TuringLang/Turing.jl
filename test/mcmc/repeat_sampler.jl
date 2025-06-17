@@ -14,7 +14,7 @@ using Turing
     num_chains = 2
 
     rng = StableRNG(0)
-    for sampler in [MH(), DynamicPPL.Sampler(HMC(0.01, 4))]
+    for sampler in [MH(), HMC(0.01, 4)]
         model_or_ldf = if sampler isa MH
             gdemo_default
         else
