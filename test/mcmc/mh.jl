@@ -21,6 +21,49 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
     @info "Starting MH tests"
     seed = 23
 
+    @testset "InferenceAlgorithm interface" begin
+        algs_and_unconstrained = [
+            (MH(), false),  # Sample from priors, no need to link
+            (MH(:a => Normal()), false),  # static proposal
+            (MH(:a => a -> Normal(a, 1)), false),  # static proposal
+            (MH([0.25 0.05; 0.05 0.50]), true), # RWMH with covariance matrix
+            (MH(:a => AdvancedMH.RandomWalkProposal(Normal())), true),  # explicit RWMH
+        ]
+        @testset "$alg" for (alg, unconstrained) in algs_and_unconstrained
+            @test Turing.Inference.get_adtype(alg) === nothing
+            @test Turing.Inference.requires_unconstrained_space(alg) == unconstrained
+            kwargs = (; _foo="bar")
+            @test Turing.Inference.update_sample_kwargs(alg, 1000, kwargs) == kwargs
+        end
+    end
+
+    @testset "sample() interface" begin
+        @model function demo_normal(x)
+            a ~ Normal()
+            return x ~ Normal(a)
+        end
+        model = demo_normal(2.0)
+        ldf = LogDensityFunction(model)
+        sampling_objects = Dict("DynamicPPL.Model" => model, "LogDensityFunction" => ldf)
+        seed = 468
+
+        @testset "sampling with $name" for (name, model_or_ldf) in sampling_objects
+            spl = MH()
+            # check sampling works without rng
+            @test sample(model_or_ldf, spl, 5) isa Chains
+            # check reproducibility with rng
+            chn1 = sample(Random.Xoshiro(seed), model_or_ldf, spl, 5)
+            chn2 = sample(Random.Xoshiro(seed), model_or_ldf, spl, 5)
+            @test mean(chn1[:a]) == mean(chn2[:a])
+        end
+
+        @testset "check that initial_params are respected" begin
+            a0 = 5.0
+            chn = sample(model, MH(), 5; initial_params=[a0])
+            @test chn[:a][1] == a0
+        end
+    end
+
     @testset "mh constructor" begin
         N = 10
         s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))

@@ -21,7 +21,7 @@
 
 # Because this is a pain to implement all at once, we do it for one sampler at a time.
 # This type tells us which samplers have been 'updated' to the new interface.
-const LDFCompatibleSampler = Union{Hamiltonian,ESS}
+const LDFCompatibleSampler = Union{Hamiltonian,ESS,MH}
 
 """
     sample(
