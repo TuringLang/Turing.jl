@@ -14,18 +14,23 @@ using Turing
     num_chains = 2
 
     rng = StableRNG(0)
+    # TODO(penelopeysm): sample on both model and LDF for both samplers.
+    # Right now it can handle LDF but not model (because RepeatSampler
+    # needs to be added to LDFCompatibleSampler)
     for sampler in [MH(), HMC(0.01, 4)]
-        model_or_ldf = if sampler isa MH
-            gdemo_default
+        ctx = DynamicPPL.SamplingContext(rng, sampler)
+        vi = if sampler isa MH
+            DynamicPPL.VarInfo(gdemo_default)
         else
             vi = DynamicPPL.VarInfo(gdemo_default)
             vi = DynamicPPL.link(vi, gdemo_default)
-            LogDensityFunction(gdemo_default, vi; adtype=Turing.DEFAULT_ADTYPE)
+            vi
         end
+        ldf = LogDensityFunction(gdemo_default, vi, ctx; adtype=Turing.DEFAULT_ADTYPE)
 
         chn1 = sample(
             copy(rng),
-            model_or_ldf,
+            ldf,
             sampler,
             MCMCThreads(),
             num_samples,
@@ -34,7 +39,7 @@ using Turing
         )
         repeat_sampler = RepeatSampler(sampler, num_repeats)
         chn2 = sample(
-            copy(rng), model_or_ldf, repeat_sampler, MCMCThreads(), num_samples, num_chains
+            copy(rng), ldf, repeat_sampler, MCMCThreads(), num_samples, num_chains
         )
         @test chn1.value == chn2.value
     end
