@@ -79,7 +79,7 @@ function AbstractMCMC.sample(
     ctx = if ldf.context isa SamplingContext
         ldf.context
     else
-        SamplingContext(rng, spl)
+        SamplingContext(rng, spl, ldf.context)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
@@ -163,7 +163,7 @@ function AbstractMCMC.sample(
     ctx = if ldf.context isa SamplingContext
         ldf.context
     else
-        SamplingContext(rng, spl)
+        SamplingContext(rng, spl, ldf.context)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
