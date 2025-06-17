@@ -5,7 +5,7 @@ using ..NumericalTests: check_gdemo, check_numerical
 using AbstractMCMC: AbstractMCMC
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-using DynamicPPL: DynamicPPL, Sampler
+using DynamicPPL: DynamicPPL
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -297,33 +297,10 @@ using Turing
         # check_gdemo(res)
     end
 
-    @testset "hmcda constructor" begin
-        alg = HMCDA(0.8, 0.75)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
-        alg = HMCDA(200, 0.8, 0.75)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
-        @test isa(alg, HMCDA)
-        @test isa(sampler, Sampler{<:Turing.Inference.Hamiltonian})
-    end
-
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8)
         res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
-    end
-
-    @testset "nuts constructor" begin
-        alg = NUTS(200, 0.65)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
-
-        alg = NUTS(0.65)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
     @testset "check discard" begin
@@ -456,7 +433,7 @@ using Turing
             vi = DynamicPPL.VarInfo(gdemo_default)
             vi = DynamicPPL.link(vi, gdemo_default)
             ldf = LogDensityFunction(gdemo_default, vi; adtype=Turing.DEFAULT_ADTYPE)
-            spl = Sampler(alg)
+            spl = alg
             _, hmc_state = AbstractMCMC.step(Random.default_rng(), ldf, spl)
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
