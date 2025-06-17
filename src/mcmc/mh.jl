@@ -145,20 +145,17 @@ get_adtype(::MH) = nothing
 update_sample_kwargs(::MH, ::Integer, kwargs) = kwargs
 requires_unconstrained_space(::MH) = false
 requires_unconstrained_space(::MH{<:AdvancedMH.RandomWalkProposal}) = true
-# `NamedTuple` of proposals
+# `NamedTuple` of proposals. TODO: It seems, at some point, that there
+# was an intent to extract the parameters from the NamedTuple and to only
+# link those parameters that corresponded to RandomWalkProposals. See
+# https://github.com/TuringLang/Turing.jl/issues/1583.
+requires_unconstrained_space(::MH{NamedTuple{(),Tuple{}}}) = false
 @generated function requires_unconstrained_space(
     ::MH{<:NamedTuple{names,props}}
 ) where {names,props}
-    # If we have a `NamedTuple` with proposals, we need to check whether any of
-    # them are `AdvancedMH.RandomWalkProposal`. If so, we need to link.
-    for prop in props.parameters
-        if prop <: AdvancedMH.RandomWalkProposal
-            return :(true)
-        end
-    end
-    # If we don't have any `AdvancedMH.RandomWalkProposal` (or if we have an
-    # empty `NamedTuple`), we don't need to link.
-    return :(false)
+    # If we have a `NamedTuple` with proposals, we check if all of them are
+    # `AdvancedMH.RandomWalkProposal`. If so, we need to link.
+    return all(prop -> prop <: AdvancedMH.RandomWalkProposal, props.parameters)
 end
 
 #####################
