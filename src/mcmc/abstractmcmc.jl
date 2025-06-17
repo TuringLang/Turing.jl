@@ -21,8 +21,7 @@
 
 # Because this is a pain to implement all at once, we do it for one sampler at a time.
 # This type tells us which samplers have been 'updated' to the new interface.
-
-const LDFCompatibleSampler = Union{Hamiltonian}
+const LDFCompatibleSampler = Union{Hamiltonian,ESS,MH}
 
 """
     sample(
@@ -80,7 +79,7 @@ function AbstractMCMC.sample(
     ctx = if ldf.context isa SamplingContext
         ldf.context
     else
-        SamplingContext(rng, spl)
+        SamplingContext(rng, spl, ldf.context)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
@@ -164,7 +163,7 @@ function AbstractMCMC.sample(
     ctx = if ldf.context isa SamplingContext
         ldf.context
     else
-        SamplingContext(rng, spl)
+        SamplingContext(rng, spl, ldf.context)
     end
     # Note that, in particular, sampling can mutate the variables in the LDF's
     # varinfo (because it ultimately ends up calling `evaluate!!(ldf.model,
@@ -282,7 +281,7 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
-    ctx = SamplingContext(rng, spl)
+    ctx = SamplingContext(rng, spl, model.context)
     ldf = LogDensityFunction(model, vi, ctx; adtype=get_adtype(spl))
     # No need to run check_model again
     return AbstractMCMC.sample(rng, ldf, spl, N; kwargs..., check_model=false)
@@ -331,7 +330,7 @@ function AbstractMCMC.sample(
     initial_params = get(kwargs, :initial_params, nothing)
     link = requires_unconstrained_space(spl)
     vi = initialise_varinfo(rng, model, spl, initial_params, link)
-    ctx = SamplingContext(rng, spl)
+    ctx = SamplingContext(rng, spl, model.context)
     ldf = LogDensityFunction(model, vi, ctx; adtype=get_adtype(spl))
     # No need to run check_model again
     return AbstractMCMC.sample(
