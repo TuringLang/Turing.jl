@@ -35,8 +35,7 @@ State of the [`DynamicNUTS`](@ref) sampler.
 # Fields
 $(TYPEDFIELDS)
 """
-struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
-    logdensity::L
+struct DynamicNUTSState{V<:DynamicPPL.AbstractVarInfo,C,M,S}
     vi::V
     "Cache of sample, log density, and gradient of log density evaluation."
     cache::C
@@ -44,34 +43,18 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
+function DynamicPPL.initialsampler(::DynamicNUTS)
     return DynamicPPL.SampleFromUniform()
 end
 
-function DynamicPPL.initialstep(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS},
-    vi::DynamicPPL.AbstractVarInfo;
-    kwargs...,
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, ldf::DynamicPPL.LogDensityFunction, spl::DynamicNUTS; kwargs...
 )
-    # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.islinked(vi)
-        vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
-    end
-
-    # Define log-density function.
-    ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
-    )
+    vi = ldf.varinfo
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng, ℓ, 0; initialization=(q=vi[:],), reporter=DynamicHMC.NoProgressReport()
+        rng, ldf, 0; initialization=(q=vi[:],), reporter=DynamicHMC.NoProgressReport()
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
@@ -81,23 +64,22 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create first sample and state.
-    sample = Turing.Inference.Transition(model, vi)
-    state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
+    sample = Turing.Inference.Transition(ldf.model, vi)
+    state = DynamicNUTSState(vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS},
+    ldf::DynamicPPL.LogDensityFunction,
+    spl::DynamicNUTS,
     state::DynamicNUTSState;
     kwargs...,
 )
     # Compute next sample.
     vi = state.vi
-    ℓ = state.logdensity
-    steps = DynamicHMC.mcmc_steps(rng, spl.alg.sampler, state.metric, ℓ, state.stepsize)
+    steps = DynamicHMC.mcmc_steps(rng, spl.sampler, state.metric, ldf, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Update the variables.
@@ -105,8 +87,8 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
 
     # Create next sample and state.
-    sample = Turing.Inference.Transition(model, vi)
-    newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
+    sample = Turing.Inference.Transition(ldf.model, vi)
+    newstate = DynamicNUTSState(vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
 end
