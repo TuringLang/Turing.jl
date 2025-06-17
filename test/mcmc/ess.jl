@@ -61,19 +61,6 @@ using Turing
     end
     demodot_default = demodot(1.0)
 
-    @testset "ESS constructor" begin
-        N = 10
-
-        s1 = ESS()
-        @test DynamicPPL.alg_str(Sampler(s1)) == "ESS"
-
-        c1 = sample(demo_default, s1, N)
-        c2 = sample(demodot_default, s1, N)
-
-        s2 = Gibbs(:m => ESS(), :s => MH())
-        c3 = sample(gdemo_default, s2, N)
-    end
-
     @testset "ESS inference" begin
         @info "Starting ESS inference tests"
         seed = 23
@@ -116,7 +103,7 @@ using Turing
 
             DynamicPPL.TestUtils.test_sampler(
                 models_conditioned,
-                DynamicPPL.Sampler(ESS()),
+                ESS(),
                 2000;
                 # Filter out the varnames we've conditioned on.
                 varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,
