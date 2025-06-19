@@ -58,19 +58,7 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return trace
 end
 
-function AdvancedPS.update_rng!(
-    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}
-)
-    # Extract the `args`.
-    args = trace.model.ctask.args
-    # From `args`, extract the `SamplingContext`, which contains the RNG.
-    sampling_context = args[3]
-    rng = sampling_context.rng
-    trace.rng = rng
-    return trace
-end
-
-function Libtask.TapedTask(taped_globals, model::TracedModel, args...; kwargs...) # RNG ?
+function Libtask.TapedTask(taped_globals::Any, model::TracedModel, args...; kwargs...) # RNG ?
     return Libtask.TapedTask(
         taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
     )
@@ -485,6 +473,26 @@ function AdvancedPS.Trace(
 
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
-    AdvancedPS.addreference!(newtrace.model.ctask, newtrace)
+    AdvancedPS.addreference!(newtrace)
     return newtrace
 end
+
+# We need to tell Libtask which calls may have `produce` calls within them. In practice most
+# of these won't be needed, because of inline and the fact that `might_produce` is only
+# called on `:invoke` expressions rather than `:call`s, but since those are implementation
+# details of the compiler we define a bunch of these here, starting with
+# `acclogp_observe!!` which is what calls `produce`, and going up the call stack.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
