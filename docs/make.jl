@@ -9,7 +9,7 @@ links = InterLinks(
     "LinearAlgebra" => "https://docs.julialang.org/en/v1/objects.inv",
     "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/objects.inv",
     "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/objects.inv",
-    "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/v0.2.8/objects.inv",
+    "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/stable/objects.inv",
     "DistributionsAD" => "https://turinglang.org/DistributionsAD.jl/stable/objects.inv",
     "OrderedCollections" => "https://juliacollections.github.io/OrderedCollections.jl/stable/objects.inv",
 )
@@ -23,8 +23,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "API" => "api.md",
-        "Submodule APIs" =>
-            ["Inference" => "api/Inference.md", "Optimisation" => "api/Optimisation.md"],
+        "Submodule APIs" => [
+            "Inference" => "api/Inference.md",
+            "Optimisation" => "api/Optimisation.md",
+            "Variational " => "api/Variational.md",
+        ],
     ],
     checkdocs=:exports,
     doctest=false,

@@ -30,7 +30,6 @@ using Turing
         N = 10
 
         s1 = ESS()
-        @test DynamicPPL.alg_str(Sampler(s1)) == "ESS"
 
         c1 = sample(demo_default, s1, N)
         c2 = sample(demodot_default, s1, N)

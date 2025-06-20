@@ -122,8 +122,8 @@ using Turing
             return global loglike = getlogp(__varinfo__) - lp1
         end
         model = testmodel1([1.0])
-        varinfo = Turing.VarInfo(model)
-        model(varinfo, Turing.SampleFromPrior(), Turing.LikelihoodContext())
+        varinfo = DynamicPPL.VarInfo(model)
+        model(varinfo, DynamicPPL.SampleFromPrior(), DynamicPPL.LikelihoodContext())
         @test getlogp(varinfo) == loglike
 
         # Test MiniBatchContext
@@ -132,13 +132,13 @@ using Turing
             return x[1] ~ Bernoulli(a)
         end
         model = testmodel2([1.0])
-        varinfo1 = Turing.VarInfo(model)
+        varinfo1 = DynamicPPL.VarInfo(model)
         varinfo2 = deepcopy(varinfo1)
-        model(varinfo1, Turing.SampleFromPrior(), Turing.LikelihoodContext())
+        model(varinfo1, DynamicPPL.SampleFromPrior(), DynamicPPL.LikelihoodContext())
         model(
             varinfo2,
-            Turing.SampleFromPrior(),
-            Turing.MiniBatchContext(Turing.LikelihoodContext(), 10),
+            DynamicPPL.SampleFromPrior(),
+            DynamicPPL.MiniBatchContext(DynamicPPL.LikelihoodContext(), 10),
         )
         @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
     end
@@ -623,20 +623,20 @@ using Turing
         @model function e(x=1.0)
             return x ~ Normal()
         end
-        evi = Turing.VarInfo(e())
+        evi = DynamicPPL.VarInfo(e())
         @test isempty(Turing.Inference.getparams(e(), evi))
 
         @model function f()
             return x ~ Normal()
         end
-        fvi = Turing.VarInfo(f())
+        fvi = DynamicPPL.VarInfo(f())
         @test only(Turing.Inference.getparams(f(), fvi)) == (@varname(x), fvi[@varname(x)])
 
         @model function g()
             x ~ Normal()
             return y ~ Poisson()
         end
-        gvi = Turing.VarInfo(g())
+        gvi = DynamicPPL.VarInfo(g())
         gparams = Turing.Inference.getparams(g(), gvi)
         @test gparams[1] == (@varname(x), gvi[@varname(x)])
         @test gparams[2] == (@varname(y), gvi[@varname(y)])

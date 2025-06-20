@@ -27,9 +27,6 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         s2 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0))
         s3 = MH()
         s4 = MH([1.0 0.1; 0.1 1.0])
-        for s in (s1, s2, s3, s4)
-            @test DynamicPPL.alg_str(Sampler(s)) == "MH"
-        end
 
         c1 = sample(gdemo_default, s1, N)
         c2 = sample(gdemo_default, s2, N)
@@ -118,7 +115,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         model = M(zeros(2), I, 1)
         sampler = Inference.Sampler(MH())
 
-        dt, vt = Inference.dist_val_tuple(sampler, Turing.VarInfo(model))
+        dt, vt = Inference.dist_val_tuple(sampler, DynamicPPL.VarInfo(model))
 
         @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
         @test dt[:m] isa
