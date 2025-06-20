@@ -477,10 +477,10 @@ function AdvancedPS.Trace(
 end
 
 # We need to tell Libtask which calls may have `produce` calls within them. In practice most
-# of these won't be needed, because of inline and the fact that `might_produce` is only
+# of these won't be needed, because of inlining and the fact that `might_produce` is only
 # called on `:invoke` expressions rather than `:call`s, but since those are implementation
-# details of the compiler we define a bunch of these here, starting with
-# `acclogp_observe!!` which is what calls `produce`, and going up the call stack.
+# details of the compiler, we set a bunch of methods as might_produce = true. We start with
+# `acclogp_observe!!` which is what calls `produce` and go up the call stack.
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
