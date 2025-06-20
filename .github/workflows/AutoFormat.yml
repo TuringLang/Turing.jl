@@ -1,0 +1,60 @@
+name: Format Julia code
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          
+      - name: Setup Julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.10'
+          
+      - name: Install JuliaFormatter
+        run: |
+          julia -e 'using Pkg; Pkg.add("JuliaFormatter")'
+          
+      - name: Format Julia files
+        run: |
+          julia -e '
+            using JuliaFormatter
+            format(".", verbose=true)
+          '
+          
+      - name: Check if files were changed
+        id: verify-changed-files
+        run: |
+          echo "Changed files:"
+          git diff --name-only
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No files were changed by the formatter"
+          fi
+          
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Auto-format Julia code with JuliaFormatter"
+          
+          echo "Pushing to branch: ${{ github.event.pull_request.head.ref }}"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
