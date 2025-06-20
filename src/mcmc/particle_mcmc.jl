@@ -473,7 +473,6 @@ function AdvancedPS.Trace(
 
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
-    AdvancedPS.addreference!(newtrace)
     return newtrace
 end
 
