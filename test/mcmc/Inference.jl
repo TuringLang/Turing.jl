@@ -297,7 +297,7 @@ using Turing
         chain = sample(StableRNG(seed), gauss(x), PG(10), 10)
         chain = sample(StableRNG(seed), gauss(x), SMC(), 10)
 
-        @model function gauss2(::Type{TV}=Vector{Float64}; x) where {TV}
+        @model function gauss2((::Type{TV})=Vector{Float64}; x) where {TV}
             priors = TV(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
@@ -321,7 +321,7 @@ using Turing
             StableRNG(seed), gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10
         )
 
-        @model function gauss3(x, ::Type{TV}=Vector{Float64}) where {TV}
+        @model function gauss3(x, (::Type{TV})=Vector{Float64}) where {TV}
             priors = TV(undef, 2)
             priors[1] ~ InverseGamma(2, 3)         # s
             priors[2] ~ Normal(0, sqrt(priors[1])) # m
@@ -548,7 +548,7 @@ using Turing
         N = 10
         alg = HMC(0.01, 5)
         x = randn(1000)
-        @model function vdemo1(::Type{T}=Float64) where {T}
+        @model function vdemo1((::Type{T})=Float64) where {T}
             x = Vector{T}(undef, N)
             for i in 1:N
                 x[i] ~ Normal(0, sqrt(4))
@@ -563,7 +563,7 @@ using Turing
         vdemo1kw(; T) = vdemo1(T)
         sample(StableRNG(seed), vdemo1kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
-        @model function vdemo2(::Type{T}=Float64) where {T<:Real}
+        @model function vdemo2((::Type{T})=Float64) where {T<:Real}
             x = Vector{T}(undef, N)
             @. x ~ Normal(0, 2)
         end
@@ -574,7 +574,7 @@ using Turing
         vdemo2kw(; T) = vdemo2(T)
         sample(StableRNG(seed), vdemo2kw(; T=DynamicPPL.TypeWrap{Float64}()), alg, 10)
 
-        @model function vdemo3(::Type{TV}=Vector{Float64}) where {TV<:AbstractVector}
+        @model function vdemo3((::Type{TV})=Vector{Float64}) where {TV<:AbstractVector}
             x = TV(undef, N)
             @. x ~ InverseGamma(2, 3)
         end
