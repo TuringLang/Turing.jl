@@ -141,8 +141,9 @@ end
         inner::Alg
     end
 
-    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
-        DynamicPPL.Sampler(sampler.alg.inner)
+    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) = DynamicPPL.Sampler(
+        sampler.alg.inner
+    )
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
@@ -201,7 +202,7 @@ end
     end
 
     # A test model that includes several different kinds of tilde syntax.
-    @model function test_model(val, ::Type{M}=Vector{Float64}) where {M}
+    @model function test_model(val, (::Type{M})=Vector{Float64}) where {M}
         s ~ Normal(0.1, 0.2)
         m ~ Poisson()
         val ~ Normal(s, 1)
@@ -415,18 +416,18 @@ end
         gc2 = GibbsConditional(MH(), [:s, :m])
         gc3 = GibbsConditional(NUTS(), @varname(s))
         gc4 = GibbsConditional(PG(10), [@varname(s), @varname(m)])
-        
+
         # Test that GibbsConditional can be used in Gibbs sampler
         s1 = Gibbs(gc1, GibbsConditional(ESS(), :m))
         s2 = Gibbs(GibbsConditional(MH(), [:s]), GibbsConditional(HMC(0.1, 5), [:m]))
-        
+
         # Test mixing GibbsConditional with regular pairs
         s3 = Gibbs(gc1, :m => ESS())
         s4 = Gibbs(:s => HMC(0.1, 5), GibbsConditional(MH(), :m))
-        
+
         # Test invalid sampler
         @test_throws ArgumentError GibbsConditional(gdemo_default, :s)
-        
+
         # Test that all configurations work
         @test sample(gdemo_default, Gibbs(gc1, gc2), N) isa MCMCChains.Chains
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
@@ -467,18 +468,13 @@ end
 
         @testset "GibbsConditional inference" begin
             # Test GibbsConditional with HMC and ESS
-            alg = Gibbs(
-                GibbsConditional(HMC(0.2, 4), :s),
-                GibbsConditional(ESS(), :m)
-            )
+            alg = Gibbs(GibbsConditional(HMC(0.2, 4), :s), GibbsConditional(ESS(), :m))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
-            
+
             # Test GibbsConditional with mixed syntax
             alg = Gibbs(
-                GibbsConditional(MH(), [:s, :m]),
-                :s => NUTS(),
-                GibbsConditional(ESS(), :m)
+                GibbsConditional(MH(), [:s, :m]), :s => NUTS(), GibbsConditional(ESS(), :m)
             )
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.15)
@@ -554,7 +550,7 @@ end
     end
 
     @testset "dynamic model" begin
-        @model function imm(y, alpha, ::Type{M}=Vector{Float64}) where {M}
+        @model function imm(y, alpha, (::Type{M})=Vector{Float64}) where {M}
             N = length(y)
             rpm = DirichletProcess(alpha)
 
@@ -620,7 +616,7 @@ end
 
     @testset "dynamic model with dot tilde" begin
         @model function dynamic_model_with_dot_tilde(
-            num_zs=10, ::Type{M}=Vector{Float64}
+            num_zs=10, (::Type{M})=Vector{Float64}
         ) where {M}
             z = Vector{Int}(undef, num_zs)
             z .~ Poisson(1.0)
@@ -766,7 +762,7 @@ end
         struct Wrap{T}
             a::T
         end
-        @model function model1(::Type{T}=Float64) where {T}
+        @model function model1((::Type{T})=Float64) where {T}
             x = Vector{T}(undef, 1)
             x[1] ~ Normal()
             y = Wrap{T}(0.0)
@@ -921,7 +917,7 @@ end
 
             # Test with invalid conditional (not a function)
             @test_throws ArgumentError GibbsConditional(:y, "not_a_function")
-            
+
             # Test with multiple variables (should error for analytical conditionals)
             @test_throws ArgumentError GibbsConditional([:x, :y], cond_test)
         end
@@ -930,24 +926,18 @@ end
             function cond_x(c)
                 return Normal(0.0, 1.0)  # Simple prior-like conditional
             end
-            
+
             # Test mixed usage with regular samplers
-            gibbs1 = Gibbs(
-                GibbsConditional(:x, cond_x),
-                :y => MH()
-            )
+            gibbs1 = Gibbs(GibbsConditional(:x, cond_x), :y => MH())
             @test length(gibbs1.varnames) == 2
             @test length(gibbs1.samplers) == 2
-            
+
             # Test multiple analytical conditionals
             function cond_y(c)
                 return Normal(c.x, 1.0)
             end
-            
-            gibbs2 = Gibbs(
-                GibbsConditional(:x, cond_x),
-                GibbsConditional(:y, cond_y)
-            )
+
+            gibbs2 = Gibbs(GibbsConditional(:x, cond_x), GibbsConditional(:y, cond_y))
             @test length(gibbs2.varnames) == 2
             @test length(gibbs2.samplers) == 2
         end
@@ -988,14 +978,11 @@ end
             model = inverse_gdemo(x)
 
             # Test that we can create the sampler
-            sampler = Gibbs(
-                GibbsConditional(:λ, cond_λ), 
-                GibbsConditional(:m, cond_m)
-            )
+            sampler = Gibbs(GibbsConditional(:λ, cond_λ), GibbsConditional(:m, cond_m))
 
             # Test that we can sample (just a few iterations to check it works)
             @test (sample(model, sampler, 10); true)
-            
+
             # Test that the chain has the expected variables
             chain = sample(model, sampler, 100)
             @test :λ in keys(chain)
@@ -1008,15 +995,15 @@ end
             function bad_cond(c)
                 return "not a distribution"
             end
-            
+
             @model function simple_model()
                 x ~ Normal(0, 1)
                 y ~ Normal(x, 1)
             end
-            
+
             model = simple_model()
             sampler = Gibbs(GibbsConditional(:y, bad_cond), :x => MH())
-            
+
             # This should error during sampling due to bad conditional
             @test_throws ArgumentError sample(model, sampler, 1)
         end

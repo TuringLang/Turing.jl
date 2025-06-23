@@ -369,7 +369,7 @@ struct GibbsConditional{S,V,C}
     varnames::V
     "Analytical conditional function (Nothing for sampler-based conditionals)"
     conditional::C
-    
+
     # Constructor for sampler-based conditionals
     function GibbsConditional(sampler, varnames)
         # Ensure the sampler is a valid Gibbs component
@@ -381,23 +381,37 @@ struct GibbsConditional{S,V,C}
         varnames_vec = to_varname_list(varnames)
         # Wrap sampler if needed
         wrapped_sampler = wrap_in_sampler(sampler)
-        return new{typeof(wrapped_sampler),typeof(varnames_vec),Nothing}(wrapped_sampler, varnames_vec, nothing)
+        return new{typeof(wrapped_sampler),typeof(varnames_vec),Nothing}(
+            wrapped_sampler, varnames_vec, nothing
+        )
     end
-    
+
     # Constructor for analytical conditionals
-    function GibbsConditional(sym::Union{Symbol, VarName, AbstractVector{<:Union{Symbol, VarName}}}, conditional)
+    function GibbsConditional(
+        sym::Union{Symbol,VarName,AbstractVector{<:Union{Symbol,VarName}}}, conditional
+    )
         # Validate conditional is callable
         if !isa(conditional, Function)
-            throw(ArgumentError("conditional must be a function that takes a NamedTuple and returns a Distribution"))
+            throw(
+                ArgumentError(
+                    "conditional must be a function that takes a NamedTuple and returns a Distribution",
+                ),
+            )
         end
-        
+
         # Convert symbol to consistent format - analytical conditionals should work with single variables
         if isa(sym, AbstractVector) && length(sym) != 1
-            throw(ArgumentError("Analytical conditionals currently support only single variables"))
+            throw(
+                ArgumentError(
+                    "Analytical conditionals currently support only single variables"
+                ),
+            )
         end
         varname_vec = to_varname_list(sym)
-        
-        return new{Nothing,typeof(varname_vec),typeof(conditional)}(nothing, varname_vec, conditional)
+
+        return new{Nothing,typeof(varname_vec),typeof(conditional)}(
+            nothing, varname_vec, conditional
+        )
     end
 end
 
@@ -409,7 +423,9 @@ is_analytical_conditional(gc::GibbsConditional) = gc.conditional !== nothing
 is_sampler_conditional(gc::GibbsConditional) = gc.sampler !== nothing
 
 # Add wrap_in_sampler method for analytical GibbsConditional
-wrap_in_sampler(gc::GibbsConditional) = is_analytical_conditional(gc) ? gc : wrap_in_sampler(gc.sampler)
+function wrap_in_sampler(gc::GibbsConditional)
+    is_analytical_conditional(gc) ? gc : wrap_in_sampler(gc.sampler)
+end
 
 # Original Pair constructor
 function Gibbs(algs::Pair...)
@@ -417,12 +433,12 @@ function Gibbs(algs::Pair...)
 end
 
 # Special handling for two arguments where at least one is GibbsConditional
-function Gibbs(arg1::Union{Pair, GibbsConditional}, arg2::Union{Pair, GibbsConditional})
+function Gibbs(arg1::Union{Pair,GibbsConditional}, arg2::Union{Pair,GibbsConditional})
     # If both are pairs, use the optimized path
     if arg1 isa Pair && arg2 isa Pair
         return Gibbs((first(arg1), first(arg2)), (last(arg1), last(arg2)))
     end
-    
+
     # Otherwise, process the arguments
     varnames = []
     samplers = []
@@ -447,12 +463,12 @@ end
 function Gibbs(arg1, arg2, args...)
     # Collect all arguments
     all_args = (arg1, arg2, args...)
-    
+
     # If all arguments are Pairs, use the optimized Pair constructor
     if all(arg isa Pair for arg in all_args)
         return Gibbs(map(first, all_args), map(last, all_args))
     end
-    
+
     # Otherwise process each argument - could be a Pair or a GibbsConditional
     varnames = []
     samplers = []
@@ -470,7 +486,11 @@ function Gibbs(arg1, arg2, args...)
                 push!(samplers, arg.sampler)  # Store the wrapped sampler
             end
         else
-            throw(ArgumentError("Gibbs arguments must be Pairs or GibbsConditional objects, got $(typeof(arg))"))
+            throw(
+                ArgumentError(
+                    "Gibbs arguments must be Pairs or GibbsConditional objects, got $(typeof(arg))",
+                ),
+            )
         end
     end
     return Gibbs(tuple(varnames...), tuple(samplers...))
@@ -818,7 +838,7 @@ function sample_analytical_conditional(
     gc::GibbsConditional,
     global_vi::DynamicPPL.AbstractVarInfo,
     target_varnames,
-    state
+    state,
 )
     # Extract current values of all variables except the target
     var_dict = Dict{Symbol,Any}()
@@ -829,38 +849,46 @@ function sample_analytical_conditional(
             var_dict[sym] = global_vi[vn]
         end
     end
-    
+
     # Convert to NamedTuple as expected by the conditional function
     conditioning_vars = NamedTuple(var_dict)
-    
+
     # Evaluate the conditional function to get the distribution
     try
         conditional_dist = gc.conditional(conditioning_vars)
         if !isa(conditional_dist, Distribution)
-            throw(ArgumentError("Conditional function must return a Distribution, got $(typeof(conditional_dist))"))
+            throw(
+                ArgumentError(
+                    "Conditional function must return a Distribution, got $(typeof(conditional_dist))",
+                ),
+            )
         end
-        
+
         # Sample from the conditional distribution
         new_value = rand(rng, conditional_dist)
-        
+
         # Create a local VarInfo with just the target variable
         # This follows the pattern used by other samplers in the Gibbs framework
         local_vi = DynamicPPL.subset(global_vi, target_varnames)
         target_vn = target_varnames[1]  # Analytical conditionals are single-variable
         local_vi = DynamicPPL.setindex!!(local_vi, new_value, target_vn)
-        
+
         # Update log probability with the conditional distribution's logpdf
         logp_new = logpdf(conditional_dist, new_value)
         local_vi = setlogp!!(local_vi, logp_new)
-        
+
         # Create a proper state for the analytical conditional that contains the VarInfo
         analytical_state = AnalyticalConditionalState(local_vi, new_value, logp_new)
-        
+
         return local_vi, analytical_state
-        
+
     catch e
         if isa(e, MethodError)
-            throw(ArgumentError("Conditional function failed: $(e). Make sure it accepts a NamedTuple and returns a Distribution."))
+            throw(
+                ArgumentError(
+                    "Conditional function failed: $(e). Make sure it accepts a NamedTuple and returns a Distribution.",
+                ),
+            )
         else
             rethrow(e)
         end
