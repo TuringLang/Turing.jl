@@ -107,8 +107,9 @@ using Turing
             w13 ~ MvNormal([0.0; 0.0], [var_prior 0.0; 0.0 var_prior])
             bo ~ Normal(0, var_prior)
 
-            wo ~
-            MvNormal([0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior])
+            wo ~ MvNormal(
+                [0.0; 0; 0], [var_prior 0.0 0.0; 0.0 var_prior 0.0; 0.0 0.0 var_prior]
+            )
             for i in rand(1:N, 10)
                 y = nn(xs[i], b1, w11, w12, w13, bo, wo)
                 ts[i] ~ Bernoulli(y)

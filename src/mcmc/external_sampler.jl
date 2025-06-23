@@ -47,7 +47,7 @@ Return `true` if the sampler requires unconstrained space, and `false` otherwise
 function requires_unconstrained_space(
     ::ExternalSampler{<:Any,<:Any,Unconstrained}
 ) where {Unconstrained}
-    Unconstrained
+    return Unconstrained
 end
 
 """

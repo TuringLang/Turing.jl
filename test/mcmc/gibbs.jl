@@ -141,9 +141,8 @@ end
         inner::Alg
     end
 
-    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) = DynamicPPL.Sampler(
-        sampler.alg.inner
-    )
+    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
+        DynamicPPL.Sampler(sampler.alg.inner)
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.

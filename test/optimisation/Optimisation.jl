@@ -33,9 +33,8 @@ using Turing
         end
         DynamicPPL.NodeTrait(::OverrideContext) = DynamicPPL.IsParent()
         DynamicPPL.childcontext(parent::OverrideContext) = parent.context
-        DynamicPPL.setchildcontext(parent::OverrideContext, child) = OverrideContext(
-            child, parent.logprior_weight, parent.loglikelihood_weight
-        )
+        DynamicPPL.setchildcontext(parent::OverrideContext, child) =
+            OverrideContext(child, parent.logprior_weight, parent.loglikelihood_weight)
 
         # Only implement what we need for the models above.
         function DynamicPPL.tilde_assume(context::OverrideContext, right, vn, vi)
@@ -216,9 +215,8 @@ using Turing
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
@@ -277,9 +275,8 @@ using Turing
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             lb = [0.0, 0.0]
             ub = [2.0, 2.0]
@@ -339,9 +336,8 @@ using Turing
             Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
@@ -393,9 +389,8 @@ using Turing
             Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) = check_optimisation_result(
-                result, true_value, true_logp, check_retcode
-            )
+            check_success(result, check_retcode=true) =
+                check_optimisation_result(result, true_value, true_logp, check_retcode)
 
             # Set two constraints: The first parameter must be non-negative, and the L2 norm
             # of the parameters must be between 0.5 and 2.
