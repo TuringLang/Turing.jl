@@ -317,8 +317,163 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
     end
 end
 
+"""
+    GibbsConditional(sampler, varnames)
+    GibbsConditional(sym, conditional)
+
+A conditional sampler for use within a Gibbs sampler. Has two forms:
+
+1. **Sampler-based**: `GibbsConditional(sampler, varnames)` samples variables in `varnames` 
+   conditionally on all other variables using the provided `sampler`.
+
+2. **Analytical**: `GibbsConditional(sym, conditional)` samples the variable `sym` according 
+   to the analytical conditional `conditional`, which must be a function from a NamedTuple 
+   of the conditioned variables to a Distribution.
+
+# Arguments (Sampler-based)
+- `sampler`: The underlying sampler to use for sampling the specified variables.
+- `varnames`: A single variable name or a collection of variable names to be sampled.
+  Each variable name can be given as either a `Symbol` or a `VarName`.
+
+# Arguments (Analytical)
+- `sym`: A single variable name (Symbol or VarName) to be sampled.
+- `conditional`: A function from a NamedTuple of conditioned variables to a Distribution.
+
+# Examples
+```julia
+# Sampler-based: Sample x and y jointly using MH, conditioned on all other variables
+GibbsConditional(MH(), [:x, :y])
+
+# Sampler-based: Sample only z using NUTS, conditioned on all other variables  
+GibbsConditional(NUTS(), :z)
+
+# Analytical: Sample λ according to a conditional function
+function cond_λ(c)
+    α_n = α_0 + (N - 1) / 2 + 1
+    β_n = s2 * N / 2 + c.m^2 / 2 + inv(θ_0)
+    return Gamma(α_n, inv(β_n))
+end
+GibbsConditional(:λ, cond_λ)
+
+# Use in a Gibbs sampler
+Gibbs(
+    GibbsConditional(:λ, cond_λ),
+    GibbsConditional(:m, cond_m)
+)
+```
+"""
+struct GibbsConditional{S,V,C}
+    "The underlying sampler (Nothing for analytical conditionals)"
+    sampler::S
+    "Variable names to be sampled"
+    varnames::V
+    "Analytical conditional function (Nothing for sampler-based conditionals)"
+    conditional::C
+    
+    # Constructor for sampler-based conditionals
+    function GibbsConditional(sampler, varnames)
+        # Ensure the sampler is a valid Gibbs component
+        if !isgibbscomponent(sampler)
+            msg = "The provided sampler $(sampler) is not a valid Gibbs component."
+            throw(ArgumentError(msg))
+        end
+        # Convert varnames to a consistent format
+        varnames_vec = to_varname_list(varnames)
+        # Wrap sampler if needed
+        wrapped_sampler = wrap_in_sampler(sampler)
+        return new{typeof(wrapped_sampler),typeof(varnames_vec),Nothing}(wrapped_sampler, varnames_vec, nothing)
+    end
+    
+    # Constructor for analytical conditionals
+    function GibbsConditional(sym::Union{Symbol, VarName, AbstractVector{<:Union{Symbol, VarName}}}, conditional)
+        # Validate conditional is callable
+        if !isa(conditional, Function)
+            throw(ArgumentError("conditional must be a function that takes a NamedTuple and returns a Distribution"))
+        end
+        
+        # Convert symbol to consistent format - analytical conditionals should work with single variables
+        if isa(sym, AbstractVector) && length(sym) != 1
+            throw(ArgumentError("Analytical conditionals currently support only single variables"))
+        end
+        varname_vec = to_varname_list(sym)
+        
+        return new{Nothing,typeof(varname_vec),typeof(conditional)}(nothing, varname_vec, conditional)
+    end
+end
+
+# Make GibbsConditional a valid Gibbs component
+isgibbscomponent(::GibbsConditional) = true
+
+# Helper functions to determine the type of GibbsConditional
+is_analytical_conditional(gc::GibbsConditional) = gc.conditional !== nothing
+is_sampler_conditional(gc::GibbsConditional) = gc.sampler !== nothing
+
+# Add wrap_in_sampler method for analytical GibbsConditional
+wrap_in_sampler(gc::GibbsConditional) = is_analytical_conditional(gc) ? gc : wrap_in_sampler(gc.sampler)
+
+# Original Pair constructor
 function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
+end
+
+# Special handling for two arguments where at least one is GibbsConditional
+function Gibbs(arg1::Union{Pair, GibbsConditional}, arg2::Union{Pair, GibbsConditional})
+    # If both are pairs, use the optimized path
+    if arg1 isa Pair && arg2 isa Pair
+        return Gibbs((first(arg1), first(arg2)), (last(arg1), last(arg2)))
+    end
+    
+    # Otherwise, process the arguments
+    varnames = []
+    samplers = []
+    for arg in (arg1, arg2)
+        if arg isa Pair
+            push!(varnames, first(arg))
+            push!(samplers, last(arg))
+        elseif arg isa GibbsConditional
+            push!(varnames, arg.varnames)
+            # For analytical conditionals, store the GibbsConditional itself as the "sampler"
+            if is_analytical_conditional(arg)
+                push!(samplers, arg)  # Store the whole GibbsConditional
+            else
+                push!(samplers, arg.sampler)  # Store the wrapped sampler
+            end
+        end
+    end
+    return Gibbs(tuple(varnames...), tuple(samplers...))
+end
+
+# Allow GibbsConditional (and mixed with Pairs) in Gibbs constructor
+function Gibbs(arg1, arg2, args...)
+    # Collect all arguments
+    all_args = (arg1, arg2, args...)
+    
+    # If all arguments are Pairs, use the optimized Pair constructor
+    if all(arg isa Pair for arg in all_args)
+        return Gibbs(map(first, all_args), map(last, all_args))
+    end
+    
+    # Otherwise process each argument - could be a Pair or a GibbsConditional
+    varnames = []
+    samplers = []
+    for arg in all_args
+        if arg isa Pair
+            push!(varnames, first(arg))
+            push!(samplers, last(arg))
+        elseif arg isa GibbsConditional
+            push!(varnames, arg.varnames)
+            # For analytical conditionals, store the GibbsConditional itself as the "sampler"
+            # so we can identify it later in the stepping process
+            if is_analytical_conditional(arg)
+                push!(samplers, arg)  # Store the whole GibbsConditional
+            else
+                push!(samplers, arg.sampler)  # Store the wrapped sampler
+            end
+        else
+            throw(ArgumentError("Gibbs arguments must be Pairs or GibbsConditional objects, got $(typeof(arg))"))
+        end
+    end
+    return Gibbs(tuple(varnames...), tuple(samplers...))
 end
 
 struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
@@ -327,6 +482,15 @@ struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
 end
 
 varinfo(state::GibbsState) = state.vi
+
+# State type for analytical conditionals
+struct AnalyticalConditionalState{V<:DynamicPPL.AbstractVarInfo}
+    vi::V
+    value::Any
+    logp::Real
+end
+
+varinfo(state::AnalyticalConditionalState) = state.vi
 
 """
 Initialise a VarInfo for the Gibbs sampler.
@@ -435,23 +599,35 @@ function gibbs_initialstep_recursive(
         DynamicPPL.subset(vi, varnames)[:]
     end
 
-    # Construct the conditioned model.
-    conditioned_model, context = make_conditional(model, varnames, vi)
+    # Check if this is an analytical conditional
+    if sampler isa GibbsConditional && is_analytical_conditional(sampler)
+        # For analytical conditionals, we need to initialize with a sample
+        # Create a dummy state for the first sample  
+        dummy_state = AnalyticalConditionalState(vi, nothing, 0.0)
+        new_vi_local, new_state = sample_analytical_conditional(
+            rng, sampler, vi, varnames, dummy_state
+        )
+        # For analytical conditionals, new_vi_local contains the updated subset
+        # Note: we need to update the global vi with the new values later
+    else
+        # Construct the conditioned model.
+        conditioned_model, context = make_conditional(model, varnames, vi)
 
-    # Take initial step with the current sampler.
-    _, new_state = step_function(
-        rng,
-        conditioned_model,
-        sampler;
-        # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
-        # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
-        initial_params=initial_params_local,
-        kwargs...,
-    )
-    new_vi_local = varinfo(new_state)
-    # Merge in any new variables that were introduced during the step, but that
-    # were not in the domain of the current sampler.
-    vi = merge(vi, get_global_varinfo(context))
+        # Take initial step with the current sampler.
+        _, new_state = step_function(
+            rng,
+            conditioned_model,
+            sampler;
+            # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
+            # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
+            initial_params=initial_params_local,
+            kwargs...,
+        )
+        new_vi_local = varinfo(new_state)
+        # Merge in any new variables that were introduced during the step, but that
+        # were not in the domain of the current sampler.
+        vi = merge(vi, get_global_varinfo(context))
+    end
     # Merge the new values for all the variables sampled by the current sampler.
     vi = merge(vi, new_vi_local)
 
@@ -632,6 +808,66 @@ function match_linking!!(varinfo_local, prev_state_local, model)
 end
 
 """
+Sample from an analytical conditional distribution.
+
+This function evaluates the conditional function with the current variable values
+and samples from the resulting distribution.
+"""
+function sample_analytical_conditional(
+    rng::Random.AbstractRNG,
+    gc::GibbsConditional,
+    global_vi::DynamicPPL.AbstractVarInfo,
+    target_varnames,
+    state
+)
+    # Extract current values of all variables except the target
+    var_dict = Dict{Symbol,Any}()
+    for vn in keys(global_vi)
+        # Convert VarName to Symbol for the NamedTuple
+        sym = Symbol(vn)
+        if sym ∉ [Symbol(tvn) for tvn in target_varnames]  # Don't include target variable
+            var_dict[sym] = global_vi[vn]
+        end
+    end
+    
+    # Convert to NamedTuple as expected by the conditional function
+    conditioning_vars = NamedTuple(var_dict)
+    
+    # Evaluate the conditional function to get the distribution
+    try
+        conditional_dist = gc.conditional(conditioning_vars)
+        if !isa(conditional_dist, Distribution)
+            throw(ArgumentError("Conditional function must return a Distribution, got $(typeof(conditional_dist))"))
+        end
+        
+        # Sample from the conditional distribution
+        new_value = rand(rng, conditional_dist)
+        
+        # Create a local VarInfo with just the target variable
+        # This follows the pattern used by other samplers in the Gibbs framework
+        local_vi = DynamicPPL.subset(global_vi, target_varnames)
+        target_vn = target_varnames[1]  # Analytical conditionals are single-variable
+        local_vi = DynamicPPL.setindex!!(local_vi, new_value, target_vn)
+        
+        # Update log probability with the conditional distribution's logpdf
+        logp_new = logpdf(conditional_dist, new_value)
+        local_vi = setlogp!!(local_vi, logp_new)
+        
+        # Create a proper state for the analytical conditional that contains the VarInfo
+        analytical_state = AnalyticalConditionalState(local_vi, new_value, logp_new)
+        
+        return local_vi, analytical_state
+        
+    catch e
+        if isa(e, MethodError)
+            throw(ArgumentError("Conditional function failed: $(e). Make sure it accepts a NamedTuple and returns a Distribution."))
+        else
+            rethrow(e)
+        end
+    end
+end
+
+"""
 Run a Gibbs step for the first varname/sampler/state tuple, and recursively call the same
 function on the tail, until there are no more samplers left.
 
@@ -670,14 +906,22 @@ function gibbs_step_recursive(
     # However, we've judged that doing any caching or other tricks to avoid this now would
     # be premature optimization. In most use cases of Gibbs a single model call here is not
     # going to be a significant expense anyway.
-    # Set the state of the current sampler, accounting for any changes made by other
-    # samplers.
-    state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
+    # Check if this is an analytical conditional
+    if sampler isa GibbsConditional && is_analytical_conditional(sampler)
+        # Handle analytical conditional sampling
+        new_vi_local, new_state = sample_analytical_conditional(
+            rng, sampler, global_vi, varnames, state
+        )
+    else
+        # Set the state of the current sampler, accounting for any changes made by other
+        # samplers.
+        state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
 
-    # Take a step with the local sampler.
-    new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
+        # Take a step with the local sampler.
+        new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
 
-    new_vi_local = varinfo(new_state)
+        new_vi_local = varinfo(new_state)
+    end
     # Merge the latest values for all the variables in the current sampler.
     new_global_vi = merge(get_global_varinfo(context), new_vi_local)
     new_global_vi = setlogp!!(new_global_vi, getlogp(new_vi_local))

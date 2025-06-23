@@ -408,6 +408,33 @@ end
         @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
+    @testset "GibbsConditional constructors" begin
+        N = 10
+        # Test GibbsConditional with various configurations
+        gc1 = GibbsConditional(HMC(0.1, 5), :s)
+        gc2 = GibbsConditional(MH(), [:s, :m])
+        gc3 = GibbsConditional(NUTS(), @varname(s))
+        gc4 = GibbsConditional(PG(10), [@varname(s), @varname(m)])
+        
+        # Test that GibbsConditional can be used in Gibbs sampler
+        s1 = Gibbs(gc1, GibbsConditional(ESS(), :m))
+        s2 = Gibbs(GibbsConditional(MH(), [:s]), GibbsConditional(HMC(0.1, 5), [:m]))
+        
+        # Test mixing GibbsConditional with regular pairs
+        s3 = Gibbs(gc1, :m => ESS())
+        s4 = Gibbs(:s => HMC(0.1, 5), GibbsConditional(MH(), :m))
+        
+        # Test invalid sampler
+        @test_throws ArgumentError GibbsConditional(gdemo_default, :s)
+        
+        # Test that all configurations work
+        @test sample(gdemo_default, Gibbs(gc1, gc2), N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s2, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s3, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s4, N) isa MCMCChains.Chains
+    end
+
     # Test various combinations of samplers against models for which we know the analytical
     # posterior mean.
     @testset "Gibbs inference" begin
@@ -436,6 +463,25 @@ end
             alg = CSMC(15)
             chain = sample(gdemo(1.5, 2.0), alg, 4_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+        end
+
+        @testset "GibbsConditional inference" begin
+            # Test GibbsConditional with HMC and ESS
+            alg = Gibbs(
+                GibbsConditional(HMC(0.2, 4), :s),
+                GibbsConditional(ESS(), :m)
+            )
+            chain = sample(gdemo(1.5, 2.0), alg, 3_000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+            
+            # Test GibbsConditional with mixed syntax
+            alg = Gibbs(
+                GibbsConditional(MH(), [:s, :m]),
+                :s => NUTS(),
+                GibbsConditional(ESS(), :m)
+            )
+            chain = sample(gdemo(1.5, 2.0), alg, 3_000)
+            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.15)
         end
 
         @testset "PG and HMC on MoGtest_default" begin
@@ -857,6 +903,123 @@ end
         model = dirichlet_model()
         sampler = Gibbs(:w => HMC(0.05, 10))
         @test (sample(model, sampler, 10); true)
+    end
+
+    @testset "Analytical GibbsConditional" begin
+        # Test the basic constructor
+        @testset "Constructor validation" begin
+            # Valid analytical conditional
+            function cond_test(c)
+                return Normal(c.x, 1.0)
+            end
+            gc = GibbsConditional(:y, cond_test)
+            @test is_analytical_conditional(gc)
+            @test !is_sampler_conditional(gc)
+            @test gc.conditional == cond_test
+            @test gc.sampler === nothing
+            @test length(gc.varnames) == 1
+
+            # Test with invalid conditional (not a function)
+            @test_throws ArgumentError GibbsConditional(:y, "not_a_function")
+            
+            # Test with multiple variables (should error for analytical conditionals)
+            @test_throws ArgumentError GibbsConditional([:x, :y], cond_test)
+        end
+
+        @testset "Integration with Gibbs constructor" begin
+            function cond_x(c)
+                return Normal(0.0, 1.0)  # Simple prior-like conditional
+            end
+            
+            # Test mixed usage with regular samplers
+            gibbs1 = Gibbs(
+                GibbsConditional(:x, cond_x),
+                :y => MH()
+            )
+            @test length(gibbs1.varnames) == 2
+            @test length(gibbs1.samplers) == 2
+            
+            # Test multiple analytical conditionals
+            function cond_y(c)
+                return Normal(c.x, 1.0)
+            end
+            
+            gibbs2 = Gibbs(
+                GibbsConditional(:x, cond_x),
+                GibbsConditional(:y, cond_y)
+            )
+            @test length(gibbs2.varnames) == 2
+            @test length(gibbs2.samplers) == 2
+        end
+
+        @testset "Inverse Gamma-Normal example" begin
+            # Implement the inverse_gdemo example from the specification
+            α_0 = 2.0
+            θ_0 = inv(3.0)
+            x = [1.5, 2.0]
+            N = length(x)
+
+            @model function inverse_gdemo(x)
+                λ ~ Gamma(α_0, θ_0)
+                σ = sqrt(1 / λ)
+                m ~ Normal(0, σ)
+                for i in eachindex(x)
+                    x[i] ~ Normal(m, σ)
+                end
+            end
+
+            # The conditionals can be formulated in terms of the following statistics:
+            x_bar = mean(x) # sample mean
+            s2 = var(x; mean=x_bar, corrected=false) # sample variance
+            m_n = N * x_bar / (N + 1)
+
+            function cond_m(c)
+                λ_n = c.λ * (N + 1)
+                σ_n = sqrt(1 / λ_n)
+                return Normal(m_n, σ_n)
+            end
+
+            function cond_λ(c)
+                α_n = α_0 + (N - 1) / 2 + 1
+                β_n = s2 * N / 2 + c.m^2 / 2 + inv(θ_0)
+                return Gamma(α_n, inv(β_n))
+            end
+
+            model = inverse_gdemo(x)
+
+            # Test that we can create the sampler
+            sampler = Gibbs(
+                GibbsConditional(:λ, cond_λ), 
+                GibbsConditional(:m, cond_m)
+            )
+
+            # Test that we can sample (just a few iterations to check it works)
+            @test (sample(model, sampler, 10); true)
+            
+            # Test that the chain has the expected variables
+            chain = sample(model, sampler, 100)
+            @test :λ in keys(chain)
+            @test :m in keys(chain)
+            @test size(chain) == (100, 2, 1)  # 100 samples, 2 variables, 1 chain
+        end
+
+        @testset "Error handling" begin
+            # Test conditional function that doesn't return a Distribution
+            function bad_cond(c)
+                return "not a distribution"
+            end
+            
+            @model function simple_model()
+                x ~ Normal(0, 1)
+                y ~ Normal(x, 1)
+            end
+            
+            model = simple_model()
+            sampler = Gibbs(GibbsConditional(:y, bad_cond), :x => MH())
+            
+            # This should error during sampling due to bad conditional
+            @test_throws ArgumentError sample(model, sampler, 1)
+        end
     end
 end
 
