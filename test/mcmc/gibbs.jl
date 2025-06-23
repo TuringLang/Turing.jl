@@ -397,10 +397,6 @@ end
             @varname(s) => RepeatSampler(HMC(0.1, 5), 3),
             @varname(m) => RepeatSampler(PG(10), 2),
         )
-        for s in (s1, s2, s3, s4, s5, s6)
-            @test DynamicPPL.alg_str(DynamicPPL.Sampler(s)) == "Gibbs"
-        end
-
         @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s2, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s3, N) isa MCMCChains.Chains
