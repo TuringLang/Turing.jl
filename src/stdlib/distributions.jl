@@ -126,7 +126,7 @@ function OrderedLogistic(η, cutpoints::AbstractVector)
     return OrderedLogistic{typeof(η),typeof(cutpoints)}(η, cutpoints)
 end
 
-Base.minimum(d::OrderedLogistic) = 0
+Base.minimum(d::OrderedLogistic) = 1
 Base.maximum(d::OrderedLogistic) = length(d.cutpoints) + 1
 
 function Distributions.logpdf(d::OrderedLogistic, k::Real)
