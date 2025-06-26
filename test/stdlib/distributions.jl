@@ -43,7 +43,6 @@ using Turing
         @test s ≈ 1.0 atol = 0.0001
     end
 
-
     @testset "distributions functions" begin
         λ = 0.01:0.01:5
         LLp = @. logpdf(Poisson(λ), 1)
