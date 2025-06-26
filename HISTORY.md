@@ -1,3 +1,8 @@
+# Release 0.39.3
+
+Improved the performance of `Turing.Inference.getparams` when called with an untyped VarInfo as the second argument, by first converting to a typed VarInfo.
+This makes, for example, the post-sampling Chains construction for `Prior()` run much faster.
+
 # Release 0.39.2
 
 Fixed a bug in the support of `OrderedLogistic` (by changing the minimum from 0 to 1).
