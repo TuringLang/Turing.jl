@@ -184,6 +184,14 @@ function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # Materialize the iterators and concatenate.
     return mapreduce(collect, vcat, iters)
 end
+function getparams(
+    model::DynamicPPL.Model, untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata}
+)
+    # values_as_in_model is unconscionably slow for untyped VarInfo. It's
+    # much faster to convert it to a typed varinfo before calling getparams.
+    # https://github.com/TuringLang/Turing.jl/issues/2604
+    return getparams(model, DynamicPPL.typed_varinfo(untyped_vi))
+end
 function getparams(::DynamicPPL.Model, ::DynamicPPL.VarInfo{NamedTuple{(),Tuple{}}})
     return float(Real)[]
 end
