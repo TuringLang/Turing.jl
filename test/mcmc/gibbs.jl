@@ -565,11 +565,6 @@ end
         end
     end
 
-    # Helper function for logsumexp
-    function logsumexp(x)
-        max_x = maximum(x)
-        return max_x + log(sum(exp.(x .- max_x)))
-    end
 
     # The below test used to sample incorrectly before
     # https://github.com/TuringLang/Turing.jl/pull/2328
