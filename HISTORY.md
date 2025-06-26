@@ -1,3 +1,7 @@
+# Release 0.39.2
+
+Fixed a bug in the support of `OrderedLogistic` (by changing the minimum from 0 to 1).
+
 # Release 0.39.1
 
 No changes from 0.39.0 — this patch is released just to re-trigger a Documenter.jl run.
