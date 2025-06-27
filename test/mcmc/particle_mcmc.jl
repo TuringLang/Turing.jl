@@ -34,6 +34,7 @@ using Turing
 
         tested = sample(normal(), SMC(), 100)
 
+        # TODO(mhauru) This needs an explanation for why it fails.
         # failing test
         @model function fail_smc()
             a ~ Normal(4, 5)
