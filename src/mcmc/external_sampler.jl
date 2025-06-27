@@ -28,7 +28,7 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     function ExternalSampler(
         sampler::AbstractSampler,
         adtype::ADTypes.AbstractADType,
-        ::Val{unconstrained}=Val(true),
+        (::Val{unconstrained})=Val(true),
     ) where {unconstrained}
         if !(unconstrained isa Bool)
             throw(
@@ -44,9 +44,11 @@ end
 
 Return `true` if the sampler requires unconstrained space, and `false` otherwise.
 """
-requires_unconstrained_space(
+function requires_unconstrained_space(
     ::ExternalSampler{<:Any,<:Any,Unconstrained}
-) where {Unconstrained} = Unconstrained
+) where {Unconstrained}
+    return Unconstrained
+end
 
 """
     externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
