@@ -565,7 +565,6 @@ end
         end
     end
 
-
     # The below test used to sample incorrectly before
     # https://github.com/TuringLang/Turing.jl/pull/2328
     @testset "dynamic model with ESS" begin
