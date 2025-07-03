@@ -58,7 +58,7 @@ function AdvancedPS.reset_logprob!(trace::TracedModel)
     return trace
 end
 
-function Libtask.TapedTask(taped_globals::Any, model::TracedModel, args...; kwargs...) # RNG ?
+function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
     return Libtask.TapedTask(
         taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
     )
