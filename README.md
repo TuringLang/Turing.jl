@@ -25,7 +25,7 @@ julia> using Turing
 
 julia> @model function my_first_model(data)
            mean ~ Normal(0, 1)
-           sd ~ Exponential(1)
+           sd ~ truncated(Cauchy(0, 3); lower=0)
            data ~ Normal(mean, sd)
        end
 
@@ -34,7 +34,7 @@ julia> model = my_first_model(randn())
 julia> chain = sample(model, NUTS(), 1000)
 ```
 
-For more information about how to use the features of Turing.jl, and a number of example applications, please see the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org).
+You can find the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org), which contains general information about Turing.jl's features, as well as a variety of tutorials with examples of Turing.jl models.
 
 API documentation for Turing.jl is specifically available at [**https://turinglang.org/Turing.jl/stable**](https://turinglang.org/Turing.jl/stable/).
 
@@ -55,21 +55,12 @@ Breaking releases (minor version) should target the `breaking` branch.
 
 If you have not received any feedback on an issue or PR for a while, please feel free to ping `@TuringLang/maintainers` in a comment.
 
-### Discussions
-
-This repository also has a [Discussions page](https://github.com/TuringLang/Turing.jl/discussions), where you can create discussions and ask questions about statistical applications and theory.
-
-> [!WARNING]  
-> The discussions page is not monitored often. We recommend you open an issue (for bugs or feature requests) or to post on Discourse or Slack (for general Bayesian modelling questions).
-
 ## 💬 Other channels
 
 The Turing.jl userbase tends to be most active on the [`#turing` channel of Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
 If you do not have an invitation to Julia's Slack, you can get one from [the official Julia website](https://julialang.org/slack/).
 
 There are also often threads on [Julia Discourse](https://discourse.julialang.org) (you can search using, e.g., [the `turing` tag](https://discourse.julialang.org/tag/turing)).
-
-We are most active on GitHub, but we do also keep an eye on both Slack and Discourse.
 
 ## 🔄 What's changed recently?
 
@@ -85,7 +76,7 @@ In particular, it takes the ability to specify probabilistic models with [Dynami
 
   - Markov Chain Monte Carlo (both an abstract interface: [AbstractMCMC.jl](https://github.com/TuringLang/AbstractMCMC.jl), and individual samplers, such as [AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl), [AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl), and more).
   - Variational inference using [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl).
-  - Mode estimation techniques, which rely on SciML's [Optimization.jl interface](https://github.com/SciML/Optimization.jl).
+  - Maximum likelihood and maximum a posteriori estimation, which rely on SciML's [Optimization.jl interface](https://github.com/SciML/Optimization.jl).
 
 ## Citing Turing.jl
 
