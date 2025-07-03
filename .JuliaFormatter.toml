@@ -1,3 +1,4 @@
 style="blue"
 format_markdown = true
 import_to_using = false
+ignore = ["README.md"]
