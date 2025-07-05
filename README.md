@@ -125,3 +125,5 @@ month = feb,
 ```
 
 </details>
+
+You can see the full list of publications that have cited Turing.jl on [Google Scholar](https://scholar.google.com/scholar?cites=11803241473159708991).
