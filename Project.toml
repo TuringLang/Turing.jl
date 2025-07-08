@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.39.3"
+version = "0.39.4"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -50,7 +50,7 @@ TuringOptimExt = "Optim"
 [compat]
 ADTypes = "1.9"
 AbstractMCMC = "5.5"
-AbstractPPL = "0.11.0"
+AbstractPPL = "0.11, 0.12"
 Accessors = "0.1"
 AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6, 0.7, 0.8"
 AdvancedMH = "0.8"
