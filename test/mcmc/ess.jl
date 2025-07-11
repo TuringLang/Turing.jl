@@ -64,7 +64,7 @@ using Turing
                 @varname(mu1) => ESS(),
                 @varname(mu2) => ESS(),
             )
-            chain = sample(StableRNG(seed), MoGtest_default, alg, 2000)
+            chain = sample(StableRNG(seed), MoGtest_default, alg, 5000)
             check_MoGtest_default(chain; atol=0.1)
         end
 
