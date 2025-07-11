@@ -23,8 +23,8 @@ using Turing
         model = test()
         trace = AdvancedPS.Trace(model, sampler, vi, AdvancedPS.TracedRNG())
 
-        # Make sure we link the traces
-        @test haskey(trace.model.ctask.task.storage, :__trace)
+        # Make sure the backreference from taped_globals to the trace is in place.
+        @test trace.model.ctask.taped_globals.other === trace
 
         res = AdvancedPS.advance!(trace, false)
         @test DynamicPPL.get_num_produce(trace.model.f.varinfo) == 1
