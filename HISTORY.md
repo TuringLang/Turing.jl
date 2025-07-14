@@ -1,3 +1,7 @@
+# 0.39.5
+
+Fixed a bug where sampling with an `externalsampler` would not correctly set the log probability density inside the resulting chain.
+
 # 0.39.4
 
 Bumped compatibility of AbstractPPL to include 0.12.
