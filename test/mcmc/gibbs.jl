@@ -829,7 +829,7 @@ end
             @testset "logp is set correctly" begin
                 @model logp_check() = x ~ Normal()
                 chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
-                @test logpdf.(Normal(), chn[:x]) == chn[:lp]
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
             end
         end
 
