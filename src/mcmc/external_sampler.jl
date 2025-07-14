@@ -7,6 +7,23 @@ The `Unconstrained` type-parameter is to indicate whether the sampler requires u
 
 # Fields
 $(TYPEDFIELDS)
+
+# Turing.jl's interface for external samplers
+
+When implementing a new `MySampler <: AbstractSampler`,
+`MySampler` must first and foremost conform to the `AbstractMCMC` interface to work with Turing.jl's `externalsampler` function.
+In particular, it must implement:
+
+- `AbstractMCMC.step` (the main function for taking a step in MCMC sampling; this is documented in AbstractMCMC.jl)
+- `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`: How to extract the parameters from the state returned by your sampler (i.e., the second return value of `step`).
+
+There are a few more optional functions which you can implement to improve the integration with Turing.jl:
+
+- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want your sampler to function as a component in Turing's Gibbs sampler, you should make this to `true`.
+
+- `Turing.Inference.requires_unconstrained_space(::MySampler)`: If your sampler requires unconstrained space, you should return `true`. This tells Turing to perform linking on the VarInfo before evaluation, and ensures that the parameter values passed to your sampler will always be in unconstrained (Euclidean) space.
+
+- `Turing.Inference.getlogp_external(external_transition, external_state)`: Tell Turing how to extract the log probability density associated with this transition (and state). If you do not specify these, Turing will simply re-evaluate the model with the parameters obtained from `getparams`, which can be inefficient. It is therefore recommended to store the log probability density in either the transition or the state (or both) and override this method.
 """
 struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <:
        InferenceAlgorithm
@@ -69,63 +86,27 @@ function externalsampler(
 end
 
 """
-    getlogp_external_transition(external_transition)
+    getlogp_external(external_transition, external_state)
 
 Get the log probability density associated with the external sampler's
-transition. Returns `missing` by default; in this case, an extra model
-evaluation will be needed to calculate the correct log density.
+transition and state. Returns `missing` by default; in this case, an extra
+model evaluation will be needed to calculate the correct log density.
 """
-getlogp_external_transition(::Any) = missing
-getlogp_external_transition(mh::AdvancedMH.Transition) = mh.lp
-getlogp_external_transition(hmc::AdvancedHMC.Transition) = hmc.stat.log_density
+getlogp_external(::Any, ::Any) = missing
+getlogp_external(mh::AdvancedMH.Transition, ::AdvancedMH.Transition) = mh.lp
+getlogp_external(hmc::AdvancedHMC.Transition, ::AdvancedHMC.HMCState) = hmc.stat.log_density
 
-"""
-    getlogp_external_state(external_state)
-
-Get the log probability density associated with the external sampler's state.
-Returns `missing` by default; in this case, an extra model evaluation will be
-needed to calculate the correct log density.
-"""
-getlogp_external_state(::Any) = missing
-# AdvancedMH returns an `AMH.Transition` as both transition and state
-getlogp_external_state(mh::AdvancedMH.Transition) = mh.lp
-getlogp_external_state(hmc::AdvancedHMC.HMCState) = hmc.transition.stat.log_density
-
-struct TuringState{S,M,V,C}
+struct TuringState{S,V1<:AbstractVarInfo,M,V,C}
     state::S
+    # Note that this varinfo has the correct parameters and logp obtained from
+    # the state, whereas `ldf.varinfo` will in general have junk inside it.
+    varinfo::V1
     ldf::DynamicPPL.LogDensityFunction{M,V,C}
 end
 
-state_to_turing(f::DynamicPPL.LogDensityFunction, state) = TuringState(state, f)
-function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
-    # TODO: We should probably rename this `getparams` since it returns something
-    # very different from `Turing.Inference.getparams`.
-    θ = getparams(f.model, transition)
-    varinfo = DynamicPPL.unflatten(f.varinfo, θ)
-    new_logp = getlogp_external_transition(transition)
-    new_varinfo = if ismissing(new_logp)
-        last(DynamicPPL.evaluate!!(f.model, varinfo, f.context))
-    else
-        DynamicPPL.setlogp!!(varinfo, new_logp)
-    end
-    return Transition(f.model, new_varinfo, transition)
-end
-
-function varinfo(state::TuringState)
-    θ = getparams(state.ldf.model, state.state)
-    vi = DynamicPPL.unflatten(state.ldf.varinfo, θ)
-    new_logp = getlogp_external_state(state.state)
-    return if ismissing(new_logp)
-        last(DynamicPPL.evaluate!!(state.ldf.model, vi, state.ldf.context))
-    else
-        DynamicPPL.setlogp!!(vi, new_logp)
-    end
-end
+varinfo(state::TuringState) = state.varinfo
 varinfo(state::AbstractVarInfo) = state
 
-# NOTE: Only thing that depends on the underlying sampler.
-# Something similar should be part of AbstractMCMC at some point:
-# https://github.com/TuringLang/AbstractMCMC.jl/pull/86
 getparams(::DynamicPPL.Model, transition::AdvancedHMC.Transition) = transition.z.θ
 function getparams(model::DynamicPPL.Model, state::AdvancedHMC.HMCState)
     return getparams(model, state.transition)
@@ -177,8 +158,22 @@ function AbstractMCMC.step(
             kwargs...,
         )
     end
+
+    # Get the parameters and log density, and set them in the varinfo.
+    new_parameters = getparams(f.model, state_inner)
+    new_logp = getlogp_external(transition_inner, state_inner)
+    new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
+    new_varinfo = if ismissing(new_logp)
+        last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
+    else
+        DynamicPPL.setlogp!!(new_varinfo, new_logp)
+    end
+
     # Update the `state`
-    return transition_to_turing(f, transition_inner), state_to_turing(f, state_inner)
+    return (
+        Transition(f.model, new_varinfo, transition_inner),
+        TuringState(state_inner, new_varinfo, f),
+    )
 end
 
 function AbstractMCMC.step(
@@ -191,11 +186,24 @@ function AbstractMCMC.step(
     sampler = sampler_wrapper.alg.sampler
     f = state.ldf
 
-    # Then just call `AdvancedHMC.step` with the right arguments.
+    # Then just call `AdvancedMCMC.step` with the right arguments.
     transition_inner, state_inner = AbstractMCMC.step(
         rng, AbstractMCMC.LogDensityModel(f), sampler, state.state; kwargs...
     )
 
+    # Get the parameters and log density, and set them in the varinfo.
+    new_parameters = getparams(f.model, state_inner)
+    new_logp = getlogp_external(transition_inner, state_inner)
+    new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
+    new_varinfo = if ismissing(new_logp)
+        last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
+    else
+        DynamicPPL.setlogp!!(new_varinfo, new_logp)
+    end
+
     # Update the `state`
-    return transition_to_turing(f, transition_inner), state_to_turing(f, state_inner)
+    return (
+        Transition(f.model, new_varinfo, transition_inner),
+        TuringState(state_inner, new_varinfo, f),
+    )
 end
