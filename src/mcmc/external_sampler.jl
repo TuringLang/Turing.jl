@@ -68,6 +68,29 @@ function externalsampler(
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
+"""
+    getlogp_external_transition(external_transition)
+
+Get the log probability density associated with the external sampler's
+transition. Returns `missing` by default; in this case, an extra model
+evaluation will be needed to calculate the correct log density.
+"""
+getlogp_external_transition(::Any) = missing
+getlogp_external_transition(mh::AdvancedMH.Transition) = mh.lp
+getlogp_external_transition(hmc::AdvancedHMC.Transition) = hmc.stat.log_density
+
+"""
+    getlogp_external_state(external_state)
+
+Get the log probability density associated with the external sampler's state.
+Returns `missing` by default; in this case, an extra model evaluation will be
+needed to calculate the correct log density.
+"""
+getlogp_external_state(::Any) = missing
+# AdvancedMH returns an `AMH.Transition` as both transition and state
+getlogp_external_state(mh::AdvancedMH.Transition) = mh.lp
+getlogp_external_state(hmc::AdvancedHMC.HMCState) = hmc.transition.stat.log_density
+
 struct TuringState{S,M,V,C}
     state::S
     ldf::DynamicPPL.LogDensityFunction{M,V,C}
@@ -79,13 +102,24 @@ function transition_to_turing(f::DynamicPPL.LogDensityFunction, transition)
     # very different from `Turing.Inference.getparams`.
     θ = getparams(f.model, transition)
     varinfo = DynamicPPL.unflatten(f.varinfo, θ)
-    return Transition(f.model, varinfo, transition)
+    new_logp = getlogp_external_transition(transition)
+    new_varinfo = if ismissing(new_logp)
+        last(DynamicPPL.evaluate!!(f.model, varinfo, f.context))
+    else
+        DynamicPPL.setlogp!!(varinfo, new_logp)
+    end
+    return Transition(f.model, new_varinfo, transition)
 end
 
 function varinfo(state::TuringState)
     θ = getparams(state.ldf.model, state.state)
-    # TODO: Do we need to link here first?
-    return DynamicPPL.unflatten(state.ldf.varinfo, θ)
+    vi = DynamicPPL.unflatten(state.ldf.varinfo, θ)
+    new_logp = getlogp_external_state(state.state)
+    return if ismissing(new_logp)
+        last(DynamicPPL.evaluate!!(state.ldf.model, vi, state.ldf.context))
+    else
+        DynamicPPL.setlogp!!(vi, new_logp)
+    end
 end
 varinfo(state::AbstractVarInfo) = state
 
