@@ -168,6 +168,7 @@ end
                 end
             end
         end
+
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
         # it with `NamedTuple` instead of `AbstractVector`.
         # @testset "MH with prior proposal" begin
