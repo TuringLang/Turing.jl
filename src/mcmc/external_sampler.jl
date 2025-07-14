@@ -115,6 +115,21 @@ getstats(transition::AdvancedHMC.Transition) = transition.stat
 
 getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
 
+function make_updated_varinfo(
+    f::DynamicPPL.LogDensityFunction, external_transition, external_state
+)
+    # Set the parameters.
+    new_parameters = getparams(f.model, external_state)
+    new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
+    # Set (or recalculate, if needed) the log density.
+    new_logp = getlogp_external(external_transition, external_state)
+    return if ismissing(new_logp)
+        last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
+    else
+        DynamicPPL.setlogp!!(new_varinfo, new_logp)
+    end
+end
+
 # TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -160,14 +175,7 @@ function AbstractMCMC.step(
     end
 
     # Get the parameters and log density, and set them in the varinfo.
-    new_parameters = getparams(f.model, state_inner)
-    new_logp = getlogp_external(transition_inner, state_inner)
-    new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
-    new_varinfo = if ismissing(new_logp)
-        last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
-    else
-        DynamicPPL.setlogp!!(new_varinfo, new_logp)
-    end
+    new_varinfo = make_updated_varinfo(f, transition_inner, state_inner)
 
     # Update the `state`
     return (
@@ -192,14 +200,7 @@ function AbstractMCMC.step(
     )
 
     # Get the parameters and log density, and set them in the varinfo.
-    new_parameters = getparams(f.model, state_inner)
-    new_logp = getlogp_external(transition_inner, state_inner)
-    new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
-    new_varinfo = if ismissing(new_logp)
-        last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
-    else
-        DynamicPPL.setlogp!!(new_varinfo, new_logp)
-    end
+    new_varinfo = make_updated_varinfo(f, transition_inner, state_inner)
 
     # Update the `state`
     return (
