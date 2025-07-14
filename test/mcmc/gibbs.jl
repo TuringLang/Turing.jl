@@ -827,8 +827,8 @@ end
     @testset "externalsampler" begin
         function check_logp_correct(sampler)
             @testset "logp is set correctly" begin
-                @model f() = x ~ Normal()
-                chn = sample(f(), Gibbs(@varname(x) => sampler), 100)
+                @model logp_check() = x ~ Normal()
+                chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
                 @test logpdf.(Normal(), chn[:x]) == chn[:lp]
             end
         end

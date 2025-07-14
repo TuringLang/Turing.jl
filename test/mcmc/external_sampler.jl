@@ -56,6 +56,14 @@ function initialize_mh_rw(model)
     return AdvancedMH.RWMH(MvNormal(Zeros(d), 0.1 * I))
 end
 
+function check_logp_correct(sampler)
+    @testset "logp is set correctly" begin
+        @model logp_check() = x ~ Normal()
+        chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
+        @test logpdf.(Normal(), chn[:x]) == chn[:lp]
+    end
+end
+
 # TODO: Should this go somewhere else?
 # Convert a model into a `Distribution` to allow usage as a proposal in AdvancedMH.jl.
 struct ModelDistribution{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo} <:
@@ -140,6 +148,8 @@ end
                     sample_kwargs...,
                 )
             end
+
+            check_logp_correct(sampler_ext)
         end
     end
 
@@ -166,6 +176,7 @@ end
                         sampler_name="AdvancedMH",
                     )
                 end
+                check_logp_correct(sampler_ext)
             end
         end
 
