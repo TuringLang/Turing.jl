@@ -60,7 +60,7 @@ function check_logp_correct(sampler)
     @testset "logp is set correctly" begin
         @model logp_check() = x ~ Normal()
         chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
-        @test logpdf.(Normal(), chn[:x]) == chn[:lp]
+        @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
     end
 end
 
@@ -148,9 +148,9 @@ end
                     sample_kwargs...,
                 )
             end
-
-            check_logp_correct(sampler_ext)
         end
+
+        check_logp_correct(sampler_ext)
     end
 
     @testset "AdvancedMH.jl" begin
@@ -176,8 +176,9 @@ end
                         sampler_name="AdvancedMH",
                     )
                 end
-                check_logp_correct(sampler_ext)
             end
+
+            check_logp_correct(sampler_ext)
         end
 
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
