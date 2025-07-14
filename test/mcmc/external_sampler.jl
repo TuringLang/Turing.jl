@@ -56,14 +56,6 @@ function initialize_mh_rw(model)
     return AdvancedMH.RWMH(MvNormal(Zeros(d), 0.1 * I))
 end
 
-function check_logp_correct(sampler)
-    @testset "logp is set correctly" begin
-        @model logp_check() = x ~ Normal()
-        chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
-        @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
-    end
-end
-
 # TODO: Should this go somewhere else?
 # Convert a model into a `Distribution` to allow usage as a proposal in AdvancedMH.jl.
 struct ModelDistribution{M<:DynamicPPL.Model,V<:DynamicPPL.VarInfo} <:
@@ -150,7 +142,16 @@ end
             end
         end
 
-        check_logp_correct(sampler_ext)
+        @testset "logp is set correctly" begin
+            @model logp_check() = x ~ Normal()
+            model = logp_check()
+            sampler = initialize_nuts(model)
+            sampler_ext = externalsampler(
+                sampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained=true
+            )
+            chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
+            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+        end
     end
 
     @testset "AdvancedMH.jl" begin
@@ -178,7 +179,14 @@ end
                 end
             end
 
-            check_logp_correct(sampler_ext)
+            @testset "logp is set correctly" begin
+                @model logp_check() = x ~ Normal()
+                model = logp_check()
+                sampler = initialize_mh_rw(model)
+                sampler_ext = externalsampler(sampler; unconstrained=true)
+                chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+            end
         end
 
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
