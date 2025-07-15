@@ -18,8 +18,9 @@ isgibbscomponent(::PG) = true
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::AdvancedHMC.HMC) = true
+isgibbscomponent(::AdvancedHMC.AbstractHMCSampler) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
+isgibbscomponent(spl) = false
 
 function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
     return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
@@ -561,7 +562,7 @@ function setparams_varinfo!!(
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
     )
-    return TuringState(new_inner_state, logdensity)
+    return TuringState(new_inner_state, params, logdensity)
 end
 
 function setparams_varinfo!!(

@@ -825,6 +825,14 @@ end
     end
 
     @testset "externalsampler" begin
+        function check_logp_correct(sampler)
+            @testset "logp is set correctly" begin
+                @model logp_check() = x ~ Normal()
+                chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+            end
+        end
+
         @model function demo_gibbs_external()
             m1 ~ Normal()
             m2 ~ Normal()
@@ -851,6 +859,7 @@ end
                 model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
             )
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
+            check_logp_correct(sampler_inner)
         end
     end
 
