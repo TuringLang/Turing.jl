@@ -193,10 +193,10 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
-    DynamicPPL.reset_num_produce!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
-    DynamicPPL.resetlogp!!(vi)
-    DynamicPPL.empty!!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
+    set_retained_vns_del!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -327,9 +327,9 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo before new sweep
-    DynamicPPL.reset_num_produce!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
     DynamicPPL.set_retained_vns_del!(vi)
-    DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -359,8 +359,8 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    DynamicPPL.reset_num_produce!(vi)
-    DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
@@ -450,10 +450,11 @@ function DynamicPPL.assume(
     return r, lp, vi
 end
 
-function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
-    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
+#     # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
+#     return logpdf(dist, value), trace_local_varinfo_maybe(vi)
+# end
 
 function DynamicPPL.acclogp!!(
     context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
@@ -462,12 +463,13 @@ function DynamicPPL.acclogp!!(
     return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
 end
 
-function DynamicPPL.acclogp_observe!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
-)
-    Libtask.produce(logp)
-    return trace_local_varinfo_maybe(varinfo)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.acclogp_observe!!(
+#     context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+# )
+#     Libtask.produce(logp)
+#     return trace_local_varinfo_maybe(varinfo)
+# end
 
 # Convenient constructor
 function AdvancedPS.Trace(
@@ -477,7 +479,7 @@ function AdvancedPS.Trace(
     rng::AdvancedPS.TracedRNG,
 )
     newvarinfo = deepcopy(varinfo)
-    DynamicPPL.reset_num_produce!(newvarinfo)
+    newvarinfo = DynamicPPL.reset_num_produce!!(newvarinfo)
 
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
