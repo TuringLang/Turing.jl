@@ -549,7 +549,8 @@ function setparams_varinfo!!(
     # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
     # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
     # some variables and DefaultContext for others.
-    return last(DynamicPPL.evaluate!!(model, params, SamplingContext(sampler)))
+    # TODO(penelopeysm): Is this still needed?
+    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.SamplingContext(sampler)))
 end
 
 function setparams_varinfo!!(
@@ -559,7 +560,7 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, state.ldf.varinfo; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint, state.ldf.varinfo; adtype=sampler.alg.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params

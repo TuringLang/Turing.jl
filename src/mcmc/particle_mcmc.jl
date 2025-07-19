@@ -18,7 +18,7 @@ function TracedModel(
     varinfo::AbstractVarInfo,
     rng::Random.AbstractRNG,
 )
-    context = SamplingContext(rng, sampler, DefaultContext())
+    context = DynamicPPL.SamplingContext(rng, sampler, DefaultContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
     if kwargs !== nothing && !isempty(kwargs)
         error(
@@ -395,7 +395,7 @@ function AbstractMCMC.step(
 end
 
 function DynamicPPL.use_threadsafe_eval(
-    ::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
+    ::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
 )
     return false
 end
@@ -457,7 +457,9 @@ end
 # end
 
 function DynamicPPL.acclogp!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+    context::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp,
 )
     varinfo_trace = trace_local_varinfo_maybe(varinfo)
     return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
