@@ -169,6 +169,9 @@ or
 OptimLogDensity(model; adtype=adtype)
 ```
 
+Here, `ctx` must be a context that contains an `OptimizationContext` as its
+leaf.
+
 If not specified, `adtype` defaults to `AutoForwardDiff()`.
 
 An OptimLogDensity does not, in itself, obey the LogDensityProblems interface.
@@ -189,24 +192,40 @@ optim_ld(z)  # returns -logp
 ```
 """
 struct OptimLogDensity{
-    M<:DynamicPPL.Model,
-    F<:Function,
-    V<:DynamicPPL.AbstractVarInfo,
-    C<:DynamicPPL.AbstractContext,
-    AD<:ADTypes.AbstractADType,
+    M<:DynamicPPL.Model,F<:Function,V<:DynamicPPL.AbstractVarInfo,AD<:ADTypes.AbstractADType
 }
-    ldf::DynamicPPL.LogDensityFunction{M,F,V,C,AD}
-end
+    ldf::DynamicPPL.LogDensityFunction{M,F,V,AD}
 
-function OptimLogDensity(
-    model::DynamicPPL.Model,
-    getlogdensity::Function,
-    vi::DynamicPPL.AbstractVarInfo=DynamicPPL.ldf_default_varinfo(model, getlogdensity);
-    adtype=AutoForwardDiff(),
-)
-    return OptimLogDensity(
-        DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+    # Inner constructors enforce that the model has an OptimizationContext as
+    # its leaf context.
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function,
+        vi::DynamicPPL.VarInfo,
+        ctx::OptimizationContext;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
+        new_context = DynamicPPL.setleafcontext(model, ctx)
+        new_model = contextualize(model, new_context)
+        return new{typeof(new_model),typeof(getlogdensity),typeof(vi),typeof(adtype)}(
+            DynamicPPL.LogDensityFunction(new_model, getlogdensity, vi; adtype=adtype)
+        )
+    end
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function,
+        ctx::OptimizationContext;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+    )
+        # No varinfo
+        return OptimLogDensity(
+            model,
+            getlogdensity,
+            DynamicPPL.ldf_default_varinfo(model, getlogdensity),
+            ctx;
+            adtype=adtype,
+        )
+    end
 end
 
 """

@@ -206,7 +206,9 @@ function DynamicPPL.initialstep(
     )
 
     # Perform particle sweep.
+    @info "Hello!"
     logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
+    @info "Goodbye!"
 
     # Extract the first particle and its weight.
     particle = particles.vals[1]
@@ -222,6 +224,7 @@ end
 function AbstractMCMC.step(
     ::AbstractRNG, model::AbstractModel, spl::Sampler{<:SMC}, state::SMCState; kwargs...
 )
+    @info "helloooooo from step"
     # Extract the index of the current particle.
     index = state.particleindex
 

@@ -49,8 +49,8 @@ function AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
             ESSPrior(model, spl, vi),
-            DynamicPPL.LogDensityFunction{:LogLikelihood}(
-                model, vi, DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext())
+            ESSLikelihood(
+                DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, vi)
             ),
         ),
         EllipticalSliceSampling.ESS(),
@@ -63,7 +63,7 @@ function AbstractMCMC.step(
 
     return Transition(model, vi), vi
 end
-
+f
 # Prior distribution of considered random variable
 struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     model::M
@@ -97,6 +97,10 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     sampler = p.sampler
     varinfo = p.varinfo
     # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
+    # TODO(DPPL0.37/penelopeysm): This can be replaced with `init!!(p.model,
+    # p.varinfo, PriorInit())` after TuringLang/DynamicPPL.jl#984. The reason
+    # why we had to use the 'del' flag before this was because
+    # SampleFromPrior() wouldn't overwrite existing variables.
     vns = keys(varinfo)
     for vn in vns
         set_flag!(varinfo, vn, "del")
@@ -108,14 +112,9 @@ end
 # Mean of prior distribution
 Distributions.mean(p::ESSPrior) = p.μ
 
-function DynamicPPL.tilde_assume(
-    rng::Random.AbstractRNG, ctx::DefaultContext, ::Sampler{<:ESS}, right, vn, vi
-)
-    return DynamicPPL.tilde_assume(rng, ctx, SampleFromPrior(), right, vn, vi)
+# Evaluate log-likelihood of proposals
+struct ESSLogLikelihood{M<:Model,V<:AbstractVarInfo,AD<:ADTypes.AbstractADType}
+    ldf::DynamicPPL.LogDensityFunction{M,V,AD}
 end
 
-function DynamicPPL.tilde_observe!!(
-    ctx::DefaultContext, ::Sampler{<:ESS}, right, left, vn, vi
-)
-    return DynamicPPL.tilde_observe!!(ctx, SampleFromPrior(), right, left, vn, vi)
-end
+(ℓ::ESSLogLikelihood)(f::AbstractVector) = LogDensityProblems.logdensity(ℓ.ldf, f)

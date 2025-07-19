@@ -190,16 +190,7 @@ function DynamicPPL.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
-    )
+    ldf = DynamicPPL.LogDensityFunction(model, vi; adtype=spl.alg.adtype)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
@@ -305,16 +296,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
-    )
+    ldf = DynamicPPL.LogDensityFunction(model, vi; adtype=spl.alg.adtype)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     return AHMC.Hamiltonian(metric, lp_func, lp_grad_func)

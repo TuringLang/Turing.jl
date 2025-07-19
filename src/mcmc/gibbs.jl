@@ -559,7 +559,7 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, state.ldf.varinfo, state.ldf.context; adtype=sampler.alg.adtype
+        model, state.ldf.varinfo; adtype=sampler.alg.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params

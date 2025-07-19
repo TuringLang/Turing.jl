@@ -58,16 +58,11 @@ function DynamicPPL.initialstep(
     # Ensure that initial sample is in unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Define log-density function.
-    ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
-    )
+    ℓ = DynamicPPL.LogDensityFunction(model, vi; adtype=spl.alg.adtype)
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(

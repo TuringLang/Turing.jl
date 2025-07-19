@@ -189,7 +189,7 @@ A log density function for the MH sampler.
 This variant uses the `set_namedtuple!` function to update the `VarInfo`.
 """
 const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} =
-    DynamicPPL.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
+    DynamicPPL.LogDensityFunction{M,V,AD} where {AD}
 
 function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)

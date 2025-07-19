@@ -96,12 +96,12 @@ getlogp_external(::Any, ::Any) = missing
 getlogp_external(mh::AdvancedMH.Transition, ::AdvancedMH.Transition) = mh.lp
 getlogp_external(hmc::AdvancedHMC.Transition, ::AdvancedHMC.HMCState) = hmc.stat.log_density
 
-struct TuringState{S,V1<:AbstractVarInfo,M,V,C}
+struct TuringState{S,V1<:AbstractVarInfo,M,V}
     state::S
     # Note that this varinfo has the correct parameters and logp obtained from
     # the state, whereas `ldf.varinfo` will in general have junk inside it.
     varinfo::V1
-    ldf::DynamicPPL.LogDensityFunction{M,V,C}
+    ldf::DynamicPPL.LogDensityFunction{M,V}
 end
 
 varinfo(state::TuringState) = state.varinfo
