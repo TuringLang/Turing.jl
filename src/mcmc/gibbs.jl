@@ -212,12 +212,12 @@ function DynamicPPL.tilde_assume(
     return if is_target_varname(context, vn)
         DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        value, lp, _ = DynamicPPL.tilde_assume(
+        value, _ = DynamicPPL.tilde_assume(
             child_context, right, vn, get_global_varinfo(context)
         )
-        value, lp, vi
+        value, vi
     else
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        value, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             child_context,
             DynamicPPL.SampleFromPrior(),
@@ -226,7 +226,7 @@ function DynamicPPL.tilde_assume(
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 
