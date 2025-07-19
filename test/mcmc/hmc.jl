@@ -137,33 +137,10 @@ using Turing
         check_gdemo(res)
     end
 
-    @testset "hmcda constructor" begin
-        alg = HMCDA(0.8, 0.75)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
-        alg = HMCDA(200, 0.8, 0.75)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "HMCDA"
-
-        @test isa(alg, HMCDA)
-        @test isa(sampler, Sampler{<:Turing.Inference.Hamiltonian})
-    end
-
     @testset "nuts inference" begin
         alg = NUTS(1000, 0.8)
         res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
-    end
-
-    @testset "nuts constructor" begin
-        alg = NUTS(200, 0.65)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
-
-        alg = NUTS(0.65)
-        sampler = Sampler(alg)
-        @test DynamicPPL.alg_str(sampler) == "NUTS"
     end
 
     @testset "check discard" begin
@@ -238,7 +215,7 @@ using Turing
     end
 
     @testset "(partially) issue: #2095" begin
-        @model function vector_of_dirichlet(::Type{TV}=Vector{Float64}) where {TV}
+        @model function vector_of_dirichlet((::Type{TV})=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
             xs[1] ~ Dirichlet(ones(5))
             return xs[2] ~ Dirichlet(ones(5))

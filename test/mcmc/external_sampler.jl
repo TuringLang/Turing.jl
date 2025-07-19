@@ -141,6 +141,17 @@ end
                 )
             end
         end
+
+        @testset "logp is set correctly" begin
+            @model logp_check() = x ~ Normal()
+            model = logp_check()
+            sampler = initialize_nuts(model)
+            sampler_ext = externalsampler(
+                sampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained=true
+            )
+            chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
+            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+        end
     end
 
     @testset "AdvancedMH.jl" begin
@@ -167,7 +178,17 @@ end
                     )
                 end
             end
+
+            @testset "logp is set correctly" begin
+                @model logp_check() = x ~ Normal()
+                model = logp_check()
+                sampler = initialize_mh_rw(model)
+                sampler_ext = externalsampler(sampler; unconstrained=true)
+                chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+            end
         end
+
         # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
         # it with `NamedTuple` instead of `AbstractVector`.
         # @testset "MH with prior proposal" begin

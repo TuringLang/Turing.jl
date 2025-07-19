@@ -32,6 +32,17 @@ using Turing
         @test all(((x, y),) -> abs(x - y) < 0.001, zip(p, pmf))
     end
 
+    @testset "distribution functions" begin
+        d = OrderedLogistic(0, [1, 2, 3])
+
+        K = length(d.cutpoints) + 1
+        @test support(d) == 1:K
+
+        # Adding up probabilities sums to 1
+        s = sum(pdf.(d, support(d)))
+        @test s ≈ 1.0 atol = 0.0001
+    end
+
     @testset "distributions functions" begin
         λ = 0.01:0.01:5
         LLp = @. logpdf(Poisson(λ), 1)

@@ -18,8 +18,9 @@ isgibbscomponent(::PG) = true
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::AdvancedHMC.HMC) = true
+isgibbscomponent(::AdvancedHMC.AbstractHMCSampler) = true
 isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
+isgibbscomponent(spl) = false
 
 function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
     return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
@@ -124,7 +125,7 @@ function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
 end
 
 function is_target_varname(ctx::GibbsContext, vn::VarName)
-    return any(Base.Fix2(subsumes, vn), ctx.target_varnames)
+    return any(Base.Fix2(AbstractPPL.subsumes, vn), ctx.target_varnames)
 end
 
 function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
@@ -561,7 +562,7 @@ function setparams_varinfo!!(
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
     )
-    return TuringState(new_inner_state, logdensity)
+    return TuringState(new_inner_state, params, logdensity)
 end
 
 function setparams_varinfo!!(
@@ -660,7 +661,7 @@ function gibbs_step_recursive(
 
     # Construct the conditional model and the varinfo that this sampler should use.
     conditioned_model, context = make_conditional(model, varnames, global_vi)
-    vi = subset(global_vi, varnames)
+    vi = DynamicPPL.subset(global_vi, varnames)
     vi = match_linking!!(vi, state, model)
 
     # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not

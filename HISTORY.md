@@ -1,12 +1,31 @@
-# Release 0.40.0
+# 0.40.0
 
 [...]
 
-# Release 0.39.1
+# 0.39.5
+
+Fixed a bug where sampling with an `externalsampler` would not set the log probability density inside the resulting chain.
+Note that there are still potentially bugs with the log-Jacobian term not being correctly included.
+A fix is being worked on.
+
+# 0.39.4
+
+Bumped compatibility of AbstractPPL to include 0.12.
+
+# 0.39.3
+
+Improved the performance of `Turing.Inference.getparams` when called with an untyped VarInfo as the second argument, by first converting to a typed VarInfo.
+This makes, for example, the post-sampling Chains construction for `Prior()` run much faster.
+
+# 0.39.2
+
+Fixed a bug in the support of `OrderedLogistic` (by changing the minimum from 0 to 1).
+
+# 0.39.1
 
 No changes from 0.39.0 — this patch is released just to re-trigger a Documenter.jl run.
 
-# Release 0.39.0
+# 0.39.0
 
 ## Update to the AdvancedVI interface
 
@@ -31,33 +50,33 @@ Anything exported from there can be imported from either `Turing` or `DynamicPPL
 
 The `@addlogprob!` macro is now exported from Turing, making it officially part of the public interface.
 
-# Release 0.38.6
+# 0.38.6
 
 Added compatibility with AdvancedHMC 0.8.
 
-# Release 0.38.5
+# 0.38.5
 
 Added compatibility with ForwardDiff v1.
 
-# Release 0.38.4
+# 0.38.4
 
 The minimum Julia version was increased to 1.10.2 (from 1.10.0).
 On versions before 1.10.2, `sample()` took an excessively long time to run (probably due to compilation).
 
-# Release 0.38.3
+# 0.38.3
 
 `getparams(::Model, ::AbstractVarInfo)` now returns an empty `Float64[]` if the VarInfo contains no parameters.
 
-# Release 0.38.2
+# 0.38.2
 
 Bump compat for `MCMCChains` to `7`.
 By default, summary statistics and quantiles for chains are no longer printed; to access these you should use `describe(chain)`.
 
-# Release 0.38.1
+# 0.38.1
 
 The method `Bijectors.bijector(::DynamicPPL.Model)` was moved to DynamicPPL.jl.
 
-# Release 0.38.0
+# 0.38.0
 
 ## DynamicPPL version
 
@@ -97,12 +116,12 @@ Performance for the cases which used to previously work (i.e. `VarName`s like `x
 It is possible that `VarNames` with indexing (e.g. `x[1]`) may be slower (although this is still an improvement over not working at all!).
 If you find any cases where you think the performance is worse than it should be, please do file an issue.
 
-# Release 0.37.1
+# 0.37.1
 
 `maximum_a_posteriori` and `maximum_likelihood` now perform sanity checks on the model before running the optimisation.
 To disable this, set the keyword argument `check_model=false`.
 
-# Release 0.37.0
+# 0.37.0
 
 ## Breaking changes
 
@@ -143,7 +162,7 @@ On the other hand, we have added a few more exports:
   - `DynamicPPL.returned` and `DynamicPPL.prefix` are exported (for use with submodels).
   - `LinearAlgebra.I` is exported for convenience.
 
-# Release 0.36.0
+# 0.36.0
 
 ## Breaking changes
 
@@ -157,7 +176,7 @@ The old Gibbs constructor relied on being called with several subsamplers, and e
 
 Likewise, the old constructor for calling one subsampler more often than another, `Gibbs((HMC(0.01, 4, :x), 2), (MH(:y), 1))` has been deprecated. The new way to do this is to use `RepeatSampler`, also introduced at this version: `Gibbs(@varname(x) => RepeatSampler(HMC(0.01, 4), 2), @varname(y) => MH())`.
 
-# Release 0.35.0
+# 0.35.0
 
 ## Breaking changes
 
@@ -168,7 +187,7 @@ You can use Mooncake.jl by passing `adbackend=AutoMooncake(; config=nothing)` to
 
 Support for Tracker.jl as an AD backend has been removed.
 
-# Release 0.33.0
+# 0.33.0
 
 ## Breaking changes
 
@@ -185,21 +204,21 @@ The same functionality is now offered by the new exported functions
   - `maximum_likelihood`
   - `maximum_a_posteriori`
 
-# Release 0.30.5
+# 0.30.5
 
   - `essential/ad.jl` is removed, `ForwardDiff` and `ReverseDiff` integrations via `LogDensityProblemsAD` are moved to `DynamicPPL` and live in corresponding package extensions.
   - `LogDensityProblemsAD.ADgradient(ℓ::DynamicPPL.LogDensityFunction)` (i.e. the single argument method) is moved to `Inference` module. It will create `ADgradient` using the `adtype` information stored in `context` field of `ℓ`.
   - `getADbackend` function is renamed to `getADType`, the interface is preserved, but packages that previously used `getADbackend` should be updated to use `getADType`.
   - `TuringTag` for ForwardDiff is also removed, now `DynamicPPLTag` is defined in `DynamicPPL` package and should serve the same [purpose](https://www.stochasticlifestyle.com/improved-forwarddiff-jl-stacktraces-with-package-tags/).
 
-# Release 0.30.0
+# 0.30.0
 
   - [`ADTypes.jl`](https://github.com/SciML/ADTypes.jl) replaced Turing's global AD backend. Users should now specify the desired `ADType` directly in sampler constructors, e.g., `HMC(0.1, 10; adtype=AutoForwardDiff(; chunksize))`, or `HMC(0.1, 10; adtype=AutoReverseDiff(false))` (`false` indicates not to use compiled tape).
   - Interface functions such as `ADBackend`, `setadbackend`, `setadsafe`, `setchunksize`, and `setrdcache` are deprecated and will be removed in a future release.
   - Removed the outdated `verifygrad` function.
   - Updated to a newer version of `LogDensityProblemsAD` (v1.7).
 
-# Release 0.12.0
+# 0.12.0
 
   - The interface for defining new distributions with constrained support and making them compatible with `Turing` has changed. To make a custom distribution type `CustomDistribution` compatible with `Turing`, the user needs to define the method `bijector(d::CustomDistribution)` that returns an instance of type `Bijector` implementing the `Bijectors.Bijector` API.
   - `~` is now thread-safe when used for observations, but not assumptions (non-observed model parameters) yet.
@@ -212,7 +231,7 @@ The same functionality is now offered by the new exported functions
   - The macros `@varinfo`, `@logpdf`, and `@sampler` are removed. Instead, one can access the internal variables `_varinfo`, `_model`, `_sampler`, and `_context` in the `@model` definition.
   - Additional constructors for `SMC` and `PG` make it easier to choose the resampling method and threshold.
 
-# Release 0.11.0
+# 0.11.0
 
   - Removed some extraneous imports and dependencies ([#1182](https://github.com/TuringLang/Turing.jl/pull/1182))
   - Minor backend changes to `sample` and `psample`, which now use functions defined upstream in AbstractMCMC.jl ([#1187](https://github.com/TuringLang/Turing.jl/pull/1187))
@@ -224,11 +243,11 @@ The same functionality is now offered by the new exported functions
   - Updates to allow AdvancedHMC 0.2.23 ([#1218](https://github.com/TuringLang/Turing.jl/pull/1218))
   - Add more informative error messages for SMC ([#900](https://github.com/TuringLang/Turing.jl/pull/900))
 
-# Release 0.10.1
+# 0.10.1
 
   - Fix bug where arrays with mixed integers, floats, and missing values were not being passed to the `MCMCChains.Chains` constructor properly [#1180](https://github.com/TuringLang/Turing.jl/pull/1180).
 
-# Release 0.10.0
+# 0.10.0
 
   - Update elliptical slice sampling to use [EllipticalSliceSampling.jl](https://github.com/TuringLang/EllipticalSliceSampling.jl) on the backend. [#1145](https://github.com/TuringLang/Turing.jl/pull/1145). Nothing should change from a front-end perspective -- you can still call `sample(model, ESS(), 1000)`.
   - Added default progress loggers in [#1149](https://github.com/TuringLang/Turing.jl/pull/1149).
@@ -239,7 +258,7 @@ The same functionality is now offered by the new exported functions
   - Fix bug in VI where the bijectors where being inverted incorrectly [#1168](https://github.com/TuringLang/Turing.jl/pull/1168).
   - The Gibbs sampler handles state better by passing `Transition` structs to the local samplers ([#1169](https://github.com/TuringLang/Turing.jl/pull/1169) and [#1166](https://github.com/TuringLang/Turing.jl/pull/1166)).
 
-# Release 0.4.0-alpha
+# 0.4.0-alpha
 
   - Fix compatibility with Julia 0.6 [#341, #330, #293]
   - Support of Stan interface [#343, #326]
@@ -252,7 +271,7 @@ The same functionality is now offered by the new exported functions
   - Add type alias CSMC for PG [#333]
   - Fix progress meter [#317]
 
-# Release 0.3
+# 0.3
 
   - NUTS implementation #188
   - HMC: Transforms of ϵ for each variable #67 (replace with introducing mass matrix)
@@ -264,7 +283,7 @@ The same functionality is now offered by the new exported functions
   - Refactoring code: Unify VarInfo, Trace, TaskLocalStorage #96
   - Refactoring code: Better gradient interface #97
 
-# Release 0.2
+# 0.2
 
   - Gibbs sampler ([#73])
   - HMC for constrained variables ([#66]; no support for varying dimensions)
@@ -272,13 +291,13 @@ The same functionality is now offered by the new exported functions
   - New interface design ([#55]), ([#104])
   - Bugfixes and general improvements (e.g. `VarInfo` [#96])
 
-# Release 0.1.0
+# 0.1.0
 
   - Initial support for Hamiltonian Monte Carlo (no support for discrete/constrained variables)
   - Require Julia 0.5
   - Bugfixes and general improvements
 
-# Release 0.0.1-0.0.4
+# 0.0.1-0.0.4
 
 The initial releases of Turing.
 
