@@ -12,12 +12,11 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    # TODO(DPPL0.37/penelopeysm): replace with init!! instead
-    vi = last(
-        DynamicPPL.evaluate!!(
-            model, VarInfo(), DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior())
-        ),
+    # TODO(DPPL0.37/penelopeysm): replace with init!!
+    sampling_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
     )
+    _, vi = DynamicPPL.evaluate!!(sampling_model, VarInfo())
     # Need to manually construct the Transition here because we only
     # want to use the prior probability.
     xs = Turing.Inference.getparams(model, vi)
