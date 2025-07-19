@@ -172,14 +172,14 @@ function DynamicPPL.tilde_assume(
     return value, logp, vi
 end
 
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(DynamicPPL.childcontext(context), right, left, vi)
+function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, right, left, vi)
+    logp, vi = DynamicPPL.tilde_observe!!(DynamicPPL.childcontext(context), right, left, vi)
     check_adtype(context, vi)
     return logp, vi
 end
 
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(
+function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, sampler, right, left, vi)
+    logp, vi = DynamicPPL.tilde_observe!!(
         DynamicPPL.childcontext(context), sampler, right, left, vi
     )
     check_adtype(context, vi)
