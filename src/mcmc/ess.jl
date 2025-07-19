@@ -63,7 +63,7 @@ function AbstractMCMC.step(
 
     return Transition(model, vi), vi
 end
-f
+
 # Prior distribution of considered random variable
 struct ESSPrior{M<:Model,S<:Sampler{<:ESS},V<:AbstractVarInfo,T}
     model::M
