@@ -62,7 +62,9 @@ function DynamicPPL.initialstep(
     end
 
     # Define log-density function.
-    ℓ = DynamicPPL.LogDensityFunction(model, vi; adtype=spl.alg.adtype)
+    ℓ = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
+    )
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
