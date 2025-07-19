@@ -21,7 +21,7 @@ function AbstractMCMC.step(
     # want to use the prior probability.
     xs = Turing.Inference.getparams(model, vi)
     lp = DynamicPPL.getlogprior(vi)
-    return Transition(xs, lp, nothing)
+    return Transition(xs, lp, nothing), nothing
 end
 
 DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
