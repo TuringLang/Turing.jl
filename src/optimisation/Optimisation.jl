@@ -153,7 +153,6 @@ end
         M<:DynamicPPL.Model,
         F<:Function,
         V<:DynamicPPL.AbstractVarInfo,
-        C<:DynamicPPL.AbstractContext,
         AD<:ADTypes.AbstractADType,
     }
 
@@ -168,9 +167,6 @@ or
 ```julia
 OptimLogDensity(model; adtype=adtype)
 ```
-
-Here, `ctx` must be a context that contains an `OptimizationContext` as its
-leaf.
 
 If not specified, `adtype` defaults to `AutoForwardDiff()`.
 
@@ -196,33 +192,26 @@ struct OptimLogDensity{
 }
     ldf::DynamicPPL.LogDensityFunction{M,F,V,AD}
 
-    # Inner constructors enforce that the model has an OptimizationContext as
-    # its leaf context.
     function OptimLogDensity(
         model::DynamicPPL.Model,
         getlogdensity::Function,
-        vi::DynamicPPL.VarInfo,
-        ctx::OptimizationContext;
+        vi::DynamicPPL.VarInfo;
         adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
-        new_context = DynamicPPL.setleafcontext(model, ctx)
-        new_model = contextualize(model, new_context)
-        return new{typeof(new_model),typeof(getlogdensity),typeof(vi),typeof(adtype)}(
-            DynamicPPL.LogDensityFunction(new_model, getlogdensity, vi; adtype=adtype)
+        return new{typeof(model),typeof(getlogdensity),typeof(vi),typeof(adtype)}(
+            DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
         )
     end
     function OptimLogDensity(
         model::DynamicPPL.Model,
-        getlogdensity::Function,
-        ctx::OptimizationContext;
+        getlogdensity::Function;
         adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
         # No varinfo
         return OptimLogDensity(
             model,
             getlogdensity,
-            DynamicPPL.ldf_default_varinfo(model, getlogdensity),
-            ctx;
+            DynamicPPL.ldf_default_varinfo(model, getlogdensity);
             adtype=adtype,
         )
     end
