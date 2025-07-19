@@ -1,3 +1,7 @@
+# 0.40.0
+
+[...]
+
 # 0.39.6
 
 Bumped compatibility of AbstractPPL to include 0.13.
