@@ -256,8 +256,10 @@ end
 
             @testset "model=$(model.f)" for model in DEMO_MODELS
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
-                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+                spl_model = DynamicPPL.contextualize(
+                    model, DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                )
+                @test run_ad(spl_model, adtype; test=true, benchmark=false) isa Any
             end
         end
     end
@@ -283,8 +285,10 @@ end
                     model, varnames, deepcopy(global_vi)
                 )
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
-                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+                spl_model = DynamicPPL.contextualize(
+                    model, DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
+                )
+                @test run_ad(spl_model, adtype; test=true, benchmark=false) isa Any
             end
         end
     end
