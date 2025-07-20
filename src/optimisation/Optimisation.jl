@@ -195,11 +195,16 @@ struct OptimLogDensity{
     function OptimLogDensity(
         model::DynamicPPL.Model,
         getlogdensity::Function,
-        vi::DynamicPPL.VarInfo;
+        vi::DynamicPPL.AbstractVarInfo;
         adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
-        return new{typeof(model),typeof(getlogdensity),typeof(vi),typeof(adtype)}(
-            DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+        # Note that typeof(adtype) != typeof(ldf.adtype) in general because of
+        # DynamicPPL's tweak_adtype
+        ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+        return new{
+            typeof(ldf.model),typeof(ldf.getlogdensity),typeof(ldf.vi),typeof(ldf.adtype)
+        }(
+            ldf
         )
     end
     function OptimLogDensity(
