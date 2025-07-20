@@ -206,8 +206,8 @@ function DynamicPPL.initialstep(
     end
     theta = vi[:]
 
-    # Cache current log density.
-    log_density_old = getloglikelihood(vi)
+    # Cache current log density. We will reuse this if the transition is rejected.
+    logp_old = DynamicPPL.getlogp(vi)
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
@@ -232,15 +232,21 @@ function DynamicPPL.initialstep(
         )
     end
 
-    # Update `vi` based on acceptance
+    # Update VarInfo based on acceptance
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        # TODO(mhauru) Is setloglikelihood! the right thing here?
-        vi = setloglikelihood!!(vi, t.stat.log_density)
+        # Re-evaluate to calculate log probability density.
+        # TODO(penelopeysm): This seems a little bit wasteful. The need for
+        # this stems from the fact that the HMC sampler doesn't keep track of
+        # prior and likelihood separately but rather a single log-joint, for
+        # which we have no way to decompose this back into prior and
+        # likelihood. I don't immediately see how to solve this without
+        # re-evaluating the model.
+        vi = DynamicPPL.evaluate!!(model, vi)
     else
+        # Reset VarInfo back to its original state.
         vi = DynamicPPL.unflatten(vi, theta)
-        # TODO(mhauru) Is setloglikelihood! the right thing here?
-        vi = setloglikelihood!!(vi, log_density_old)
+        vi = DynamicPPL.setlogp!!(vi, logp_old)
     end
 
     transition = Transition(model, vi, t)
