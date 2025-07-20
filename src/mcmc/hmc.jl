@@ -242,7 +242,7 @@ function DynamicPPL.initialstep(
         # which we have no way to decompose this back into prior and
         # likelihood. I don't immediately see how to solve this without
         # re-evaluating the model.
-        vi = DynamicPPL.evaluate!!(model, vi)
+        _, vi = DynamicPPL.evaluate!!(model, vi)
     else
         # Reset VarInfo back to its original state.
         vi = DynamicPPL.unflatten(vi, theta)
