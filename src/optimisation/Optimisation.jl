@@ -76,6 +76,8 @@ function DynamicPPL.accumulator_name(::Type{<:LogPriorWithoutJacobianAccumulator
     return :LogPriorWithoutJacobian
 end
 
+Base.copy(acc::LogPriorWithoutJacobianAccumulator) = acc
+
 function DynamicPPL.split(::LogPriorWithoutJacobianAccumulator{T}) where {T}
     return LogPriorWithoutJacobianAccumulator(zero(T))
 end
