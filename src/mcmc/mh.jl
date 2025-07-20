@@ -195,7 +195,7 @@ function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
     vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
-    lj = getlogp(vi_new)
+    lj = f.getlogdensity(vi_new)
     return lj
 end
 
@@ -304,7 +304,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, getlogp(vi), false)
+    prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(
@@ -339,7 +339,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, getlogp(vi), false)
+    prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
     densitymodel = AMH.DensityModel(

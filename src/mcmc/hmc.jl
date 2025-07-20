@@ -236,12 +236,12 @@ function DynamicPPL.initialstep(
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
         # Re-evaluate to calculate log probability density.
-        # TODO(penelopeysm): This seems a little bit wasteful. The need for
-        # this stems from the fact that the HMC sampler doesn't keep track of
-        # prior and likelihood separately but rather a single log-joint, for
-        # which we have no way to decompose this back into prior and
-        # likelihood. I don't immediately see how to solve this without
-        # re-evaluating the model.
+        # TODO(penelopeysm): This seems a little bit wasteful. Unfortunately,
+        # even though `t.stat.log_density` contains some kind of logp, this
+        # doesn't track prior and likelihood separately but rather a single
+        # log-joint (and in linked space), so which we have no way to decompose
+        # this back into prior and likelihood. I don't immediately see how to
+        # solve this without re-evaluating the model.
         _, vi = DynamicPPL.evaluate!!(model, vi)
     else
         # Reset VarInfo back to its original state.
@@ -291,8 +291,9 @@ function AbstractMCMC.step(
     vi = state.vi
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        # TODO(mhauru) Is setloglikelihood! the right thing here?
-        vi = setloglikelihood!!(vi, t.stat.log_density)
+        # Re-evaluate to calculate log probability density.
+        # TODO(penelopeysm): This seems a little bit wasteful. See note above.
+        _, vi = DynamicPPL.evaluate!!(model, vi)
     end
 
     # Compute next transition and state.
