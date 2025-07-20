@@ -42,7 +42,7 @@ function AbstractMCMC.step(
 
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
-    oldstate = EllipticalSliceSampling.ESSState(f, getlogp(vi), nothing)
+    oldstate = EllipticalSliceSampling.ESSState(f, DynamicPPL.getloglikelihood(vi), nothing)
 
     # compute next state
     sample, state = AbstractMCMC.step(

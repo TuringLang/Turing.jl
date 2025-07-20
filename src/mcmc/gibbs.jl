@@ -349,7 +349,7 @@ function initial_varinfo(rng, model, spl, initial_params)
         # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
         # and https://github.com/TuringLang/Turing.jl/issues/1563
         # to avoid that existing variables are resampled
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.DefaultContext()))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
     return vi
 end
@@ -534,9 +534,7 @@ function setparams_varinfo!!(
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
-    # NOTE: Using `leafcontext(model.context)` here is a no-op, as it will be concatenated
-    # with `model.context` before hitting `model.f`.
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
+    return last(DynamicPPL.evaluate!!(model, params))
 end
 
 function setparams_varinfo!!(
@@ -546,11 +544,8 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
-    # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
-    # some variables and DefaultContext for others.
-    # TODO(penelopeysm): Is this still needed?
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.SamplingContext(sampler)))
+    # update its logprob.
+    return last(DynamicPPL.evaluate!!(model, params))
 end
 
 function setparams_varinfo!!(
