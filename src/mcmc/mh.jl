@@ -194,7 +194,7 @@ end
 function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi))
     lj = f.getlogdensity(vi_new)
     return lj
 end

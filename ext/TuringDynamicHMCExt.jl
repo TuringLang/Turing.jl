@@ -75,7 +75,9 @@ function DynamicPPL.initialstep(
 
     # Update the variables.
     vi = DynamicPPL.unflatten(vi, Q.q)
-    vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. Fix this.
+    vi = DynamicPPL.setloglikelihood!!(vi, Q.ℓq)
+    vi = DynamicPPL.setlogprior!!(vi, 0.0)
 
     # Create first sample and state.
     sample = Turing.Inference.Transition(model, vi)
