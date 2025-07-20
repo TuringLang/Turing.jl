@@ -307,22 +307,24 @@ function propose!!(
     prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(
-                model,
-                vi,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
     # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
+    # re-evaluate the model.
     set_namedtuple!(vi, trans.params)
-    return setlogp!!(vi, trans.lp)
+    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
+    return DynamicPPL.setlogprior!!(vi, 0.0)
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
@@ -342,19 +344,22 @@ function propose!!(
     prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(
-                model,
-                vi,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    return setlogp!!(DynamicPPL.unflatten(vi, trans.params), trans.lp)
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
+    # re-evaluate the model.
+    vi = DynamicPPL.unflatten(vi, trans.params)
+    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
+    return DynamicPPL.setlogprior!!(vi, 0.0)
 end
 
 function DynamicPPL.initialstep(
