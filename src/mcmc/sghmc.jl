@@ -61,7 +61,7 @@ function DynamicPPL.initialstep(
     # Transform the samples to unconstrained space and compute the joint log probability.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Compute initial sample and state.
@@ -100,7 +100,7 @@ function AbstractMCMC.step(
 
     # Save new variables and recompute log density.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
     sample = Transition(model, vi)
@@ -224,7 +224,7 @@ function DynamicPPL.initialstep(
     # Transform the samples to unconstrained space and compute the joint log probability.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Create first sample and state.
@@ -254,7 +254,7 @@ function AbstractMCMC.step(
 
     # Save new variables and recompute log density.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
     sample = SGLDTransition(model, vi, stepsize)

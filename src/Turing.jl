@@ -71,7 +71,6 @@ using DynamicPPL:
     unfix,
     prefix,
     conditioned,
-    @submodel,
     to_submodel,
     LogDensityFunction,
     @addlogprob!
@@ -81,7 +80,6 @@ using OrderedCollections: OrderedDict
 # Turing essentials - modelling macros and inference algorithms
 export
     # DEPRECATED
-    @submodel,
     generated_quantities,
     # Modelling - AbstractPPL and DynamicPPL
     @model,
