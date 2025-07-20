@@ -35,7 +35,9 @@ function AdvancedPS.advance!(
     trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
 )
     # Make sure we load/reset the rng in the new replaying mechanism
-    trace.model.f.varinfo = DynamicPPL.increment_num_produce!!(trace.model.f.varinfo)
+    trace = Accessors.@set trace.model.f.varinfo = DynamicPPL.increment_num_produce!!(
+        trace.model.f.varinfo
+    )
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
     if score === nothing
@@ -51,13 +53,11 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
-    DynamicPPL.reset_num_produce!(trace.varinfo)
-    return trace
+    return Accessors.@set trace.varinfo = DynamicPPL.reset_num_produce!!(trace.varinfo)
 end
 
 function AdvancedPS.reset_logprob!(trace::TracedModel)
-    DynamicPPL.resetlogp!!(trace.model.varinfo)
-    return trace
+    return Accessors.@set trace.model.varinfo = DynamicPPL.resetlogp!!(trace.model.varinfo)
 end
 
 function AdvancedPS.update_rng!(
