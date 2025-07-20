@@ -20,7 +20,9 @@ function initialize_nuts(model::DynamicPPL.Model)
     linked_vi = DynamicPPL.link!!(vi, model)
 
     # Create a LogDensityFunction
-    f = DynamicPPL.LogDensityFunction(model, linked_vi; adtype=Turing.DEFAULT_ADTYPE)
+    f = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint, linked_vi; adtype=Turing.DEFAULT_ADTYPE
+    )
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)

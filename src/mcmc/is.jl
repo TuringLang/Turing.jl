@@ -59,6 +59,6 @@ function DynamicPPL.assume(rng, ::Sampler{<:IS}, dist::Distribution, vn::VarName
         r = rand(rng, dist)
         vi = push!!(vi, vn, r, dist)
     end
-    vi = accumulate_assume!!(vi, r, 0.0, vn, dist)
+    vi = DynamicPPL.accumulate_assume!!(vi, r, 0.0, vn, dist)
     return r, vi
 end

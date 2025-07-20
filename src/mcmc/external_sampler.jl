@@ -126,7 +126,13 @@ function make_updated_varinfo(
     return if ismissing(new_logp)
         last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
     else
-        DynamicPPL.setlogp!!(new_varinfo, new_logp)
+        # TODO(DPPL0.37/penelopeysm) This is obviously wrong. Note that we
+        # have the same problem here as in HMC in that the sampler doesn't
+        # tell us about how logp is broken down into prior and likelihood.
+        # We should probably just re-evaluate unconditionally. A bit
+        # unfortunate.
+        DynamicPPL.setlogprior!!(new_varinfo, 0.0)
+        DynamicPPL.setloglikelihood!!(new_varinfo, new_logp)
     end
 end
 

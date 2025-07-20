@@ -611,7 +611,12 @@ function estimate_mode(
     ub=nothing,
     kwargs...,
 )
-    check_model && DynamicPPL.check_model(model; error_on_failure=true)
+    if check_model
+        spl_model = DynamicPPL.contextualize(
+            model, DynamicPPL.SamplingContext(model.context)
+        )
+        DynamicPPL.check_model(spl_model, VarInfo(); error_on_failure=true)
+    end
 
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
     initial_params = generate_initial_params(model, initial_params, constraints)

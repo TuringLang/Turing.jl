@@ -429,6 +429,8 @@ function trace_local_rng_maybe(rng::Random.AbstractRNG)
     end
 end
 
+# TODO(DPPL0.37/penelopeysm) The whole tilde pipeline for particle MCMC needs to be
+# thoroughly fixed.
 function DynamicPPL.assume(
     rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, _vi::AbstractVarInfo
 )
@@ -442,13 +444,12 @@ function DynamicPPL.assume(
         DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)
         vi[vn] = DynamicPPL.tovec(r)
-        DynamicPPL.setorder!(vi, vn, DynamicPPL.get_num_produce(vi))
+        vi = DynamicPPL.setorder!!(vi, vn, DynamicPPL.get_num_produce(vi))
     else
         r = vi[vn]
     end
-    # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
-    lp = 0
-    return r, lp, vi
+    # TODO: call accumulate_assume?!
+    return r, vi
 end
 
 # TODO(mhauru) Fix this.
