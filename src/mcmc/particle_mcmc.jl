@@ -195,7 +195,7 @@ function DynamicPPL.initialstep(
 )
     # Reset the VarInfo.
     vi = DynamicPPL.reset_num_produce!!(vi)
-    set_retained_vns_del!(vi)
+    DynamicPPL.set_retained_vns_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
     vi = DynamicPPL.empty!!(vi)
 
