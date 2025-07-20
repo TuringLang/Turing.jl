@@ -200,7 +200,7 @@ end
 
 function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
     theta = getparams(model, vi)
-    lp = getlogp(vi)
+    lp = DynamicPPL.getlogjoint(vi)
     return SGLDTransition(theta, lp, stepsize)
 end
 

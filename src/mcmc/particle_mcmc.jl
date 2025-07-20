@@ -35,13 +35,13 @@ function AdvancedPS.advance!(
     trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
 )
     # Make sure we load/reset the rng in the new replaying mechanism
-    DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
+    trace.model.f.varinfo = DynamicPPL.increment_num_produce!!(trace.model.f.varinfo)
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
     if score === nothing
         return nothing
     else
-        return score + DynamicPPL.getlogp(trace.model.f.varinfo)
+        return score + DynamicPPL.getlogjoint(trace.model.f.varinfo)
     end
 end
 
@@ -128,7 +128,7 @@ function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
-    lp = getlogp(vi)
+    lp = DynamicPPL.getlogjoint(vi)
 
     return SMCTransition(theta, lp, weight)
 end
@@ -307,7 +307,7 @@ function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
-    lp = getlogp(vi)
+    lp = DynamicPPL.getlogjoint(vi)
 
     return PGTransition(theta, lp, logevidence)
 end
