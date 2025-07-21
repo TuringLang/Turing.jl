@@ -58,15 +58,12 @@ function DynamicPPL.initialstep(
     # Ensure that initial sample is in unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Define log-density function.
     ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
     )
 
     # Perform initial step.
@@ -78,7 +75,9 @@ function DynamicPPL.initialstep(
 
     # Update the variables.
     vi = DynamicPPL.unflatten(vi, Q.q)
-    vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. Fix this.
+    vi = DynamicPPL.setloglikelihood!!(vi, Q.ℓq)
+    vi = DynamicPPL.setlogprior!!(vi, 0.0)
 
     # Create first sample and state.
     sample = Turing.Inference.Transition(model, vi)

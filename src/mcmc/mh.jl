@@ -157,6 +157,8 @@ end
 # Utility functions #
 #####################
 
+# TODO(DPPL0.37/penelopeysm): This function should no longer be needed
+# once InitContext is merged.
 """
     set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 
@@ -181,21 +183,19 @@ function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTup
     end
 end
 
-"""
-    MHLogDensityFunction
-
-A log density function for the MH sampler.
-
-This variant uses the `set_namedtuple!` function to update the `VarInfo`.
-"""
-const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} =
-    DynamicPPL.LogDensityFunction{M,V,<:DynamicPPL.SamplingContext{<:S},AD} where {AD}
-
-function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
+# NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
+# interface in that it gets evaluated with a NamedTuple. Hence we need this
+# method just to deal with MH.
+# TODO(DPPL0.37/penelopeysm): Check the extent to which this method is actually
+# needed. If it's still needed, replace this with `init!!(f.model, f.varinfo,
+# ParamsInit(x))`. Much less hacky than `set_namedtuple!` (hopefully...).
+# In general, we should much prefer to either (1) conform to the
+# LogDensityProblems interface or (2) use VarNames anyway.
+function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, f.context))
-    lj = getlogp(vi_new)
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi))
+    lj = f.getlogdensity(vi_new)
     return lj
 end
 
@@ -304,25 +304,27 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, getlogp(vi), false)
+    prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(
-                model,
-                vi,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
     # TODO: Make this compatible with immutable `VarInfo`.
     # Update the values in the VarInfo.
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
+    # re-evaluate the model.
     set_namedtuple!(vi, trans.params)
-    return setlogp!!(vi, trans.lp)
+    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
+    return DynamicPPL.setlogprior!!(vi, 0.0)
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
@@ -339,22 +341,25 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, getlogp(vi), false)
+    prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint(vi), false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(
-                model,
-                vi,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
 
-    return setlogp!!(DynamicPPL.unflatten(vi, trans.params), trans.lp)
+    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
+    # re-evaluate the model.
+    vi = DynamicPPL.unflatten(vi, trans.params)
+    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
+    return DynamicPPL.setlogprior!!(vi, 0.0)
 end
 
 function DynamicPPL.initialstep(
@@ -391,8 +396,4 @@ function DynamicPPL.assume(
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
     return retval
-end
-
-function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
 end

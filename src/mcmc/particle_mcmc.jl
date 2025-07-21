@@ -18,28 +18,31 @@ function TracedModel(
     varinfo::AbstractVarInfo,
     rng::Random.AbstractRNG,
 )
-    context = SamplingContext(rng, sampler, DefaultContext())
-    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo, context)
+    spl_context = DynamicPPL.SamplingContext(rng, sampler, model.context)
+    spl_model = DynamicPPL.contextualize(model, spl_context)
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(spl_model, varinfo)
     if kwargs !== nothing && !isempty(kwargs)
         error(
             "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
         )
     end
-    evaluator = (model.f, args...)
-    return TracedModel(model, sampler, varinfo, evaluator)
+    evaluator = (spl_model.f, args...)
+    return TracedModel(spl_model, sampler, varinfo, evaluator)
 end
 
 function AdvancedPS.advance!(
     trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
 )
     # Make sure we load/reset the rng in the new replaying mechanism
-    DynamicPPL.increment_num_produce!(trace.model.f.varinfo)
+    trace = Accessors.@set trace.model.f.varinfo = DynamicPPL.increment_num_produce!!(
+        trace.model.f.varinfo
+    )
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
     if score === nothing
         return nothing
     else
-        return score + DynamicPPL.getlogp(trace.model.f.varinfo)
+        return score + DynamicPPL.getlogjoint(trace.model.f.varinfo)
     end
 end
 
@@ -49,13 +52,11 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
-    DynamicPPL.reset_num_produce!(trace.varinfo)
-    return trace
+    return Accessors.@set trace.varinfo = DynamicPPL.reset_num_produce!!(trace.varinfo)
 end
 
 function AdvancedPS.reset_logprob!(trace::TracedModel)
-    DynamicPPL.resetlogp!!(trace.model.varinfo)
-    return trace
+    return Accessors.@set trace.model.varinfo = DynamicPPL.resetlogp!!(trace.model.varinfo)
 end
 
 function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
@@ -116,7 +117,7 @@ function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
-    lp = getlogp(vi)
+    lp = DynamicPPL.getlogjoint(vi)
 
     return SMCTransition(theta, lp, weight)
 end
@@ -182,10 +183,10 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
-    DynamicPPL.reset_num_produce!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
     DynamicPPL.set_retained_vns_del!(vi)
-    DynamicPPL.resetlogp!!(vi)
-    DynamicPPL.empty!!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -295,7 +296,7 @@ function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
 
     # This is pretty useless since we reset the log probability continuously in the
     # particle sweep.
-    lp = getlogp(vi)
+    lp = DynamicPPL.getlogjoint(vi)
 
     return PGTransition(theta, lp, logevidence)
 end
@@ -316,9 +317,9 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo before new sweep
-    DynamicPPL.reset_num_produce!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
     DynamicPPL.set_retained_vns_del!(vi)
-    DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -348,8 +349,8 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    DynamicPPL.reset_num_produce!(vi)
-    DynamicPPL.resetlogp!!(vi)
+    vi = DynamicPPL.reset_num_produce!!(vi)
+    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
@@ -384,7 +385,7 @@ function AbstractMCMC.step(
 end
 
 function DynamicPPL.use_threadsafe_eval(
-    ::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
+    ::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
 )
     return false
 end
@@ -416,6 +417,8 @@ function trace_local_rng_maybe(rng::Random.AbstractRNG)
     end
 end
 
+# TODO(DPPL0.37/penelopeysm) The whole tilde pipeline for particle MCMC needs to be
+# thoroughly fixed.
 function DynamicPPL.assume(
     rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, _vi::AbstractVarInfo
 )
@@ -429,33 +432,36 @@ function DynamicPPL.assume(
         DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
         r = rand(trng, dist)
         vi[vn] = DynamicPPL.tovec(r)
-        DynamicPPL.setorder!(vi, vn, DynamicPPL.get_num_produce(vi))
+        vi = DynamicPPL.setorder!!(vi, vn, DynamicPPL.get_num_produce(vi))
     else
         r = vi[vn]
     end
-    # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
-    lp = 0
-    return r, lp, vi
+    # TODO: call accumulate_assume?!
+    return r, vi
 end
 
-function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
-    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
+#     # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
+#     return logpdf(dist, value), trace_local_varinfo_maybe(vi)
+# end
 
 function DynamicPPL.acclogp!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+    context::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}},
+    varinfo::AbstractVarInfo,
+    logp,
 )
     varinfo_trace = trace_local_varinfo_maybe(varinfo)
     return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
 end
 
-function DynamicPPL.acclogp_observe!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
-)
-    Libtask.produce(logp)
-    return trace_local_varinfo_maybe(varinfo)
-end
+# TODO(mhauru) Fix this.
+# function DynamicPPL.acclogp_observe!!(
+#     context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+# )
+#     Libtask.produce(logp)
+#     return trace_local_varinfo_maybe(varinfo)
+# end
 
 # Convenient constructor
 function AdvancedPS.Trace(
@@ -465,7 +471,7 @@ function AdvancedPS.Trace(
     rng::AdvancedPS.TracedRNG,
 )
     newvarinfo = deepcopy(varinfo)
-    DynamicPPL.reset_num_produce!(newvarinfo)
+    newvarinfo = DynamicPPL.reset_num_produce!!(newvarinfo)
 
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
@@ -477,7 +483,7 @@ end
 # called on `:invoke` expressions rather than `:call`s, but since those are implementation
 # details of the compiler, we set a bunch of methods as might_produce = true. We start with
 # `acclogp_observe!!` which is what calls `produce` and go up the call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
+# Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
 function Libtask.might_produce(

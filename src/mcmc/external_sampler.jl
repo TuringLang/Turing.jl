@@ -96,12 +96,12 @@ getlogp_external(::Any, ::Any) = missing
 getlogp_external(mh::AdvancedMH.Transition, ::AdvancedMH.Transition) = mh.lp
 getlogp_external(hmc::AdvancedHMC.Transition, ::AdvancedHMC.HMCState) = hmc.stat.log_density
 
-struct TuringState{S,V1<:AbstractVarInfo,M,V,C}
+struct TuringState{S,V1<:AbstractVarInfo,M,V}
     state::S
     # Note that this varinfo has the correct parameters and logp obtained from
     # the state, whereas `ldf.varinfo` will in general have junk inside it.
     varinfo::V1
-    ldf::DynamicPPL.LogDensityFunction{M,V,C}
+    ldf::DynamicPPL.LogDensityFunction{M,V}
 end
 
 varinfo(state::TuringState) = state.varinfo
@@ -126,7 +126,13 @@ function make_updated_varinfo(
     return if ismissing(new_logp)
         last(DynamicPPL.evaluate!!(f.model, new_varinfo, f.context))
     else
-        DynamicPPL.setlogp!!(new_varinfo, new_logp)
+        # TODO(DPPL0.37/penelopeysm) This is obviously wrong. Note that we
+        # have the same problem here as in HMC in that the sampler doesn't
+        # tell us about how logp is broken down into prior and likelihood.
+        # We should probably just re-evaluate unconditionally. A bit
+        # unfortunate.
+        DynamicPPL.setlogprior!!(new_varinfo, 0.0)
+        DynamicPPL.setloglikelihood!!(new_varinfo, new_logp)
     end
 end
 
@@ -156,7 +162,9 @@ function AbstractMCMC.step(
     end
 
     # Construct LogDensityFunction
-    f = DynamicPPL.LogDensityFunction(model, varinfo; adtype=alg.adtype)
+    f = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint, varinfo; adtype=alg.adtype
+    )
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     if initial_state === nothing

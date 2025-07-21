@@ -155,35 +155,33 @@ end
 # child context.
 
 function DynamicPPL.tilde_assume(context::ADTypeCheckContext, right, vn, vi)
-    value, logp, vi = DynamicPPL.tilde_assume(
-        DynamicPPL.childcontext(context), right, vn, vi
-    )
+    value, vi = DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
     check_adtype(context, vi)
-    return value, logp, vi
+    return value, vi
 end
 
 function DynamicPPL.tilde_assume(
     rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, vn, vi
 )
-    value, logp, vi = DynamicPPL.tilde_assume(
+    value, vi = DynamicPPL.tilde_assume(
         rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
     )
     check_adtype(context, vi)
-    return value, logp, vi
+    return value, vi
 end
 
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(DynamicPPL.childcontext(context), right, left, vi)
+function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, right, left, vi)
+    left, vi = DynamicPPL.tilde_observe!!(DynamicPPL.childcontext(context), right, left, vi)
     check_adtype(context, vi)
-    return logp, vi
+    return left, vi
 end
 
-function DynamicPPL.tilde_observe(context::ADTypeCheckContext, sampler, right, left, vi)
-    logp, vi = DynamicPPL.tilde_observe(
+function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, sampler, right, left, vi)
+    left, vi = DynamicPPL.tilde_observe!!(
         DynamicPPL.childcontext(context), sampler, right, left, vi
     )
     check_adtype(context, vi)
-    return logp, vi
+    return left, vi
 end
 
 """
@@ -256,8 +254,10 @@ end
 
             @testset "model=$(model.f)" for model in DEMO_MODELS
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
-                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+                spl_model = DynamicPPL.contextualize(
+                    model, DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(alg))
+                )
+                @test run_ad(spl_model, adtype; test=true, benchmark=false) isa Any
             end
         end
     end
@@ -283,8 +283,10 @@ end
                     model, varnames, deepcopy(global_vi)
                 )
                 rng = StableRNG(123)
-                ctx = DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
-                @test run_ad(model, adtype; context=ctx, test=true, benchmark=false) isa Any
+                spl_model = DynamicPPL.contextualize(
+                    model, DynamicPPL.SamplingContext(rng, DynamicPPL.Sampler(HMC(0.1, 10)))
+                )
+                @test run_ad(spl_model, adtype; test=true, benchmark=false) isa Any
             end
         end
     end

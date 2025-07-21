@@ -113,36 +113,6 @@ using Turing
         check_gdemo(chn3_contd)
     end
 
-    @testset "Contexts" begin
-        # Test LikelihoodContext
-        @model function testmodel1(x)
-            a ~ Beta()
-            lp1 = getlogp(__varinfo__)
-            x[1] ~ Bernoulli(a)
-            return global loglike = getlogp(__varinfo__) - lp1
-        end
-        model = testmodel1([1.0])
-        varinfo = DynamicPPL.VarInfo(model)
-        model(varinfo, DynamicPPL.SampleFromPrior(), DynamicPPL.LikelihoodContext())
-        @test getlogp(varinfo) == loglike
-
-        # Test MiniBatchContext
-        @model function testmodel2(x)
-            a ~ Beta()
-            return x[1] ~ Bernoulli(a)
-        end
-        model = testmodel2([1.0])
-        varinfo1 = DynamicPPL.VarInfo(model)
-        varinfo2 = deepcopy(varinfo1)
-        model(varinfo1, DynamicPPL.SampleFromPrior(), DynamicPPL.LikelihoodContext())
-        model(
-            varinfo2,
-            DynamicPPL.SampleFromPrior(),
-            DynamicPPL.MiniBatchContext(DynamicPPL.LikelihoodContext(), 10),
-        )
-        @test isapprox(getlogp(varinfo2) / getlogp(varinfo1), 10)
-    end
-
     @testset "Prior" begin
         N = 10_000
 
@@ -173,21 +143,6 @@ using Turing
             @test all(haskey(x, :lp) for x in chains)
             @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.11
             @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
-        end
-
-        @testset "#2169" begin
-            # Not exactly the same as the issue, but similar.
-            @model function issue2169_model()
-                if DynamicPPL.leafcontext(__context__) isa DynamicPPL.PriorContext
-                    x ~ Normal(0, 1)
-                else
-                    x ~ Normal(1000, 1)
-                end
-            end
-
-            model = issue2169_model()
-            chain = sample(StableRNG(seed), model, Prior(), 10)
-            @test all(mean(chain[:x]) .< 5)
         end
     end
 

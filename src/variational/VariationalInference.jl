@@ -17,12 +17,6 @@ export vi, q_locationscale, q_meanfield_gaussian, q_fullrank_gaussian
 
 include("deprecated.jl")
 
-function make_logdensity(model::DynamicPPL.Model)
-    weight = 1.0
-    ctx = DynamicPPL.MiniBatchContext(DynamicPPL.DefaultContext(), weight)
-    return DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx)
-end
-
 """
     q_initialize_scale(
         [rng::Random.AbstractRNG,]
@@ -68,7 +62,7 @@ function q_initialize_scale(
     num_max_trials::Int=10,
     reduce_factor::Real=one(eltype(scale)) / 2,
 )
-    prob = make_logdensity(model)
+    prob = LogDensityFunction(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
     varinfo = DynamicPPL.VarInfo(model)
 
@@ -309,7 +303,7 @@ function vi(
 )
     return AdvancedVI.optimize(
         rng,
-        make_logdensity(model),
+        LogDensityFunction(model),
         objective,
         q,
         n_iterations;

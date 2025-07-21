@@ -191,14 +191,7 @@ function DynamicPPL.initialstep(
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
     ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -213,8 +206,8 @@ function DynamicPPL.initialstep(
     end
     theta = vi[:]
 
-    # Cache current log density.
-    log_density_old = getlogp(vi)
+    # Cache current log density. We will reuse this if the transition is rejected.
+    logp_old = DynamicPPL.getlogp(vi)
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
@@ -239,13 +232,21 @@ function DynamicPPL.initialstep(
         )
     end
 
-    # Update `vi` based on acceptance
+    # Update VarInfo based on acceptance
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
+        # Re-evaluate to calculate log probability density.
+        # TODO(penelopeysm): This seems a little bit wasteful. Unfortunately,
+        # even though `t.stat.log_density` contains some kind of logp, this
+        # doesn't track prior and likelihood separately but rather a single
+        # log-joint (and in linked space), so which we have no way to decompose
+        # this back into prior and likelihood. I don't immediately see how to
+        # solve this without re-evaluating the model.
+        _, vi = DynamicPPL.evaluate!!(model, vi)
     else
+        # Reset VarInfo back to its original state.
         vi = DynamicPPL.unflatten(vi, theta)
-        vi = setlogp!!(vi, log_density_old)
+        vi = DynamicPPL.setlogp!!(vi, logp_old)
     end
 
     transition = Transition(model, vi, t)
@@ -290,7 +291,9 @@ function AbstractMCMC.step(
     vi = state.vi
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
+        # Re-evaluate to calculate log probability density.
+        # TODO(penelopeysm): This seems a little bit wasteful. See note above.
+        _, vi = DynamicPPL.evaluate!!(model, vi)
     end
 
     # Compute next transition and state.
@@ -303,14 +306,7 @@ end
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
     ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -514,10 +510,6 @@ function DynamicPPL.assume(
     rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
     return DynamicPPL.assume(dist, vn, vi)
-end
-
-function DynamicPPL.observe(::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
-    return DynamicPPL.observe(d, value, vi)
 end
 
 ####

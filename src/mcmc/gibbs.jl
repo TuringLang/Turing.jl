@@ -33,7 +33,7 @@ can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
 #
 # Purpose: avoid triggering resampling of variables we're conditioning on.
 # - Using standard `DynamicPPL.condition` results in conditioned variables being treated
-#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe`.
+#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe!!`.
 # - But `observe` is overloaded by some samplers, e.g. `CSMC`, which can lead to
 #   undesirable behavior, e.g. `CSMC` triggering a resampling for every conditioned variable
 #   rather than only for the "true" observations.
@@ -178,16 +178,18 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # Short-circuit the tilde assume if `vn` is present in `context`.
-        value, lp, _ = DynamicPPL.tilde_assume(
+        # TODO(mhauru) Fix accumulation here. In this branch anything that gets
+        # accumulated just gets discarded with `_`.
+        value, _ = DynamicPPL.tilde_assume(
             child_context, right, vn, get_global_varinfo(context)
         )
-        value, lp, vi
+        value, vi
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        value, new_global_vi = DynamicPPL.tilde_assume(
             child_context,
             DynamicPPL.SampleFromPrior(),
             right,
@@ -195,7 +197,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 
@@ -210,12 +212,12 @@ function DynamicPPL.tilde_assume(
     return if is_target_varname(context, vn)
         DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        value, lp, _ = DynamicPPL.tilde_assume(
+        value, _ = DynamicPPL.tilde_assume(
             child_context, right, vn, get_global_varinfo(context)
         )
-        value, lp, vi
+        value, vi
     else
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        value, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             child_context,
             DynamicPPL.SampleFromPrior(),
@@ -224,7 +226,7 @@ function DynamicPPL.tilde_assume(
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 
@@ -347,7 +349,7 @@ function initial_varinfo(rng, model, spl, initial_params)
         # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
         # and https://github.com/TuringLang/Turing.jl/issues/1563
         # to avoid that existing variables are resampled
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.DefaultContext()))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
     return vi
 end
@@ -532,9 +534,7 @@ function setparams_varinfo!!(
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
-    # NOTE: Using `leafcontext(model.context)` here is a no-op, as it will be concatenated
-    # with `model.context` before hitting `model.f`.
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
+    return last(DynamicPPL.evaluate!!(model, params))
 end
 
 function setparams_varinfo!!(
@@ -544,10 +544,8 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
-    # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
-    # some variables and DefaultContext for others.
-    return last(DynamicPPL.evaluate!!(model, params, SamplingContext(sampler)))
+    # update its logprob.
+    return last(DynamicPPL.evaluate!!(model, params))
 end
 
 function setparams_varinfo!!(
@@ -557,7 +555,7 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, state.ldf.varinfo, state.ldf.context; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint, state.ldf.varinfo; adtype=sampler.alg.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
