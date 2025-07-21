@@ -483,7 +483,7 @@ end
 # called on `:invoke` expressions rather than `:call`s, but since those are implementation
 # details of the compiler, we set a bunch of methods as might_produce = true. We start with
 # `acclogp_observe!!` which is what calls `produce` and go up the call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
+# Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.acclogp_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
 function Libtask.might_produce(
