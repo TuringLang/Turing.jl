@@ -2,6 +2,12 @@
 
 [...]
 
+# 0.39.7
+
+Update compatibility to AdvancedPS 0.7 and Libtask 0.9.
+
+These new libraries provide significant speedups for particle MCMC methods.
+
 # 0.39.6
 
 Bumped compatibility of AbstractPPL to include 0.13.

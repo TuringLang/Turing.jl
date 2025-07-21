@@ -44,13 +44,13 @@ using Turing
             end
 
             # Should also be stable with an explicit RNG
-            seed = 5
-            rng = Random.MersenneTwister(seed)
+            local_seed = 5
+            rng = Random.MersenneTwister(local_seed)
             for sampler in samplers
-                Random.seed!(rng, seed)
+                Random.seed!(rng, local_seed)
                 chain1 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
-                Random.seed!(rng, seed)
+                Random.seed!(rng, local_seed)
                 chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
                 @test chain1.value == chain2.value
@@ -256,9 +256,9 @@ using Turing
         pg = PG(10)
         gibbs = Gibbs(:p => HMC(0.2, 3), :x => PG(10))
 
-        chn_s = sample(StableRNG(seed), testbb(obs), smc, 200)
-        chn_p = sample(StableRNG(seed), testbb(obs), pg, 200)
-        chn_g = sample(StableRNG(seed), testbb(obs), gibbs, 200)
+        chn_s = sample(StableRNG(seed), testbb(obs), smc, 2_000)
+        chn_p = sample(StableRNG(seed), testbb(obs), pg, 2_000)
+        chn_g = sample(StableRNG(seed), testbb(obs), gibbs, 2_000)
 
         check_numerical(chn_s, [:p], [meanp]; atol=0.05)
         check_numerical(chn_p, [:x], [meanp]; atol=0.1)
@@ -647,7 +647,7 @@ using Turing
         @model function e(x=1.0)
             return x ~ Normal()
         end
-        # Can't test with HMC/NUTS because some AD backends error; see 
+        # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
         @test sample(e(), IS(), 100) isa MCMCChains.Chains
     end
