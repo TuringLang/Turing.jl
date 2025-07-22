@@ -1,3 +1,7 @@
+# 0.40.0
+
+[...]
+
 # 0.39.7
 
 Update compatibility to AdvancedPS 0.7 and Libtask 0.9.
