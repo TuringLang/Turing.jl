@@ -11,7 +11,7 @@
 
 ## 🚀 Get started
 
-Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10 will be required for the latest version of Turing.jl.
+Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10 for the latest version of Turing.jl).
 Then, launch a Julia REPL and run:
 
 ```julia
