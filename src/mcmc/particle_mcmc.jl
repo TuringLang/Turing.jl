@@ -513,82 +513,6 @@ Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on change o
 # Fields
 $(TYPEDFIELDS)
 """
-struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.LogProbAccumulator{T}
-    "the scalar log likelihood value"
-    logp::T
-end
-
-# Note that this uses the same name as `LogLikelihoodAccumulator`. Thus only one of the two
-# can be used in a given VarInfo.
-DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
-DynamicPPL.logp(acc::ProduceLogLikelihoodAccumulator) = acc.logp
-
-function DynamicPPL.acclogp(acc1::ProduceLogLikelihoodAccumulator, val)
-    # The below line is the only difference from `LogLikelihoodAccumulator`.
-    Libtask.produce(val)
-    return ProduceLogLikelihoodAccumulator(acc1.logp + val)
-end
-
-function DynamicPPL.accumulate_assume!!(
-    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
-)
-    return acc
-end
-function DynamicPPL.accumulate_observe!!(
-    acc::ProduceLogLikelihoodAccumulator, right, left, vn
-)
-    return DynamicPPL.acclogp(acc, Distributions.loglikelihood(right, left))
-end
-
-# We need to tell Libtask which calls may have `produce` calls within them. In practice most
-# of these won't be needed, because of inlining and the fact that `might_produce` is only
-# called on `:invoke` expressions rather than `:call`s, but since those are implementation
-# details of the compiler, we set a bunch of methods as might_produce = true. We start with
-# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
-# call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{
-        <:Tuple{
-            typeof(Base.:+),
-            ProduceLogLikelihoodAccumulator,
-            DynamicPPL.LogLikelihoodAccumulator,
-        },
-    },
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
-# Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
-# That's the only thing that makes tilde_assume calls result in tilde_observe calls.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
-
-"""
-    ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
-
-Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on every increase.
-
-# Fields
-$(TYPEDFIELDS)
-"""
 struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.AbstractAccumulator
     "the scalar log likelihood value"
     logp::T
@@ -674,3 +598,44 @@ function DynamicPPL.convert_eltype(
 ) where {T}
     return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
 end
+
+# We need to tell Libtask which calls may have `produce` calls within them. In practice most
+# of these won't be needed, because of inlining and the fact that `might_produce` is only
+# called on `:invoke` expressions rather than `:call`s, but since those are implementation
+# details of the compiler, we set a bunch of methods as might_produce = true. We start with
+# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
+# call stack.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{
+        <:Tuple{
+            typeof(Base.:+),
+            ProduceLogLikelihoodAccumulator,
+            DynamicPPL.LogLikelihoodAccumulator,
+        },
+    },
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
+# Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
+# That's the only thing that makes tilde_assume calls result in tilde_observe calls.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
