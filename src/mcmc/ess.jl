@@ -112,7 +112,6 @@ struct ESSLikelihood{L<:DynamicPPL.LogDensityFunction}
 
     # Force usage of `getloglikelihood` in inner constructor
     function ESSLikelihood(model::Model, varinfo::AbstractVarInfo)
-        # new_model = DynamicPPL.contextualize(model, DynamicPPL.SamplingContext(DynamicPPL.SampleFromPrior()))
         ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, varinfo)
         return new{typeof(ldf)}(ldf)
     end

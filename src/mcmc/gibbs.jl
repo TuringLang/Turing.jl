@@ -177,7 +177,9 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # Fall back to the default behavior.
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        # Short-circuit the tilde assume if `vn` is present in `context`.
+        # TODO(DPPL0.37/penelopeysm): Unsure if this is bad for SMC as it
+        # will trigger resampling. We may need to do a special kind of observe
+        # that does not trigger resampling.
         global_vi = get_global_varinfo(context)
         val = global_vi[vn]
         DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
@@ -217,12 +219,17 @@ function DynamicPPL.tilde_assume(
         # conditioned on, so we can just treat it as an observation.
         # The only catch is that the value that we need is to be obtained from
         # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # TODO(DPPL0.37/penelopeysm): Unsure if this is bad for SMC as it
+        # will trigger resampling. We may need to do a special kind of observe
+        # that does not trigger resampling.
         global_vi = get_global_varinfo(context)
         val = global_vi[vn]
         DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
-        # This is a variable that isn't handled by any sampler. We can just
-        # sample a new value and stick it inside the global VarInfo.
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
         value, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             child_context,
