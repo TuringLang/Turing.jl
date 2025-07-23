@@ -43,11 +43,7 @@ function AdvancedPS.advance!(
     # Make sure we load/reset the rng in the new replaying mechanism
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
-    if score === nothing
-        return nothing
-    else
-        return score + DynamicPPL.getlogjoint(trace.model.f.varinfo)
-    end
+    return score
 end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
@@ -114,11 +110,7 @@ end
 
 function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
     theta = getparams(model, vi)
-
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
     lp = DynamicPPL.getlogjoint(vi)
-
     return SMCTransition(theta, lp, weight)
 end
 
@@ -293,11 +285,7 @@ varinfo(state::PGState) = state.vi
 
 function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     theta = getparams(model, vi)
-
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
     lp = DynamicPPL.getlogjoint(vi)
-
     return PGTransition(theta, lp, logevidence)
 end
 
@@ -316,6 +304,7 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     vi = DynamicPPL.reset_num_produce!!(vi)
     DynamicPPL.set_retained_vns_del!(vi)
@@ -471,10 +460,7 @@ function DynamicPPL.assume(
         r = vi[vn]
     end
 
-    # TODO(mhauru) This get/set business is awful.
-    old_logp = DynamicPPL.getlogprior(vi)
     vi = DynamicPPL.accumulate_assume!!(vi, r, 0, vn, dist)
-    vi = DynamicPPL.setlogprior!!(vi, old_logp)
 
     # TODO(mhauru) Rather than this if-block, we should use try-catch within
     # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
@@ -492,20 +478,14 @@ function DynamicPPL.tilde_observe!!(
     vi = get_trace_local_varinfo_maybe(vi)
     using_local_vi = objectid(vi) == arg_vi_id
 
-    # TODO(mhauru) This get/set business is awful.
-    old_logp = DynamicPPL.getloglikelihood(vi)
     left, vi = DynamicPPL.tilde_observe!!(ctx.context, right, left, vn, vi)
-    new_loglikelihood = DynamicPPL.getloglikelihood(vi) - old_logp
-    vi = DynamicPPL.setloglikelihood!!(vi, old_logp)
 
     # TODO(mhauru) Rather than this if-block, we should use try-catch within
     # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
     # hence this.
-    if !using_local_vi
-        set_trace_local_varinfo_maybe(vi)
-    end
-
-    Libtask.produce(new_loglikelihood)
+    # if !using_local_vi
+    #     set_trace_local_varinfo_maybe(vi)
+    # end
     return left, vi
 end
 
@@ -528,7 +508,25 @@ end
 # of these won't be needed, because of inlining and the fact that `might_produce` is only
 # called on `:invoke` expressions rather than `:call`s, but since those are implementation
 # details of the compiler, we set a bunch of methods as might_produce = true. We start with
-# `acclogp_observe!!` which is what calls `produce` and go up the call stack.
+# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
+# call stack.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{
+        <:Tuple{
+            typeof(Base.:+),
+            ProduceLogLikelihoodAccumulator,
+            DynamicPPL.LogLikelihoodAccumulator,
+        },
+    },
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
+)
+    return true
+end
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
 function Libtask.might_produce(
@@ -542,3 +540,97 @@ function Libtask.might_produce(
     return true
 end
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
+
+"""
+    ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
+
+Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on every increase.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.AbstractAccumulator
+    "the scalar log likelihood value"
+    logp::T
+end
+
+"""
+    ProduceLogLikelihoodAccumulator{T}()
+
+Create a new `ProduceLogLikelihoodAccumulator` accumulator with the log likelihood of zero.
+"""
+ProduceLogLikelihoodAccumulator{T}() where {T<:Real} =
+    ProduceLogLikelihoodAccumulator(zero(T))
+function ProduceLogLikelihoodAccumulator()
+    return ProduceLogLikelihoodAccumulator{DynamicPPL.LogProbType}()
+end
+
+Base.copy(acc::ProduceLogLikelihoodAccumulator) = acc
+
+function Base.show(io::IO, acc::ProduceLogLikelihoodAccumulator)
+    return print(io, "ProduceLogLikelihoodAccumulator($(repr(acc.logp)))")
+end
+
+function Base.:(==)(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return acc1.logp == acc2.logp
+end
+
+function Base.isequal(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return isequal(acc1.logp, acc2.logp)
+end
+
+function Base.hash(acc::ProduceLogLikelihoodAccumulator, h::UInt)
+    return hash((ProduceLogLikelihoodAccumulator, acc.logp), h)
+end
+
+# Note that this uses the same name as `LogLikelihoodAccumulator`. Thus only one of the two
+# can be used in a given VarInfo.
+DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
+
+function DynamicPPL.split(::ProduceLogLikelihoodAccumulator{T}) where {T}
+    return ProduceLogLikelihoodAccumulator(zero(T))
+end
+
+function DynamicPPL.combine(
+    acc::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return ProduceLogLikelihoodAccumulator(acc.logp + acc2.logp)
+end
+
+function Base.:+(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::DynamicPPL.LogLikelihoodAccumulator
+)
+    Libtask.produce(acc2.logp)
+    return ProduceLogLikelihoodAccumulator(acc1.logp + acc2.logp)
+end
+
+function Base.zero(acc::ProduceLogLikelihoodAccumulator)
+    return ProduceLogLikelihoodAccumulator(zero(acc.logp))
+end
+
+function DynamicPPL.accumulate_assume!!(
+    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
+)
+    return acc
+end
+function DynamicPPL.accumulate_observe!!(
+    acc::ProduceLogLikelihoodAccumulator, right, left, vn
+)
+    return acc +
+           DynamicPPL.LogLikelihoodAccumulator(Distributions.loglikelihood(right, left))
+end
+
+function Base.convert(
+    ::Type{ProduceLogLikelihoodAccumulator{T}}, acc::ProduceLogLikelihoodAccumulator
+) where {T}
+    return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
+end
+function DynamicPPL.convert_eltype(
+    ::Type{T}, acc::ProduceLogLikelihoodAccumulator
+) where {T}
+    return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
+end
