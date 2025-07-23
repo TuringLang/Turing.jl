@@ -580,3 +580,97 @@ function Libtask.might_produce(
     return true
 end
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
+
+"""
+    ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
+
+Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on every increase.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.AbstractAccumulator
+    "the scalar log likelihood value"
+    logp::T
+end
+
+"""
+    ProduceLogLikelihoodAccumulator{T}()
+
+Create a new `ProduceLogLikelihoodAccumulator` accumulator with the log likelihood of zero.
+"""
+ProduceLogLikelihoodAccumulator{T}() where {T<:Real} =
+    ProduceLogLikelihoodAccumulator(zero(T))
+function ProduceLogLikelihoodAccumulator()
+    return ProduceLogLikelihoodAccumulator{DynamicPPL.LogProbType}()
+end
+
+Base.copy(acc::ProduceLogLikelihoodAccumulator) = acc
+
+function Base.show(io::IO, acc::ProduceLogLikelihoodAccumulator)
+    return print(io, "ProduceLogLikelihoodAccumulator($(repr(acc.logp)))")
+end
+
+function Base.:(==)(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return acc1.logp == acc2.logp
+end
+
+function Base.isequal(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return isequal(acc1.logp, acc2.logp)
+end
+
+function Base.hash(acc::ProduceLogLikelihoodAccumulator, h::UInt)
+    return hash((ProduceLogLikelihoodAccumulator, acc.logp), h)
+end
+
+# Note that this uses the same name as `LogLikelihoodAccumulator`. Thus only one of the two
+# can be used in a given VarInfo.
+DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
+
+function DynamicPPL.split(::ProduceLogLikelihoodAccumulator{T}) where {T}
+    return ProduceLogLikelihoodAccumulator(zero(T))
+end
+
+function DynamicPPL.combine(
+    acc::ProduceLogLikelihoodAccumulator, acc2::ProduceLogLikelihoodAccumulator
+)
+    return ProduceLogLikelihoodAccumulator(acc.logp + acc2.logp)
+end
+
+function Base.:+(
+    acc1::ProduceLogLikelihoodAccumulator, acc2::DynamicPPL.LogLikelihoodAccumulator
+)
+    Libtask.produce(acc2.logp)
+    return ProduceLogLikelihoodAccumulator(acc1.logp + acc2.logp)
+end
+
+function Base.zero(acc::ProduceLogLikelihoodAccumulator)
+    return ProduceLogLikelihoodAccumulator(zero(acc.logp))
+end
+
+function DynamicPPL.accumulate_assume!!(
+    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
+)
+    return acc
+end
+function DynamicPPL.accumulate_observe!!(
+    acc::ProduceLogLikelihoodAccumulator, right, left, vn
+)
+    return acc +
+           DynamicPPL.LogLikelihoodAccumulator(Distributions.loglikelihood(right, left))
+end
+
+function Base.convert(
+    ::Type{ProduceLogLikelihoodAccumulator{T}}, acc::ProduceLogLikelihoodAccumulator
+) where {T}
+    return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
+end
+function DynamicPPL.convert_eltype(
+    ::Type{T}, acc::ProduceLogLikelihoodAccumulator
+) where {T}
+    return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
+end
