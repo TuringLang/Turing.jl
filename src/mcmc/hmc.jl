@@ -162,7 +162,9 @@ function find_initial_params(
         # Resample and try again.
         # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
         varinfo = last(
-            DynamicPPL.evaluate!!(model, rng, varinfo, DynamicPPL.SampleFromUniform())
+            DynamicPPL.evaluate_and_sample!!(
+                rng, model, varinfo, DynamicPPL.SampleFromUniform()
+            ),
         )
     end
 
