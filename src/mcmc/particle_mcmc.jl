@@ -175,6 +175,7 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.reset_num_produce!!(vi)
     DynamicPPL.set_retained_vns_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
@@ -483,9 +484,9 @@ function DynamicPPL.tilde_observe!!(
     # TODO(mhauru) Rather than this if-block, we should use try-catch within
     # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
     # hence this.
-    # if !using_local_vi
-    #     set_trace_local_varinfo_maybe(vi)
-    # end
+    if !using_local_vi
+        set_trace_local_varinfo_maybe(vi)
+    end
     return left, vi
 end
 
@@ -504,47 +505,10 @@ function AdvancedPS.Trace(
     return newtrace
 end
 
-# We need to tell Libtask which calls may have `produce` calls within them. In practice most
-# of these won't be needed, because of inlining and the fact that `might_produce` is only
-# called on `:invoke` expressions rather than `:call`s, but since those are implementation
-# details of the compiler, we set a bunch of methods as might_produce = true. We start with
-# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
-# call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{
-        <:Tuple{
-            typeof(Base.:+),
-            ProduceLogLikelihoodAccumulator,
-            DynamicPPL.LogLikelihoodAccumulator,
-        },
-    },
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
-
 """
     ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
 
-Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on every increase.
+Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on change of value.
 
 # Fields
 $(TYPEDFIELDS)
@@ -634,3 +598,44 @@ function DynamicPPL.convert_eltype(
 ) where {T}
     return ProduceLogLikelihoodAccumulator(convert(T, acc.logp))
 end
+
+# We need to tell Libtask which calls may have `produce` calls within them. In practice most
+# of these won't be needed, because of inlining and the fact that `might_produce` is only
+# called on `:invoke` expressions rather than `:call`s, but since those are implementation
+# details of the compiler, we set a bunch of methods as might_produce = true. We start with
+# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
+# call stack.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{
+        <:Tuple{
+            typeof(Base.:+),
+            ProduceLogLikelihoodAccumulator,
+            DynamicPPL.LogLikelihoodAccumulator,
+        },
+    },
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
+# Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
+# That's the only thing that makes tilde_assume calls result in tilde_observe calls.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
