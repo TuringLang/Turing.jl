@@ -346,7 +346,9 @@ function AbstractMCMC.step(
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    DynamicPPL.set_retained_vns_del!(vi)
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
