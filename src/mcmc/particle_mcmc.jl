@@ -47,7 +47,20 @@ function AdvancedPS.advance!(
 end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
-    DynamicPPL.set_retained_vns_del!(trace.varinfo)
+    # TODO(DPPL0.37/penelopeysm): Explain this a bit better.
+    #
+    # This method is called if, during a CSMC update, we perform a resampling
+    # and choose the reference particle as the trajectory to carry on from.
+    # In such a case, we need to ensure that when we continue sampling (i.e.
+    # the next time we hit tilde_assume), we don't use the values in the 
+    # reference particle but rather sample new values.
+    # In this implementation, we indiscriminately set the 'del' flag for all
+    # variables in the VarInfo. This is slightly overkill: it is not necessary
+    # to set the 'del' flag for variables that were already sampled. However,
+    # it allows us to avoid using DynamicPPL.set_retained_vns_del!.
+    for vn in keys(trace.varinfo)
+        DynamicPPL.set_flag!(trace.varinfo, vn, "del")
+    end
     return trace
 end
 
@@ -177,7 +190,9 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
     vi = DynamicPPL.resetlogp!!(vi)
     vi = DynamicPPL.empty!!(vi)
 
@@ -308,7 +323,9 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
     vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
@@ -329,6 +346,13 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
+    # Unset any 'del' flags before we actually construct the transition.
+    # This is necessary because the model will be re-evaluated and we
+    # want to make sure we do use the values in the reference particle
+    # instead of resampling them.
+    for vn in keys(_vi)
+        DynamicPPL.unset_flag!(_vi, vn, "del")
+    end
     transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, reference.rng)
@@ -372,6 +396,13 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
+    # Unset any 'del' flags before we actually construct the transition.
+    # This is necessary because the model will be re-evaluated and we
+    # want to make sure we do use the values in the reference particle
+    # instead of resampling them.
+    for vn in keys(_vi)
+        DynamicPPL.unset_flag!(_vi, vn, "del")
+    end
     transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, newreference.rng)
