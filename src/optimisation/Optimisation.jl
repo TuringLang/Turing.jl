@@ -43,113 +43,6 @@ Concrete type for maximum a posteriori estimation. Only used for the Optim.jl in
 """
 struct MAP <: ModeEstimator end
 
-# Most of these functions for LogPriorWithoutJacobianAccumulator are copied from
-# LogPriorAccumulator. The only one that is different is the accumulate_assume!! one.
-"""
-    LogPriorWithoutJacobianAccumulator{T} <: DynamicPPL.AbstractAccumulator
-
-Exactly like DynamicPPL.LogPriorAccumulator, but does not include the log determinant of the
-Jacobian of any variable transformations.
-
-Used for MAP optimisation.
-"""
-struct LogPriorWithoutJacobianAccumulator{T} <: DynamicPPL.AbstractAccumulator
-    logp::T
-end
-
-"""
-    LogPriorWithoutJacobianAccumulator{T}()
-
-Create a new `LogPriorWithoutJacobianAccumulator` accumulator with the log prior initialized to zero.
-"""
-LogPriorWithoutJacobianAccumulator{T}() where {T<:Real} =
-    LogPriorWithoutJacobianAccumulator(zero(T))
-function LogPriorWithoutJacobianAccumulator()
-    return LogPriorWithoutJacobianAccumulator{DynamicPPL.LogProbType}()
-end
-
-function Base.show(io::IO, acc::LogPriorWithoutJacobianAccumulator)
-    return print(io, "LogPriorWithoutJacobianAccumulator($(repr(acc.logp)))")
-end
-
-function DynamicPPL.accumulator_name(::Type{<:LogPriorWithoutJacobianAccumulator})
-    return :LogPriorWithoutJacobian
-end
-
-Base.copy(acc::LogPriorWithoutJacobianAccumulator) = acc
-
-function DynamicPPL.split(::LogPriorWithoutJacobianAccumulator{T}) where {T}
-    return LogPriorWithoutJacobianAccumulator(zero(T))
-end
-
-function DynamicPPL.combine(
-    acc::LogPriorWithoutJacobianAccumulator, acc2::LogPriorWithoutJacobianAccumulator
-)
-    return LogPriorWithoutJacobianAccumulator(acc.logp + acc2.logp)
-end
-
-function Base.:+(
-    acc1::LogPriorWithoutJacobianAccumulator, acc2::LogPriorWithoutJacobianAccumulator
-)
-    return LogPriorWithoutJacobianAccumulator(acc1.logp + acc2.logp)
-end
-
-function Base.zero(acc::LogPriorWithoutJacobianAccumulator)
-    return LogPriorWithoutJacobianAccumulator(zero(acc.logp))
-end
-
-function DynamicPPL.accumulate_assume!!(
-    acc::LogPriorWithoutJacobianAccumulator, val, logjac, vn, right
-)
-    return acc + LogPriorWithoutJacobianAccumulator(Distributions.logpdf(right, val))
-end
-function DynamicPPL.accumulate_observe!!(
-    acc::LogPriorWithoutJacobianAccumulator, right, left, vn
-)
-    return acc
-end
-
-function Base.convert(
-    ::Type{LogPriorWithoutJacobianAccumulator{T}}, acc::LogPriorWithoutJacobianAccumulator
-) where {T}
-    return LogPriorWithoutJacobianAccumulator(convert(T, acc.logp))
-end
-
-function DynamicPPL.convert_eltype(
-    ::Type{T}, acc::LogPriorWithoutJacobianAccumulator
-) where {T}
-    return LogPriorWithoutJacobianAccumulator(convert(T, acc.logp))
-end
-
-function getlogprior_without_jacobian(vi::DynamicPPL.AbstractVarInfo)
-    acc = DynamicPPL.getacc(vi, Val(:LogPriorWithoutJacobian))
-    return acc.logp
-end
-
-function getlogjoint_without_jacobian(vi::DynamicPPL.AbstractVarInfo)
-    return getlogprior_without_jacobian(vi) + DynamicPPL.getloglikelihood(vi)
-end
-
-# This is called when constructing a LogDensityFunction, and ensures the VarInfo has the
-# right accumulators.
-function DynamicPPL.ldf_default_varinfo(
-    model::DynamicPPL.Model, ::typeof(getlogprior_without_jacobian)
-)
-    vi = DynamicPPL.VarInfo(model)
-    vi = DynamicPPL.setaccs!!(vi, (LogPriorWithoutJacobianAccumulator(),))
-    return vi
-end
-
-function DynamicPPL.ldf_default_varinfo(
-    model::DynamicPPL.Model, ::typeof(getlogjoint_without_jacobian)
-)
-    vi = DynamicPPL.VarInfo(model)
-    vi = DynamicPPL.setaccs!!(
-        vi, (LogPriorWithoutJacobianAccumulator(), DynamicPPL.LogLikelihoodAccumulator())
-    )
-    return vi
-end
-
 """
     OptimLogDensity{
         M<:DynamicPPL.Model,
@@ -628,8 +521,10 @@ function estimate_mode(
 
     # Create an OptimLogDensity object that can be used to evaluate the objective function,
     # i.e. the negative log density.
-    getlogdensity =
-        estimator isa MAP ? getlogjoint_without_jacobian : DynamicPPL.getloglikelihood
+    # Note that we use `getlogjoint` rather than `getlogjoint_internal`: this
+    # is intentional, because even though the VarInfo may be linked, the
+    # optimisation target should not take the Jacobian term into account.
+    getlogdensity = estimator isa MAP ? DynamicPPL.getlogjoint : DynamicPPL.getloglikelihood
 
     # Set its VarInfo to the initial parameters.
     # TODO(penelopeysm): Unclear if this is really needed? Any time that logp is calculated

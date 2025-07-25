@@ -102,7 +102,7 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    f = Optimisation.OptimLogDensity(model, Optimisation.getlogjoint_without_jacobian)
+    f = Optimisation.OptimLogDensity(model, DynamicPPL.getlogjoint)
     init_vals = DynamicPPL.getparams(f.ldf)
     optimizer = Optim.LBFGS()
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
@@ -124,7 +124,7 @@ function Optim.optimize(
     options::Optim.Options=Optim.Options();
     kwargs...,
 )
-    f = Optimisation.OptimLogDensity(model, Optimisation.getlogjoint_without_jacobian)
+    f = Optimisation.OptimLogDensity(model, DynamicPPL.getlogjoint)
     init_vals = DynamicPPL.getparams(f.ldf)
     return _map_optimize(model, init_vals, optimizer, options; kwargs...)
 end
@@ -140,7 +140,7 @@ function Optim.optimize(
 end
 
 function _map_optimize(model::DynamicPPL.Model, args...; kwargs...)
-    f = Optimisation.OptimLogDensity(model, Optimisation.getlogjoint_without_jacobian)
+    f = Optimisation.OptimLogDensity(model, DynamicPPL.getlogjoint)
     return _optimize(f, args...; kwargs...)
 end
 
