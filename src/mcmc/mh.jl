@@ -304,7 +304,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint(vi), false)
+    prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint_internal(vi), false)
 
     # Make a new transition.
     spl_model = DynamicPPL.contextualize(
@@ -313,7 +313,7 @@ function propose!!(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
@@ -341,7 +341,7 @@ function propose!!(
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint(vi), false)
+    prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint_internal(vi), false)
 
     # Make a new transition.
     spl_model = DynamicPPL.contextualize(
@@ -350,7 +350,7 @@ function propose!!(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint, vi),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)

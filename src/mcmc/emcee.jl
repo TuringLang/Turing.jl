@@ -72,7 +72,7 @@ function AbstractMCMC.step(
         vis[1],
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, model)
-            AMH.Transition(vi[:], DynamicPPL.getlogjoint(vi), false)
+            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
@@ -87,7 +87,7 @@ function AbstractMCMC.step(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
 

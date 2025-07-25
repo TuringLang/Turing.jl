@@ -163,7 +163,7 @@ function AbstractMCMC.step(
 
     # Construct LogDensityFunction
     f = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint, varinfo; adtype=alg.adtype
+        model, DynamicPPL.getlogjoint_internal, varinfo; adtype=alg.adtype
     )
 
     # Then just call `AbstractMCMC.step` with the right arguments.

@@ -19,6 +19,7 @@ using DynamicPPL:
     setlogp!!,
     getlogp,
     getlogjoint,
+    getlogjoint_internal,
     VarName,
     getsym,
     getdist,
@@ -136,11 +137,13 @@ end
 
 Transition(θ, lp) = Transition(θ, lp, nothing)
 function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t)
+    # TODO(DPPL0.37/penelopeysm): Fix this
     θ = getparams(model, vi)
-    lp = getlogjoint(vi)
+    lp = getlogjoint_internal(vi)
     return Transition(θ, lp, getstats(t))
 end
 
+# TODO(DPPL0.37/penelopeysm): Add log-prior and log-likelihood terms as well
 function metadata(t::Transition)
     stat = t.stat
     if stat === nothing
@@ -150,9 +153,11 @@ function metadata(t::Transition)
     end
 end
 
+# TODO(DPPL0.37/penelopeysm): Fix this
 DynamicPPL.getlogjoint(t::Transition) = t.lp
 
 # Metadata of VarInfo object
+# TODO(DPPL0.37/penelopeysm): Add log-prior and log-likelihood terms as well
 metadata(vi::AbstractVarInfo) = (lp=getlogjoint(vi),)
 
 ##########################

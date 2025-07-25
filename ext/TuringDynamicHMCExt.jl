@@ -63,7 +63,7 @@ function DynamicPPL.initialstep(
 
     # Define log-density function.
     ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
 
     # Perform initial step.

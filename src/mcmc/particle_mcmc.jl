@@ -146,7 +146,7 @@ end
 
 function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
     theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint(vi)
+    lp = DynamicPPL.getlogjoint_internal(vi)
     return SMCTransition(theta, lp, weight)
 end
 
@@ -321,7 +321,7 @@ varinfo(state::PGState) = state.vi
 
 function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint(vi)
+    lp = DynamicPPL.getlogjoint_internal(vi)
     return PGTransition(theta, lp, logevidence)
 end
 
