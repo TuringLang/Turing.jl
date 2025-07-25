@@ -41,12 +41,10 @@ using Turing
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x=x,)
-            # Doesn't matter if we use getlogjoint or getlogjoint_without_jacobian since the
+            # Doesn't matter if we use getlogjoint or getlogjoint_internal since the
             # VarInfo isn't linked.
-            ld1 = Turing.Optimisation.OptimLogDensity(
-                m1, Turing.Optimisation.getlogjoint_without_jacobian
-            )
-            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint)
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
             @test ld1(w) == ld2(w)
         end
 
@@ -54,22 +52,16 @@ using Turing
             vn = @varname(inner)
             m1 = prefix(model1(x), vn)
             m2 = prefix((model2() | (x=x,)), vn)
-            ld1 = Turing.Optimisation.OptimLogDensity(
-                m1, Turing.Optimisation.getlogjoint_without_jacobian
-            )
-            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint)
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
             @test ld1(w) == ld2(w)
         end
 
         @testset "Joint, prior, and likelihood" begin
             m1 = model1(x)
             a = [0.3]
-            ld_joint = Turing.Optimisation.OptimLogDensity(
-                m1, Turing.Optimisation.getlogjoint_without_jacobian
-            )
-            ld_prior = Turing.Optimisation.OptimLogDensity(
-                m1, Turing.Optimisation.getlogprior_without_jacobian
-            )
+            ld_joint = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld_prior = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)
             ld_likelihood = Turing.Optimisation.OptimLogDensity(
                 m1, DynamicPPL.getloglikelihood
             )
