@@ -339,6 +339,7 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.reset_num_produce!!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
 
