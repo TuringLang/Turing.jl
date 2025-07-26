@@ -9,19 +9,26 @@ using Turing
 @testset "container.jl" begin
     @model function test()
         a ~ Normal(0, 1)
+        println("a")
         x ~ Bernoulli(1)
+        println("x")
         b ~ Gamma(2, 3)
+        println("b")
         1 ~ Bernoulli(x / 2)
+        println("1")
         c ~ Beta()
+        println("c")
         0 ~ Bernoulli(x / 2)
+        println("0")
         return x
     end
 
     @testset "constructor" begin
         vi = DynamicPPL.VarInfo()
-        sampler = Sampler(PG(10))
+        vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
+        spl = Sampler(PG(10))
         model = test()
-        trace = AdvancedPS.Trace(model, sampler, vi, AdvancedPS.TracedRNG())
+        trace = AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG())
 
         # Make sure the backreference from taped_globals to the trace is in place.
         @test trace.model.ctask.taped_globals.other === trace
@@ -46,6 +53,7 @@ using Turing
             return a, b
         end
         vi = DynamicPPL.VarInfo()
+        vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
         sampler = Sampler(PG(10))
         model = normal()
 
