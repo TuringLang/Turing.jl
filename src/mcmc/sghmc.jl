@@ -65,12 +65,9 @@ function DynamicPPL.initialstep(
     end
 
     # Compute initial sample and state.
-    sample = Transition(model, vi)
+    sample = Transition(model, vi, nothing)
     ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGHMCState(ℓ, vi, zero(vi[:]))
 
@@ -100,10 +97,13 @@ function AbstractMCMC.step(
 
     # Save new variables and recompute log density.
     vi = DynamicPPL.unflatten(vi, θ)
+    # TODO(penelopeysm): Is this re-evaluation really necessary? For example,
+    # when we calculate the Transition, couldn't we get the log joint out of it
+    # and then use that?
     vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
-    sample = Transition(model, vi)
+    sample = Transition(model, vi, nothing)
     newstate = SGHMCState(ℓ, vi, newv)
 
     return sample, newstate
@@ -230,10 +230,7 @@ function DynamicPPL.initialstep(
     # Create first sample and state.
     sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
     ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGLDState(ℓ, vi, 1)
 

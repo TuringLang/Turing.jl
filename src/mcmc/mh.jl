@@ -153,6 +153,27 @@ function MH(model::Model; proposal_type=AMH.StaticProposal)
     return AMH.MetropolisHastings(priors)
 end
 
+"""
+    MHState(varinfo::AbstractVarInfo, logjoint_internal::Real)
+
+State for Metropolis-Hastings sampling.
+
+`varinfo` must have the correct parameters set inside it, but its other fields
+(e.g. accumulators, which track logp) can in general be missing or incorrect.
+
+`logjoint_internal` is the log joint probability of the model, evaluated using
+the parameters and linking status of `varinfo`. It should be equal to
+`DynamicPPL.getlogjoint_internal(varinfo)`. This information is returned by the
+MH sampler so we store this here to avoid re-evaluating the model
+unnecessarily.
+"""
+struct MHState{V<:AbstractVarInfo,L<:Real}
+    varinfo::V
+    logjoint_internal::L
+end
+
+get_varinfo(s::MHState) = s.varinfo
+
 #####################
 # Utility functions #
 #####################
@@ -297,14 +318,15 @@ end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
 function propose!!(
-    rng::AbstractRNG, vi::AbstractVarInfo, model::Model, spl::Sampler{<:MH}, proposal
+    rng::AbstractRNG, prev_state::MHState, model::Model, spl::Sampler{<:MH}, proposal
 )
+    vi = prev_state.varinfo
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl, vi)
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, DynamicPPL.getlogjoint_internal(vi), false)
+    prev_trans = AMH.Transition(vt, prev_state.logjoint_internal, false)
 
     # Make a new transition.
     spl_model = DynamicPPL.contextualize(
@@ -317,31 +339,31 @@ function propose!!(
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
-
-    # TODO: Make this compatible with immutable `VarInfo`.
-    # Update the values in the VarInfo.
-    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
-    # re-evaluate the model.
+    # trans.params isa NamedTuple
     set_namedtuple!(vi, trans.params)
-    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
-    return DynamicPPL.setlogprior!!(vi, 0.0)
+    # Here, `trans.lp` is equal to `getlogjoint_internal(vi)`. We don't know
+    # how to set this back inside vi (without re-evaluating). However, the next
+    # MH step will require this information to calculate the acceptance
+    # probability, so we return it together with vi.
+    return MHState(vi, trans.lp)
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
 function propose!!(
     rng::AbstractRNG,
-    vi::AbstractVarInfo,
+    prev_state::MHState,
     model::Model,
     spl::Sampler{<:MH},
     proposal::AdvancedMH.RandomWalkProposal,
 )
+    vi = prev_state.varinfo
     # If this is the case, we can just draw directly from the proposal
     # matrix.
     vals = vi[:]
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, DynamicPPL.getlogjoint_internal(vi), false)
+    prev_trans = AMH.Transition(vals, prev_state.logjoint_internal, false)
 
     # Make a new transition.
     spl_model = DynamicPPL.contextualize(
@@ -354,12 +376,13 @@ function propose!!(
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
-
-    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. We need to
-    # re-evaluate the model.
+    # trans.params isa AbstractVector
     vi = DynamicPPL.unflatten(vi, trans.params)
-    vi = DynamicPPL.setloglikelihood!!(vi, trans.lp)
-    return DynamicPPL.setlogprior!!(vi, 0.0)
+    # Here, `trans.lp` is equal to `getlogjoint_internal(vi)`. We don't know
+    # how to set this back inside vi (without re-evaluating). However, the next
+    # MH step will require this information to calculate the acceptance
+    # probability, so we return it together with vi.
+    return MHState(vi, trans.lp)
 end
 
 function DynamicPPL.initialstep(
@@ -373,18 +396,18 @@ function DynamicPPL.initialstep(
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
-    return Transition(model, vi), vi
+    return Transition(model, vi, nothing), MHState(vi, DynamicPPL.getlogjoint_internal(vi))
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, state::MHState; kwargs...
 )
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
+    new_state = propose!!(rng, state, model, spl, spl.alg.proposals)
 
-    return Transition(model, vi), vi
+    return Transition(model, new_state.varinfo, nothing), new_state
 end
 
 ####
