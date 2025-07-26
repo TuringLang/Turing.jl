@@ -317,7 +317,7 @@ struct PGState
     rng::Random.AbstractRNG
 end
 
-varinfo(state::PGState) = state.vi
+get_varinfo(state::PGState) = state.vi
 
 function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     theta = getparams(model, vi)

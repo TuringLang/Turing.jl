@@ -54,7 +54,7 @@ using Turing
 
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
-            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 2000)
+            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 3_000)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
         end
 

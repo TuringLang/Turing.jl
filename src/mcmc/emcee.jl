@@ -65,7 +65,7 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = map(Base.Fix1(Transition, model), vis)
+    transition = [Transition(model, vi, nothing) for vi in vis]
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
@@ -92,13 +92,12 @@ function AbstractMCMC.step(
     )
 
     # Compute the next states.
-    states = last(AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states))
+    t, states = AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = DynamicPPL.unflatten(vi, _state.params)
-        t = Transition(getparams(model, vi), _state.lp)
-        return t
+        return Transition(model, vi, t)
     end
     newstate = EmceeState(vi, states)
 

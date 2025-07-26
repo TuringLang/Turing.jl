@@ -25,7 +25,7 @@ end
 ### Hamiltonian Monte Carlo samplers.
 ###
 
-varinfo(state::HMCState) = state.vi
+get_varinfo(state::HMCState) = state.vi
 
 """
     HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())
@@ -234,22 +234,13 @@ function DynamicPPL.initialstep(
         )
     end
 
-    # Update VarInfo based on acceptance
-    if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, t.z.θ)
-        # Re-evaluate to calculate log probability density.
-        # TODO(penelopeysm): This seems a little bit wasteful. Unfortunately,
-        # even though `t.stat.log_density` contains some kind of logp, this
-        # doesn't track prior and likelihood separately but rather a single
-        # log-joint (and in linked space), so which we have no way to decompose
-        # this back into prior and likelihood. I don't immediately see how to
-        # solve this without re-evaluating the model.
-        _, vi = DynamicPPL.evaluate!!(model, vi)
+    # Update VarInfo parameters based on acceptance
+    new_params = if t.stat.is_accept
+        t.z.θ
     else
-        # Reset VarInfo back to its original state.
-        vi = DynamicPPL.unflatten(vi, theta)
-        vi = DynamicPPL.setlogp!!(vi, logp_old)
+        theta
     end
+    vi = DynamicPPL.unflatten(vi, new_params)
 
     transition = Transition(model, vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
@@ -293,9 +284,6 @@ function AbstractMCMC.step(
     vi = state.vi
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        # Re-evaluate to calculate log probability density.
-        # TODO(penelopeysm): This seems a little bit wasteful. See note above.
-        _, vi = DynamicPPL.evaluate!!(model, vi)
     end
 
     # Compute next transition and state.
