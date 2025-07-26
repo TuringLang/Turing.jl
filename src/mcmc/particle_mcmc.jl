@@ -4,6 +4,32 @@
 
 ### AdvancedPS models and interface
 
+"""
+    set_all_del!(vi::AbstractVarInfo)
+
+Set the "del" flag for all variables in the VarInfo `vi`, thus marking them for
+resampling.
+"""
+function set_all_del!(vi::AbstractVarInfo)
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
+"""
+    unset_all_del!(vi::AbstractVarInfo)
+
+Unset the "del" flag for all variables in the VarInfo `vi`, thus preventing
+them from being resampled.
+"""
+function unset_all_del!(vi::AbstractVarInfo)
+    for vn in keys(vi)
+        DynamicPPL.unset_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
 struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
        AdvancedPS.AbstractGenericModel
     model::M
@@ -47,7 +73,18 @@ function AdvancedPS.advance!(
 end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
-    DynamicPPL.set_retained_vns_del!(trace.varinfo)
+    # TODO(DPPL0.37/penelopeysm): Explain this a bit better.
+    #
+    # This method is called if, during a CSMC update, we perform a resampling
+    # and choose the reference particle as the trajectory to carry on from.
+    # In such a case, we need to ensure that when we continue sampling (i.e.
+    # the next time we hit tilde_assume), we don't use the values in the 
+    # reference particle but rather sample new values.
+    # In this implementation, we indiscriminately set the 'del' flag for all
+    # variables in the VarInfo. This is slightly overkill: it is not necessary
+    # to set the 'del' flag for variables that were already sampled. However,
+    # it allows us to avoid using DynamicPPL.set_retained_vns_del!.
+    set_all_del!(trace.varinfo)
     return trace
 end
 
@@ -177,7 +214,7 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
     vi = DynamicPPL.empty!!(vi)
 
@@ -308,7 +345,7 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
@@ -329,6 +366,11 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
+    # Unset any 'del' flags before we actually construct the transition.
+    # This is necessary because the model will be re-evaluated and we
+    # want to make sure we do use the values in the reference particle
+    # instead of resampling them.
+    unset_all_del!(_vi)
     transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, reference.rng)
@@ -339,6 +381,7 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.reset_num_produce!!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
 
@@ -346,7 +389,7 @@ function AbstractMCMC.step(
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -369,6 +412,11 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
+    # Unset any 'del' flags before we actually construct the transition.
+    # This is necessary because the model will be re-evaluated and we
+    # want to make sure we do use the values in the reference particle
+    # instead of resampling them.
+    unset_all_del!(_vi)
     transition = PGTransition(model, _vi, logevidence)
 
     return transition, PGState(_vi, newreference.rng)

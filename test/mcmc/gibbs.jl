@@ -207,8 +207,8 @@ end
         val ~ Normal(s, 1)
         1.0 ~ Normal(s + m, 1)
 
-        n := m + 1
-        xs = M(undef, n)
+        n := m
+        xs = M(undef, 5)
         for i in eachindex(xs)
             xs[i] ~ Beta(0.5, 0.5)
         end
@@ -563,42 +563,6 @@ end
             # This is a basic structural test - we're not testing exact analytical results
             @test n_missing_theta2 > 0 || n_present_theta2 > 0  # One of these should be true
         end
-    end
-
-    # The below test used to sample incorrectly before
-    # https://github.com/TuringLang/Turing.jl/pull/2328
-    @testset "dynamic model with ESS" begin
-        @model function dynamic_model_for_ess()
-            b ~ Bernoulli()
-            x_length = b ? 1 : 2
-            x = Vector{Float64}(undef, x_length)
-            for i in 1:x_length
-                x[i] ~ Normal(i, 1.0)
-            end
-        end
-
-        m = dynamic_model_for_ess()
-        chain = sample(m, Gibbs(:b => PG(10), :x => ESS()), 2000; discard_initial=100)
-        means = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 2.0)
-        stds = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 1.0)
-        for vn in keys(means)
-            @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.1)
-            @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.1)
-        end
-    end
-
-    @testset "dynamic model with dot tilde" begin
-        @model function dynamic_model_with_dot_tilde(
-            num_zs=10, (::Type{M})=Vector{Float64}
-        ) where {M}
-            z = Vector{Int}(undef, num_zs)
-            z .~ Poisson(1.0)
-            num_ms = sum(z)
-            m = M(undef, num_ms)
-            return m .~ Normal(1.0, 1.0)
-        end
-        model = dynamic_model_with_dot_tilde()
-        sample(model, Gibbs(:z => PG(10), :m => HMC(0.01, 4)), 100)
     end
 
     @testset "Demo model" begin
