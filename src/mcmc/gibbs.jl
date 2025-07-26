@@ -342,7 +342,7 @@ struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     states::S
 end
 
-varinfo(state::GibbsState) = state.vi
+get_varinfo(state::GibbsState) = state.vi
 
 """
 Initialise a VarInfo for the Gibbs sampler.
@@ -389,7 +389,7 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -414,7 +414,7 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 """
@@ -464,7 +464,7 @@ function gibbs_initialstep_recursive(
         initial_params=initial_params_local,
         kwargs...,
     )
-    new_vi_local = varinfo(new_state)
+    new_vi_local = get_varinfo(new_state)
     # Merge in any new variables that were introduced during the step, but that
     # were not in the domain of the current sampler.
     vi = merge(vi, get_global_varinfo(context))
@@ -492,7 +492,7 @@ function AbstractMCMC.step(
     state::GibbsState;
     kwargs...,
 )
-    vi = varinfo(state)
+    vi = get_varinfo(state)
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
@@ -502,7 +502,7 @@ function AbstractMCMC.step(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -512,7 +512,7 @@ function AbstractMCMC.step_warmup(
     state::GibbsState;
     kwargs...,
 )
-    vi = varinfo(state)
+    vi = get_varinfo(state)
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
@@ -522,7 +522,7 @@ function AbstractMCMC.step_warmup(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 """
@@ -540,14 +540,11 @@ function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:MH},
-    state::AbstractVarInfo,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::MHState, params::AbstractVarInfo
 )
-    # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob.
-    return last(DynamicPPL.evaluate!!(model, params))
+    # Re-evaluate to update the logprob.
+    new_vi = last(DynamicPPL.evaluate!!(model, params))
+    return MHState(new_vi, DynamicPPL.getlogjoint_internal(new_vi))
 end
 
 function setparams_varinfo!!(
@@ -568,7 +565,7 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint, state.ldf.varinfo; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.alg.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
@@ -607,7 +604,7 @@ state for this sampler. This is relevant when multilple samplers are sampling th
 variables, and one might need it to be linked while the other doesn't.
 """
 function match_linking!!(varinfo_local, prev_state_local, model)
-    prev_varinfo_local = varinfo(prev_state_local)
+    prev_varinfo_local = get_varinfo(prev_state_local)
     was_linked = DynamicPPL.istrans(prev_varinfo_local)
     is_linked = DynamicPPL.istrans(varinfo_local)
     if was_linked && !is_linked
@@ -689,7 +686,7 @@ function gibbs_step_recursive(
     # Take a step with the local sampler.
     new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
 
-    new_vi_local = varinfo(new_state)
+    new_vi_local = get_varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
     new_global_vi = merge(get_global_varinfo(context), new_vi_local)
     new_global_vi = setlogp!!(new_global_vi, getlogp(new_vi_local))

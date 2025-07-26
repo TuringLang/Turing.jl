@@ -47,11 +47,11 @@ using Turing
 
         Random.seed!(seed)
         chain = sample(model, alg, n; check_model=false)
-        sampled = get(chain, [:a, :b, :lp])
+        sampled = get(chain, [:a, :b, :loglikelihood])
 
         @test vec(sampled.a) == ref.as
         @test vec(sampled.b) == ref.bs
-        @test vec(sampled.lp) == ref.logps
+        @test vec(sampled.loglikelihood) == ref.logps
         @test chain.logevidence == ref.logevidence
     end
 

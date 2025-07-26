@@ -31,25 +31,19 @@ DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:IS}, vi::AbstractVarInfo; kwargs...
 )
-    # Need to manually construct the Transition here because we only
-    # want to use the likelihood.
-    xs = Turing.Inference.getparams(model, vi)
-    lp = DynamicPPL.getloglikelihood(vi)
-    return Transition(xs, lp, nothing), nothing
+    return Transition(model, vi, nothing), nothing
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG, model::Model, spl::Sampler{<:IS}, ::Nothing; kwargs...
 )
     vi = VarInfo(rng, model, spl)
-    xs = Turing.Inference.getparams(model, vi)
-    lp = DynamicPPL.getloglikelihood(vi)
-    return Transition(xs, lp, nothing), nothing
+    return Transition(model, vi, nothing), nothing
 end
 
 # Calculate evidence.
 function getlogevidence(samples::Vector{<:Transition}, ::Sampler{<:IS}, state)
-    return logsumexp(map(x -> x.lp, samples)) - log(length(samples))
+    return logsumexp(map(x -> x.loglikelihood, samples)) - log(length(samples))
 end
 
 function DynamicPPL.assume(rng, ::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
