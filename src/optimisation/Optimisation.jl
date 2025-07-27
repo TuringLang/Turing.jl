@@ -396,7 +396,9 @@ parameter space in case the optimization was done in a transformed space.
 function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
     varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
     # `getparams` performs invlinking if needed
-    vns_vals_iter = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+    vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+    vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     return ModeResult(
