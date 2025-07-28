@@ -47,6 +47,9 @@ eltypes_by_adtype = Dict(
 if INCLUDE_MOONCAKE
     eltypes_by_adtype[AutoMooncake] = (Mooncake.CoDual,)
 end
+if INCLUDE_ENZYME
+    eltypes_by_adtype[AutoEnzyme] = ()
+end
 
 """
     AbstractWrongADBackendError
