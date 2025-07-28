@@ -174,13 +174,7 @@ function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # this means that the code below will work both of linked and invlinked `vi`.
     # Ref: https://github.com/TuringLang/Turing.jl/issues/2195
     # NOTE: We need to `deepcopy` here to avoid modifying the original `vi`.
-    vals = DynamicPPL.values_as_in_model(model, true, deepcopy(vi))
-
-    # Obtain an iterator over the flattened parameter names and values.
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
-
-    # Materialize the iterators and concatenate.
-    return mapreduce(collect, vcat, iters)
+    return DynamicPPL.values_as_in_model(model, true, deepcopy(vi))
 end
 function getparams(
     model::DynamicPPL.Model, untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata}
@@ -191,14 +185,25 @@ function getparams(
     return getparams(model, DynamicPPL.typed_varinfo(untyped_vi))
 end
 function getparams(::DynamicPPL.Model, ::DynamicPPL.VarInfo{NamedTuple{(),Tuple{}}})
-    return float(Real)[]
+    return Dict{VarName,Any}()
 end
 
 function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     names_set = OrderedSet{VarName}()
     # Extract the parameter names and values from each transition.
     dicts = map(ts) do t
-        nms_and_vs = getparams(model, t)
+        # In general getparams returns a dict of VarName => values. We need to also
+        # split it up into constituent elements using
+        # `DynamicPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
+        # won't understand it.
+        vals = getparams(model, t)
+        nms_and_vs = if isempty(vals)
+            Tuple{VarName,Any}[]
+        else
+            iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+            mapreduce(collect, vcat, iters)
+        end
+
         nms = map(first, nms_and_vs)
         vs = map(last, nms_and_vs)
         for nm in nms
@@ -208,9 +213,7 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
         return OrderedDict(zip(nms, vs))
     end
     names = collect(names_set)
-    vals = [
-        get(dicts[i], key, missing) for i in eachindex(dicts), (j, key) in enumerate(names)
-    ]
+    vals = [get(dicts[i], key, missing) for i in eachindex(dicts), key in names]
 
     return names, vals
 end

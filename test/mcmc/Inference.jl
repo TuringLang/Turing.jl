@@ -585,7 +585,9 @@ using Turing
             return x ~ Normal()
         end
         fvi = DynamicPPL.VarInfo(f())
-        @test only(Turing.Inference.getparams(f(), fvi)) == (@varname(x), fvi[@varname(x)])
+        fparams = Turing.Inference.getparams(f(), fvi)
+        @test fparams[@varname(x)] == fvi[@varname(x)]
+        @test length(fparams) == 1
 
         @model function g()
             x ~ Normal()
@@ -593,8 +595,8 @@ using Turing
         end
         gvi = DynamicPPL.VarInfo(g())
         gparams = Turing.Inference.getparams(g(), gvi)
-        @test gparams[1] == (@varname(x), gvi[@varname(x)])
-        @test gparams[2] == (@varname(y), gvi[@varname(y)])
+        @test gparams[@varname(x)] == gvi[@varname(x)]
+        @test gparams[@varname(y)] == gvi[@varname(y)]
         @test length(gparams) == 2
     end
 
