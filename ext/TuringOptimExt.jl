@@ -186,7 +186,9 @@ function _optimize(
     logdensity_optimum = Optimisation.OptimLogDensity(
         f.ldf.model, vi_optimum, f.ldf.context
     )
-    vns_vals_iter = Turing.Inference.getparams(f.ldf.model, vi_optimum)
+    vals_dict = Turing.Inference.getparams(f.ldf.model, vi_optimum)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    vns_vals_iter = mapreduce(collect, vcat, iters)
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
