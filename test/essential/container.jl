@@ -9,17 +9,11 @@ using Turing
 @testset "container.jl" begin
     @model function test()
         a ~ Normal(0, 1)
-        println("a")
         x ~ Bernoulli(1)
-        println("x")
         b ~ Gamma(2, 3)
-        println("b")
         1 ~ Bernoulli(x / 2)
-        println("1")
         c ~ Beta()
-        println("c")
         0 ~ Bernoulli(x / 2)
-        println("0")
         return x
     end
 
