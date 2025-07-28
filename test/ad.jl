@@ -200,8 +200,8 @@ if INCLUDE_MOONCAKE
     push!(ADTYPES, AutoMooncake(; config=nothing))
 end
 if INCLUDE_ENZYME
-    push!(ADTYPES, AutoEnzyme(; mode = set_runtime_activity(Forward)))
-    push!(ADTYPES, AutoEnzyme(; mode = set_runtime_activity(Reverse)))
+    push!(ADTYPES, AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Forward)))
+    push!(ADTYPES, AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))
 end
 
 # Check that ADTypeCheckContext itself works as expected.
