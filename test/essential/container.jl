@@ -20,9 +20,9 @@ using Turing
     @testset "constructor" begin
         vi = DynamicPPL.VarInfo()
         vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        spl = Sampler(PG(10))
+        sampler = Sampler(PG(10))
         model = test()
-        trace = AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG())
+        trace = AdvancedPS.Trace(model, sampler, vi, AdvancedPS.TracedRNG())
 
         # Make sure the backreference from taped_globals to the trace is in place.
         @test trace.model.ctask.taped_globals.other === trace
