@@ -20,6 +20,14 @@ if INCLUDE_MOONCAKE
     using Mooncake: Mooncake
 end
 
+const INCLUDE_ENZYME = !IS_PRERELEASE
+
+if INCLUDE_ENZYME
+    import Pkg
+    Pkg.add("Enzyme")
+    using Enzyme: Enzyme
+end
+
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
@@ -190,6 +198,10 @@ All the ADTypes on which we want to run the tests.
 ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false)]
 if INCLUDE_MOONCAKE
     push!(ADTYPES, AutoMooncake(; config=nothing))
+end
+if INCLUDE_ENZYME
+    push!(ADTYPES, AutoEnzyme(; mode = set_runtime_activity(Forward)))
+    push!(ADTYPES, AutoEnzyme(; mode = set_runtime_activity(Reverse)))
 end
 
 # Check that ADTypeCheckContext itself works as expected.
