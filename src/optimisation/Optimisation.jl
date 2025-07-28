@@ -366,9 +366,10 @@ function Base.get(m::ModeResult, var_symbols::AbstractVector{Symbol})
     # Get all the variable names in the model. This is the same as the list of keys in
     # m.values, but they are more convenient to filter when they are VarNames rather than
     # Symbols.
-    varnames = collect(
-        map(first, Turing.Inference.getparams(log_density.model, log_density.varinfo))
-    )
+    vals_dict = Turing.Inference.getparams(log_density.model, log_density.varinfo)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    vns_and_vals = mapreduce(collect, vcat, iters)
+    varnames = collect(map(first, vns_and_vals))
     # For each symbol s in var_symbols, pick all the values from m.values for which the
     # variable name has that symbol.
     et = eltype(m.values)
@@ -396,7 +397,9 @@ parameter space in case the optimization was done in a transformed space.
 function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
     varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
     # `getparams` performs invlinking if needed
-    vns_vals_iter = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+    vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+    vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     return ModeResult(

@@ -1,3 +1,9 @@
+# 0.39.8
+
+MCMCChains.jl doesn't understand vector- or matrix-valued variables, and in Turing we split up such values into their individual components.
+This patch carries out some internal refactoring to avoid splitting up VarNames until absolutely necessary.
+There are no user-facing changes in this patch.
+
 # 0.39.7
 
 Update compatibility to AdvancedPS 0.7 and Libtask 0.9.
