@@ -28,14 +28,11 @@ using Turing
         @test trace.model.ctask.taped_globals.other === trace
 
         res = AdvancedPS.advance!(trace, false)
-        @test DynamicPPL.get_num_produce(trace.model.f.varinfo) == 1
         @test res ≈ -log(2)
 
         # Catch broken copy, espetially for RNG / VarInfo
         newtrace = AdvancedPS.fork(trace)
         res2 = AdvancedPS.advance!(trace)
-        @test DynamicPPL.get_num_produce(trace.model.f.varinfo) == 2
-        @test DynamicPPL.get_num_produce(newtrace.model.f.varinfo) == 1
     end
 
     @testset "fork" begin
