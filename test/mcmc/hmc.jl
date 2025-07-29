@@ -276,6 +276,29 @@ using Turing
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
         end
     end
+
+    @testset "improved error message for initialization failures" begin
+        # Model that fails to initialize due to VonMises AD issue
+        @model function failing_model()
+            μ ~ Uniform(-π, π)
+            κ ~ InverseGamma(2, 3)
+            return x ~ VonMises(μ, κ)
+        end
+
+        # Test that error message includes troubleshooting link
+        err = nothing
+        try
+            sample(failing_model(), NUTS(), 10; progress=false)
+        catch e
+            err = e
+        end
+
+        @test err isa ErrorException
+        @test contains(
+            string(err),
+            "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters",
+        )
+    end
 end
 
 end
