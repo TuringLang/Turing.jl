@@ -603,6 +603,7 @@ end
             end
         end
 
+        # TODO(DPPL0.37/penelopeysm): decide what to do with these tests
         @testset "Coalescing multiple observations into one" begin
             # Instead of observing x[1] and x[2] separately, we lump them into a
             # single distribution.
