@@ -177,13 +177,15 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # Fall back to the default behavior.
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        # Short-circuit the tilde assume if `vn` is present in `context`.
-        # TODO(mhauru) Fix accumulation here. In this branch anything that gets
-        # accumulated just gets discarded with `_`.
-        value, _ = DynamicPPL.tilde_assume(
-            child_context, right, vn, get_global_varinfo(context)
-        )
-        value, vi
+        # This branch means that a different sampler is supposed to handle this
+        # variable. From the perspective of this sampler, this variable is
+        # conditioned on, so we can just treat it as an observation.
+        # The only catch is that the value that we need is to be obtained from
+        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
+        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
@@ -210,13 +212,25 @@ function DynamicPPL.tilde_assume(
     vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
 
     return if is_target_varname(context, vn)
+        # This branch means that that `sampler` is supposed to handle
+        # this variable. We can thus use its default behaviour, with
+        # the 'local' sampler-specific VarInfo.
         DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        value, _ = DynamicPPL.tilde_assume(
-            child_context, right, vn, get_global_varinfo(context)
-        )
-        value, vi
+        # This branch means that a different sampler is supposed to handle this
+        # variable. From the perspective of this sampler, this variable is
+        # conditioned on, so we can just treat it as an observation.
+        # The only catch is that the value that we need is to be obtained from
+        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
+        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
         value, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             child_context,

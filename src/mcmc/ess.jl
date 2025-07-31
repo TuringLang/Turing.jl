@@ -54,7 +54,7 @@ function AbstractMCMC.step(
 
     # update sample and log-likelihood
     vi = DynamicPPL.unflatten(vi, sample)
-    vi = setloglikelihood!!(vi, state.loglikelihood)
+    vi = DynamicPPL.setloglikelihood!!(vi, state.loglikelihood)
 
     return Transition(model, vi), vi
 end
@@ -88,6 +88,11 @@ function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     # p.varinfo, PriorInit())` after TuringLang/DynamicPPL.jl#984. The reason
     # why we had to use the 'del' flag before this was because
     # SampleFromPrior() wouldn't overwrite existing variables.
+    # The main problem I'm rather unsure about is ESS-within-Gibbs. The
+    # current implementation I think makes sure to only resample the variables
+    # that 'belong' to the current ESS sampler. InitContext on the other hand
+    # would resample all variables in the model (??) Need to think about this
+    # carefully.
     vns = keys(varinfo)
     for vn in vns
         set_flag!(varinfo, vn, "del")
@@ -102,13 +107,13 @@ Distributions.mean(p::ESSPrior) = p.μ
 # Evaluate log-likelihood of proposals. We need this struct because
 # EllipticalSliceSampling.jl expects a callable struct / a function as its
 # likelihood.
-struct ESSLikelihood{M<:Model,V<:AbstractVarInfo}
-    ldf::DynamicPPL.LogDensityFunction{M,V}
+struct ESSLikelihood{L<:DynamicPPL.LogDensityFunction}
+    ldf::L
 
     # Force usage of `getloglikelihood` in inner constructor
     function ESSLikelihood(model::Model, varinfo::AbstractVarInfo)
         ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, varinfo)
-        return new{typeof(model),typeof(varinfo)}(ldf)
+        return new{typeof(ldf)}(ldf)
     end
 end
 
