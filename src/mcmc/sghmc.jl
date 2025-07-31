@@ -58,10 +58,9 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
+    # Transform the samples to unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Compute initial sample and state.
@@ -95,12 +94,8 @@ function AbstractMCMC.step(
     α = spl.alg.momentum_decay
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
-    # Save new variables and recompute log density.
+    # Save new variables.
     vi = DynamicPPL.unflatten(vi, θ)
-    # TODO(penelopeysm): Is this re-evaluation really necessary? For example,
-    # when we calculate the Transition, couldn't we get the log joint out of it
-    # and then use that?
-    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
     sample = Transition(model, vi, nothing)
@@ -221,10 +216,9 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
+    # Transform the samples to unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Create first sample and state.
@@ -249,9 +243,8 @@ function AbstractMCMC.step(
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
-    # Save new variables and recompute log density.
+    # Save new variables.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
     sample = SGLDTransition(model, vi, stepsize)
