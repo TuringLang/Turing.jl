@@ -4,6 +4,38 @@
 
 ### AdvancedPS models and interface
 
+"""
+    set_all_del!(vi::AbstractVarInfo)
+
+Set the "del" flag for all variables in the VarInfo `vi`, thus marking them for
+resampling.
+"""
+function set_all_del!(vi::AbstractVarInfo)
+    # TODO(penelopeysm): Instead of being a 'del' flag on the VarInfo, we
+    # could either:
+    # - keep a boolean 'resample' flag on the trace, or
+    # - modify the model context appropriately.
+    # However, this refactoring will have to wait until InitContext is
+    # merged into DPPL.
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
+"""
+    unset_all_del!(vi::AbstractVarInfo)
+
+Unset the "del" flag for all variables in the VarInfo `vi`, thus preventing
+them from being resampled.
+"""
+function unset_all_del!(vi::AbstractVarInfo)
+    for vn in keys(vi)
+        DynamicPPL.unset_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
 struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
        AdvancedPS.AbstractGenericModel
     model::M
@@ -33,13 +65,6 @@ end
 function AdvancedPS.advance!(
     trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
 )
-    # We want to increment num produce for the VarInfo stored in the trace. The trace is
-    # mutable, so we create a new model with the incremented VarInfo and set it in the trace
-    model = trace.model
-    model = Accessors.@set model.f.varinfo = DynamicPPL.increment_num_produce!!(
-        model.f.varinfo
-    )
-    trace.model = model
     # Make sure we load/reset the rng in the new replaying mechanism
     isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
     score = consume(trace.model.ctask)
@@ -47,12 +72,23 @@ function AdvancedPS.advance!(
 end
 
 function AdvancedPS.delete_retained!(trace::TracedModel)
-    DynamicPPL.set_retained_vns_del!(trace.varinfo)
+    # This method is called if, during a CSMC update, we perform a resampling
+    # and choose the reference particle as the trajectory to carry on from.
+    # In such a case, we need to ensure that when we continue sampling (i.e.
+    # the next time we hit tilde_assume), we don't use the values in the 
+    # reference particle but rather sample new values.
+    #
+    # Here, we indiscriminately set the 'del' flag for all variables in the
+    # VarInfo. This is slightly overkill: it is not necessary to set the 'del'
+    # flag for variables that were already sampled. However, it allows us to
+    # avoid keeping track of which variables were sampled, which leads to many
+    # simplifications in the VarInfo data structure.
+    set_all_del!(trace.varinfo)
     return trace
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
-    return Accessors.@set trace.varinfo = DynamicPPL.reset_num_produce!!(trace.varinfo)
+    return trace
 end
 
 function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
@@ -176,8 +212,7 @@ function DynamicPPL.initialstep(
 )
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
     vi = DynamicPPL.empty!!(vi)
 
@@ -307,8 +342,7 @@ function DynamicPPL.initialstep(
 )
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
-    vi = DynamicPPL.reset_num_produce!!(vi)
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
     vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
@@ -339,14 +373,15 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    vi = DynamicPPL.reset_num_produce!!(vi)
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
+    unset_all_del!(vi)
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    DynamicPPL.set_retained_vns_del!(vi)
+    set_all_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -451,12 +486,11 @@ function DynamicPPL.assume(
         vi = push!!(vi, vn, r, dist)
     elseif DynamicPPL.is_flagged(vi, vn, "del")
         DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
-        r = rand(trng, dist)
-        vi[vn] = DynamicPPL.tovec(r)
         # TODO(mhauru):
         # The below is the only line that differs from assume called on SampleFromPrior.
-        # Could we just call assume on SampleFromPrior and then `setorder!!` after that?
-        vi = DynamicPPL.setorder!!(vi, vn, DynamicPPL.get_num_produce(vi))
+        # Could we just call assume on SampleFromPrior with a specific rng?
+        r = rand(trng, dist)
+        vi[vn] = DynamicPPL.tovec(r)
     else
         r = vi[vn]
     end
@@ -498,8 +532,6 @@ function AdvancedPS.Trace(
     rng::AdvancedPS.TracedRNG,
 )
     newvarinfo = deepcopy(varinfo)
-    newvarinfo = DynamicPPL.reset_num_produce!!(newvarinfo)
-
     tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
     return newtrace
