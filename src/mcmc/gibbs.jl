@@ -177,11 +177,14 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # Fall back to the default behavior.
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        # TODO(DPPL0.37/penelopeysm): Unsure if this is bad for SMC as it
-        # will trigger resampling. We may need to do a special kind of observe
-        # that does not trigger resampling.
-        global_vi = get_global_varinfo(context)
-        val = global_vi[vn]
+        # This branch means that a different sampler is supposed to handle this
+        # variable. From the perspective of this sampler, this variable is
+        # conditioned on, so we can just treat it as an observation.
+        # The only catch is that the value that we need is to be obtained from
+        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
         DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
@@ -219,11 +222,9 @@ function DynamicPPL.tilde_assume(
         # conditioned on, so we can just treat it as an observation.
         # The only catch is that the value that we need is to be obtained from
         # the global VarInfo (since the local VarInfo has no knowledge of it).
-        # TODO(DPPL0.37/penelopeysm): Unsure if this is bad for SMC as it
-        # will trigger resampling. We may need to do a special kind of observe
-        # that does not trigger resampling.
-        global_vi = get_global_varinfo(context)
-        val = global_vi[vn]
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
         DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
