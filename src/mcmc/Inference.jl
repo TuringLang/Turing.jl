@@ -161,12 +161,26 @@ metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 # Chain making utilities #
 ##########################
 
+# TODO(penelopeysm): Separate Turing.Inference.getparams (should only be
+# defined for AbstractVarInfo and Turing.Inference.Transition; returns varname
+# => value maps) from AbstractMCMC.getparams (defined for any sampler transition,
+# returns vector).
 """
-    getparams(model, t)
+    Turing.Inference.getparams(model::Any, t::Any)
 
-Return a key-value map of parameters.
+Return a vector of parameter values from the given sampler transition `t` (i.e.,
+the first return value of AbstractMCMC.step). By default, returns the `t.θ` field.
+
+!!! note
+    This method only needs to be implemented for external samplers. It will be
+removed in future releases and replaced with `AbstractMCMC.getparams`.
 """
 getparams(model, t) = t.θ
+"""
+    Turing.Inference.getparams(model::DynamicPPL.Model, t::AbstractVarInfo)
+
+Return a key-value map of parameters from the varinfo.
+"""
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     # NOTE: In the past, `invlink(vi, model)` + `values_as(vi, OrderedDict)` was used.
     # Unfortunately, using `invlink` can cause issues in scenarios where the constraints
