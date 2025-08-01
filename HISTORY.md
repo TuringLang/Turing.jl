@@ -4,7 +4,7 @@ Revert a bug introduced in 0.39.5 in the external sampler interface.
 For Turing 0.39, external samplers should define
 
 ```
-Turing.Inference.getparams(::DynamicPPL.Model, ::MySamplerTransition)`
+Turing.Inference.getparams(::DynamicPPL.Model, ::MySamplerTransition)
 ```
 
 rather than
