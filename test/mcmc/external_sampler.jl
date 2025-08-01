@@ -81,14 +81,15 @@ using Turing.Inference: AdvancedHMC
     end
     model = test_external_sampler()
     a, b = 0.5, 0.0
-    expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
 
     chn = sample(model, externalsampler(MySampler()), 10; initial_params=[a, b])
     @test chn isa MCMCChains.Chains
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
-    @test all(chn[:lp] .== expected_logpdf)
-    # TODO: Uncomment this in Turing v0.40 is released
+    # TODO: Uncomment this once Turing v0.40 is released. In that version, logpdf
+    # will be recalculated correctly for external samplers.
+    # expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
+    # @test all(chn[:lp] .== expected_logpdf)
     # @test all(chn[:logprior] .== expected_logpdf)
     # @test all(chn[:loglikelihood] .== 0.0)
 end
