@@ -65,14 +65,14 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = map(Base.Fix1(Transition, model), vis)
+    transition = [Transition(model, vi, nothing) for vi in vis]
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
         vis[1],
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, model)
-            AMH.Transition(vi[:], DynamicPPL.getlogjoint(vi), false)
+            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
@@ -87,18 +87,17 @@ function AbstractMCMC.step(
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
 
     # Compute the next states.
-    states = last(AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states))
+    t, states = AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = DynamicPPL.unflatten(vi, _state.params)
-        t = Transition(getparams(model, vi), _state.lp)
-        return t
+        return Transition(model, vi, t)
     end
     newstate = EmceeState(vi, states)
 

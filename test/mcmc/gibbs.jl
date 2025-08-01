@@ -295,7 +295,7 @@ end
         vi::T
     end
 
-    Turing.Inference.varinfo(state::VarInfoState) = state.vi
+    Turing.Inference.get_varinfo(state::VarInfoState) = state.vi
     function Turing.Inference.setparams_varinfo!!(
         ::DynamicPPL.Model,
         ::DynamicPPL.Sampler,
@@ -312,8 +312,8 @@ end
         kwargs...,
     )
         spl.alg.non_warmup_init_count += 1
-        return Turing.Inference.Transition(nothing, 0.0),
-        VarInfoState(DynamicPPL.VarInfo(model))
+        vi = DynamicPPL.VarInfo(model)
+        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
     end
 
     function AbstractMCMC.step_warmup(
@@ -323,30 +323,30 @@ end
         kwargs...,
     )
         spl.alg.warmup_init_count += 1
-        return Turing.Inference.Transition(nothing, 0.0),
-        VarInfoState(DynamicPPL.VarInfo(model))
+        vi = DynamicPPL.VarInfo(model)
+        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
     end
 
     function AbstractMCMC.step(
         ::Random.AbstractRNG,
-        ::DynamicPPL.Model,
+        model::DynamicPPL.Model,
         spl::DynamicPPL.Sampler{<:WarmupCounter},
         s::VarInfoState;
         kwargs...,
     )
         spl.alg.non_warmup_count += 1
-        return Turing.Inference.Transition(nothing, 0.0), s
+        return Turing.Inference.Transition(model, s.vi, nothing), s
     end
 
     function AbstractMCMC.step_warmup(
         ::Random.AbstractRNG,
-        ::DynamicPPL.Model,
+        model::DynamicPPL.Model,
         spl::DynamicPPL.Sampler{<:WarmupCounter},
         s::VarInfoState;
         kwargs...,
     )
         spl.alg.warmup_count += 1
-        return Turing.Inference.Transition(nothing, 0.0), s
+        return Turing.Inference.Transition(model, s.vi, nothing), s
     end
 
     @model f() = x ~ Normal()
@@ -886,7 +886,9 @@ end
         function check_logp_correct(sampler)
             @testset "logp is set correctly" begin
                 @model logp_check() = x ~ Normal()
-                chn = sample(logp_check(), Gibbs(@varname(x) => sampler), 100)
+                chn = sample(
+                    logp_check(), Gibbs(@varname(x) => sampler), 100; progress=false
+                )
                 @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
             end
         end

@@ -58,19 +58,15 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
+    # Transform the samples to unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Compute initial sample and state.
-    sample = Transition(model, vi)
+    sample = Transition(model, vi, nothing)
     ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGHMCState(ℓ, vi, zero(vi[:]))
 
@@ -98,12 +94,11 @@ function AbstractMCMC.step(
     α = spl.alg.momentum_decay
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
-    # Save new variables and recompute log density.
+    # Save new variables.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
-    sample = Transition(model, vi)
+    sample = Transition(model, vi, nothing)
     newstate = SGHMCState(ℓ, vi, newv)
 
     return sample, newstate
@@ -200,13 +195,11 @@ end
 
 function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
     theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint(vi)
+    lp = DynamicPPL.getlogjoint_internal(vi)
     return SGLDTransition(theta, lp, stepsize)
 end
 
-metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
-
-DynamicPPL.getlogp(t::SGLDTransition) = t.lp
+getstats_with_lp(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
 
 struct SGLDState{L,V<:AbstractVarInfo}
     logdensity::L
@@ -221,19 +214,15 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
+    # Transform the samples to unconstrained space.
     if !DynamicPPL.islinked(vi)
         vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Create first sample and state.
     sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
     ℓ = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        DynamicPPL.SamplingContext(spl, DynamicPPL.DefaultContext());
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGLDState(ℓ, vi, 1)
 
@@ -252,9 +241,8 @@ function AbstractMCMC.step(
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
-    # Save new variables and recompute log density.
+    # Save new variables.
     vi = DynamicPPL.unflatten(vi, θ)
-    vi = last(DynamicPPL.evaluate!!(model, vi))
 
     # Compute next sample and state.
     sample = SGLDTransition(model, vi, stepsize)

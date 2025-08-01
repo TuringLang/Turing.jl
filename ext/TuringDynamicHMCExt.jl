@@ -63,7 +63,7 @@ function DynamicPPL.initialstep(
 
     # Define log-density function.
     ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint, vi; adtype=spl.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
 
     # Perform initial step.
@@ -73,14 +73,9 @@ function DynamicPPL.initialstep(
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
 
-    # Update the variables.
-    vi = DynamicPPL.unflatten(vi, Q.q)
-    # TODO(DPPL0.37/penelopeysm): This is obviously incorrect. Fix this.
-    vi = DynamicPPL.setloglikelihood!!(vi, Q.ℓq)
-    vi = DynamicPPL.setlogprior!!(vi, 0.0)
-
     # Create first sample and state.
-    sample = Turing.Inference.Transition(model, vi)
+    vi = DynamicPPL.unflatten(vi, Q.q)
+    sample = Turing.Inference.Transition(model, vi, nothing)
     state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
@@ -99,12 +94,9 @@ function AbstractMCMC.step(
     steps = DynamicHMC.mcmc_steps(rng, spl.alg.sampler, state.metric, ℓ, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
-    # Update the variables.
-    vi = DynamicPPL.unflatten(vi, Q.q)
-    vi = DynamicPPL.setlogp!!(vi, Q.ℓq)
-
     # Create next sample and state.
-    sample = Turing.Inference.Transition(model, vi)
+    vi = DynamicPPL.unflatten(vi, Q.q)
+    sample = Turing.Inference.Transition(model, vi, nothing)
     newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
 
     return sample, newstate
