@@ -185,7 +185,7 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     end
 end
 
-function metadata(t::Transition)
+function getstats_with_lp(t::Transition)
     return merge(
         t.stat,
         (
@@ -195,7 +195,7 @@ function metadata(t::Transition)
         ),
     )
 end
-function metadata(vi::AbstractVarInfo)
+function getstats_with_lp(vi::AbstractVarInfo)
     return (
         lp=DynamicPPL.getlogjoint(vi),
         logprior=DynamicPPL.getlogp(vi),
@@ -241,14 +241,9 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     return names, vals
 end
 
-function get_transition_extras(ts::AbstractVector{<:VarInfo})
-    valmat = reshape([DynamicPPL.getlogjoint(t) for t in ts], :, 1)
-    return [:lp], valmat
-end
-
 function get_transition_extras(ts::AbstractVector)
-    # Extract all metadata.
-    extra_data = map(metadata, ts)
+    # Extract stats + log probabilities from each transition or VarInfo
+    extra_data = map(getstats_with_lp, ts)
     return names_values(extra_data)
 end
 
@@ -357,7 +352,7 @@ function AbstractMCMC.bundle_samples(
         vals = map(values(sym_to_vns)) do vns
             map(Base.Fix1(getindex, params), vns)
         end
-        return merge(NamedTuple(zip(keys(sym_to_vns), vals)), metadata(t))
+        return merge(NamedTuple(zip(keys(sym_to_vns), vals)), getstats_with_lp(t))
     end
 end
 
