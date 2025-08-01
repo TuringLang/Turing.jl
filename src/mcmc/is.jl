@@ -31,19 +31,19 @@ DynamicPPL.initialsampler(sampler::Sampler{<:IS}) = sampler
 function DynamicPPL.initialstep(
     rng::AbstractRNG, model::Model, spl::Sampler{<:IS}, vi::AbstractVarInfo; kwargs...
 )
-    return Transition(model, vi), nothing
+    return Transition(model, vi, nothing), nothing
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG, model::Model, spl::Sampler{<:IS}, ::Nothing; kwargs...
 )
     vi = VarInfo(rng, model, spl)
-    return Transition(model, vi), nothing
+    return Transition(model, vi, nothing), nothing
 end
 
 # Calculate evidence.
 function getlogevidence(samples::Vector{<:Transition}, ::Sampler{<:IS}, state)
-    return logsumexp(map(x -> x.lp, samples)) - log(length(samples))
+    return logsumexp(map(x -> x.loglikelihood, samples)) - log(length(samples))
 end
 
 function DynamicPPL.assume(rng, ::Sampler{<:IS}, dist::Distribution, vn::VarName, vi)
@@ -53,9 +53,6 @@ function DynamicPPL.assume(rng, ::Sampler{<:IS}, dist::Distribution, vn::VarName
         r = rand(rng, dist)
         vi = push!!(vi, vn, r, dist)
     end
-    return r, 0, vi
-end
-
-function DynamicPPL.observe(::Sampler{<:IS}, dist::Distribution, value, vi)
-    return logpdf(dist, value), vi
+    vi = DynamicPPL.accumulate_assume!!(vi, r, 0.0, vn, dist)
+    return r, vi
 end

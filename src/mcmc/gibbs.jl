@@ -33,7 +33,7 @@ can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
 #
 # Purpose: avoid triggering resampling of variables we're conditioning on.
 # - Using standard `DynamicPPL.condition` results in conditioned variables being treated
-#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe`.
+#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe!!`.
 # - But `observe` is overloaded by some samplers, e.g. `CSMC`, which can lead to
 #   undesirable behavior, e.g. `CSMC` triggering a resampling for every conditioned variable
 #   rather than only for the "true" observations.
@@ -177,17 +177,21 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # Fall back to the default behavior.
         DynamicPPL.tilde_assume(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        # Short-circuit the tilde assume if `vn` is present in `context`.
-        value, lp, _ = DynamicPPL.tilde_assume(
-            child_context, right, vn, get_global_varinfo(context)
-        )
-        value, lp, vi
+        # This branch means that a different sampler is supposed to handle this
+        # variable. From the perspective of this sampler, this variable is
+        # conditioned on, so we can just treat it as an observation.
+        # The only catch is that the value that we need is to be obtained from
+        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
+        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        value, new_global_vi = DynamicPPL.tilde_assume(
             child_context,
             DynamicPPL.SampleFromPrior(),
             right,
@@ -195,7 +199,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 
@@ -208,14 +212,26 @@ function DynamicPPL.tilde_assume(
     vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
 
     return if is_target_varname(context, vn)
+        # This branch means that that `sampler` is supposed to handle
+        # this variable. We can thus use its default behaviour, with
+        # the 'local' sampler-specific VarInfo.
         DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
-        value, lp, _ = DynamicPPL.tilde_assume(
-            child_context, right, vn, get_global_varinfo(context)
-        )
-        value, lp, vi
+        # This branch means that a different sampler is supposed to handle this
+        # variable. From the perspective of this sampler, this variable is
+        # conditioned on, so we can just treat it as an observation.
+        # The only catch is that the value that we need is to be obtained from
+        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # Note that tilde_observe!! will trigger resampling in particle methods
+        # for variables that are handled by other Gibbs component samplers.
+        val = get_conditioned_gibbs(context, vn)
+        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
     else
-        value, lp, new_global_vi = DynamicPPL.tilde_assume(
+        # If the varname has not been conditioned on, nor is it a target variable, its
+        # presumably a new variable that should be sampled from its prior. We need to add
+        # this new variable to the global `varinfo` of the context, but not to the local one
+        # being used by the current sampler.
+        value, new_global_vi = DynamicPPL.tilde_assume(
             rng,
             child_context,
             DynamicPPL.SampleFromPrior(),
@@ -224,7 +240,7 @@ function DynamicPPL.tilde_assume(
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
-        value, lp, vi
+        value, vi
     end
 end
 
@@ -327,7 +343,7 @@ struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
     states::S
 end
 
-varinfo(state::GibbsState) = state.vi
+get_varinfo(state::GibbsState) = state.vi
 
 """
 Initialise a VarInfo for the Gibbs sampler.
@@ -347,7 +363,7 @@ function initial_varinfo(rng, model, spl, initial_params)
         # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
         # and https://github.com/TuringLang/Turing.jl/issues/1563
         # to avoid that existing variables are resampled
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.DefaultContext()))
+        vi = last(DynamicPPL.evaluate!!(model, vi))
     end
     return vi
 end
@@ -374,7 +390,7 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -399,7 +415,7 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 """
@@ -449,7 +465,7 @@ function gibbs_initialstep_recursive(
         initial_params=initial_params_local,
         kwargs...,
     )
-    new_vi_local = varinfo(new_state)
+    new_vi_local = get_varinfo(new_state)
     # Merge in any new variables that were introduced during the step, but that
     # were not in the domain of the current sampler.
     vi = merge(vi, get_global_varinfo(context))
@@ -477,7 +493,7 @@ function AbstractMCMC.step(
     state::GibbsState;
     kwargs...,
 )
-    vi = varinfo(state)
+    vi = get_varinfo(state)
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
@@ -487,7 +503,7 @@ function AbstractMCMC.step(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -497,7 +513,7 @@ function AbstractMCMC.step_warmup(
     state::GibbsState;
     kwargs...,
 )
-    vi = varinfo(state)
+    vi = get_varinfo(state)
     alg = spl.alg
     varnames = alg.varnames
     samplers = alg.samplers
@@ -507,7 +523,7 @@ function AbstractMCMC.step_warmup(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi), GibbsState(vi, states)
+    return Transition(model, vi, nothing), GibbsState(vi, states)
 end
 
 """
@@ -525,16 +541,11 @@ function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:MH},
-    state::AbstractVarInfo,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::MHState, params::AbstractVarInfo
 )
-    # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob.
-    # NOTE: Using `leafcontext(model.context)` here is a no-op, as it will be concatenated
-    # with `model.context` before hitting `model.f`.
-    return last(DynamicPPL.evaluate!!(model, params, DynamicPPL.leafcontext(model.context)))
+    # Re-evaluate to update the logprob.
+    new_vi = last(DynamicPPL.evaluate!!(model, params))
+    return MHState(new_vi, DynamicPPL.getlogjoint_internal(new_vi))
 end
 
 function setparams_varinfo!!(
@@ -544,10 +555,8 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob. To do this, we have to call evaluate!! with the sampler, rather
-    # than just a context, because ESS is peculiar in how it uses LikelihoodContext for
-    # some variables and DefaultContext for others.
-    return last(DynamicPPL.evaluate!!(model, params, SamplingContext(sampler)))
+    # update its logprob.
+    return last(DynamicPPL.evaluate!!(model, params))
 end
 
 function setparams_varinfo!!(
@@ -557,7 +566,7 @@ function setparams_varinfo!!(
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, state.ldf.varinfo, state.ldf.context; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.alg.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
@@ -596,7 +605,7 @@ state for this sampler. This is relevant when multilple samplers are sampling th
 variables, and one might need it to be linked while the other doesn't.
 """
 function match_linking!!(varinfo_local, prev_state_local, model)
-    prev_varinfo_local = varinfo(prev_state_local)
+    prev_varinfo_local = get_varinfo(prev_state_local)
     was_linked = DynamicPPL.istrans(prev_varinfo_local)
     is_linked = DynamicPPL.istrans(varinfo_local)
     if was_linked && !is_linked
@@ -678,10 +687,10 @@ function gibbs_step_recursive(
     # Take a step with the local sampler.
     new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
 
-    new_vi_local = varinfo(new_state)
+    new_vi_local = get_varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
     new_global_vi = merge(get_global_varinfo(context), new_vi_local)
-    new_global_vi = setlogp!!(new_global_vi, getlogp(new_vi_local))
+    new_global_vi = DynamicPPL.setlogp!!(new_global_vi, DynamicPPL.getlogp(new_vi_local))
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(

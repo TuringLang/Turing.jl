@@ -44,74 +44,23 @@ Concrete type for maximum a posteriori estimation. Only used for the Optim.jl in
 struct MAP <: ModeEstimator end
 
 """
-    OptimizationContext{C<:AbstractContext} <: AbstractContext
-
-The `OptimizationContext` transforms variables to their constrained space, but
-does not use the density with respect to the transformation. This context is
-intended to allow an optimizer to sample in R^n freely.
-"""
-struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
-    context::C
-
-    function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(
-            context isa Union{
-                DynamicPPL.DefaultContext,
-                DynamicPPL.LikelihoodContext,
-                DynamicPPL.PriorContext,
-            }
-        )
-            msg = """
-                `OptimizationContext` supports only leaf contexts of type
-                `DynamicPPL.DefaultContext`, `DynamicPPL.LikelihoodContext`,
-                and `DynamicPPL.PriorContext` (given: `$(typeof(context)))`
-            """
-            throw(ArgumentError(msg))
-        end
-        return new{C}(context)
-    end
-end
-
-OptimizationContext(ctx::DynamicPPL.AbstractContext) = OptimizationContext{typeof(ctx)}(ctx)
-
-DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
-
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
-    r = vi[vn, dist]
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        Distributions.logpdf(dist, r)
-    else
-        # MLE
-        0
-    end
-    return r, lp, vi
-end
-
-function DynamicPPL.tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.tilde_observe(ctx.context, args...)
-end
-
-"""
     OptimLogDensity{
         M<:DynamicPPL.Model,
-        V<:DynamicPPL.VarInfo,
-        C<:OptimizationContext,
-        AD<:ADTypes.AbstractADType
+        F<:Function,
+        V<:DynamicPPL.AbstractVarInfo,
+        AD<:ADTypes.AbstractADType,
     }
 
 A struct that wraps a single LogDensityFunction. Can be invoked either using
 
 ```julia
-OptimLogDensity(model, varinfo, ctx; adtype=adtype)
+OptimLogDensity(model, varinfo; adtype=adtype)
 ```
 
 or
 
 ```julia
-OptimLogDensity(model, ctx; adtype=adtype)
+OptimLogDensity(model; adtype=adtype)
 ```
 
 If not specified, `adtype` defaults to `AutoForwardDiff()`.
@@ -129,37 +78,35 @@ the underlying LogDensityFunction at the point `z`. This is done to satisfy
 the Optim.jl interface.
 
 ```julia
-optim_ld = OptimLogDensity(model, varinfo, ctx)
+optim_ld = OptimLogDensity(model, varinfo)
 optim_ld(z)  # returns -logp
 ```
 """
-struct OptimLogDensity{
-    M<:DynamicPPL.Model,
-    V<:DynamicPPL.VarInfo,
-    C<:OptimizationContext,
-    AD<:ADTypes.AbstractADType,
-}
-    ldf::DynamicPPL.LogDensityFunction{M,V,C,AD}
-end
+struct OptimLogDensity{L<:DynamicPPL.LogDensityFunction}
+    ldf::L
 
-function OptimLogDensity(
-    model::DynamicPPL.Model,
-    vi::DynamicPPL.VarInfo,
-    ctx::OptimizationContext;
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
-)
-    return OptimLogDensity(DynamicPPL.LogDensityFunction(model, vi, ctx; adtype=adtype))
-end
-
-# No varinfo
-function OptimLogDensity(
-    model::DynamicPPL.Model,
-    ctx::OptimizationContext;
-    adtype::ADTypes.AbstractADType=AutoForwardDiff(),
-)
-    return OptimLogDensity(
-        DynamicPPL.LogDensityFunction(model, DynamicPPL.VarInfo(model), ctx; adtype=adtype)
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function,
+        vi::DynamicPPL.AbstractVarInfo;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
+        ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+        return new{typeof(ldf)}(ldf)
+    end
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+    )
+        # No varinfo
+        return OptimLogDensity(
+            model,
+            getlogdensity,
+            DynamicPPL.ldf_default_varinfo(model, getlogdensity);
+            adtype=adtype,
+        )
+    end
 end
 
 """
@@ -325,10 +272,13 @@ function StatsBase.informationmatrix(
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    linked = DynamicPPL.istrans(m.f.ldf.varinfo)
+    old_ldf = m.f.ldf
+    linked = DynamicPPL.istrans(old_ldf.varinfo)
     if linked
-        new_vi = DynamicPPL.invlink!!(m.f.ldf.varinfo, m.f.ldf.model)
-        new_f = OptimLogDensity(m.f.ldf.model, new_vi, m.f.ldf.context)
+        new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
+        new_f = OptimLogDensity(
+            old_ldf.model, old_ldf.getlogdensity, new_vi; adtype=old_ldf.adtype
+        )
         m = Accessors.@set m.f = new_f
     end
 
@@ -339,8 +289,11 @@ function StatsBase.informationmatrix(
 
     # Link it back if we invlinked it.
     if linked
-        new_vi = DynamicPPL.link!!(m.f.ldf.varinfo, m.f.ldf.model)
-        new_f = OptimLogDensity(m.f.ldf.model, new_vi, m.f.ldf.context)
+        invlinked_ldf = m.f.ldf
+        new_vi = DynamicPPL.link!!(invlinked_ldf.varinfo, invlinked_ldf.model)
+        new_f = OptimLogDensity(
+            invlinked_ldf.model, old_ldf.getlogdensity, new_vi; adtype=invlinked_ldf.adtype
+        )
         m = Accessors.@set m.f = new_f
     end
 
@@ -553,7 +506,12 @@ function estimate_mode(
     ub=nothing,
     kwargs...,
 )
-    check_model && DynamicPPL.check_model(model; error_on_failure=true)
+    if check_model
+        spl_model = DynamicPPL.contextualize(
+            model, DynamicPPL.SamplingContext(model.context)
+        )
+        DynamicPPL.check_model(spl_model, DynamicPPL.VarInfo(); error_on_failure=true)
+    end
 
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
     initial_params = generate_initial_params(model, initial_params, constraints)
@@ -563,19 +521,17 @@ function estimate_mode(
 
     # Create an OptimLogDensity object that can be used to evaluate the objective function,
     # i.e. the negative log density.
-    inner_context = if estimator isa MAP
-        DynamicPPL.DefaultContext()
-    else
-        DynamicPPL.LikelihoodContext()
-    end
-    ctx = OptimizationContext(inner_context)
+    # Note that we use `getlogjoint` rather than `getlogjoint_internal`: this
+    # is intentional, because even though the VarInfo may be linked, the
+    # optimisation target should not take the Jacobian term into account.
+    getlogdensity = estimator isa MAP ? DynamicPPL.getlogjoint : DynamicPPL.getloglikelihood
 
     # Set its VarInfo to the initial parameters.
     # TODO(penelopeysm): Unclear if this is really needed? Any time that logp is calculated
     # (using `LogDensityProblems.logdensity(ldf, x)`) the parameters in the
     # varinfo are completely ignored. The parameters only matter if you are calling evaluate!!
     # directly on the fields of the LogDensityFunction
-    vi = DynamicPPL.VarInfo(model)
+    vi = DynamicPPL.ldf_default_varinfo(model, getlogdensity)
     vi = DynamicPPL.unflatten(vi, initial_params)
 
     # Link the varinfo if needed.
@@ -588,7 +544,7 @@ function estimate_mode(
         vi = DynamicPPL.link(vi, model)
     end
 
-    log_density = OptimLogDensity(model, vi, ctx)
+    log_density = OptimLogDensity(model, getlogdensity, vi)
 
     prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
     solution = Optimization.solve(prob, solver; kwargs...)
