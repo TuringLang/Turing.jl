@@ -84,7 +84,7 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
     varinfo = p.varinfo
     # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
-    # TODO(DPPL0.37/penelopeysm): This can be replaced with `init!!(p.model,
+    # TODO(DPPL0.38/penelopeysm): This can be replaced with `init!!(p.model,
     # p.varinfo, PriorInit())` after TuringLang/DynamicPPL.jl#984. The reason
     # why we had to use the 'del' flag before this was because
     # SampleFromPrior() wouldn't overwrite existing variables.

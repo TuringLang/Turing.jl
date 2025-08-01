@@ -12,7 +12,7 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    # TODO(DPPL0.37/penelopeysm): replace with init!!
+    # TODO(DPPL0.38/penelopeysm): replace with init!!
     sampling_model = DynamicPPL.contextualize(
         model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
     )

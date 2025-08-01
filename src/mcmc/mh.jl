@@ -178,7 +178,7 @@ get_varinfo(s::MHState) = s.varinfo
 # Utility functions #
 #####################
 
-# TODO(DPPL0.37/penelopeysm): This function should no longer be needed
+# TODO(DPPL0.38/penelopeysm): This function should no longer be needed
 # once InitContext is merged.
 """
     set_namedtuple!(vi::VarInfo, nt::NamedTuple)
@@ -207,7 +207,7 @@ end
 # NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
 # interface in that it gets evaluated with a NamedTuple. Hence we need this
 # method just to deal with MH.
-# TODO(DPPL0.37/penelopeysm): Check the extent to which this method is actually
+# TODO(DPPL0.38/penelopeysm): Check the extent to which this method is actually
 # needed. If it's still needed, replace this with `init!!(f.model, f.varinfo,
 # ParamsInit(x))`. Much less hacky than `set_namedtuple!` (hopefully...).
 # In general, we should much prefer to either (1) conform to the
