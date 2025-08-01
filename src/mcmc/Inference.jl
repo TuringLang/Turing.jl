@@ -164,7 +164,7 @@ metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 """
     getparams(model, t)
 
-Return a named tuple of parameters.
+Return a key-value map of parameters.
 """
 getparams(model, t) = t.θ
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
