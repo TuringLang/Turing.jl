@@ -182,7 +182,10 @@ function AbstractMCMC.step(
         rng, AbstractMCMC.LogDensityModel(f), sampler, state.state; kwargs...
     )
 
-    new_parameters = getparams(f.model, state_inner)
+    # NOTE: This is Turing.Inference.getparams, not AbstractMCMC.getparams (!!!!!)
+    # The latter uses the state rather than the transition.
+    # TODO(penelopeysm): Make this use AbstractMCMC.getparams instead
+    new_parameters = Turing.Inference.getparams(f.model, transition_inner)
     new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     return (
         Transition(f.model, new_vi, transition_inner), TuringState(state_inner, new_vi, f)
