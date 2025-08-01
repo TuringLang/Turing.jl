@@ -206,8 +206,27 @@ end
 # Chain making utilities #
 ##########################
 
-getparams(::DynamicPPL.Model, t::AbstractTransition) = t.θ
-function getparams(model::DynamicPPL.Model, vi::AbstractVarInfo)
+# TODO(penelopeysm): Separate Turing.Inference.getparams (should only be
+# defined for AbstractVarInfo and Turing.Inference.Transition; returns varname
+# => value maps) from AbstractMCMC.getparams (defined for any sampler transition,
+# returns vector).
+"""
+    Turing.Inference.getparams(model::DynamicPPL.Model, t::Any)
+
+Return a vector of parameter values from the given sampler transition `t` (i.e.,
+the first return value of AbstractMCMC.step). By default, returns the `t.θ` field.
+
+!!! note
+    This method only needs to be implemented for external samplers. It will be
+removed in future releases and replaced with `AbstractMCMC.getparams`.
+"""
+getparams(::DynamicPPL.Model, t) = t.θ
+"""
+    Turing.Inference.getparams(model::DynamicPPL.Model, t::AbstractVarInfo)
+
+Return a key-value map of parameters from the varinfo.
+"""
+function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
     t = Transition(model, vi, nothing)
     return getparams(model, t)
 end

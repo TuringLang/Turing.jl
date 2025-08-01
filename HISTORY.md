@@ -2,6 +2,25 @@
 
 [...]
 
+# 0.39.9
+
+Revert a bug introduced in 0.39.5 in the external sampler interface.
+For Turing 0.39, external samplers should define
+
+```
+Turing.Inference.getparams(::DynamicPPL.Model, ::MySamplerTransition)
+```
+
+rather than
+
+```
+AbstractMCMC.getparams(::DynamicPPL.Model, ::MySamplerState)
+```
+
+to obtain a vector of parameters from the model.
+
+Note that this may change in future breaking releases.
+
 # 0.39.8
 
 MCMCChains.jl doesn't understand vector- or matrix-valued variables, and in Turing we split up such values into their individual components.

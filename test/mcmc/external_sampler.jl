@@ -1,5 +1,6 @@
 module ExternalSamplerTests
 
+using ..Models: gdemo_default
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
@@ -13,6 +14,83 @@ using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
+
+@testset "External sampler interface" begin
+    # Turing declares an interface for external samplers (see docstring for
+    # ExternalSampler). We should check that implementing this interface
+    # and only this interface allows us to use the sampler in Turing.
+    struct MyTransition{V<:AbstractVector}
+        params::V
+    end
+    # Samplers need to implement `Turing.Inference.getparams`.
+    Turing.Inference.getparams(::DynamicPPL.Model, t::MyTransition) = t.params
+    # State doesn't matter (but we need to carry the params through to the next
+    # iteration).
+    struct MyState{V<:AbstractVector}
+        params::V
+    end
+
+    # externalsamplers must accept LogDensityModel inside their step function.
+    # By default Turing gives the externalsampler a LDF constructed with
+    # adtype=ForwardDiff, so we should expect that inside the sampler we can
+    # call both `logdensity` and `logdensity_and_gradient`.
+    #
+    # The behaviour of this sampler is to simply calculate logp and its
+    # gradient, and then return the same values.
+    #
+    # TODO: Do we also want to run ADTypeCheckContext to make sure that it is 
+    # indeed using the adtype provided from Turing?
+    struct MySampler <: AbstractMCMC.AbstractSampler end
+    function AbstractMCMC.step(
+        rng::Random.AbstractRNG,
+        model::AbstractMCMC.LogDensityModel,
+        sampler::MySampler;
+        initial_params::AbstractVector,
+        kwargs...,
+    )
+        # Step 1
+        ldf = model.logdensity
+        lp = LogDensityProblems.logdensity(ldf, initial_params)
+        @test lp isa Real
+        lp, grad = LogDensityProblems.logdensity_and_gradient(ldf, initial_params)
+        @test lp isa Real
+        @test grad isa AbstractVector{<:Real}
+        return MyTransition(initial_params), MyState(initial_params)
+    end
+    function AbstractMCMC.step(
+        rng::Random.AbstractRNG,
+        model::AbstractMCMC.LogDensityModel,
+        sampler::MySampler,
+        state::MyState;
+        kwargs...,
+    )
+        # Step >= 1
+        params = state.params
+        ldf = model.logdensity
+        lp = LogDensityProblems.logdensity(ldf, params)
+        @test lp isa Real
+        lp, grad = LogDensityProblems.logdensity_and_gradient(ldf, params)
+        @test lp isa Real
+        @test grad isa AbstractVector{<:Real}
+        return MyTransition(params), MyState(params)
+    end
+
+    @model function test_external_sampler()
+        a ~ Beta(2, 2)
+        return b ~ Normal(a)
+    end
+    model = test_external_sampler()
+    a, b = 0.5, 0.0
+
+    chn = sample(model, externalsampler(MySampler()), 10; initial_params=[a, b])
+    @test chn isa MCMCChains.Chains
+    @test all(chn[:a] .== a)
+    @test all(chn[:b] .== b)
+    expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
+    @test all(chn[:lp] .== expected_logpdf)
+    @test all(chn[:logprior] .== expected_logpdf)
+    @test all(chn[:loglikelihood] .== 0.0)
+end
 
 function initialize_nuts(model::DynamicPPL.Model)
     # Create a linked varinfo
@@ -109,7 +187,7 @@ function test_initial_params(
     end
 end
 
-@testset verbose = true "External samplers" begin
+@testset verbose = true "Implementation of externalsampler interface for known packages" begin
     @testset "AdvancedHMC.jl" begin
         @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
             adtype = Turing.DEFAULT_ADTYPE
