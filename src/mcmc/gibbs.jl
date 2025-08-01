@@ -690,7 +690,7 @@ function gibbs_step_recursive(
     new_vi_local = get_varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.
     new_global_vi = merge(get_global_varinfo(context), new_vi_local)
-    new_global_vi = setlogp!!(new_global_vi, getlogp(new_vi_local))
+    new_global_vi = DynamicPPL.setlogp!!(new_global_vi, DynamicPPL.getlogp(new_vi_local))
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(

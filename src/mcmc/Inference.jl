@@ -17,7 +17,6 @@ using DynamicPPL:
     setindex!!,
     push!!,
     setlogp!!,
-    getlogp,
     getlogjoint,
     getlogjoint_internal,
     VarName,
@@ -198,7 +197,7 @@ end
 function getstats_with_lp(vi::AbstractVarInfo)
     return (
         lp=DynamicPPL.getlogjoint(vi),
-        logprior=DynamicPPL.getlogp(vi),
+        logprior=DynamicPPL.getlogprior(vi),
         loglikelihood=DynamicPPL.getloglikelihood(vi),
     )
 end

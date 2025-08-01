@@ -150,9 +150,7 @@ function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
     return SMCTransition(theta, lp, weight)
 end
 
-metadata(t::SMCTransition) = (lp=t.lp, weight=t.weight)
-
-DynamicPPL.getlogp(t::SMCTransition) = t.lp
+getstats_with_lp(t::SMCTransition) = (lp=t.lp, weight=t.weight)
 
 struct SMCState{P,F<:AbstractFloat}
     particles::P
@@ -325,9 +323,7 @@ function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
     return PGTransition(theta, lp, logevidence)
 end
 
-metadata(t::PGTransition) = (lp=t.lp, logevidence=t.logevidence)
-
-DynamicPPL.getlogp(t::PGTransition) = t.lp
+getstats_with_lp(t::PGTransition) = (lp=t.lp, logevidence=t.logevidence)
 
 function getlogevidence(samples, sampler::Sampler{<:PG}, state::PGState)
     return mean(x.logevidence for x in samples)

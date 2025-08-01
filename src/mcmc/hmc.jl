@@ -208,9 +208,6 @@ function DynamicPPL.initialstep(
     end
     theta = vi[:]
 
-    # Cache current log density. We will reuse this if the transition is rejected.
-    logp_old = DynamicPPL.getlogp(vi)
-
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
         ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)

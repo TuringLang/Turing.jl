@@ -5,7 +5,7 @@ using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 import DynamicPPL
-using DynamicPPL: Sampler, getlogp
+using DynamicPPL: Sampler
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains

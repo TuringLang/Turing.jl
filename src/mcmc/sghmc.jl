@@ -199,9 +199,7 @@ function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
     return SGLDTransition(theta, lp, stepsize)
 end
 
-metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
-
-DynamicPPL.getlogp(t::SGLDTransition) = t.lp
+getstats_with_lp(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
 
 struct SGLDState{L,V<:AbstractVarInfo}
     logdensity::L
