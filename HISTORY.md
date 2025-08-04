@@ -1,3 +1,7 @@
+# 0.39.10
+
+Added a compatibility entry for DataStructures v0.19.
+
 # 0.39.9
 
 Revert a bug introduced in 0.39.5 in the external sampler interface.
