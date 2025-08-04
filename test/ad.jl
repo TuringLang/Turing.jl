@@ -32,7 +32,7 @@ end
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
 """A dictionary mapping ADTypes to the element types they use."""
-eltypes_by_adtype = Dict(
+eltypes_by_adtype = Dict{Type,Tuple}(
     AutoForwardDiff => (ForwardDiff.Dual,),
     AutoReverseDiff => (
         ReverseDiff.TrackedArray,
@@ -203,8 +203,8 @@ if INCLUDE_MOONCAKE
     push!(ADTYPES, AutoMooncake(; config=nothing))
 end
 if INCLUDE_ENZYME
-    push!(ADTYPES, AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Forward)))
-    push!(ADTYPES, AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))
+    push!(ADTYPES, AutoEnzyme(; mode=Enzyme.set_runtime_activity(Enzyme.Forward)))
+    push!(ADTYPES, AutoEnzyme(; mode=Enzyme.set_runtime_activity(Enzyme.Reverse)))
 end
 
 # Check that ADTypeCheckContext itself works as expected.
