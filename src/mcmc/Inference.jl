@@ -136,7 +136,7 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     stat::N
 
     """
-        Transition(model::Model, vi::AbstractVarInfo, sampler_transition)
+        Transition(model::Model, vi::AbstractVarInfo, sampler_transition; reevaluate=true)
 
     Construct a new `Turing.Inference.Transition` object using the outputs of a
     sampler step.
@@ -148,17 +148,38 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
 
     `sampler_transition` is the transition object returned by the sampler
     itself and is only used to extract statistics of interest.
+
+    By default, the model is re-evaluated in order to obtain values of:
+      - the values of the parameters as per user parameterisation (`vals_as_in_model`)
+      - the various components of the log joint probability (`logprior`, `loglikelihood`)
+    that are guaranteed to be correct.
+
+    If you **know** for a fact that the VarInfo `vi` already contains this information,
+    then you can set `reevaluate=false` to skip the re-evaluation step.
+
+    !!! warning
+        Note that in general this is unsafe and may lead to wrong results.
+
+    If `reevaluate` is set to `false`, it is the caller's responsibility to ensure that
+    the `VarInfo` passed in has `ValuesAsInModelAccumulator`, `LogPriorAccumulator`,
+    and `LogLikelihoodAccumulator` set up with the correct values. Note that the
+    `ValuesAsInModelAccumulator` must also have `include_colon_eq == true`, i.e. it
+    must be set up to track `x := y` statements.
     """
-    function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, sampler_transition)
-        vi = DynamicPPL.setaccs!!(
-            vi,
-            (
-                DynamicPPL.ValuesAsInModelAccumulator(true),
-                DynamicPPL.LogPriorAccumulator(),
-                DynamicPPL.LogLikelihoodAccumulator(),
-            ),
-        )
-        _, vi = DynamicPPL.evaluate!!(model, vi)
+    function Transition(
+        model::DynamicPPL.Model, vi::AbstractVarInfo, sampler_transition; reevaluate=true
+    )
+        if reevaluate
+            vi = DynamicPPL.setaccs!!(
+                vi,
+                (
+                    DynamicPPL.ValuesAsInModelAccumulator(true),
+                    DynamicPPL.LogPriorAccumulator(),
+                    DynamicPPL.LogLikelihoodAccumulator(),
+                ),
+            )
+            _, vi = DynamicPPL.evaluate!!(model, vi)
+        end
 
         # Extract all the information we need
         vals_as_in_model = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
@@ -175,12 +196,18 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     function Transition(
         model::DynamicPPL.Model,
         untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata},
-        sampler_transition,
+        sampler_transition;
+        reevaluate=true,
     )
         # Re-evaluating the model is unconscionably slow for untyped VarInfo. It's
         # much faster to convert it to a typed varinfo first, hence this method.
         # https://github.com/TuringLang/Turing.jl/issues/2604
-        return Transition(model, DynamicPPL.typed_varinfo(untyped_vi), sampler_transition)
+        return Transition(
+            model,
+            DynamicPPL.typed_varinfo(untyped_vi),
+            sampler_transition;
+            reevaluate=reevaluate,
+        )
     end
 end
 
