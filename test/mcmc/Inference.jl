@@ -150,18 +150,20 @@ using Turing
             # `Transition` constructor to do this for us.
             @model function coloneq()
                 x ~ Normal()
-                1.0 ~ Normal(x)
+                10.0 ~ Normal(x)
                 z := 1.0
                 return nothing
             end
-            chain = sample(coloneq(), Prior(), 100)
+            chain = sample(coloneq(), Prior(), N)
             @test chain isa MCMCChains.Chains
-            @test all(isone, chain[:z])
+            @test all(x -> x == 1.0, chain[:z])
             # And for the same reason we should also make sure that the logp
             # components are correctly calculated.
             @test isapprox(chain[:logprior], logpdf.(Normal(), chain[:x]))
-            @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 1.0))
+            @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 10.0))
             @test isapprox(chain[:lp], chain[:logprior] .+ chain[:loglikelihood])
+            # And that the outcome is not influenced by the likelihood
+            @test mean(chain, :x) ≈ 0.0 atol = 0.1
         end
     end
 
