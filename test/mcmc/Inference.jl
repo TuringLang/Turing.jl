@@ -142,6 +142,19 @@ using Turing
             @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.11
             @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
         end
+
+        @testset "contains colon-eq" begin
+            # Prior() uses `reevaluate=false` when constructing a
+            # `Turing.Inference.Transition`, so we had better make sure that it
+            # does capture colon-eq statements.
+            @model function coloneq()
+                x ~ Normal()
+                return y := 1.0
+            end
+            chain = sample(coloneq(), Prior(), 100)
+            @test chain isa MCMCChains.Chains
+            @test all(isone, chain[:y])
+        end
     end
 
     @testset "chain ordering" begin
