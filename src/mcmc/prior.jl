@@ -28,5 +28,3 @@ function AbstractMCMC.step(
     _, vi = DynamicPPL.evaluate!!(sampling_model, vi)
     return Transition(model, vi, nothing; reevaluate=false), nothing
 end
-
-DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
