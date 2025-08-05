@@ -143,17 +143,25 @@ using Turing
             @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
         end
 
-        @testset "contains colon-eq" begin
+        @testset "accumulators are set correctly" begin
             # Prior() uses `reevaluate=false` when constructing a
             # `Turing.Inference.Transition`, so we had better make sure that it
-            # does capture colon-eq statements.
+            # does capture colon-eq statements, as we can't rely on the default
+            # `Transition` constructor to do this for us.
             @model function coloneq()
                 x ~ Normal()
-                return y := 1.0
+                1.0 ~ Normal(x)
+                z := 1.0
+                return nothing
             end
             chain = sample(coloneq(), Prior(), 100)
             @test chain isa MCMCChains.Chains
-            @test all(isone, chain[:y])
+            @test all(isone, chain[:z])
+            # And for the same reason we should also make sure that the logp
+            # components are correctly calculated.
+            @test isapprox(chain[:logprior], logpdf.(Normal(), chain[:x]))
+            @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 1.0))
+            @test isapprox(chain[:lp], chain[:logprior] .+ chain[:loglikelihood])
         end
     end
 
