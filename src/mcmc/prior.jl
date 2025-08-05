@@ -16,8 +16,15 @@ function AbstractMCMC.step(
     sampling_model = DynamicPPL.contextualize(
         model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
     )
-    _, vi = DynamicPPL.evaluate!!(sampling_model, VarInfo())
-    return Transition(model, vi, nothing), nothing
+    vi = VarInfo()
+    vi = DynamicPPL.setaccs!!(
+        vi,
+        (
+            DynamicPPL.ValuesAsInModelAccumulator(true),
+            DynamicPPL.LogPriorAccumulator(),
+            DynamicPPL.LogLikelihoodAccumulator(),
+        ),
+    )
+    _, vi = DynamicPPL.evaluate!!(sampling_model, vi)
+    return Transition(model, vi, nothing; reevaluate=false), nothing
 end
-
-DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains
