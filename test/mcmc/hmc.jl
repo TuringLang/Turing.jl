@@ -286,18 +286,7 @@ using Turing
 
         # Test that error message includes troubleshooting link
         @test_throws ErrorException sample(failing_model(), NUTS(), 10; progress=false)
-
-        # Verify the error message contains the troubleshooting link
-        err = try
-            sample(failing_model(), NUTS(), 10; progress=false)
-        catch e
-            e
-        end
-
-        @test contains(
-            string(err),
-            "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters",
-        )
+        @test_throws "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters" sample(failing_model(), NUTS(), 10; progress=false)
     end
 end
 
