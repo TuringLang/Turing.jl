@@ -15,7 +15,11 @@ When implementing a new `MySampler <: AbstractSampler`,
 In particular, it must implement:
 
 - `AbstractMCMC.step` (the main function for taking a step in MCMC sampling; this is documented in AbstractMCMC.jl)
-- `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`: How to extract the parameters from the state returned by your sampler (i.e., the second return value of `step`).
+- `Turing.Inference.getparams(::DynamicPPL.Model, external_transition)`: How to extract the parameters from the transition returned by your sampler (i.e., the first return value of `step`).
+  There is a default implementation for this method, which is to return `external_transition.θ`.
+
+!!! note
+    In a future breaking release of Turing, this is likely to change to `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`, with no default method. `Turing.Inference.getparams` is technically an internal method, so the aim here is to unify the interface for samplers at a higher level.
 
 There are a few more optional functions which you can implement to improve the integration with Turing.jl:
 
@@ -119,7 +123,10 @@ function make_updated_varinfo(
     f::DynamicPPL.LogDensityFunction, external_transition, external_state
 )
     # Set the parameters.
-    new_parameters = getparams(f.model, external_state)
+    # NOTE: This is Turing.Inference.getparams, not AbstractMCMC.getparams (!!!!!)
+    # The latter uses the state rather than the transition.
+    # TODO(penelopeysm): Make this use AbstractMCMC.getparams instead
+    new_parameters = getparams(f.model, external_transition)
     new_varinfo = DynamicPPL.unflatten(f.varinfo, new_parameters)
     # Set (or recalculate, if needed) the log density.
     new_logp = getlogp_external(external_transition, external_state)
