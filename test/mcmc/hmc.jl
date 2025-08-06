@@ -278,22 +278,22 @@ using Turing
     end
 
     @testset "improved error message for initialization failures" begin
-        # Model that fails to initialize due to VonMises AD issue
+        # Model that always fails to initialize
         @model function failing_model()
-            μ ~ Uniform(-π, π)
-            κ ~ InverseGamma(2, 3)
-            return x ~ VonMises(μ, κ)
+            x ~ Normal()
+            @addlogprob! -Inf
         end
 
         # Test that error message includes troubleshooting link
-        err = nothing
-        try
+        @test_throws ErrorException sample(failing_model(), NUTS(), 10; progress=false)
+        
+        # Verify the error message contains the troubleshooting link
+        err = try
             sample(failing_model(), NUTS(), 10; progress=false)
         catch e
-            err = e
+            e
         end
-
-        @test err isa ErrorException
+        
         @test contains(
             string(err),
             "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters",

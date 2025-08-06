@@ -168,7 +168,7 @@ function find_initial_params(
 
     # if we failed to find valid initial parameters, error
     return error(
-        "failed to find valid initial parameters in $(max_attempts) tries. This may indicate an error with the model or AD backend. See https://turinglang.org/docs/usage/troubleshooting/#initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+        "failed to find valid initial parameters in $(max_attempts) tries. See https://turinglang.org/docs/usage/troubleshooting/#initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
     )
 end
 
