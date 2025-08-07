@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Inference · Turing</title><meta name="title" content="Inference · Turing"/><meta property="og:title" content="Inference · Turing"/><meta property="twitter:title" content="Inference · Turing"/><meta name="description" content="Documentation for Turing."/><meta property="og:description" content="Documentation for Turing."/><meta property="twitter:description" content="Documentation for Turing."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body>
+<!-- NAVBAR START -->
+<style>
+    html {
+        scroll-padding-top: calc(55px + 1rem);
+    }
+
+    /* Documenter css tweaks */
+    .docs-sidebar {
+        margin-top: 3.75rem;
+    }
+
+    #documenter {
+        margin-top: 3.75rem;
+    }
+
+    .docs-version-selector {
+        margin-bottom: 60px !important;
+    }
+
+    @media screen and (max-width: 1056px) {
+        .docs-version-selector {
+            margin-bottom: 60px !important;
+        }
+
+        .docs-sidebar {
+            margin-top: 0 !important;
+        }
+    }
+    /* Documenter css tweaks ends here */
+
+    :root {
+        --heading-color: white;
+        --item-color: rgb(165, 165, 165);
+        --primary-bg: #073c44;
+        --hover-color: #8faad2;
+        --deprecated-bg: #ff4d4d;
+        --deprecated-text: white;
+    }
+
+    .ext-navigation {
+        position: fixed;
+        height: 3.75rem;
+        top: 0;
+        width: 100%;
+        background-color: var(--primary-bg);
+        z-index: 1000;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        padding: 0 1.0625rem;
+        transition: transform 0.3s;
+    }
+
+    .ext-navbar-logo {
+        margin-left: 0.625rem;
+    }
+
+    .ext-nav-links {
+        display: flex;
+        align-items: center;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        flex-grow: 1;
+    }
+
+    .ext-nav-links li {
+        margin-left: 1rem !important;
+    }
+
+    .ext-nav-link {
+        color: white !important;
+        text-decoration: none;
+        font-size: 1.0625rem !important;
+        transition: color 0.2s ease;
+        cursor: pointer;
+    }
+
+    .ext-nav-link:hover,
+    .ext-navbar-item-single a:hover {
+        color: var(--hover-color) !important;
+    }
+
+    .ext-navbar-item-single a {
+        color: #fff !important;
+    }
+
+    .ext-menu-toggle {
+        display: none;
+        font-size: 1.5rem;
+        color: white;
+        cursor: pointer;
+    }
+
+    .ext-dropdown {
+        display: none;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto auto auto;
+        padding: 1.875rem;
+        position: absolute;
+        width: 100%;
+        left: 0;
+        background-color: #083c44;
+        line-height: 1.875rem;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        transform: translateY(-0.625rem);
+    }
+
+    #library-handler::after {
+        content: "▼";
+        font-size: 0.6875rem;
+        margin-left: 0.3125rem;
+        transition: transform 0.3s ease-in-out;
+    }
+
+    #library-handler.open::after {
+        content: "▲";
+    }
+
+    .ext-dropdown.show {
+        display: grid;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .ext-dropdown ul {
+        height: auto;
+        width: 12.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .ext-dropdown ul li {
+        text-align: left;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar-sub-item {
+        list-style: none;
+    }
+
+    .ext-dropdown ul a li {
+        color: var(--item-color);
+        width: 15.625rem;
+        border-radius: 3px;
+        padding: 0.125rem 0.625rem;
+        transition: background-color 0.2s ease;
+    }
+
+    .ext-dropdown ul a li:hover {
+        background-color: rgba(107, 107, 107, 0.5);
+    }
+
+    .ext-dropdown-item-heading {
+        color: var(--heading-color);
+        text-align: center;
+    }
+
+    .deprecated-badge {
+        background-color: var(--deprecated-bg);
+        color: var(--deprecated-text);
+        font-size: 0.75rem;
+        padding: 0.125rem 0.375rem;
+        border-radius: 3px;
+        margin-left: 0.5rem;
+        line-height: 1;
+    }
+
+    /* Responsive styling */
+    @media (max-width: 966px) {
+        .ext-dropdown {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .ext-nav-links {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            background-color: var(--primary-bg);
+            position: absolute;
+            top: 3.75rem;
+            left: 0;
+            padding: 0.625rem 0;
+            height: auto;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgb(141, 141, 141) grey;
+        }
+
+        .ext-nav-links.show {
+            display: flex;
+        }
+
+        .ext-nav-links li {
+            margin: 0.625rem 0;
+            text-align: center;
+        }
+
+        .ext-menu-toggle {
+            display: block;
+            margin-left: auto;
+        }
+
+        .ext-navigation.hide {
+            transform: translateY(-3.75rem);
+        }
+
+        .ext-dropdown {
+            place-content: center;
+            text-align: center;
+            grid-template-columns: 1fr;
+            line-height: 1.25rem;
+            padding: 0.625rem;
+        }
+
+        .ext-dropdown ul {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 0.3125rem;
+        }
+
+        .ext-dropdown ul li {
+            text-align: center;
+            /* justify-content: center; */
+        }
+
+        .ext-dropdown ul a li {
+            width: 100%;
+        }
+
+        .ext-dropdown ul a li:hover {
+            background-color: var(--primary-bg);
+            color: #fff;
+        }
+
+        /* Modified scroll bar */
+        .ext-nav-links::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-track {
+            box-shadow: inset 0 0 5px grey;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-thumb {
+            background: rgb(141, 141, 141);
+            border-radius: 3px;
+        }
+
+        .ext-nav-links::-webkit-scrollbar-thumb:hover {
+            background: #9b9b9b;
+        }
+    }
+</style>
+<nav class="ext-navigation">
+    <a href="https://turinglang.org/">
+        <img src="https://turinglang.org/assets/images/turing-logo.svg" alt="Turing Logo" class="ext-navbar-logo" height="24px" width="40px">
+    </a>
+    <a style="color: white !important; font-size: 21.25px !important; margin-left: 10px;" href="https://turinglang.org/">Turing.jl</a>
+    <ul class="ext-nav-links">
+        <li>
+            <a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/docs-00-getting-started/">Get Started</a>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/00-introduction/">Tutorials</a>
+        </li>
+        <li>
+            <p class="ext-nav-link" id="library-handler">Libraries</p>
+            <div class="ext-dropdown" id="ext-dropdown-items">
+                <ul>
+                    <li class="ext-dropdown-item-heading">Modelling Languages</li>
+                    <a href="https://turinglang.org/DynamicPPL.jl/">
+                        <li>DynamicPPL</li>
+                    </a>
+                    <a href="https://turinglang.org/JuliaBUGS.jl/">
+                        <li>JuliaBUGS</li>
+                    </a>
+                    <a href="https://turinglang.org/TuringGLM.jl/">
+                        <li>TuringGLM</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">MCMC</li>
+                    <a href="https://turinglang.org/AdvancedHMC.jl/">
+                        <li>AdvancedHMC</li>
+                    </a>
+                    <a href="https://turinglang.org/AbstractMCMC.jl/">
+                        <li>AbstractMCMC</li>
+                    </a>
+                    <a href="https://github.com/theogf/ThermodynamicIntegration.jl">
+                        <li>ThermodynamicIntegration</li>
+                    </a>
+                    <a href="https://turinglang.org/AdvancedPS.jl/">
+                        <li>AdvancedPS</li>
+                    </a>
+                    <a href="https://turinglang.org/SliceSampling.jl/">
+                        <li>SliceSampling</li>
+                    </a>
+                    <a href="https://turinglang.org/EllipticalSliceSampling.jl/">
+                        <li>EllipticalSliceSampling</li>
+                    </a>
+                    <a href="https://turinglang.org/NestedSamplers.jl/">
+                        <li>NestedSamplers</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">Diagnostics</li>
+                    <a href="https://turinglang.org/MCMCChains.jl/">
+                        <li>MCMCChains</li>
+                    </a>
+                    <a href="https://turinglang.org/MCMCDiagnosticTools.jl/">
+                        <li>MCMCDiagnosticTools</li>
+                    </a>
+                    <a href="https://turinglang.org/ParetoSmooth.jl/">
+                        <li>ParetoSmooth</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading">Gaussian Processes</li>
+                    <a href="https://juliagaussianprocesses.github.io/AbstractGPs.jl/">
+                        <li>AbstractGPs</li>
+                    </a>
+                    <a href="https://juliagaussianprocesses.github.io/KernelFunctions.jl/">
+                        <li>KernelFunctions</li>
+                    </a>
+                    <a href="https://juliagaussianprocesses.github.io/ApproximateGPs.jl/">
+                        <li>ApproximateGPs</li>
+                    </a>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/Bijectors.jl/">Bijectors</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/TuringCallbacks.jl/">TuringCallbacks</a>
+                    </li>
+                </ul>
+                <ul>
+                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
+                        <a href="https://turinglang.org/Deprecated/TuringBenchmarking/">TuringBenchmarking</a>
+                        <span class="deprecated-badge">Deprecated</span>
+                    </li>
+                </ul>
+            </div>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://turinglang.org/news/">News</a>
+        </li>
+        <li>
+            <a class="ext-nav-link" href="https://turinglang.org/team/">Team</a>
+        </li>
+    </ul>
+    <a href="https://x.com/TuringLang" style="margin-left: 15px; padding-top: 2px">
+        <svg fill="#ffffff" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32px" height="32px" viewBox="-209.92 -209.92 931.84 931.84" xml:space="preserve" stroke="#ffffff">
+            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+            <g id="SVGRepo_iconCarrier">
+                <g id="7935ec95c421cee6d86eb22ecd12f847">
+                    <path style="display: inline"
+                        d="M459.186,151.787c0.203,4.501,0.305,9.023,0.305,13.565 c0,138.542-105.461,298.285-298.274,298.285c-59.209,0-114.322-17.357-160.716-47.104c8.212,0.973,16.546,1.47,25.012,1.47 c49.121,0,94.318-16.759,130.209-44.884c-45.887-0.841-84.596-31.154-97.938-72.804c6.408,1.227,12.968,1.886,19.73,1.886 c9.55,0,18.816-1.287,27.617-3.68c-47.955-9.633-84.1-52.001-84.1-102.795c0-0.446,0-0.882,0.011-1.318 c14.133,7.847,30.294,12.562,47.488,13.109c-28.134-18.796-46.637-50.885-46.637-87.262c0-19.212,5.16-37.218,14.193-52.7 c51.707,63.426,128.941,105.156,216.072,109.536c-1.784-7.675-2.718-15.674-2.718-23.896c0-57.891,46.941-104.832,104.832-104.832 c30.173,0,57.404,12.734,76.525,33.102c23.887-4.694,46.313-13.423,66.569-25.438c-7.827,24.485-24.434,45.025-46.089,58.002 c21.209-2.535,41.426-8.171,60.222-16.505C497.448,118.542,479.666,137.004,459.186,151.787z">
+                    </path>
+                </g>
+            </g>
+        </svg>
+    </a>
+    <a href="https://github.com/TuringLang/Turing.jl">
+        <svg width="32px" height="32px" viewBox="-8.2 -8.2 36.40 36.40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000">
+            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+            <g id="SVGRepo_iconCarrier">
+                <title>github [#142]</title>
+                <desc>Created with Sketch.</desc>
+                <defs></defs>
+                <g id="Page-1" stroke-width="0.0002" fill="none" fill-rule="evenodd">
+                    <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -7559.000000)" fill="#ffffff">
+                        <g id="icons" transform="translate(56.000000, 160.000000)">
+                            <path
+                                d="M94,7399 C99.523,7399 104,7403.59 104,7409.253 C104,7413.782 101.138,7417.624 97.167,7418.981 C96.66,7419.082 96.48,7418.762 96.48,7418.489 C96.48,7418.151 96.492,7417.047 96.492,7415.675 C96.492,7414.719 96.172,7414.095 95.813,7413.777 C98.04,7413.523 100.38,7412.656 100.38,7408.718 C100.38,7407.598 99.992,7406.684 99.35,7405.966 C99.454,7405.707 99.797,7404.664 99.252,7403.252 C99.252,7403.252 98.414,7402.977 96.505,7404.303 C95.706,7404.076 94.85,7403.962 94,7403.958 C93.15,7403.962 92.295,7404.076 91.497,7404.303 C89.586,7402.977 88.746,7403.252 88.746,7403.252 C88.203,7404.664 88.546,7405.707 88.649,7405.966 C88.01,7406.684 87.619,7407.598 87.619,7408.718 C87.619,7412.646 89.954,7413.526 92.175,7413.785 C91.889,7414.041 91.63,7414.493 91.54,7415.156 C90.97,7415.418 89.522,7415.871 88.63,7414.304 C88.63,7414.304 88.101,7413.319 87.097,7413.247 C87.097,7413.247 86.122,7413.234 87.029,7413.87 C87.029,7413.87 87.684,7414.185 88.139,7415.37 C88.139,7415.37 88.726,7417.2 91.508,7416.58 C91.513,7417.437 91.522,7418.245 91.522,7418.489 C91.522,7418.76 91.338,7419.077 90.839,7418.982 C86.865,7417.627 84,7413.783 84,7409.253 C84,7403.59 88.478,7399 94,7399"
+                                id="github-[#142]">
+                            </path>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </svg>
+    </a>
+    <span class="ext-menu-toggle">&#9776;</span>
+</nav>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const menuToggle = document.querySelector(".ext-menu-toggle");
+        const navLinks = document.querySelector(".ext-nav-links");
+        const nav = document.querySelector(".ext-navigation");
+        const navigationHandler = document.getElementById("library-handler");
+        const navigationItemsContainer =
+            document.getElementById("ext-dropdown-items");
+        let lastScrollY = window.scrollY;
+
+        function setAppropriateHeight() {
+            if (window.innerWidth <= 768) {
+                const viewportHeight = window.innerHeight;
+                const navHeight = nav.offsetHeight;
+                navLinks.style.maxHeight = `${viewportHeight - navHeight}px`;
+                navLinks.style.overflowY = "auto";
+            } else {
+                navLinks.style.maxHeight = "";
+                navLinks.style.overflowY = "";
+            }
+        }
+
+        // Toggle main menu for mobile
+        menuToggle.addEventListener("click", () => {
+            navLinks.classList.toggle("show");
+            if (navLinks.classList.contains("show")) {
+                setAppropriateHeight();
+                // Ensure the dropdown is hidden when menu is first opened
+                navigationItemsContainer.style.display = "none";
+                navigationItemsContainer.classList.remove("show");
+            }
+        });
+
+        // Close menus if clicked outside
+        document.addEventListener("click", (event) => {
+            if (
+                !navLinks.contains(event.target) &&
+                !menuToggle.contains(event.target)
+            ) {
+                navLinks.classList.remove("show");
+                navigationItemsContainer.classList.remove("show");
+                navigationHandler.classList.remove("open");
+            }
+        });
+
+        // Hide navigation bar on scroll down in mobile view
+        window.addEventListener("scroll", () => {
+            if (window.innerWidth <= 768) {
+                nav.classList.toggle("hide", window.scrollY > lastScrollY);
+                lastScrollY = window.scrollY;
+            }
+        });
+
+        // Library API script
+        navigationHandler.addEventListener("click", (event) => {
+            event.preventDefault(); // Prevent default action of the link
+            if (navigationItemsContainer.classList.contains("show")) {
+                navigationItemsContainer.classList.remove("show");
+                navigationHandler.classList.remove("open");
+                setTimeout(() => {
+                    navigationItemsContainer.style.display = "none";
+                }, 500); // Match the timeout to the CSS transition duration
+            } else {
+                navigationItemsContainer.style.display = "grid";
+                navigationHandler.classList.add("open");
+                setTimeout(() => {
+                    navigationItemsContainer.classList.add("show");
+                }, 10); // Delay to ensure the display change takes effect before adding class
+            }
+            setAppropriateHeight(); // Recalculate height when dropdown changes
+        });
+
+        // Handle window resize
+        window.addEventListener("resize", setAppropriateHeight);
+
+        // Initial setup
+        setAppropriateHeight();
+    });
+</script>
+<!-- NAVBAR END -->
+
+<div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Turing</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../">API</a></li><li><span class="tocitem">Submodule APIs</span><ul><li class="is-active"><a class="tocitem" href>Inference</a></li><li><a class="tocitem" href="../Optimisation/">Optimisation</a></li><li><a class="tocitem" href="../Variational/">Variational </a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Submodule APIs</a></li><li class="is-active"><a href>Inference</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Inference</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/TuringLang/Turing.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/TuringLang/Turing.jl/blob/main/docs/src/api/Inference.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="API:-Turing.Inference"><a class="docs-heading-anchor" href="#API:-Turing.Inference">API: <code>Turing.Inference</code></a><a id="API:-Turing.Inference-1"></a><a class="docs-heading-anchor-permalink" href="#API:-Turing.Inference" title="Permalink"></a></h1><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.CSMC" href="#Turing.Inference.CSMC"><code>Turing.Inference.CSMC</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">CSMC(...)</code></pre><p>Equivalent to <a href="#Turing.Inference.PG"><code>PG</code></a>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/particle_mcmc.jl#L270-L274">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.ESS" href="#Turing.Inference.ESS"><code>Turing.Inference.ESS</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">ESS</code></pre><p>Elliptical slice sampling algorithm.</p><p><strong>Examples</strong></p><pre><code class="language-julia-repl hljs">julia&gt; @model function gdemo(x)
+           m ~ Normal()
+           x ~ Normal(m, 0.5)
+       end
+gdemo (generic function with 2 methods)
+
+julia&gt; sample(gdemo(1.0), ESS(), 1_000) |&gt; mean
+Mean
+
+│ Row │ parameters │ mean     │
+│     │ Symbol     │ Float64  │
+├─────┼────────────┼──────────┤
+│ 1   │ m          │ 0.824853 │</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/ess.jl#L1-L22">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.Emcee" href="#Turing.Inference.Emcee"><code>Turing.Inference.Emcee</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">Emcee(n_walkers::Int, stretch_length=2.0)</code></pre><p>Affine-invariant ensemble sampling algorithm.</p><p><strong>Reference</strong></p><p>Foreman-Mackey, D., Hogg, D. W., Lang, D., &amp; Goodman, J. (2013). emcee: The MCMC Hammer. Publications of the Astronomical Society of the Pacific, 125 (925), 306. https://doi.org/10.1086/670067</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/emcee.jl#L5-L15">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.ExternalSampler" href="#Turing.Inference.ExternalSampler"><code>Turing.Inference.ExternalSampler</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">ExternalSampler{S&lt;:AbstractSampler,AD&lt;:ADTypes.AbstractADType,Unconstrained}</code></pre><p>Represents a sampler that is not an implementation of <code>InferenceAlgorithm</code>.</p><p>The <code>Unconstrained</code> type-parameter is to indicate whether the sampler requires unconstrained space.</p><p><strong>Fields</strong></p><ul><li><p><code>sampler::AbstractMCMC.AbstractSampler</code>: the sampler to wrap</p></li><li><p><code>adtype::ADTypes.AbstractADType</code>: the automatic differentiation (AD) backend to use</p></li></ul><p><strong>Turing.jl&#39;s interface for external samplers</strong></p><p>When implementing a new <code>MySampler &lt;: AbstractSampler</code>, <code>MySampler</code> must first and foremost conform to the <code>AbstractMCMC</code> interface to work with Turing.jl&#39;s <code>externalsampler</code> function. In particular, it must implement:</p><ul><li><code>AbstractMCMC.step</code> (the main function for taking a step in MCMC sampling; this is documented in AbstractMCMC.jl)</li><li><code>Turing.Inference.getparams(::DynamicPPL.Model, external_transition)</code>: How to extract the parameters from the transition returned by your sampler (i.e., the first return value of <code>step</code>). There is a default implementation for this method, which is to return <code>external_transition.θ</code>.</li></ul><div class="admonition is-info" id="Note-2c40096aa9aef5e9"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-2c40096aa9aef5e9" title="Permalink"></a></header><div class="admonition-body"><p>In a future breaking release of Turing, this is likely to change to <code>AbstractMCMC.getparams(::DynamicPPL.Model, external_state)</code>, with no default method. <code>Turing.Inference.getparams</code> is technically an internal method, so the aim here is to unify the interface for samplers at a higher level.</p></div></div><p>There are a few more optional functions which you can implement to improve the integration with Turing.jl:</p><ul><li><p><code>Turing.Inference.isgibbscomponent(::MySampler)</code>: If you want your sampler to function as a component in Turing&#39;s Gibbs sampler, you should make this evaluate to <code>true</code>.</p></li><li><p><code>Turing.Inference.requires_unconstrained_space(::MySampler)</code>: If your sampler requires unconstrained space, you should return <code>true</code>. This tells Turing to perform linking on the VarInfo before evaluation, and ensures that the parameter values passed to your sampler will always be in unconstrained (Euclidean) space.</p></li><li><p><code>Turing.Inference.getlogp_external(external_transition, external_state)</code>: Tell Turing how to extract the log probability density associated with this transition (and state). If you do not specify these, Turing will simply re-evaluate the model with the parameters obtained from <code>getparams</code>, which can be inefficient. It is therefore recommended to store the log probability density in either the transition or the state (or both) and override this method.</p></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/external_sampler.jl#L1-L31">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.Gibbs" href="#Turing.Inference.Gibbs"><code>Turing.Inference.Gibbs</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">Gibbs</code></pre><p>A type representing a Gibbs sampler.</p><p><strong>Constructors</strong></p><p><code>Gibbs</code> needs to be given a set of pairs of variable names and samplers. Instead of a single variable name per sampler, one can also give an iterable of variables, all of which are sampled by the same component sampler.</p><p>Each variable name can be given as either a <code>Symbol</code> or a <code>VarName</code>.</p><p>Some examples of valid constructors are:</p><pre><code class="language-julia hljs">Gibbs(:x =&gt; NUTS(), :y =&gt; MH())
+Gibbs(@varname(x) =&gt; NUTS(), @varname(y) =&gt; MH())
+Gibbs((@varname(x), :y) =&gt; NUTS(), :z =&gt; MH())</code></pre><p><strong>Fields</strong></p><ul><li><p><code>varnames::NTuple{N, AbstractVector{&lt;:AbstractPPL.VarName}} where N</code>: varnames representing variables for each sampler</p></li><li><p><code>samplers::NTuple{N, Any} where N</code>: samplers for each entry in <code>varnames</code></p></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L271-L293">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.GibbsContext" href="#Turing.Inference.GibbsContext"><code>Turing.Inference.GibbsContext</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">GibbsContext(target_varnames, global_varinfo, context)</code></pre><p>A context used in the implementation of the Turing.jl Gibbs sampler.</p><p>There will be one <code>GibbsContext</code> for each iteration of a component sampler.</p><p><code>target_varnames</code> is a a tuple of <code>VarName</code>s that the current component sampler is sampling. For those <code>VarName</code>s, <code>GibbsContext</code> will just pass <code>tilde_assume</code> calls to its child context. For other variables, their values will be fixed to the values they have in <code>global_varinfo</code>.</p><p><strong>Fields</strong></p><ul><li><code>target_varnames</code>: the VarNames being sampled</li></ul><ul><li><code>global_varinfo</code>: a <code>Ref</code> to the global <code>AbstractVarInfo</code> object that holds values for all variables, both those fixed and those being sampled. We use a <code>Ref</code> because this field may need to be updated if new variables are introduced.</li></ul><ul><li><code>context</code>: the child context that tilde calls will eventually be passed onto.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L42-L56">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.HMC" href="#Turing.Inference.HMC"><code>Turing.Inference.HMC</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())</code></pre><p>Hamiltonian Monte Carlo sampler with static trajectory.</p><p><strong>Arguments</strong></p><ul><li><code>ϵ</code>: The leapfrog step size to use.</li><li><code>n_leapfrog</code>: The number of leapfrog steps to use.</li><li><code>adtype</code>: The automatic differentiation (AD) backend.   If not specified, <code>ForwardDiff</code> is used, with its <code>chunksize</code> automatically determined.</li></ul><p><strong>Usage</strong></p><pre><code class="language-julia hljs">HMC(0.05, 10)</code></pre><p><strong>Tips</strong></p><p>If you are receiving gradient errors when using <code>HMC</code>, try reducing the leapfrog step size <code>ϵ</code>, e.g.</p><pre><code class="language-julia hljs"># Original step size
+sample(gdemo([1.5, 2]), HMC(0.1, 10), 1000)
+
+# Reduced step size
+sample(gdemo([1.5, 2]), HMC(0.01, 10), 1000)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/hmc.jl#L30-L59">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.HMCDA" href="#Turing.Inference.HMCDA"><code>Turing.Inference.HMCDA</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">HMCDA(
+    n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
+    adtype::ADTypes.AbstractADType = AutoForwardDiff(),
+)</code></pre><p>Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.</p><p><strong>Usage</strong></p><pre><code class="language-julia hljs">HMCDA(200, 0.65, 0.3)</code></pre><p><strong>Arguments</strong></p><ul><li><code>n_adapts</code>: Numbers of samples to use for adaptation.</li><li><code>δ</code>: Target acceptance rate. 65% is often recommended.</li><li><code>λ</code>: Target leapfrog length.</li><li><code>ϵ</code>: Initial step size; 0 means automatically search by Turing.</li><li><code>adtype</code>: The automatic differentiation (AD) backend.   If not specified, <code>ForwardDiff</code> is used, with its <code>chunksize</code> automatically determined.</li></ul><p><strong>Reference</strong></p><p>For more information, please view the following paper (<a href="https://arxiv.org/abs/1111.4246">arXiv link</a>):</p><p>Hoffman, Matthew D., and Andrew Gelman. &quot;The No-U-turn sampler: adaptively setting path lengths in Hamiltonian Monte Carlo.&quot; Journal of Machine Learning Research 15, no. 1 (2014): 1593-1623.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/hmc.jl#L320-L350">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.IS" href="#Turing.Inference.IS"><code>Turing.Inference.IS</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">IS()</code></pre><p>Importance sampling algorithm.</p><p>Usage:</p><pre><code class="language-julia hljs">IS()</code></pre><p>Example:</p><pre><code class="language-julia hljs"># Define a simple Normal model with unknown mean and variance.
+@model function gdemo(x)
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0,sqrt.(s))
+    x[1] ~ Normal(m, sqrt.(s))
+    x[2] ~ Normal(m, sqrt.(s))
+    return s², m
+end
+
+sample(gdemo([1.5, 2]), IS(), 1000)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/is.jl#L1-L26">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.InferenceAlgorithm" href="#Turing.Inference.InferenceAlgorithm"><code>Turing.Inference.InferenceAlgorithm</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">InferenceAlgorithm</code></pre><p>Abstract type representing an inference algorithm in Turing. Note that this is not the same as an <code>AbstractSampler</code>: the latter is what defines the necessary methods for actually sampling.</p><p>To create an <code>AbstractSampler</code>, the <code>InferenceAlgorithm</code> needs to be wrapped in <code>DynamicPPL.Sampler</code>. If <code>sample()</code> is called with an <code>InferenceAlgorithm</code>, this wrapping occurs automatically.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/algorithm.jl#L1-L11">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.MH" href="#Turing.Inference.MH"><code>Turing.Inference.MH</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">MH(proposals...)</code></pre><p>Construct a Metropolis-Hastings algorithm.</p><p>The arguments <code>proposals</code> can be</p><ul><li>Blank (i.e. <code>MH()</code>), in which case <code>MH</code> defaults to using the prior for each parameter as the proposal distribution.</li><li>An iterable of pairs or tuples mapping a <code>Symbol</code> to a <code>AdvancedMH.Proposal</code>, <code>Distribution</code>, or <code>Function</code> that returns a conditional proposal distribution.</li><li>A covariance matrix to use as for mean-zero multivariate normal proposals.</li></ul><p><strong>Examples</strong></p><p>The default <code>MH</code> will draw proposal samples from the prior distribution using <code>AdvancedMH.StaticProposal</code>.</p><pre><code class="language-julia hljs">@model function gdemo(x, y)
+    s² ~ InverseGamma(2,3)
+    m ~ Normal(0, sqrt(s²))
+    x ~ Normal(m, sqrt(s²))
+    y ~ Normal(m, sqrt(s²))
+end
+
+chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
+mean(chain)</code></pre><p>Specifying a single distribution implies the use of static MH:</p><pre><code class="language-julia hljs"># Use a static proposal for s² (which happens to be the same
+# as the prior) and a static proposal for m (note that this
+# isn&#39;t a random walk proposal).
+chain = sample(
+    gdemo(1.5, 2.0),
+    MH(
+        :s² =&gt; InverseGamma(2, 3),
+        :m =&gt; Normal(0, 1)
+    ),
+    1_000
+)
+mean(chain)</code></pre><p>Specifying explicit proposals using the <code>AdvancedMH</code> interface:</p><pre><code class="language-julia hljs"># Use a static proposal for s² and random walk with proposal
+# standard deviation of 0.25 for m.
+chain = sample(
+    gdemo(1.5, 2.0),
+    MH(
+        :s² =&gt; AdvancedMH.StaticProposal(InverseGamma(2,3)),
+        :m =&gt; AdvancedMH.RandomWalkProposal(Normal(0, 0.25))
+    ),
+    1_000
+)
+mean(chain)</code></pre><p>Using a custom function to specify a conditional distribution:</p><pre><code class="language-julia hljs"># Use a static proposal for s and and a conditional proposal for m,
+# where the proposal is centered around the current sample.
+chain = sample(
+    gdemo(1.5, 2.0),
+    MH(
+        :s² =&gt; InverseGamma(2, 3),
+        :m =&gt; x -&gt; Normal(x, 1)
+    ),
+    1_000
+)
+mean(chain)</code></pre><p>Providing a covariance matrix will cause <code>MH</code> to perform random-walk sampling in the transformed space with proposals drawn from a multivariate normal distribution. The provided matrix must be positive semi-definite and square:</p><pre><code class="language-julia hljs"># Providing a custom variance-covariance matrix
+chain = sample(
+    gdemo(1.5, 2.0),
+    MH(
+        [0.25 0.05;
+         0.05 0.50]
+    ),
+    1_000
+)
+mean(chain)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/mh.jl#L11-L106">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.MHLogDensityFunction" href="#Turing.Inference.MHLogDensityFunction"><code>Turing.Inference.MHLogDensityFunction</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">MHLogDensityFunction</code></pre><p>A log density function for the MH sampler.</p><p>This variant uses the <code>set_namedtuple!</code> function to update the <code>VarInfo</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/mh.jl#L184-L190">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.NUTS" href="#Turing.Inference.NUTS"><code>Turing.Inference.NUTS</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()</code></pre><p>No-U-Turn Sampler (NUTS) sampler.</p><p>Usage:</p><pre><code class="language-julia hljs">NUTS()            # Use default NUTS configuration.
+NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.</code></pre><p>Arguments:</p><ul><li><code>n_adapts::Int</code> : The number of samples to use with adaptation.</li><li><code>δ::Float64</code> : Target acceptance rate for dual averaging.</li><li><code>max_depth::Int</code> : Maximum doubling tree depth.</li><li><code>Δ_max::Float64</code> : Maximum divergence during doubling tree.</li><li><code>init_ϵ::Float64</code> : Initial step size; 0 means automatically searching using a heuristic procedure.</li><li><code>adtype::ADTypes.AbstractADType</code> : The automatic differentiation (AD) backend.   If not specified, <code>ForwardDiff</code> is used, with its <code>chunksize</code> automatically determined.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/hmc.jl#L395-L417">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.PG" href="#Turing.Inference.PG"><code>Turing.Inference.PG</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">struct PG{R} &lt;: Turing.Inference.ParticleInference</code></pre><p>Particle Gibbs sampler.</p><p><strong>Fields</strong></p><ul><li><p><code>nparticles::Int64</code>: Number of particles.</p></li><li><p><code>resampler::Any</code>: Resampling algorithm.</p></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/particle_mcmc.jl#L233">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.PG-Tuple{Int64}" href="#Turing.Inference.PG-Tuple{Int64}"><code>Turing.Inference.PG</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
+PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)</code></pre><p>Create a Particle Gibbs sampler of type <a href="#Turing.Inference.PG"><code>PG</code></a> with <code>n</code> particles.</p><p>If the algorithm for the resampling step is not specified explicitly, systematic resampling is performed if the estimated effective sample size per particle drops below 0.5.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/particle_mcmc.jl#L249-L257">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.PolynomialStepsize-Union{Tuple{T}, Tuple{T, T, T}} where T&lt;:Real" href="#Turing.Inference.PolynomialStepsize-Union{Tuple{T}, Tuple{T, T, T}} where T&lt;:Real"><code>Turing.Inference.PolynomialStepsize</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">PolynomialStepsize(a[, b=0, γ=0.55])</code></pre><p>Create a polynomially decaying stepsize function.</p><p>At iteration <code>t</code>, the step size is</p><p class="math-container">\[a (b + t)^{-γ}.\]</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/sghmc.jl#L146-L155">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.Prior" href="#Turing.Inference.Prior"><code>Turing.Inference.Prior</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">Prior()</code></pre><p>Algorithm for sampling from the prior.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/prior.jl#L1-L5">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.RepeatSampler" href="#Turing.Inference.RepeatSampler"><code>Turing.Inference.RepeatSampler</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">RepeatSampler &lt;: AbstractMCMC.AbstractSampler</code></pre><p>A <code>RepeatSampler</code> is a container for a sampler and a number of times to repeat it.</p><p><strong>Fields</strong></p><ul><li><p><code>sampler</code>: The sampler to repeat</p></li><li><p><code>num_repeat</code>: The number of times to repeat the sampler</p></li></ul><p><strong>Examples</strong></p><pre><code class="language-julia hljs">repeated_sampler = RepeatSampler(sampler, 10)
+AbstractMCMC.step(rng, model, repeated_sampler) # take 10 steps of `sampler`</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/repeat_sampler.jl#L1-L14">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SGHMC" href="#Turing.Inference.SGHMC"><code>Turing.Inference.SGHMC</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">SGHMC{AD}</code></pre><p>Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.</p><p><strong>Fields</strong></p><ul><li><p><code>learning_rate::Real</code></p></li><li><p><code>momentum_decay::Real</code></p></li><li><p><code>adtype::Any</code></p></li></ul><p><strong>Reference</strong></p><p>Tianqi Chen, Emily Fox, &amp; Carlos Guestrin (2014). Stochastic Gradient Hamiltonian Monte Carlo. In: Proceedings of the 31st International Conference on Machine Learning (pp. 1683–1691).</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/sghmc.jl#L1-L14">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SGHMC-Tuple{}" href="#Turing.Inference.SGHMC-Tuple{}"><code>Turing.Inference.SGHMC</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">SGHMC(;
+    learning_rate::Real,
+    momentum_decay::Real,
+    adtype::ADTypes.AbstractADType = AutoForwardDiff(),
+)</code></pre><p>Create a Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.</p><p>If the automatic differentiation (AD) backend <code>adtype</code> is not provided, ForwardDiff with automatically determined <code>chunksize</code> is used.</p><p><strong>Reference</strong></p><p>Tianqi Chen, Emily Fox, &amp; Carlos Guestrin (2014). Stochastic Gradient Hamiltonian Monte Carlo. In: Proceedings of the 31st International Conference on Machine Learning (pp. 1683–1691).</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/sghmc.jl#L21-L38">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SGLD" href="#Turing.Inference.SGLD"><code>Turing.Inference.SGLD</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">SGLD</code></pre><p>Stochastic gradient Langevin dynamics (SGLD) sampler.</p><p><strong>Fields</strong></p><ul><li><p><code>stepsize::Any</code>: Step size function.</p></li><li><p><code>adtype::Any</code></p></li></ul><p><strong>Reference</strong></p><p>Max Welling &amp; Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Langevin Dynamics. In: Proceedings of the 28th International Conference on Machine Learning (pp. 681–688).</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/sghmc.jl#L112-L125">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SGLD-Tuple{}" href="#Turing.Inference.SGLD-Tuple{}"><code>Turing.Inference.SGLD</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">SGLD(;
+    stepsize = PolynomialStepsize(0.01),
+    adtype::ADTypes.AbstractADType = AutoForwardDiff(),
+)</code></pre><p>Stochastic gradient Langevin dynamics (SGLD) sampler.</p><p>By default, a polynomially decaying stepsize is used.</p><p>If the automatic differentiation (AD) backend <code>adtype</code> is not provided, ForwardDiff with automatically determined <code>chunksize</code> is used.</p><p><strong>Reference</strong></p><p>Max Welling &amp; Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Langevin Dynamics. In: Proceedings of the 28th International Conference on Machine Learning (pp. 681–688).</p><p>See also: <a href="#Turing.Inference.PolynomialStepsize-Union{Tuple{T}, Tuple{T, T, T}} where T&lt;:Real"><code>PolynomialStepsize</code></a></p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/sghmc.jl#L165-L185">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SMC" href="#Turing.Inference.SMC"><code>Turing.Inference.SMC</code></a> — <span class="docstring-category">Type</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">struct SMC{R} &lt;: Turing.Inference.ParticleInference</code></pre><p>Sequential Monte Carlo sampler.</p><p><strong>Fields</strong></p><ul><li><code>resampler::Any</code></li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/particle_mcmc.jl#L73">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.SMC-Tuple{}" href="#Turing.Inference.SMC-Tuple{}"><code>Turing.Inference.SMC</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+SMC([resampler = AdvancedPS.resample_systematic, ]threshold)</code></pre><p>Create a sequential Monte Carlo sampler of type <a href="#Turing.Inference.SMC"><code>SMC</code></a>.</p><p>If the algorithm for the resampling step is not specified explicitly, systematic resampling is performed if the estimated effective sample size per particle drops below 0.5.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/particle_mcmc.jl#L86-L94">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.dist_val_tuple-Tuple{DynamicPPL.Sampler{&lt;:MH}, Union{DynamicPPL.ThreadSafeVarInfo{&lt;:DynamicPPL.VarInfo{Tmeta}}, DynamicPPL.VarInfo{Tmeta}} where Tmeta}" href="#Turing.Inference.dist_val_tuple-Tuple{DynamicPPL.Sampler{&lt;:MH}, Union{DynamicPPL.ThreadSafeVarInfo{&lt;:DynamicPPL.VarInfo{Tmeta}}, DynamicPPL.VarInfo{Tmeta}} where Tmeta}"><code>Turing.Inference.dist_val_tuple</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">dist_val_tuple(spl::Sampler{&lt;:MH}, vi::VarInfo)</code></pre><p>Return two <code>NamedTuples</code>.</p><p>The first <code>NamedTuple</code> has symbols as keys and distributions as values. The second <code>NamedTuple</code> has model symbols as keys and their stored values as values.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/mh.jl#L221-L228">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.externalsampler-Tuple{AbstractMCMC.AbstractSampler}" href="#Turing.Inference.externalsampler-Tuple{AbstractMCMC.AbstractSampler}"><code>Turing.Inference.externalsampler</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)</code></pre><p>Wrap a sampler so it can be used as an inference algorithm.</p><p><strong>Arguments</strong></p><ul><li><code>sampler::AbstractSampler</code>: The sampler to wrap.</li></ul><p><strong>Keyword Arguments</strong></p><ul><li><code>adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()</code>: The automatic differentiation (AD) backend to use.</li><li><code>unconstrained::Bool=true</code>: Whether the sampler requires unconstrained space.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/external_sampler.jl#L74-L85">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.getlogp_external-Tuple{Any, Any}" href="#Turing.Inference.getlogp_external-Tuple{Any, Any}"><code>Turing.Inference.getlogp_external</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">getlogp_external(external_transition, external_state)</code></pre><p>Get the log probability density associated with the external sampler&#39;s transition and state. Returns <code>missing</code> by default; in this case, an extra model evaluation will be needed to calculate the correct log density.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/external_sampler.jl#L92-L98">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.getparams-Tuple{Any, Any}" href="#Turing.Inference.getparams-Tuple{Any, Any}"><code>Turing.Inference.getparams</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">Turing.Inference.getparams(model::Any, t::Any)</code></pre><p>Return a vector of parameter values from the given sampler transition <code>t</code> (i.e., the first return value of AbstractMCMC.step). By default, returns the <code>t.θ</code> field.</p><div class="admonition is-info" id="Note-26694edafd4b25e1"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-26694edafd4b25e1" title="Permalink"></a></header><div class="admonition-body"><p>This method only needs to be implemented for external samplers. It will be</p></div></div><p>removed in future releases and replaced with <code>AbstractMCMC.getparams</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/Inference.jl#L168-L177">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.getparams-Tuple{DynamicPPL.Model, DynamicPPL.VarInfo}" href="#Turing.Inference.getparams-Tuple{DynamicPPL.Model, DynamicPPL.VarInfo}"><code>Turing.Inference.getparams</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">Turing.Inference.getparams(model::DynamicPPL.Model, t::AbstractVarInfo)</code></pre><p>Return a key-value map of parameters from the varinfo.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/Inference.jl#L179-L183">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.gibbs_initialstep_recursive" href="#Turing.Inference.gibbs_initialstep_recursive"><code>Turing.Inference.gibbs_initialstep_recursive</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><p>Take the first step of MCMC for the first component sampler, and call the same function recursively on the remaining samplers, until no samplers remain. Return the global VarInfo and a tuple of initial states for all component samplers.</p><p>The <code>step_function</code> argument should always be either AbstractMCMC.step or AbstractMCMC.step_warmup.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L405-L412">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.gibbs_step_recursive" href="#Turing.Inference.gibbs_step_recursive"><code>Turing.Inference.gibbs_step_recursive</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><p>Run a Gibbs step for the first varname/sampler/state tuple, and recursively call the same function on the tail, until there are no more samplers left.</p><p>The <code>step_function</code> argument should always be either AbstractMCMC.step or AbstractMCMC.step_warmup.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L635-L641">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.group_varnames_by_symbol-Tuple{Any}" href="#Turing.Inference.group_varnames_by_symbol-Tuple{Any}"><code>Turing.Inference.group_varnames_by_symbol</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">group_varnames_by_symbol(vns)</code></pre><p>Group the varnames by their symbol.</p><p><strong>Arguments</strong></p><ul><li><code>vns</code>: Iterable of <code>VarName</code>.</li></ul><p><strong>Returns</strong></p><ul><li><code>OrderedDict{Symbol, Vector{VarName}}</code>: A dictionary mapping symbol to a vector of varnames.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/Inference.jl#L357-L367">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.initial_varinfo-NTuple{4, Any}" href="#Turing.Inference.initial_varinfo-NTuple{4, Any}"><code>Turing.Inference.initial_varinfo</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><p>Initialise a VarInfo for the Gibbs sampler.</p><p>This is straight up copypasta from DynamicPPL&#39;s src/sampler.jl. It is repeated here to support calling both step and step<em>warmup as the initial step. DynamicPPL initialstep is incompatible with step</em>warmup.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L332-L338">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.isgibbscomponent-Tuple{Turing.Inference.InferenceAlgorithm}" href="#Turing.Inference.isgibbscomponent-Tuple{Turing.Inference.InferenceAlgorithm}"><code>Turing.Inference.isgibbscomponent</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">isgibbscomponent(alg::Union{InferenceAlgorithm, AbstractMCMC.AbstractSampler})</code></pre><p>Return a boolean indicating whether <code>alg</code> is a valid component for a Gibbs sampler.</p><p>Defaults to <code>false</code> if no method has been defined for a particular algorithm type.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L1-L7">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.make_conditional-Tuple{DynamicPPL.Model, AbstractVector{&lt;:AbstractPPL.VarName}, Any}" href="#Turing.Inference.make_conditional-Tuple{DynamicPPL.Model, AbstractVector{&lt;:AbstractPPL.VarName}, Any}"><code>Turing.Inference.make_conditional</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">make_conditional(model, target_variables, varinfo)</code></pre><p>Return a new, conditioned model for a component of a Gibbs sampler.</p><p><strong>Arguments</strong></p><ul><li><code>model::DynamicPPL.Model</code>: The model to condition.</li><li><code>target_variables::AbstractVector{&lt;:VarName}</code>: The target variables of the component</li></ul><p>sampler. These will <em>not</em> be conditioned.</p><ul><li><code>varinfo::DynamicPPL.AbstractVarInfo</code>: Values for all variables in the model. All the</li></ul><p>values in <code>varinfo</code> but not in <code>target_variables</code> will be conditioned to the values they have in <code>varinfo</code>.</p><p><strong>Returns</strong></p><ul><li>A new model with the variables <em>not</em> in <code>target_variables</code> conditioned.</li><li>The <code>GibbsContext</code> object that will be used to condition the variables. This is necessary</li></ul><p>because evaluation can mutate its <code>global_varinfo</code> field, which we need to access later.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L231-L248">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.match_linking!!-Tuple{Any, Any, Any}" href="#Turing.Inference.match_linking!!-Tuple{Any, Any, Any}"><code>Turing.Inference.match_linking!!</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">match_linking!!(varinfo_local, prev_state_local, model)</code></pre><p>Make sure the linked/invlinked status of varinfo_local matches that of the previous state for this sampler. This is relevant when multilple samplers are sampling the same variables, and one might need it to be linked while the other doesn&#39;t.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L591-L597">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.mh_accept-Tuple{Real, Real, Real}" href="#Turing.Inference.mh_accept-Tuple{Real, Real, Real}"><code>Turing.Inference.mh_accept</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)</code></pre><p>Decide if a proposal <span>$x&#39;$</span> with log probability <span>$\log p(x&#39;) = logp_proposal$</span> and log proposal ratio <span>$\log k(x&#39;, x) - \log k(x, x&#39;) = log_proposal_ratio$</span> in a Metropolis-Hastings algorithm with Markov kernel <span>$k(x_t, x_{t+1})$</span> and current state <span>$x$</span> with log probability <span>$\log p(x) = logp_current$</span> is accepted by evaluating the Metropolis-Hastings acceptance criterion</p><p class="math-container">\[\log U \leq \log p(x&#39;) - \log p(x) + \log k(x&#39;, x) - \log k(x, x&#39;)\]</p><p>for a uniform random number <span>$U \in [0, 1)$</span>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/Inference.jl#L107-L119">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.requires_unconstrained_space-Union{Tuple{Turing.Inference.ExternalSampler{&lt;:Any, &lt;:Any, Unconstrained}}, Tuple{Unconstrained}} where Unconstrained" href="#Turing.Inference.requires_unconstrained_space-Union{Tuple{Turing.Inference.ExternalSampler{&lt;:Any, &lt;:Any, Unconstrained}}, Tuple{Unconstrained}} where Unconstrained"><code>Turing.Inference.requires_unconstrained_space</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">requires_unconstrained_space(sampler::ExternalSampler)</code></pre><p>Return <code>true</code> if the sampler requires unconstrained space, and <code>false</code> otherwise.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/external_sampler.jl#L63-L67">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.set_namedtuple!-Tuple{Union{DynamicPPL.ThreadSafeVarInfo{&lt;:DynamicPPL.VarInfo{Tmeta}}, DynamicPPL.VarInfo{Tmeta}} where Tmeta, NamedTuple}" href="#Turing.Inference.set_namedtuple!-Tuple{Union{DynamicPPL.ThreadSafeVarInfo{&lt;:DynamicPPL.VarInfo{Tmeta}}, DynamicPPL.VarInfo{Tmeta}} where Tmeta, NamedTuple}"><code>Turing.Inference.set_namedtuple!</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">set_namedtuple!(vi::VarInfo, nt::NamedTuple)</code></pre><p>Places the values of a <code>NamedTuple</code> into the relevant places of a <code>VarInfo</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/mh.jl#L160-L164">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.setparams_varinfo!!-Tuple{Any, DynamicPPL.Sampler, Any, DynamicPPL.AbstractVarInfo}" href="#Turing.Inference.setparams_varinfo!!-Tuple{Any, DynamicPPL.Sampler, Any, DynamicPPL.AbstractVarInfo}"><code>Turing.Inference.setparams_varinfo!!</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">setparams_varinfo!!(model, sampler::Sampler, state, params::AbstractVarInfo)</code></pre><p>A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an <code>AbstractVarInfo</code> object. Also takes the <code>sampler</code> as an argument. By default, falls back to <code>AbstractMCMC.setparams!!(model, state, params[:])</code>.</p><p><code>model</code> is typically a <code>DynamicPPL.Model</code>, but can also be e.g. an <code>AbstractMCMC.LogDensityModel</code>.</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/gibbs.jl#L513-L522">source</a></section></article><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Turing.Inference.transitions_from_chain-Tuple{DynamicPPL.Model, Chains}" href="#Turing.Inference.transitions_from_chain-Tuple{DynamicPPL.Model, Chains}"><code>Turing.Inference.transitions_from_chain</code></a> — <span class="docstring-category">Method</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">transitions_from_chain(
+    [rng::AbstractRNG,]
+    model::Model,
+    chain::MCMCChains.Chains;
+    sampler = DynamicPPL.SampleFromPrior()
+)</code></pre><p>Execute <code>model</code> conditioned on each sample in <code>chain</code>, and return resulting transitions.</p><p>The returned transitions are represented in a <code>Vector{&lt;:Turing.Inference.Transition}</code>.</p><p><strong>Details</strong></p><p>In a bit more detail, the process is as follows:</p><ol><li>For every <code>sample</code> in <code>chain</code><ol><li>For every <code>variable</code> in <code>sample</code><ol><li>Set <code>variable</code> in <code>model</code> to its value in <code>sample</code></li></ol></li><li>Execute <code>model</code> with variables fixed as above, sampling variables NOT present in <code>chain</code> using <code>SampleFromPrior</code></li><li>Return sampled variables and log-joint</li></ol></li></ol><p><strong>Example</strong></p><pre><code class="language-julia-repl hljs">julia&gt; using Turing
+
+julia&gt; @model function demo()
+           m ~ Normal(0, 1)
+           x ~ Normal(m, 1)
+       end;
+
+julia&gt; m = demo();
+
+julia&gt; chain = Chains(randn(2, 1, 1), [&quot;m&quot;]); # 2 samples of `m`
+
+julia&gt; transitions = Turing.Inference.transitions_from_chain(m, chain);
+
+julia&gt; [Turing.Inference.getlogp(t) for t in transitions] # extract the logjoints
+2-element Array{Float64,1}:
+ -3.6294991938628374
+ -2.5697948166987845
+
+julia&gt; [first(t.θ.x) for t in transitions] # extract samples for `x`
+2-element Array{Array{Float64,1},1}:
+ [-2.0844148956440796]
+ [-1.704630494695469]</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/TuringLang/Turing.jl/blob/e77fd7a6daedb7ee2ba7c15a12385a7271a32e14/src/mcmc/Inference.jl#L419-L467">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« API</a><a class="docs-footer-nextpage" href="../Optimisation/">Optimisation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Thursday 7 August 2025 08:25">Thursday 7 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
