@@ -882,6 +882,120 @@ end
         sampler = Gibbs(:w => HMC(0.05, 10))
         @test (sample(model, sampler, 10); true)
     end
+
+    @testset "GibbsConditional" begin
+        # Test with the inverse gamma example from the issue
+        @model function inverse_gdemo(x)
+            λ ~ Gamma(2, 3)
+            m ~ Normal(0, sqrt(1 / λ))
+            for i in 1:length(x)
+                x[i] ~ Normal(m, sqrt(1 / λ))
+            end
+        end
+
+        # Define analytical conditionals
+        function cond_λ(c::NamedTuple)
+            a = 2.0
+            b = 3.0
+            m = c.m
+            x = c.x
+            n = length(x)
+            a_new = a + (n + 1) / 2
+            b_new = b + sum((x[i] - m)^2 for i in 1:n) / 2 + m^2 / 2
+            return Gamma(a_new, 1 / b_new)
+        end
+
+        function cond_m(c::NamedTuple)
+            λ = c.λ
+            x = c.x
+            n = length(x)
+            m_mean = sum(x) / (n + 1)
+            m_var = 1 / (λ * (n + 1))
+            return Normal(m_mean, sqrt(m_var))
+        end
+
+        # Test basic functionality
+        @testset "basic sampling" begin
+            Random.seed!(42)
+            x_obs = [1.0, 2.0, 3.0, 2.5, 1.5]
+            model = inverse_gdemo(x_obs)
+
+            # Test that GibbsConditional works
+            sampler = Gibbs(GibbsConditional(:λ, cond_λ), GibbsConditional(:m, cond_m))
+            chain = sample(model, sampler, 1000)
+
+            # Check that we got the expected variables
+            @test :λ in names(chain)
+            @test :m in names(chain)
+
+            # Check that the values are reasonable
+            λ_samples = vec(chain[:λ])
+            m_samples = vec(chain[:m])
+
+            # Given the observed data, we expect certain behavior
+            @test mean(λ_samples) > 0  # λ should be positive
+            @test minimum(λ_samples) > 0
+            @test std(m_samples) < 2.0  # m should be relatively well-constrained
+        end
+
+        # Test mixing with other samplers
+        @testset "mixed samplers" begin
+            Random.seed!(42)
+            x_obs = [1.0, 2.0, 3.0]
+            model = inverse_gdemo(x_obs)
+
+            # Mix GibbsConditional with standard samplers
+            sampler = Gibbs(GibbsConditional(:λ, cond_λ), :m => MH())
+            chain = sample(model, sampler, 500)
+
+            @test :λ in names(chain)
+            @test :m in names(chain)
+            @test size(chain, 1) == 500
+        end
+
+        # Test with a simpler model
+        @testset "simple normal model" begin
+            @model function simple_normal(x)
+                μ ~ Normal(0, 10)
+                σ ~ truncated(Normal(1, 1); lower=0.01)
+                for i in 1:length(x)
+                    x[i] ~ Normal(μ, σ)
+                end
+            end
+
+            # Conditional for μ given σ and x
+            function cond_μ(c::NamedTuple)
+                σ = c.σ
+                x = c.x
+                n = length(x)
+                # Prior: μ ~ Normal(0, 10)
+                # Likelihood: x[i] ~ Normal(μ, σ)
+                # Posterior: μ ~ Normal(μ_post, σ_post)
+                prior_var = 100.0  # 10^2
+                likelihood_var = σ^2 / n
+                post_var = 1 / (1 / prior_var + n / σ^2)
+                post_mean = post_var * (0 / prior_var + sum(x) / σ^2)
+                return Normal(post_mean, sqrt(post_var))
+            end
+
+            Random.seed!(42)
+            x_obs = randn(10) .+ 2.0  # Data centered around 2
+            model = simple_normal(x_obs)
+
+            sampler = Gibbs(GibbsConditional(:μ, cond_μ), :σ => MH())
+
+            chain = sample(model, sampler, 1000)
+
+            μ_samples = vec(chain[:μ])
+            @test abs(mean(μ_samples) - 2.0) < 0.5  # Should be close to true mean
+        end
+
+        # Test that GibbsConditional is marked as a valid component
+        @testset "isgibbscomponent" begin
+            gc = GibbsConditional(:x, c -> Normal(0, 1))
+            @test Turing.Inference.isgibbscomponent(gc)
+        end
+    end
 end
 
 end
