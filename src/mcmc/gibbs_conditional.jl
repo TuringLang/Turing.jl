@@ -2,7 +2,7 @@ using DynamicPPL: VarName
 using Random: Random
 import AbstractMCMC
 
-# These functions are defined in gibbs.jl which is loaded before this file
+# These functions provide specialized methods for GibbsConditional that extend the generic implementations in gibbs.jl
 
 """
     GibbsConditional(sym::Symbol, conditional)
