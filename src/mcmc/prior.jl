@@ -43,6 +43,9 @@ function AbstractMCMC.step(
     for vn in keys(vi)
         DynamicPPL.set_flag!(vi, vn, "del")
     end
+    # need to replace the old VAIMAcc, this should probably be fixed in
+    # DPPL when calling evaluate!!
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(true))
     sampling_model = DynamicPPL.contextualize(
         model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
     )
