@@ -12,14 +12,19 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    vi = last(
-        DynamicPPL.evaluate!!(
-            model,
-            VarInfo(),
-            SamplingContext(rng, DynamicPPL.SampleFromPrior(), DynamicPPL.PriorContext()),
+    # TODO(DPPL0.38/penelopeysm): replace with init!!
+    sampling_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
+    )
+    vi = VarInfo()
+    vi = DynamicPPL.setaccs!!(
+        vi,
+        (
+            DynamicPPL.ValuesAsInModelAccumulator(true),
+            DynamicPPL.LogPriorAccumulator(),
+            DynamicPPL.LogLikelihoodAccumulator(),
         ),
     )
-    return vi, nothing
+    _, vi = DynamicPPL.evaluate!!(sampling_model, vi)
+    return Transition(model, vi, nothing; reevaluate=false), nothing
 end
-
-DynamicPPL.default_chain_type(sampler::Prior) = MCMCChains.Chains

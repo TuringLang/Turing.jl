@@ -53,22 +53,26 @@ function AbstractMCMC.step(
         length(initial_params) == n ||
             throw(ArgumentError("initial parameters have to be specified for each walker"))
         vis = map(vis, initial_params) do vi, init
+            # TODO(DPPL0.38/penelopeysm) This whole thing can be replaced with init!!
             vi = DynamicPPL.initialize_parameters!!(vi, init, model)
 
             # Update log joint probability.
-            last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
+            spl_model = DynamicPPL.contextualize(
+                model, DynamicPPL.SamplingContext(rng, SampleFromPrior(), model.context)
+            )
+            last(DynamicPPL.evaluate!!(spl_model, vi))
         end
     end
 
     # Compute initial transition and states.
-    transition = map(Base.Fix1(Transition, model), vis)
+    transition = [Transition(model, vi, nothing) for vi in vis]
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
         vis[1],
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, model)
-            AMH.Transition(vi[:], getlogp(vi), false)
+            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
@@ -81,17 +85,19 @@ function AbstractMCMC.step(
     # Generate a log joint function.
     vi = state.vi
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, DynamicPPL.LogDensityFunction(model, vi))
+        Base.Fix1(
+            LogDensityProblems.logdensity,
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
+        ),
     )
 
     # Compute the next states.
-    states = last(AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states))
+    t, states = AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
         vi = DynamicPPL.unflatten(vi, _state.params)
-        t = Transition(getparams(model, vi), _state.lp)
-        return t
+        return Transition(model, vi, t)
     end
     newstate = EmceeState(vi, states)
 
