@@ -1,6 +1,11 @@
 # 0.40.0
 
-[...]
+TODO
+
+  - DynamicPPL 0.37 stuff
+
+  - pMCMC and Gibbs?
+  - Prior is faster
 
 # 0.39.9
 
