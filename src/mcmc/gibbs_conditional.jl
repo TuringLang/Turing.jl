@@ -74,13 +74,13 @@ GibbsContext, ConditionContext, FixedContext, etc.
 function find_global_varinfo(context, fallback_vi)
     # Start with the given context and traverse down
     current_context = context
-    
+
     while current_context !== nothing
         if current_context isa GibbsContext
             # Found GibbsContext, return its global varinfo
             return get_global_varinfo(current_context)
-        elseif hasproperty(current_context, :childcontext) && 
-               isdefined(DynamicPPL, :childcontext)
+        elseif hasproperty(current_context, :childcontext) &&
+            isdefined(DynamicPPL, :childcontext)
             # Move to child context if it exists
             current_context = DynamicPPL.childcontext(current_context)
         else
@@ -88,7 +88,7 @@ function find_global_varinfo(context, fallback_vi)
             break
         end
     end
-    
+
     # If no GibbsContext found, use the fallback
     return fallback_vi
 end
@@ -168,4 +168,3 @@ function setparams_varinfo!!(
     # the state is nothing and we don't need to update anything
     return params
 end
-
