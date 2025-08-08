@@ -276,6 +276,20 @@ using Turing
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
         end
     end
+
+    @testset "improved error message for initialization failures" begin
+        # Model that always fails to initialize
+        @model function failing_model()
+            x ~ Normal()
+            @addlogprob! -Inf
+        end
+
+        # Test that error message includes troubleshooting link
+        @test_throws ErrorException sample(failing_model(), NUTS(), 10; progress=false)
+        @test_throws "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters" sample(
+            failing_model(), NUTS(), 10; progress=false
+        )
+    end
 end
 
 end
