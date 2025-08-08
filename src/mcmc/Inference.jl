@@ -67,6 +67,7 @@ export InferenceAlgorithm,
     ESS,
     Emcee,
     Gibbs,      # classic sampling
+    GibbsConditional,  # conditional sampling
     HMC,
     SGLD,
     PolynomialStepsize,
@@ -392,6 +393,7 @@ include("mh.jl")
 include("is.jl")
 include("particle_mcmc.jl")
 include("gibbs.jl")
+include("gibbs_conditional.jl")
 include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
