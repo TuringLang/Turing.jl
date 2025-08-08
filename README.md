@@ -1,4 +1,4 @@
-<p align="center"><img src="https://raw.githubusercontent.com/TuringLang/turinglang.github.io/refs/heads/main/assets/images/turing-logo.svg" alt="Turing.jl logo" width="200" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/TuringLang/turinglang.github.io/refs/heads/main/assets/logo/turing-logo.svg" alt="Turing.jl logo" width="200" /></p>
 <h1 align="center">Turing.jl</h1>
 <p align="center"><i>Probabilistic programming and Bayesian inference in Julia</i></p>
 <p align="center">
