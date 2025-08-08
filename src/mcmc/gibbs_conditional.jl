@@ -65,6 +65,9 @@ end
 # Mark GibbsConditional as a valid Gibbs component
 isgibbscomponent(::GibbsConditional) = true
 
+# Required methods for Gibbs constructor
+Base.length(::GibbsConditional) = 1  # Each GibbsConditional handles one variable
+
 """
     find_global_varinfo(context, fallback_vi)
 
