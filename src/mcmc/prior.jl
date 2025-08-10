@@ -36,10 +36,19 @@ function AbstractMCMC.step(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # TODO(DPPL0.38/penelopeysm): replace the entire thing with init!!
+    # TODO(DPPL0.38/penelopeysm): replace this entire thing with init!!
+    #
     # `vi` is a VarInfo from the previous step so already has all the
-    # right accumulators and stuff. The only thing we need to change is
-    # to make sure that the old values are overwritten...
+    # right accumulators and stuff. The only thing we need to change is to make
+    # sure that the old values are overwritten when we resample.
+    #
+    # Note also that the values in the Transition (and hence the chain) are not
+    # obtained from the VarInfo's metadata itself, but are instead obtained
+    # from the ValuesAsInModelAccumulator, which is cleared in the evaluate!!
+    # call. Thus, the actual values in the VarInfo's metadata don't matter:
+    # we only set the del flag here to make sure that new values are sampled
+    # (and thus new values enter VAIMAcc), rather than the old ones being
+    # reused during the evaluation. Yes, SampleFromPrior really sucks.
     for vn in keys(vi)
         DynamicPPL.set_flag!(vi, vn, "del")
     end
