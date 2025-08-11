@@ -31,6 +31,7 @@ When using Turing's Gibbs sampler, e.g. `Gibbs(:x => MH(), :y => HMC(0.1, 20))`,
 Thus the log-density associated with them is added to the likelihood.
 Previously these would effectively be added to the prior (in the sense that if `LikelihoodContext` was used they would be ignored).
 This is unlikely to affect users but we mention it here to be explicit.
+This change only affects the log probabilities as the Gibbs component samplers see them; the resulting chain will include the usual log prior, likelihood, and joint, as described above.
 
 **Particle Gibbs**
 
