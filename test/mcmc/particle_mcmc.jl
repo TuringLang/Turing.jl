@@ -5,6 +5,7 @@ using ..Models: gdemo_default
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using Random: Random
+using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -49,6 +50,18 @@ using Turing
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
     end
 
+    @testset "chain log-density metadata" begin
+        @model function f()
+            x ~ LogNormal()
+            return 1.0 ~ Normal(x)
+        end
+        N = 100
+        chn = sample(f(), SMC(), N)
+        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
+        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
+        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+    end
+
     @testset "logevidence" begin
         Random.seed!(100)
 
@@ -65,7 +78,10 @@ using Turing
         chains_smc = sample(test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
+        # the chain itself has a logevidence field
         @test chains_smc.logevidence ≈ -2 * log(2)
+        # but each transition also contains the logevidence
+        @test chains_smc[:logevidence] ≈ fill(chains_smc.logevidence, 100)
     end
 end
 
@@ -88,6 +104,18 @@ end
         @test s.resampler === resample_systematic
     end
 
+    @testset "chain log-density metadata" begin
+        @model function f()
+            x ~ LogNormal()
+            return 1.0 ~ Normal(x)
+        end
+        N = 100
+        chn = sample(f(), PG(10), N)
+        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
+        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
+        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+    end
+
     @testset "logevidence" begin
         Random.seed!(100)
 
@@ -105,6 +133,7 @@ end
 
         @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
+        @test chains_pg[:logevidence] ≈ fill(chains_pg.logevidence, 100)
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
@@ -112,6 +141,24 @@ end
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
+    end
+
+    @testset "addlogprob leads to reweighting" begin
+        # Make sure that PG takes @addlogprob! into account. It didn't use to:
+        # https://github.com/TuringLang/Turing.jl/issues/1996
+        @model function addlogprob_demo()
+            x ~ Normal(0, 1)
+            if x < 0
+                @addlogprob! -2.0
+            else
+                # Need a balanced number of addlogprobs in all branches, or
+                # else PG will error
+                @addlogprob! 0.0
+            end
+        end
+        c = sample(addlogprob_demo(), PG(10), 100)
+        # Result should be biased towards x > 0.
+        @test mean(c[:x]) > 0.5
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007
