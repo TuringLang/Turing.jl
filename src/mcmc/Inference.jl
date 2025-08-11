@@ -124,19 +124,16 @@ end
 # Default Transition #
 ######################
 getstats(::Any) = NamedTuple()
+getstats(nt::NamedTuple) = nt
 
-# TODO(penelopeysm): Remove this abstract type by converting SGLDTransition,
-# SMCTransition, and PGTransition to Turing.Inference.Transition instead.
-abstract type AbstractTransition end
-
-struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
+struct Transition{T,F<:AbstractFloat,N<:NamedTuple}
     θ::T
     logprior::F
     loglikelihood::F
     stat::N
 
     """
-        Transition(model::Model, vi::AbstractVarInfo, sampler_transition; reevaluate=true)
+        Transition(model::Model, vi::AbstractVarInfo, stats; reevaluate=true)
 
     Construct a new `Turing.Inference.Transition` object using the outputs of a
     sampler step.
@@ -146,8 +143,10 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     have junk contents. The role of this method is to re-evaluate `model` and
     thus set the accumulators to the correct values.
 
-    `sampler_transition` is the transition object returned by the sampler
-    itself and is only used to extract statistics of interest.
+    `stats` is any object on which `Turing.Inference.getstats` can be called to
+    return a NamedTuple of statistics. This could be, for example, the transition
+    returned by an (unwrapped) external sampler. Or alternatively, it could
+    simply be a NamedTuple itself (for which `getstats` acts as the identity).
 
     By default, the model is re-evaluated in order to obtain values of:
       - the values of the parameters as per user parameterisation (`vals_as_in_model`)
@@ -167,8 +166,11 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     must be set up to track `x := y` statements.
     """
     function Transition(
-        model::DynamicPPL.Model, vi::AbstractVarInfo, sampler_transition; reevaluate=true
+        model::DynamicPPL.Model, vi::AbstractVarInfo, stats; reevaluate=true
     )
+        # Avoid mutating vi as it may be used later e.g. when constructing
+        # sampler states.
+        vi = deepcopy(vi)
         if reevaluate
             vi = DynamicPPL.setaccs!!(
                 vi,
@@ -187,7 +189,7 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
         loglikelihood = DynamicPPL.getloglikelihood(vi)
 
         # Get additional statistics
-        stats = getstats(sampler_transition)
+        stats = getstats(stats)
         return new{typeof(vals_as_in_model),typeof(logprior),typeof(stats)}(
             vals_as_in_model, logprior, loglikelihood, stats
         )
@@ -196,17 +198,14 @@ struct Transition{T,F<:AbstractFloat,N<:NamedTuple} <: AbstractTransition
     function Transition(
         model::DynamicPPL.Model,
         untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata},
-        sampler_transition;
+        stats;
         reevaluate=true,
     )
         # Re-evaluating the model is unconscionably slow for untyped VarInfo. It's
         # much faster to convert it to a typed varinfo first, hence this method.
         # https://github.com/TuringLang/Turing.jl/issues/2604
         return Transition(
-            model,
-            DynamicPPL.typed_varinfo(untyped_vi),
-            sampler_transition;
-            reevaluate=reevaluate,
+            model, DynamicPPL.typed_varinfo(untyped_vi), stats; reevaluate=reevaluate
         )
     end
 end
@@ -318,7 +317,7 @@ getlogevidence(transitions, sampler, state) = missing
 # Default MCMCChains.Chains constructor.
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
+    ts::Vector{<:Union{Transition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
@@ -381,7 +380,7 @@ end
 
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
+    ts::Vector{<:Union{Transition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
