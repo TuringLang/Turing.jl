@@ -211,7 +211,6 @@ function DynamicPPL.initialstep(
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     set_all_del!(vi)
-    vi = DynamicPPL.resetlogp!!(vi)
     vi = DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
@@ -339,7 +338,6 @@ function DynamicPPL.initialstep(
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     set_all_del!(vi)
-    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -370,7 +368,6 @@ function AbstractMCMC.step(
     # Reset the VarInfo before new sweep.
     vi = state.vi
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.resetlogp!!(vi)
 
     # Create reference particle for which the samples will be retained.
     unset_all_del!(vi)

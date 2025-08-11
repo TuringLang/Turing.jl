@@ -1,6 +1,57 @@
 # 0.40.0
 
-[...]
+## Breaking changes
+
+**DynamicPPL 0.37**
+
+Turing.jl v0.40 updates DynamicPPL compatibility to 0.37.
+The summary of the changes provided here is intended for end-users of Turing.
+If you are a package developer, or would otherwise like to understand these changes in-depth, please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/blob/main/HISTORY.md#0370).
+
+  - **`@submodel`** is now completely removed; please use `to_submodel`.
+
+  - **Prior and likelihood calculations** are now completely separated in Turing. Previously, the log-density used to be accumulated in a single field and thus there was no clear way to separate prior and likelihood components.
+    
+      + **`@addlogprob! f`**, where `f` is a float, now adds to the likelihood by default.
+      + You can instead use **`@addlogprob! (; logprior=x, loglikelihood=y)`** to control which log-density component to add to.
+      + This means that usage of `PriorContext` and `LikelihoodContext` is no longer needed, and these have now been removed.
+  - The special **`__context__`** variable has been removed. If you still need to access the evaluation context, it is now available as `__model__.context`.
+
+**Log-density in chains**
+
+When sampling from a Turing model, the resulting `MCMCChains.Chains` object now contains not only the log-joint (accessible via `chain[:lp]`) but also the log-prior and log-likelihood (`chain[:logprior]` and `chain[:loglikelihood]` respectively).
+
+These values now correspond to the log density of the sampled variables exactly as per the model definition / user parameterisation and thus will ignore any linking (transformation to unconstrained space).
+For example, if the model is `@model f() = x ~ LogNormal()`, `chain[:lp]` would always contain the value of `logpdf(LogNormal(), x)` for each sampled value of `x`.
+Previously these values could be incorrect if linking had occurred: some samplers would return `logpdf(Normal(), log(x))` i.e. the log-density with respect to the transformed distribution.
+
+**Gibbs sampler**
+
+When using Turing's Gibbs sampler, e.g. `Gibbs(:x => MH(), :y => HMC(0.1, 20))`, the conditioned variables (for example `y` during the MH step, or `x` during the HMC step) are treated as true observations.
+Thus the log-density associated with them is added to the likelihood.
+Previously these would effectively be added to the prior (in the sense that if `LikelihoodContext` was used they would be ignored).
+This is unlikely to affect users but we mention it here to be explicit.
+This change only affects the log probabilities as the Gibbs component samplers see them; the resulting chain will include the usual log prior, likelihood, and joint, as described above.
+
+**Particle Gibbs**
+
+Previously, only 'true' observations (i.e., `x ~ dist` where `x` is a model argument or conditioned upon) would trigger resampling of particles.
+Specifically, there were two cases where resampling would not be triggered:
+
+  - Calls to `@addlogprob!`
+  - Gibbs-conditioned variables: e.g. `y` in `Gibbs(:x => PG(20), :y => MH())`
+
+Turing 0.40 changes this such that both of the above cause resampling.
+(The second case follows from the changes to the Gibbs sampler, see above.)
+
+This release also fixes a bug where, if the model ended with one of these statements, their contribution to the particle weight would be ignored, leading to incorrect results.
+
+## Other changes
+
+  - Sampling using `Prior()` should now be about twice as fast because we now avoid evaluating the model twice on every iteration.
+  - `Turing.Inference.Transition` now has different fields.
+    If `t isa Turing.Inference.Transition`, `t.stat` is always a NamedTuple, not `nothing` (if it genuinely has no information then it's an empty NamedTuple).
+    Furthermore, `t.lp` has now been split up into `t.logprior` and `t.loglikelihood` (see also 'Log-density in chains' section above).
 
 # 0.39.9
 
