@@ -651,7 +651,7 @@ end
             chain = sample(
                 StableRNG(468),
                 model,
-                Gibbs(:b => PG(10), :x => ESS()),
+                Gibbs(:b => PG(20), :x => ESS()),
                 2000;
                 discard_initial=100,
             )
