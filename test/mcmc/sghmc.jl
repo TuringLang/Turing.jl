@@ -2,6 +2,7 @@ module SGHMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
+using ..SamplerTestUtils: test_chain_logp_metadata
 using DynamicPPL.TestUtils.AD: run_ad
 using DynamicPPL.TestUtils: DEMO_MODELS
 using DynamicPPL: DynamicPPL
@@ -34,15 +35,7 @@ using Turing
     end
 
     @testset "chain log-density metadata" begin
-        @model function f()
-            x ~ LogNormal()
-            return 1.0 ~ Normal(x)
-        end
-        N = 100
-        chn = sample(f(), SGHMC(; learning_rate=0.02, momentum_decay=0.5), N)
-        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
-        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
-        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+        test_chain_logp_metadata(SGHMC(; learning_rate=0.02, momentum_decay=0.5))
     end
 end
 
@@ -74,15 +67,7 @@ end
     end
 
     @testset "chain log-density metadata" begin
-        @model function f()
-            x ~ LogNormal()
-            return 1.0 ~ Normal(x)
-        end
-        N = 100
-        chn = sample(f(), SGLD(; stepsize=PolynomialStepsize(0.25)), N)
-        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
-        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
-        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+        test_chain_logp_metadata(SGLD(; stepsize=PolynomialStepsize(0.25)))
     end
 end
 

@@ -1,7 +1,7 @@
 module ParticleMCMCTests
 
 using ..Models: gdemo_default
-#using ..Models: MoGtest, MoGtest_default
+using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using Random: Random
@@ -51,15 +51,7 @@ using Turing
     end
 
     @testset "chain log-density metadata" begin
-        @model function f()
-            x ~ LogNormal()
-            return 1.0 ~ Normal(x)
-        end
-        N = 100
-        chn = sample(f(), SMC(), N)
-        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
-        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
-        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+        test_chain_logp_metadata(SMC())
     end
 
     @testset "logevidence" begin
@@ -105,15 +97,7 @@ end
     end
 
     @testset "chain log-density metadata" begin
-        @model function f()
-            x ~ LogNormal()
-            return 1.0 ~ Normal(x)
-        end
-        N = 100
-        chn = sample(f(), PG(10), N)
-        @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
-        @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
-        @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+        test_chain_logp_metadata(PG(10))
     end
 
     @testset "logevidence" begin
