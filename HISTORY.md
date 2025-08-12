@@ -46,6 +46,32 @@ Turing 0.40 changes this such that both of the above cause resampling.
 
 This release also fixes a bug where, if the model ended with one of these statements, their contribution to the particle weight would be ignored, leading to incorrect results.
 
+The changes above also mean that certain models that previously worked with PG-within-Gibbs may now error.
+Specifically this is likely to happen when the dimension of the model is variable.
+For example:
+
+```julia
+@model function f()
+    x ~ Bernoulli()
+    if x
+        y1 ~ Normal()
+    else
+        y1 ~ Normal()
+        y2 ~ Normal()
+    end
+    # (some likelihood term...)
+end
+sample(f(), Gibbs(:x => PG(20), (:y1, :y2) => MH()), 100)
+```
+
+This sampler now cannot be used for this model because depending on which branch is taken, the number of observations will be different.
+To use PG-within-Gibbs, the number of observations that the PG component sampler sees must be constant.
+Thus, for example, this will still work if `x`, `y1`, and `y2` are grouped together under the PG component sampler.
+
+If you absolutely require the old behaviour, we recommend using Turing.jl v0.39, but also thinking very carefully about what the expected behaviour of the model is, and checking that Turing is sampling from it correctly (note that the behaviour on v0.39 may in general be incorrect because of the fact that Gibbs-conditioned variables did not trigger resampling).
+We would also welcome any GitHub issues highlighting such problems.
+Our support for dynamic models is incomplete and is liable to undergo further changes.
+
 ## Other changes
 
   - Sampling using `Prior()` should now be about twice as fast because we now avoid evaluating the model twice on every iteration.
