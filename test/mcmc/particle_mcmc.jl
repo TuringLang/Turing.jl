@@ -1,10 +1,11 @@
 module ParticleMCMCTests
 
 using ..Models: gdemo_default
-#using ..Models: MoGtest, MoGtest_default
+using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using Random: Random
+using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -49,6 +50,10 @@ using Turing
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
     end
 
+    @testset "chain log-density metadata" begin
+        test_chain_logp_metadata(SMC())
+    end
+
     @testset "logevidence" begin
         Random.seed!(100)
 
@@ -65,7 +70,10 @@ using Turing
         chains_smc = sample(test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
+        # the chain itself has a logevidence field
         @test chains_smc.logevidence ≈ -2 * log(2)
+        # but each transition also contains the logevidence
+        @test chains_smc[:logevidence] ≈ fill(chains_smc.logevidence, 100)
     end
 end
 
@@ -88,6 +96,10 @@ end
         @test s.resampler === resample_systematic
     end
 
+    @testset "chain log-density metadata" begin
+        test_chain_logp_metadata(PG(10))
+    end
+
     @testset "logevidence" begin
         Random.seed!(100)
 
@@ -105,6 +117,7 @@ end
 
         @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
+        @test chains_pg[:logevidence] ≈ fill(chains_pg.logevidence, 100)
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
@@ -112,6 +125,24 @@ end
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
+    end
+
+    @testset "addlogprob leads to reweighting" begin
+        # Make sure that PG takes @addlogprob! into account. It didn't use to:
+        # https://github.com/TuringLang/Turing.jl/issues/1996
+        @model function addlogprob_demo()
+            x ~ Normal(0, 1)
+            if x < 0
+                @addlogprob! -10.0
+            else
+                # Need a balanced number of addlogprobs in all branches, or
+                # else PG will error
+                @addlogprob! 0.0
+            end
+        end
+        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        # Result should be biased towards x > 0.
+        @test mean(c[:x]) > 0.7
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007

@@ -1,6 +1,83 @@
 # 0.40.0
 
-[...]
+## Breaking changes
+
+**DynamicPPL 0.37**
+
+Turing.jl v0.40 updates DynamicPPL compatibility to 0.37.
+The summary of the changes provided here is intended for end-users of Turing.
+If you are a package developer, or would otherwise like to understand these changes in-depth, please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/blob/main/HISTORY.md#0370).
+
+  - **`@submodel`** is now completely removed; please use `to_submodel`.
+
+  - **Prior and likelihood calculations** are now completely separated in Turing. Previously, the log-density used to be accumulated in a single field and thus there was no clear way to separate prior and likelihood components.
+    
+      + **`@addlogprob! f`**, where `f` is a float, now adds to the likelihood by default.
+      + You can instead use **`@addlogprob! (; logprior=x, loglikelihood=y)`** to control which log-density component to add to.
+      + This means that usage of `PriorContext` and `LikelihoodContext` is no longer needed, and these have now been removed.
+  - The special **`__context__`** variable has been removed. If you still need to access the evaluation context, it is now available as `__model__.context`.
+
+**Log-density in chains**
+
+When sampling from a Turing model, the resulting `MCMCChains.Chains` object now contains not only the log-joint (accessible via `chain[:lp]`) but also the log-prior and log-likelihood (`chain[:logprior]` and `chain[:loglikelihood]` respectively).
+
+These values now correspond to the log density of the sampled variables exactly as per the model definition / user parameterisation and thus will ignore any linking (transformation to unconstrained space).
+For example, if the model is `@model f() = x ~ LogNormal()`, `chain[:lp]` would always contain the value of `logpdf(LogNormal(), x)` for each sampled value of `x`.
+Previously these values could be incorrect if linking had occurred: some samplers would return `logpdf(Normal(), log(x))` i.e. the log-density with respect to the transformed distribution.
+
+**Gibbs sampler**
+
+When using Turing's Gibbs sampler, e.g. `Gibbs(:x => MH(), :y => HMC(0.1, 20))`, the conditioned variables (for example `y` during the MH step, or `x` during the HMC step) are treated as true observations.
+Thus the log-density associated with them is added to the likelihood.
+Previously these would effectively be added to the prior (in the sense that if `LikelihoodContext` was used they would be ignored).
+This is unlikely to affect users but we mention it here to be explicit.
+This change only affects the log probabilities as the Gibbs component samplers see them; the resulting chain will include the usual log prior, likelihood, and joint, as described above.
+
+**Particle Gibbs**
+
+Previously, only 'true' observations (i.e., `x ~ dist` where `x` is a model argument or conditioned upon) would trigger resampling of particles.
+Specifically, there were two cases where resampling would not be triggered:
+
+  - Calls to `@addlogprob!`
+  - Gibbs-conditioned variables: e.g. `y` in `Gibbs(:x => PG(20), :y => MH())`
+
+Turing 0.40 changes this such that both of the above cause resampling.
+(The second case follows from the changes to the Gibbs sampler, see above.)
+
+This release also fixes a bug where, if the model ended with one of these statements, their contribution to the particle weight would be ignored, leading to incorrect results.
+
+The changes above also mean that certain models that previously worked with PG-within-Gibbs may now error.
+Specifically this is likely to happen when the dimension of the model is variable.
+For example:
+
+```julia
+@model function f()
+    x ~ Bernoulli()
+    if x
+        y1 ~ Normal()
+    else
+        y1 ~ Normal()
+        y2 ~ Normal()
+    end
+    # (some likelihood term...)
+end
+sample(f(), Gibbs(:x => PG(20), (:y1, :y2) => MH()), 100)
+```
+
+This sampler now cannot be used for this model because depending on which branch is taken, the number of observations will be different.
+To use PG-within-Gibbs, the number of observations that the PG component sampler sees must be constant.
+Thus, for example, this will still work if `x`, `y1`, and `y2` are grouped together under the PG component sampler.
+
+If you absolutely require the old behaviour, we recommend using Turing.jl v0.39, but also thinking very carefully about what the expected behaviour of the model is, and checking that Turing is sampling from it correctly (note that the behaviour on v0.39 may in general be incorrect because of the fact that Gibbs-conditioned variables did not trigger resampling).
+We would also welcome any GitHub issues highlighting such problems.
+Our support for dynamic models is incomplete and is liable to undergo further changes.
+
+## Other changes
+
+  - Sampling using `Prior()` should now be about twice as fast because we now avoid evaluating the model twice on every iteration.
+  - `Turing.Inference.Transition` now has different fields.
+    If `t isa Turing.Inference.Transition`, `t.stat` is always a NamedTuple, not `nothing` (if it genuinely has no information then it's an empty NamedTuple).
+    Furthermore, `t.lp` has now been split up into `t.logprior` and `t.loglikelihood` (see also 'Log-density in chains' section above).
 
 # 0.39.9
 
