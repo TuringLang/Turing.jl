@@ -86,12 +86,10 @@ using Turing.Inference: AdvancedHMC
     @test chn isa MCMCChains.Chains
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
-    # TODO: Uncomment this once Turing v0.40 is released. In that version, logpdf
-    # will be recalculated correctly for external samplers.
-    # expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
-    # @test all(chn[:lp] .== expected_logpdf)
-    # @test all(chn[:logprior] .== expected_logpdf)
-    # @test all(chn[:loglikelihood] .== 0.0)
+    expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
+    @test all(chn[:lp] .== expected_logpdf)
+    @test all(chn[:logprior] .== expected_logpdf)
+    @test all(chn[:loglikelihood] .== 0.0)
 end
 
 function initialize_nuts(model::DynamicPPL.Model)
@@ -100,7 +98,9 @@ function initialize_nuts(model::DynamicPPL.Model)
     linked_vi = DynamicPPL.link!!(vi, model)
 
     # Create a LogDensityFunction
-    f = DynamicPPL.LogDensityFunction(model, linked_vi; adtype=Turing.DEFAULT_ADTYPE)
+    f = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, linked_vi; adtype=Turing.DEFAULT_ADTYPE
+    )
 
     # Choose parameter dimensionality and initial parameter value
     D = LogDensityProblems.dimension(f)

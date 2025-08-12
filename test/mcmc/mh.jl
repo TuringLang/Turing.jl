@@ -262,24 +262,6 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @test !DynamicPPL.islinked(vi)
     end
 
-    @testset "prior" begin
-        alg = MH()
-        gdemo_default_prior = DynamicPPL.contextualize(
-            gdemo_default, DynamicPPL.PriorContext()
-        )
-        burnin = 10_000
-        n = 10_000
-        chain = sample(
-            StableRNG(seed),
-            gdemo_default_prior,
-            alg,
-            n;
-            discard_initial=burnin,
-            thinning=10,
-        )
-        check_numerical(chain, [:s, :m], [mean(InverseGamma(2, 3)), 0]; atol=0.3)
-    end
-
     @testset "`filldist` proposal (issue #2180)" begin
         @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
         chain = sample(

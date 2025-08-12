@@ -24,28 +24,7 @@ using Turing
     hasstats(result) = result.optim_result.stats !== nothing
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
-    @testset "OptimizationContext" begin
-        # Used for testing how well it works with nested contexts.
-        struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext
-            context::C
-            logprior_weight::T1
-            loglikelihood_weight::T2
-        end
-        DynamicPPL.NodeTrait(::OverrideContext) = DynamicPPL.IsParent()
-        DynamicPPL.childcontext(parent::OverrideContext) = parent.context
-        DynamicPPL.setchildcontext(parent::OverrideContext, child) =
-            OverrideContext(child, parent.logprior_weight, parent.loglikelihood_weight)
-
-        # Only implement what we need for the models above.
-        function DynamicPPL.tilde_assume(context::OverrideContext, right, vn, vi)
-            value, logp, vi = DynamicPPL.tilde_assume(context.context, right, vn, vi)
-            return value, context.logprior_weight, vi
-        end
-        function DynamicPPL.tilde_observe(context::OverrideContext, right, left, vi)
-            logp, vi = DynamicPPL.tilde_observe(context.context, right, left, vi)
-            return context.loglikelihood_weight, vi
-        end
-
+    @testset "OptimLogDensity and contexts" begin
         @model function model1(x)
             μ ~ Uniform(0, 2)
             return x ~ LogNormal(μ, 1)
@@ -62,48 +41,36 @@ using Turing
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x=x,)
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+            # Doesn't matter if we use getlogjoint or getlogjoint_internal since the
+            # VarInfo isn't linked.
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
+            @test ld1(w) == ld2(w)
         end
 
         @testset "With prefixes" begin
             vn = @varname(inner)
             m1 = prefix(model1(x), vn)
             m2 = prefix((model2() | (x=x,)), vn)
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
+            @test ld1(w) == ld2(w)
         end
 
-        @testset "Weighted" begin
-            function override(model)
-                return DynamicPPL.contextualize(
-                    model, OverrideContext(model.context, 100, 1)
-                )
-            end
-            m1 = override(model1(x))
-            m2 = override(model2() | (x=x,))
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
-        end
-
-        @testset "Default, Likelihood, Prior Contexts" begin
+        @testset "Joint, prior, and likelihood" begin
             m1 = model1(x)
-            defctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-            llhctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            prictx = Turing.Optimisation.OptimizationContext(DynamicPPL.PriorContext())
             a = [0.3]
+            ld_joint = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld_prior = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)
+            ld_likelihood = Turing.Optimisation.OptimLogDensity(
+                m1, DynamicPPL.getloglikelihood
+            )
+            @test ld_joint(a) == ld_prior(a) + ld_likelihood(a)
 
-            @test Turing.Optimisation.OptimLogDensity(m1, defctx)(a) ==
-                Turing.Optimisation.OptimLogDensity(m1, llhctx)(a) +
-                  Turing.Optimisation.OptimLogDensity(m1, prictx)(a)
-
-            # test that PriorContext is calculating the right thing
-            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([0.3]) ≈
+            # test that the prior accumulator is calculating the right thing
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), 0.3)
-            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([-0.3]) ≈
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([-0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), -0.3)
         end
     end
@@ -651,8 +618,7 @@ using Turing
             return nothing
         end
         m = saddle_model()
-        ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-        optim_ld = Turing.Optimisation.OptimLogDensity(m, ctx)
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
         vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
         m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
         ct = coeftable(m)
