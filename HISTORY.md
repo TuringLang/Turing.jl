@@ -1,3 +1,8 @@
+# 0.41.1
+
+Extra release to trigger Documenter.jl build (when 0.40.0 was released GitHub was having an outage).
+There are no code changes.
+
 # 0.40.0
 
 ## Breaking changes
