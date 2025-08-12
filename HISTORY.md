@@ -79,6 +79,10 @@ Our support for dynamic models is incomplete and is liable to undergo further ch
     If `t isa Turing.Inference.Transition`, `t.stat` is always a NamedTuple, not `nothing` (if it genuinely has no information then it's an empty NamedTuple).
     Furthermore, `t.lp` has now been split up into `t.logprior` and `t.loglikelihood` (see also 'Log-density in chains' section above).
 
+# 0.39.10
+
+Added a compatibility entry for DataStructures v0.19.
+
 # 0.39.9
 
 Revert a bug introduced in 0.39.5 in the external sampler interface.
