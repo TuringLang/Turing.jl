@@ -133,16 +133,17 @@ end
         @model function addlogprob_demo()
             x ~ Normal(0, 1)
             if x < 0
-                @addlogprob! -2.0
+                @addlogprob! -10.0
             else
                 # Need a balanced number of addlogprobs in all branches, or
                 # else PG will error
                 @addlogprob! 0.0
             end
         end
-        c = sample(addlogprob_demo(), PG(10), 100)
+        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        @show mean(c[:x])
         # Result should be biased towards x > 0.
-        @test mean(c[:x]) > 0.5
+        @test mean(c[:x]) > 0.7
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007
