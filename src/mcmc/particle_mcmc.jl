@@ -135,23 +135,6 @@ function SMC(threshold::Real)
     return SMC(AdvancedPS.resample_systematic, threshold)
 end
 
-struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
-    lp::F
-    "The weight of the particle the sample was retrieved from."
-    weight::F
-end
-
-function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
-    theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint_internal(vi)
-    return SMCTransition(theta, lp, weight)
-end
-
-getstats_with_lp(t::SMCTransition) = (lp=t.lp, weight=t.weight)
-
 struct SMCState{P,F<:AbstractFloat}
     particles::P
     particleindex::Int
@@ -228,7 +211,8 @@ function DynamicPPL.initialstep(
     weight = AdvancedPS.getweight(particles, 1)
 
     # Compute the first transition and the first state.
-    transition = SMCTransition(model, particle.model.f.varinfo, weight)
+    stats = (; weight=weight, logevidence=logevidence)
+    transition = Transition(model, particle.model.f.varinfo, stats)
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -246,7 +230,8 @@ function AbstractMCMC.step(
     weight = AdvancedPS.getweight(particles, index)
 
     # Compute the transition and the next state.
-    transition = SMCTransition(model, particle.model.f.varinfo, weight)
+    stats = (; weight=weight, logevidence=state.average_logevidence)
+    transition = Transition(model, particle.model.f.varinfo, stats)
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -300,15 +285,6 @@ Equivalent to [`PG`](@ref).
 """
 const CSMC = PG # type alias of PG as Conditional SMC
 
-struct PGTransition{T,F<:AbstractFloat} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
-    lp::F
-    "The log evidence of the sample."
-    logevidence::F
-end
-
 struct PGState
     vi::AbstractVarInfo
     rng::Random.AbstractRNG
@@ -316,16 +292,21 @@ end
 
 get_varinfo(state::PGState) = state.vi
 
-function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
-    theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint_internal(vi)
-    return PGTransition(theta, lp, logevidence)
-end
-
-getstats_with_lp(t::PGTransition) = (lp=t.lp, logevidence=t.logevidence)
-
-function getlogevidence(samples, sampler::Sampler{<:PG}, state::PGState)
-    return mean(x.logevidence for x in samples)
+function getlogevidence(
+    transitions::AbstractVector{<:Turing.Inference.Transition},
+    sampler::Sampler{<:PG},
+    state::PGState,
+)
+    logevidences = map(transitions) do t
+        if haskey(t.stat, :logevidence)
+            return t.stat.logevidence
+        else
+            # This should not really happen, but if it does we can handle it
+            # gracefully
+            return missing
+        end
+    end
+    return mean(logevidences)
 end
 
 function DynamicPPL.initialstep(
@@ -357,7 +338,7 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = PGTransition(model, _vi, logevidence)
+    transition = Transition(model, _vi, (; logevidence=logevidence))
 
     return transition, PGState(_vi, reference.rng)
 end
@@ -397,7 +378,7 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = PGTransition(model, _vi, logevidence)
+    transition = Transition(model, _vi, (; logevidence=logevidence))
 
     return transition, PGState(_vi, newreference.rng)
 end

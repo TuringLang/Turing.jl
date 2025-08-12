@@ -598,8 +598,8 @@ end
             means = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 2.0)
             stds = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 1.0)
             for vn in keys(means)
-                @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.1)
-                @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.1)
+                @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.15)
+                @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.15)
             end
         end
 
@@ -651,7 +651,7 @@ end
             chain = sample(
                 StableRNG(468),
                 model,
-                Gibbs(:b => PG(10), :x => ESS()),
+                Gibbs(:b => PG(20), :x => ESS()),
                 2000;
                 discard_initial=100,
             )

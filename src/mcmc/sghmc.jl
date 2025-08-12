@@ -184,23 +184,6 @@ function SGLD(;
     return SGLD(stepsize, adtype)
 end
 
-struct SGLDTransition{T,F<:Real} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample."
-    lp::F
-    "The stepsize that was used to obtain the sample."
-    stepsize::F
-end
-
-function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
-    theta = getparams(model, vi)
-    lp = DynamicPPL.getlogjoint_internal(vi)
-    return SGLDTransition(theta, lp, stepsize)
-end
-
-getstats_with_lp(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
-
 struct SGLDState{L,V<:AbstractVarInfo}
     logdensity::L
     vi::V
@@ -220,13 +203,13 @@ function DynamicPPL.initialstep(
     end
 
     # Create first sample and state.
-    sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
+    transition = Transition(model, vi, (; SGLD_stepsize=zero(spl.alg.stepsize(0))))
     ℓ = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGLDState(ℓ, vi, 1)
 
-    return sample, state
+    return transition, state
 end
 
 function AbstractMCMC.step(
@@ -245,8 +228,8 @@ function AbstractMCMC.step(
     vi = DynamicPPL.unflatten(vi, θ)
 
     # Compute next sample and state.
-    sample = SGLDTransition(model, vi, stepsize)
+    transition = Transition(model, vi, (; SGLD_stepsize=stepsize))
     newstate = SGLDState(ℓ, vi, state.step + 1)
 
-    return sample, newstate
+    return transition, newstate
 end
