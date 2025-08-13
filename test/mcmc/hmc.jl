@@ -269,7 +269,7 @@ using Turing
 
         # Test that error message includes troubleshooting link
         @test_throws ErrorException sample(failing_model(), NUTS(), 10; progress=false)
-        @test_throws "https://turinglang.org/docs/usage/troubleshooting/#initial-parameters" sample(
+        @test_throws "https://turinglang.org/docs/uri/initial-parameters" sample(
             failing_model(), NUTS(), 10; progress=false
         )
     end
