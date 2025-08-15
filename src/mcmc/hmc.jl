@@ -181,6 +181,7 @@ function DynamicPPL.initialstep(
     vi_original::AbstractVarInfo;
     initial_params=nothing,
     nadapts=0,
+    verbose::Bool=true,
     kwargs...,
 )
     # Transform the samples to unconstrained space and compute the joint log probability.
@@ -211,7 +212,7 @@ function DynamicPPL.initialstep(
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
         ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)
-        @info "Found initial step size" ϵ
+        verbose && @info "Found initial step size" ϵ
     else
         ϵ = spl.alg.ϵ
     end
