@@ -185,7 +185,7 @@ get_varinfo(s::MHState) = s.varinfo
 
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
 """
-function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTuple)
+function set_namedtuple!(vi::DynamicPPL.VarInfo, nt::NamedTuple)
     for (n, vals) in pairs(nt)
         vns = vi.metadata[n].vns
         if vals isa AbstractVector
@@ -247,7 +247,7 @@ Return two `NamedTuples`.
 The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
-function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
+function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfo)
     vns = all_varnames_grouped_by_symbol(vi)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
