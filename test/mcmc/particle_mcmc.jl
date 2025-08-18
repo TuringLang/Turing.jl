@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using Libtask: @might_produce
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
@@ -162,9 +163,23 @@ end
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/2007
-    @testset "keyword arguments not supported" begin
-        @model kwarg_demo(; x=2) = return x
-        @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
+    @testset "keyword argument handling" begin
+        @model function kwarg_demo(y; n=0.0)
+            x ~ Normal(n)
+            return y ~ Normal(x)
+        end
+        @test_throws "Models with keyword arguments" sample(kwarg_demo(5.0), PG(20), 10)
+
+        # Check that enabling `might_produce` does allow sampling
+        @might_produce kwarg_demo
+        chain = sample(StableRNG(468), kwarg_demo(5.0), PG(20), 1000)
+        @test chain isa MCMCChains.Chains
+        @test mean(chain[:x]) ≈ 2.5 atol = 0.2
+
+        # Check that the keyword argument's value is respected
+        chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(20), 1000)
+        @test chain2 isa MCMCChains.Chains
+        @test mean(chain2[:x]) ≈ 7.5 atol = 0.2
     end
 
     @testset "refuses to run threadsafe eval" begin
