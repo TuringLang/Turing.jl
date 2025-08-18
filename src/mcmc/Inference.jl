@@ -17,7 +17,8 @@ using DynamicPPL:
     setindex!!,
     push!!,
     setlogp!!,
-    getlogp,
+    getlogjoint,
+    getlogjoint_internal,
     VarName,
     getsym,
     getdist,
@@ -26,9 +27,6 @@ using DynamicPPL:
     SampleFromPrior,
     SampleFromUniform,
     DefaultContext,
-    PriorContext,
-    LikelihoodContext,
-    SamplingContext,
     set_flag!,
     unset_flag!
 using Distributions, Libtask, Bijectors
@@ -126,37 +124,110 @@ end
 ######################
 # Default Transition #
 ######################
-# Default
-getstats(t) = nothing
+getstats(::Any) = NamedTuple()
+getstats(nt::NamedTuple) = nt
 
-abstract type AbstractTransition end
-
-struct Transition{T,F<:AbstractFloat,S<:Union{NamedTuple,Nothing}} <: AbstractTransition
+struct Transition{T,F<:AbstractFloat,N<:NamedTuple}
     θ::T
-    lp::F # TODO: merge `lp` with `stat`
-    stat::S
-end
+    logprior::F
+    loglikelihood::F
+    stat::N
 
-Transition(θ, lp) = Transition(θ, lp, nothing)
-function Transition(model::DynamicPPL.Model, vi::AbstractVarInfo, t)
-    θ = getparams(model, vi)
-    lp = getlogp(vi)
-    return Transition(θ, lp, getstats(t))
-end
+    """
+        Transition(model::Model, vi::AbstractVarInfo, stats; reevaluate=true)
 
-function metadata(t::Transition)
-    stat = t.stat
-    if stat === nothing
-        return (lp=t.lp,)
-    else
-        return merge((lp=t.lp,), stat)
+    Construct a new `Turing.Inference.Transition` object using the outputs of a
+    sampler step.
+
+    Here, `vi` represents a VarInfo _for which the appropriate parameters have
+    already been set_. However, the accumulators (e.g. logp) may in general
+    have junk contents. The role of this method is to re-evaluate `model` and
+    thus set the accumulators to the correct values.
+
+    `stats` is any object on which `Turing.Inference.getstats` can be called to
+    return a NamedTuple of statistics. This could be, for example, the transition
+    returned by an (unwrapped) external sampler. Or alternatively, it could
+    simply be a NamedTuple itself (for which `getstats` acts as the identity).
+
+    By default, the model is re-evaluated in order to obtain values of:
+      - the values of the parameters as per user parameterisation (`vals_as_in_model`)
+      - the various components of the log joint probability (`logprior`, `loglikelihood`)
+    that are guaranteed to be correct.
+
+    If you **know** for a fact that the VarInfo `vi` already contains this information,
+    then you can set `reevaluate=false` to skip the re-evaluation step.
+
+    !!! warning
+        Note that in general this is unsafe and may lead to wrong results.
+
+    If `reevaluate` is set to `false`, it is the caller's responsibility to ensure that
+    the `VarInfo` passed in has `ValuesAsInModelAccumulator`, `LogPriorAccumulator`,
+    and `LogLikelihoodAccumulator` set up with the correct values. Note that the
+    `ValuesAsInModelAccumulator` must also have `include_colon_eq == true`, i.e. it
+    must be set up to track `x := y` statements.
+    """
+    function Transition(
+        model::DynamicPPL.Model, vi::AbstractVarInfo, stats; reevaluate=true
+    )
+        # Avoid mutating vi as it may be used later e.g. when constructing
+        # sampler states.
+        vi = deepcopy(vi)
+        if reevaluate
+            vi = DynamicPPL.setaccs!!(
+                vi,
+                (
+                    DynamicPPL.ValuesAsInModelAccumulator(true),
+                    DynamicPPL.LogPriorAccumulator(),
+                    DynamicPPL.LogLikelihoodAccumulator(),
+                ),
+            )
+            _, vi = DynamicPPL.evaluate!!(model, vi)
+        end
+
+        # Extract all the information we need
+        vals_as_in_model = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+        logprior = DynamicPPL.getlogprior(vi)
+        loglikelihood = DynamicPPL.getloglikelihood(vi)
+
+        # Get additional statistics
+        stats = getstats(stats)
+        return new{typeof(vals_as_in_model),typeof(logprior),typeof(stats)}(
+            vals_as_in_model, logprior, loglikelihood, stats
+        )
+    end
+
+    function Transition(
+        model::DynamicPPL.Model,
+        untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata},
+        stats;
+        reevaluate=true,
+    )
+        # Re-evaluating the model is unconscionably slow for untyped VarInfo. It's
+        # much faster to convert it to a typed varinfo first, hence this method.
+        # https://github.com/TuringLang/Turing.jl/issues/2604
+        return Transition(
+            model, DynamicPPL.typed_varinfo(untyped_vi), stats; reevaluate=reevaluate
+        )
     end
 end
 
-DynamicPPL.getlogp(t::Transition) = t.lp
-
-# Metadata of VarInfo object
-metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
+function getstats_with_lp(t::Transition)
+    return merge(
+        t.stat,
+        (
+            lp=t.logprior + t.loglikelihood,
+            logprior=t.logprior,
+            loglikelihood=t.loglikelihood,
+        ),
+    )
+end
+function getstats_with_lp(vi::AbstractVarInfo)
+    return (
+        lp=DynamicPPL.getlogjoint(vi),
+        logprior=DynamicPPL.getlogprior(vi),
+        loglikelihood=DynamicPPL.getloglikelihood(vi),
+    )
+end
 
 ##########################
 # Chain making utilities #
@@ -167,7 +238,7 @@ metadata(vi::AbstractVarInfo) = (lp=getlogp(vi),)
 # => value maps) from AbstractMCMC.getparams (defined for any sampler transition,
 # returns vector).
 """
-    Turing.Inference.getparams(model::Any, t::Any)
+    Turing.Inference.getparams(model::DynamicPPL.Model, t::Any)
 
 Return a vector of parameter values from the given sampler transition `t` (i.e.,
 the first return value of AbstractMCMC.step). By default, returns the `t.θ` field.
@@ -176,35 +247,16 @@ the first return value of AbstractMCMC.step). By default, returns the `t.θ` fie
     This method only needs to be implemented for external samplers. It will be
 removed in future releases and replaced with `AbstractMCMC.getparams`.
 """
-getparams(model, t) = t.θ
+getparams(::DynamicPPL.Model, t) = t.θ
 """
     Turing.Inference.getparams(model::DynamicPPL.Model, t::AbstractVarInfo)
 
 Return a key-value map of parameters from the varinfo.
 """
 function getparams(model::DynamicPPL.Model, vi::DynamicPPL.VarInfo)
-    # NOTE: In the past, `invlink(vi, model)` + `values_as(vi, OrderedDict)` was used.
-    # Unfortunately, using `invlink` can cause issues in scenarios where the constraints
-    # of the parameters change depending on the realizations. Hence we have to use
-    # `values_as_in_model`, which re-runs the model and extracts the parameters
-    # as they are seen in the model, i.e. in the constrained space. Moreover,
-    # this means that the code below will work both of linked and invlinked `vi`.
-    # Ref: https://github.com/TuringLang/Turing.jl/issues/2195
-    # NOTE: We need to `deepcopy` here to avoid modifying the original `vi`.
-    return DynamicPPL.values_as_in_model(model, true, deepcopy(vi))
+    t = Transition(model, vi, nothing)
+    return getparams(model, t)
 end
-function getparams(
-    model::DynamicPPL.Model, untyped_vi::DynamicPPL.VarInfo{<:DynamicPPL.Metadata}
-)
-    # values_as_in_model is unconscionably slow for untyped VarInfo. It's
-    # much faster to convert it to a typed varinfo before calling getparams.
-    # https://github.com/TuringLang/Turing.jl/issues/2604
-    return getparams(model, DynamicPPL.typed_varinfo(untyped_vi))
-end
-function getparams(::DynamicPPL.Model, ::DynamicPPL.VarInfo{NamedTuple{(),Tuple{}}})
-    return Dict{VarName,Any}()
-end
-
 function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     names_set = OrderedSet{VarName}()
     # Extract the parameter names and values from each transition.
@@ -220,7 +272,6 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
             iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
             mapreduce(collect, vcat, iters)
         end
-
         nms = map(first, nms_and_vs)
         vs = map(last, nms_and_vs)
         for nm in nms
@@ -235,14 +286,9 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     return names, vals
 end
 
-function get_transition_extras(ts::AbstractVector{<:VarInfo})
-    valmat = reshape([getlogp(t) for t in ts], :, 1)
-    return [:lp], valmat
-end
-
 function get_transition_extras(ts::AbstractVector)
-    # Extract all metadata.
-    extra_data = map(metadata, ts)
+    # Extract stats + log probabilities from each transition or VarInfo
+    extra_data = map(getstats_with_lp, ts)
     return names_values(extra_data)
 end
 
@@ -272,7 +318,7 @@ getlogevidence(transitions, sampler, state) = missing
 # Default MCMCChains.Chains constructor.
 # This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
+    ts::Vector{<:Union{Transition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
@@ -335,7 +381,7 @@ end
 
 # This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{AbstractTransition,AbstractVarInfo}},
+    ts::Vector{<:Union{Transition,AbstractVarInfo}},
     model::AbstractModel,
     spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
     state,
@@ -351,7 +397,7 @@ function AbstractMCMC.bundle_samples(
         vals = map(values(sym_to_vns)) do vns
             map(Base.Fix1(getindex, params), vns)
         end
-        return merge(NamedTuple(zip(keys(sym_to_vns), vals)), metadata(t))
+        return merge(NamedTuple(zip(keys(sym_to_vns), vals)), getstats_with_lp(t))
     end
 end
 
@@ -412,86 +458,6 @@ function DynamicPPL.get_matching_type(
     spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
 ) where {T,N,TV<:Array{T,N}}
     return Array{T,N}
-end
-
-##############
-# Utilities  #
-##############
-
-"""
-
-    transitions_from_chain(
-        [rng::AbstractRNG,]
-        model::Model,
-        chain::MCMCChains.Chains;
-        sampler = DynamicPPL.SampleFromPrior()
-    )
-
-Execute `model` conditioned on each sample in `chain`, and return resulting transitions.
-
-The returned transitions are represented in a `Vector{<:Turing.Inference.Transition}`.
-
-# Details
-
-In a bit more detail, the process is as follows:
-1. For every `sample` in `chain`
-   1. For every `variable` in `sample`
-      1. Set `variable` in `model` to its value in `sample`
-   2. Execute `model` with variables fixed as above, sampling variables NOT present
-      in `chain` using `SampleFromPrior`
-   3. Return sampled variables and log-joint
-
-# Example
-```julia-repl
-julia> using Turing
-
-julia> @model function demo()
-           m ~ Normal(0, 1)
-           x ~ Normal(m, 1)
-       end;
-
-julia> m = demo();
-
-julia> chain = Chains(randn(2, 1, 1), ["m"]); # 2 samples of `m`
-
-julia> transitions = Turing.Inference.transitions_from_chain(m, chain);
-
-julia> [Turing.Inference.getlogp(t) for t in transitions] # extract the logjoints
-2-element Array{Float64,1}:
- -3.6294991938628374
- -2.5697948166987845
-
-julia> [first(t.θ.x) for t in transitions] # extract samples for `x`
-2-element Array{Array{Float64,1},1}:
- [-2.0844148956440796]
- [-1.704630494695469]
-```
-"""
-function transitions_from_chain(
-    model::DynamicPPL.Model, chain::MCMCChains.Chains; kwargs...
-)
-    return transitions_from_chain(Random.default_rng(), model, chain; kwargs...)
-end
-
-function transitions_from_chain(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    chain::MCMCChains.Chains;
-    sampler=DynamicPPL.SampleFromPrior(),
-)
-    vi = Turing.VarInfo(model)
-
-    iters = Iterators.product(1:size(chain, 1), 1:size(chain, 3))
-    transitions = map(iters) do (sample_idx, chain_idx)
-        # Set variables present in `chain` and mark those NOT present in chain to be resampled.
-        DynamicPPL.setval_and_resample!(vi, chain, sample_idx, chain_idx)
-        model(rng, vi, sampler)
-
-        # Convert `VarInfo` into `NamedTuple` and save.
-        Transition(model, vi)
-    end
-
-    return transitions
 end
 
 end # module

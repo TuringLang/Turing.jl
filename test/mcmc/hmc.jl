@@ -171,23 +171,6 @@ using Turing
         @test Array(res1) == Array(res2) == Array(res3)
     end
 
-    @testset "prior" begin
-        # NOTE: Used to use `InverseGamma(2, 3)` but this has infinite variance
-        # which means that it's _very_ difficult to find a good tolerance in the test below:)
-        prior_dist = truncated(Normal(3, 1); lower=0)
-
-        @model function demo_hmc_prior()
-            s ~ prior_dist
-            return m ~ Normal(0, sqrt(s))
-        end
-        alg = NUTS(1000, 0.8)
-        gdemo_default_prior = DynamicPPL.contextualize(
-            demo_hmc_prior(), DynamicPPL.PriorContext()
-        )
-        chain = sample(gdemo_default_prior, alg, 5_000; initial_params=[3.0, 0.0])
-        check_numerical(chain, [:s, :m], [mean(prior_dist), 0]; atol=0.2)
-    end
-
     @testset "warning for difficult init params" begin
         attempt = 0
         @model function demo_warn_initial_params()
@@ -275,6 +258,20 @@ using Turing
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
         end
+    end
+
+    @testset "improved error message for initialization failures" begin
+        # Model that always fails to initialize
+        @model function failing_model()
+            x ~ Normal()
+            @addlogprob! -Inf
+        end
+
+        # Test that error message includes troubleshooting link
+        @test_throws ErrorException sample(failing_model(), NUTS(), 10; progress=false)
+        @test_throws "https://turinglang.org/docs/uri/initial-parameters" sample(
+            failing_model(), NUTS(), 10; progress=false
+        )
     end
 end
 

@@ -25,7 +25,7 @@ end
 ### Hamiltonian Monte Carlo samplers.
 ###
 
-varinfo(state::HMCState) = state.vi
+get_varinfo(state::HMCState) = state.vi
 
 """
     HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())
@@ -162,13 +162,15 @@ function find_initial_params(
         # Resample and try again.
         # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
         varinfo = last(
-            DynamicPPL.evaluate!!(model, rng, varinfo, DynamicPPL.SampleFromUniform())
+            DynamicPPL.evaluate_and_sample!!(
+                rng, model, varinfo, DynamicPPL.SampleFromUniform()
+            ),
         )
     end
 
     # if we failed to find valid initial parameters, error
     return error(
-        "failed to find valid initial parameters in $(max_attempts) tries. This may indicate an error with the model or AD backend; please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+        "failed to find valid initial parameters in $(max_attempts) tries. See https://turinglang.org/docs/uri/initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
     )
 end
 
@@ -191,14 +193,7 @@ function DynamicPPL.initialstep(
     metricT = getmetricT(spl.alg)
     metric = metricT(length(theta))
     ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -212,9 +207,6 @@ function DynamicPPL.initialstep(
         vi, AHMC.phasepoint(rng, theta, hamiltonian)
     end
     theta = vi[:]
-
-    # Cache current log density.
-    log_density_old = getlogp(vi)
 
     # Find good eps if not provided one
     if iszero(spl.alg.ϵ)
@@ -239,14 +231,13 @@ function DynamicPPL.initialstep(
         )
     end
 
-    # Update `vi` based on acceptance
-    if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
+    # Update VarInfo parameters based on acceptance
+    new_params = if t.stat.is_accept
+        t.z.θ
     else
-        vi = DynamicPPL.unflatten(vi, theta)
-        vi = setlogp!!(vi, log_density_old)
+        theta
     end
+    vi = DynamicPPL.unflatten(vi, new_params)
 
     transition = Transition(model, vi, t)
     state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
@@ -290,7 +281,6 @@ function AbstractMCMC.step(
     vi = state.vi
     if t.stat.is_accept
         vi = DynamicPPL.unflatten(vi, t.z.θ)
-        vi = setlogp!!(vi, t.stat.log_density)
     end
 
     # Compute next transition and state.
@@ -303,14 +293,7 @@ end
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
     ldf = DynamicPPL.LogDensityFunction(
-        model,
-        vi,
-        # TODO(penelopeysm): Can we just use leafcontext(model.context)? Do we
-        # need to pass in the sampler? (In fact LogDensityFunction defaults to
-        # using leafcontext(model.context) so could we just remove the argument
-        # entirely?)
-        DynamicPPL.SamplingContext(spl, DynamicPPL.leafcontext(model.context));
-        adtype=spl.alg.adtype,
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -514,10 +497,6 @@ function DynamicPPL.assume(
     rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
 )
     return DynamicPPL.assume(dist, vn, vi)
-end
-
-function DynamicPPL.observe(::Sampler{<:Hamiltonian}, d::Distribution, value, vi)
-    return DynamicPPL.observe(d, value, vi)
 end
 
 ####
