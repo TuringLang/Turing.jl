@@ -1,4 +1,8 @@
-# 0.41.1
+# 0.40.2
+
+`sample(model, NUTS(), N; verbose=false)` now suppresses the 'initial step size' message.
+
+# 0.40.1
 
 Extra release to trigger Documenter.jl build (when 0.40.0 was released GitHub was having an outage).
 There are no code changes.
