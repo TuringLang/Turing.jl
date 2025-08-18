@@ -36,12 +36,14 @@ function unset_all_del!(vi::AbstractVarInfo)
     return nothing
 end
 
-struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
-       AdvancedPS.AbstractGenericModel
+struct TracedModel{
+    S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,T<:Tuple,NT<:NamedTuple
+} <: AdvancedPS.AbstractGenericModel
     model::M
     sampler::S
     varinfo::V
-    evaluator::E
+    fargs::T
+    kwargs::NT
 end
 
 function TracedModel(
@@ -53,13 +55,8 @@ function TracedModel(
     spl_context = DynamicPPL.SamplingContext(rng, sampler, model.context)
     spl_model = DynamicPPL.contextualize(model, spl_context)
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(spl_model, varinfo)
-    if kwargs !== nothing && !isempty(kwargs)
-        error(
-            "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
-        )
-    end
-    evaluator = (spl_model.f, args...)
-    return TracedModel(spl_model, sampler, varinfo, evaluator)
+    fargs = (spl_model.f, args...)
+    return TracedModel(spl_model, sampler, varinfo, fargs, kwargs)
 end
 
 function AdvancedPS.advance!(
@@ -91,9 +88,9 @@ function AdvancedPS.reset_model(trace::TracedModel)
     return trace
 end
 
-function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
+function Libtask.TapedTask(taped_globals, model::TracedModel)
     return Libtask.TapedTask(
-        taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
+        taped_globals, model.fargs[1], model.fargs[2:end]...; model.kwargs...
     )
 end
 
@@ -191,6 +188,9 @@ function DynamicPPL.initialstep(
     nparticles::Int,
     kwargs...,
 )
+    if !isempty(model.defaults)
+        @warn "The use of particle methods for models with keyword arguments requires special care. Please see <documentation link> for more details and be sure to check the results you obtain to make sure that observations are being properly accounted for."
+    end
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     set_all_del!(vi)
@@ -316,6 +316,9 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
+    if !isempty(model.defaults)
+        @warn "The use of particle methods for models with keyword arguments requires special care. Please see <documentation link> for more details and be sure to check the results you obtain to make sure that observations are being properly accounted for."
+    end
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     set_all_del!(vi)
@@ -586,3 +589,11 @@ function Libtask.might_produce(
     return true
 end
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
+# This method deals with models that have keyword arguments, although it is alone not
+# sufficient to make Libtask fully work with keyword arguments. In here, the second argument
+# to Core.kwcall here is `model.f`.
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(Core.kwcall),<:NamedTuple,<:Any,<:DynamicPPL.Model,Vararg}}
+)
+    return true
+end
