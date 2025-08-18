@@ -2,59 +2,139 @@
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Variational  · Turing</title><meta name="title" content="Variational  · Turing"/><meta property="og:title" content="Variational  · Turing"/><meta property="twitter:title" content="Variational  · Turing"/><meta name="description" content="Documentation for Turing."/><meta property="og:description" content="Documentation for Turing."/><meta property="twitter:description" content="Documentation for Turing."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body>
 <!-- NAVBAR START -->
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro&display=swap');
+
+    /* Documenter.jl CSS Overrides */
     html {
-        scroll-padding-top: calc(55px + 1rem);
+        scroll-padding-top: calc(var(--navbar-height) + 1rem);
     }
-
-    /* Documenter css tweaks */
-    .docs-sidebar {
-        margin-top: 3.75rem;
+    .docs-sidebar, #documenter {
+        margin-top: var(--navbar-height);
     }
-
-    #documenter {
-        margin-top: 3.75rem;
-    }
-
     .docs-version-selector {
         margin-bottom: 60px !important;
     }
-
     @media screen and (max-width: 1056px) {
         .docs-version-selector {
             margin-bottom: 60px !important;
         }
-
         .docs-sidebar {
             margin-top: 0 !important;
         }
     }
-    /* Documenter css tweaks ends here */
+    /* End of Documenter.jl Tweaks */
 
+    /* Color and Font Variables */
     :root {
-        --heading-color: white;
+        --heading-color: #6c757d;
         --item-color: rgb(165, 165, 165);
-        --primary-bg: #073c44;
+        --primary-bg: white;
         --hover-color: #8faad2;
         --deprecated-bg: #ff4d4d;
         --deprecated-text: white;
+        --icon-color: #6c757d;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --dropdown-hover-bg: #e9ecef;
+        
+        /* Typography */
+        --font-family: "Source Sans Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        --nav-link-font-size: 1.0625rem;
+        --turing-title-font-size: 21.25px;
+        --icon-font-size: 1.25rem;
+        --dropdown-arrow-font-size: 0.6875rem;
+        --badge-font-size: 0.75rem;
+
+        /* Sizing and Spacing */
+        --navbar-height: 3.75rem;
+        --logo-height: 31.18px;
+        --logo-width: 52.47px;
+        --logo-padding-top: 7px;
+        --logo-margin-left: 0.3rem;
+        --title-margin-left: 0.4px;
+        --title-nav-spacing: 1.7rem;
+        --nav-item-margin-left: 1.3rem;
+        --icon-margin-left: 1rem;
+        --dropdown-padding: 1.875rem;
+        --dropdown-item-width: 12.5rem;
+        --dropdown-subitem-width: 15.625rem;
+        --dropdown-subitem-padding: 0.125rem 0.625rem;
     }
 
+    /* Dark Theme Variable Overrides */
+    html.theme--documenter-dark {
+        --heading-color: #e0e0e0;
+        --item-color: #bdbdbd;
+        --primary-bg: #1f2424;
+        --hover-color: #ffffff;
+        --icon-color: #e0e0e0;
+        --shadow-color: rgba(255, 255, 255, 0.1);
+        --dropdown-hover-bg: #424242;
+    }
+
+    /* Catppuccin Theme Overrides */
+    html.theme--catppuccin-latte {
+        --heading-color: #4c4f69;
+        --primary-bg: #eff1f5;
+        --icon-color: #4c4f69;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --dropdown-hover-bg: #e6e9ef;
+    }
+    html.theme--catppuccin-frappe {
+        --heading-color: #c6d0f5;
+        --primary-bg: #303446;
+        --icon-color: #c6d0f5;
+        --shadow-color: rgba(255, 255, 255, 0.1);
+        --dropdown-hover-bg: #51576d;
+    }
+    html.theme--catppuccin-macchiato {
+        --heading-color: #cad3f5;
+        --primary-bg: #24273a;
+        --icon-color: #cad3f5;
+        --shadow-color: rgba(255, 255, 255, 0.1);
+        --dropdown-hover-bg: #494d64;
+    }
+    html.theme--catppuccin-mocha {
+        --heading-color: #cad3f5;
+        --primary-bg: #1e1e2e;
+        --icon-color: #cad3f5;
+        --shadow-color: rgba(255, 255, 255, 0.1);
+        --dropdown-hover-bg: #45475a;
+    }
+
+
+    /* Main Navigation Bar */
     .ext-navigation {
+        font-family: var(--font-family);
         position: fixed;
-        height: 3.75rem;
+        height: var(--navbar-height);
         top: 0;
         width: 100%;
         background-color: var(--primary-bg);
         z-index: 1000;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 4px var(--shadow-color);
         display: flex;
         align-items: center;
         padding: 0 1.0625rem;
-        transition: transform 0.3s;
+        transition: transform 0.3s, background-color 0.3s;
     }
 
-    .ext-navbar-logo {
-        margin-left: 0.625rem;
+    nav.ext-navigation .ext-navbar-logo {
+        margin-left: var(--logo-margin-left);
+        height: var(--logo-height);
+        width: var(--logo-width);
+        padding-top: var(--logo-padding-top);
+    }
+    
+    .ext-navbar-title {
+        color: var(--heading-color) !important;
+        font-size: var(--turing-title-font-size) !important;
+        margin-left: var(--title-margin-left);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+    
+    .ext-navbar-title:hover {
+        color: var(--hover-color) !important;
     }
 
     .ext-nav-links {
@@ -64,54 +144,73 @@
         margin: 0;
         padding: 0;
         flex-grow: 1;
+        margin-left: var(--title-nav-spacing);
+    }
+
+    .ext-nav-links li:first-child {
+        margin-left: 0 !important;
     }
 
     .ext-nav-links li {
-        margin-left: 1rem !important;
+        margin-left: var(--nav-item-margin-left) !important;
     }
 
     .ext-nav-link {
-        color: white !important;
+        color: var(--heading-color) !important;
         text-decoration: none;
-        font-size: 1.0625rem !important;
+        font-size: var(--nav-link-font-size) !important;
         transition: color 0.2s ease;
         cursor: pointer;
     }
 
     .ext-nav-link:hover,
-    .ext-navbar-item-single a:hover {
+    .ext-navbar-item-single a:hover,
+    .ext-navbar-icons a:hover {
         color: var(--hover-color) !important;
     }
 
     .ext-navbar-item-single a {
-        color: #fff !important;
+        color: var(--heading-color) !important;
+    }
+    
+    .ext-navbar-icons {
+        display: flex;
+        align-items: center;
+    }
+
+    .ext-navbar-icons a {
+        color: var(--icon-color) !important;
+        font-size: var(--icon-font-size) !important;
+        transition: color 0.2s ease;
+        margin-left: var(--icon-margin-left);
     }
 
     .ext-menu-toggle {
         display: none;
         font-size: 1.5rem;
-        color: white;
+        color: var(--heading-color);
         cursor: pointer;
     }
 
     .ext-dropdown {
         display: none;
         grid-template-columns: 1fr 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        padding: 1.875rem;
+        padding: var(--dropdown-padding);
         position: absolute;
+        top: var(--navbar-height);
         width: 100%;
         left: 0;
-        background-color: #083c44;
+        background-color: var(--primary-bg);
         line-height: 1.875rem;
         opacity: 0;
-        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out, background-color 0.3s;
         transform: translateY(-0.625rem);
+        box-shadow: 0 4px 6px var(--shadow-color);
     }
 
     #library-handler::after {
         content: "▼";
-        font-size: 0.6875rem;
+        font-size: var(--dropdown-arrow-font-size);
         margin-left: 0.3125rem;
         transition: transform 0.3s ease-in-out;
     }
@@ -127,8 +226,7 @@
     }
 
     .ext-dropdown ul {
-        height: auto;
-        width: 12.5rem;
+        width: var(--dropdown-item-width);
         margin-bottom: 1.25rem;
     }
 
@@ -138,20 +236,16 @@
         align-items: center;
     }
 
-    .navbar-sub-item {
-        list-style: none;
-    }
-
     .ext-dropdown ul a li {
         color: var(--item-color);
-        width: 15.625rem;
+        width: var(--dropdown-subitem-width);
         border-radius: 3px;
-        padding: 0.125rem 0.625rem;
+        padding: var(--dropdown-subitem-padding);
         transition: background-color 0.2s ease;
     }
 
     .ext-dropdown ul a li:hover {
-        background-color: rgba(107, 107, 107, 0.5);
+        background-color: var(--dropdown-hover-bg);
     }
 
     .ext-dropdown-item-heading {
@@ -162,14 +256,13 @@
     .deprecated-badge {
         background-color: var(--deprecated-bg);
         color: var(--deprecated-text);
-        font-size: 0.75rem;
-        padding: 0.125rem 0.375rem;
+        font-size: var(--badge-font-size);
+        padding: .1rem;
         border-radius: 3px;
         margin-left: 0.5rem;
         line-height: 1;
     }
 
-    /* Responsive styling */
     @media (max-width: 966px) {
         .ext-dropdown {
             grid-template-columns: 1fr 1fr 1fr;
@@ -180,16 +273,17 @@
         .ext-nav-links {
             display: none;
             flex-direction: column;
+            align-items: center;
             width: 100%;
             background-color: var(--primary-bg);
             position: absolute;
-            top: 3.75rem;
+            top: var(--navbar-height);
             left: 0;
             padding: 0.625rem 0;
             height: auto;
             overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgb(141, 141, 141) grey;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            margin-left: 0;
         }
 
         .ext-nav-links.show {
@@ -197,211 +291,125 @@
         }
 
         .ext-nav-links li {
-            margin: 0.625rem 0;
+            margin: 0.625rem 0 !important;
             text-align: center;
         }
-
+        
         .ext-menu-toggle {
             display: block;
             margin-left: auto;
         }
 
         .ext-navigation.hide {
-            transform: translateY(-3.75rem);
+            transform: translateY(calc(-1 * var(--navbar-height)));
         }
 
         .ext-dropdown {
-            place-content: center;
-            text-align: center;
+            position: static;
+            display: block;
+            opacity: 1;
+            transform: none;
+            box-shadow: none;
             grid-template-columns: 1fr;
-            line-height: 1.25rem;
             padding: 0.625rem;
+            text-align: center;
         }
 
         .ext-dropdown ul {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 0.3125rem;
-        }
-
-        .ext-dropdown ul li {
-            text-align: center;
-            /* justify-content: center; */
-        }
-
-        .ext-dropdown ul a li {
-            width: 100%;
-        }
-
-        .ext-dropdown ul a li:hover {
-            background-color: var(--primary-bg);
-            color: #fff;
-        }
-
-        /* Modified scroll bar */
-        .ext-nav-links::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-track {
-            box-shadow: inset 0 0 5px grey;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-thumb {
-            background: rgb(141, 141, 141);
-            border-radius: 3px;
-        }
-
-        .ext-nav-links::-webkit-scrollbar-thumb:hover {
-            background: #9b9b9b;
+            width: auto;
+            display: inline-block;
+            margin: 0 auto 0.3125rem;
+            text-align: left;
         }
     }
 </style>
 <nav class="ext-navigation">
     <a href="https://turinglang.org/">
-        <img src="https://turinglang.org/assets/images/turing-logo.svg" alt="Turing Logo" class="ext-navbar-logo" height="24px" width="40px">
+        <img src="https://turinglang.org/assets/images/turing-logo.svg" alt="Turing Logo" class="ext-navbar-logo">
     </a>
-    <a style="color: white !important; font-size: 21.25px !important; margin-left: 10px;" href="https://turinglang.org/">Turing.jl</a>
+    <a class="ext-navbar-title" href="https://turinglang.org/">Turing.jl</a>
+    
     <ul class="ext-nav-links">
-        <li>
-            <a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/docs-00-getting-started/">Get Started</a>
-        </li>
-        <li>
-            <a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/00-introduction/">Tutorials</a>
-        </li>
+        <li><a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/docs-00-getting-started/">Get Started</a></li>
+        <li><a class="ext-nav-link" href="https://turinglang.org/docs/tutorials/00-introduction/">Tutorials</a></li>
         <li>
             <p class="ext-nav-link" id="library-handler">Libraries</p>
             <div class="ext-dropdown" id="ext-dropdown-items">
                 <ul>
                     <li class="ext-dropdown-item-heading">Modelling Languages</li>
-                    <a href="https://turinglang.org/DynamicPPL.jl/">
-                        <li>DynamicPPL</li>
-                    </a>
-                    <a href="https://turinglang.org/JuliaBUGS.jl/">
-                        <li>JuliaBUGS</li>
-                    </a>
-                    <a href="https://turinglang.org/TuringGLM.jl/">
-                        <li>TuringGLM</li>
-                    </a>
+                    <a href="https://turinglang.org/DynamicPPL.jl/"><li>DynamicPPL</li></a>
+                    <a href="https://turinglang.org/JuliaBUGS.jl/"><li>JuliaBUGS</li></a>
+                    <a href="https://turinglang.org/TuringGLM.jl/"><li>TuringGLM</li></a>
                 </ul>
                 <ul>
                     <li class="ext-dropdown-item-heading">MCMC</li>
-                    <a href="https://turinglang.org/AdvancedHMC.jl/">
-                        <li>AdvancedHMC</li>
-                    </a>
-                    <a href="https://turinglang.org/AbstractMCMC.jl/">
-                        <li>AbstractMCMC</li>
-                    </a>
-                    <a href="https://github.com/theogf/ThermodynamicIntegration.jl">
-                        <li>ThermodynamicIntegration</li>
-                    </a>
-                    <a href="https://turinglang.org/AdvancedPS.jl/">
-                        <li>AdvancedPS</li>
-                    </a>
-                    <a href="https://turinglang.org/SliceSampling.jl/">
-                        <li>SliceSampling</li>
-                    </a>
-                    <a href="https://turinglang.org/EllipticalSliceSampling.jl/">
-                        <li>EllipticalSliceSampling</li>
-                    </a>
-                    <a href="https://turinglang.org/NestedSamplers.jl/">
-                        <li>NestedSamplers</li>
-                    </a>
+                    <a href="https://turinglang.org/AdvancedHMC.jl/"><li>AdvancedHMC</li></a>
+                    <a href="https://turinglang.org/AbstractMCMC.jl/"><li>AbstractMCMC</li></a>
+                    <a href="https://github.com/theogf/ThermodynamicIntegration.jl"><li>ThermodynamicIntegration</li></a>
+                    <a href="https://turinglang.org/AdvancedPS.jl/"><li>AdvancedPS</li></a>
+                    <a href="https://turinglang.org/SliceSampling.jl/"><li>SliceSampling</li></a>
+                    <a href="https://turinglang.org/EllipticalSliceSampling.jl/"><li>EllipticalSliceSampling</li></a>
+                    <a href="https://turinglang.org/NestedSamplers.jl/"><li>NestedSamplers</li></a>
                 </ul>
                 <ul>
                     <li class="ext-dropdown-item-heading">Diagnostics</li>
-                    <a href="https://turinglang.org/MCMCChains.jl/">
-                        <li>MCMCChains</li>
-                    </a>
-                    <a href="https://turinglang.org/MCMCDiagnosticTools.jl/">
-                        <li>MCMCDiagnosticTools</li>
-                    </a>
-                    <a href="https://turinglang.org/ParetoSmooth.jl/">
-                        <li>ParetoSmooth</li>
-                    </a>
+                    <a href="https://turinglang.org/MCMCChains.jl/"><li>MCMCChains</li></a>
+                    <a href="https://turinglang.org/MCMCDiagnosticTools.jl/"><li>MCMCDiagnosticTools</li></a>
+                    <a href="https://turinglang.org/ParetoSmooth.jl/"><li>ParetoSmooth</li></a>
                 </ul>
                 <ul>
                     <li class="ext-dropdown-item-heading">Gaussian Processes</li>
-                    <a href="https://juliagaussianprocesses.github.io/AbstractGPs.jl/">
-                        <li>AbstractGPs</li>
-                    </a>
-                    <a href="https://juliagaussianprocesses.github.io/KernelFunctions.jl/">
-                        <li>KernelFunctions</li>
-                    </a>
-                    <a href="https://juliagaussianprocesses.github.io/ApproximateGPs.jl/">
-                        <li>ApproximateGPs</li>
-                    </a>
+                    <a href="https://juliagaussianprocesses.github.io/AbstractGPs.jl/"><li>AbstractGPs</li></a>
+                    <a href="https://juliagaussianprocesses.github.io/KernelFunctions.jl/"><li>KernelFunctions</li></a>
+                    <a href="https://juliagaussianprocesses.github.io/ApproximateGPs.jl/"><li>ApproximateGPs</li></a>
                 </ul>
-                <ul>
-                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
-                        <a href="https://turinglang.org/Bijectors.jl/">Bijectors</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
-                        <a href="https://turinglang.org/TuringCallbacks.jl/">TuringCallbacks</a>
-                    </li>
-                </ul>
-                <ul>
-                    <li class="ext-dropdown-item-heading ext-navbar-item-single">
-                        <a href="https://turinglang.org/Deprecated/TuringBenchmarking/">TuringBenchmarking</a>
-                        <span class="deprecated-badge">Deprecated</span>
-                    </li>
-                </ul>
+                <ul><li class="ext-dropdown-item-heading ext-navbar-item-single"><a href="https://turinglang.org/Bijectors.jl/">Bijectors</a></li></ul>
+                <ul><li class="ext-dropdown-item-heading ext-navbar-item-single"><a href="https://turinglang.org/TuringCallbacks.jl/">TuringCallbacks</a></li></ul>
+                <ul><li class="ext-dropdown-item-heading ext-navbar-item-single"><a href="https://turinglang.org/Deprecated/TuringBenchmarking/">TuringBenchmarking</a><span class="deprecated-badge">Deprecated</span></li></ul>
             </div>
         </li>
-        <li>
-            <a class="ext-nav-link" href="https://turinglang.org/news/">News</a>
-        </li>
-        <li>
-            <a class="ext-nav-link" href="https://turinglang.org/team/">Team</a>
-        </li>
+        <li><a class="ext-nav-link" href="https://turinglang.org/news/">News</a></li>
+        <li><a class="ext-nav-link" href="https://turinglang.org/team/">Team</a></li>
     </ul>
-    <a href="https://x.com/TuringLang" style="margin-left: 15px; padding-top: 2px">
-        <svg fill="#ffffff" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32px" height="32px" viewBox="-209.92 -209.92 931.84 931.84" xml:space="preserve" stroke="#ffffff">
-            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-            <g id="SVGRepo_iconCarrier">
-                <g id="7935ec95c421cee6d86eb22ecd12f847">
-                    <path style="display: inline"
-                        d="M459.186,151.787c0.203,4.501,0.305,9.023,0.305,13.565 c0,138.542-105.461,298.285-298.274,298.285c-59.209,0-114.322-17.357-160.716-47.104c8.212,0.973,16.546,1.47,25.012,1.47 c49.121,0,94.318-16.759,130.209-44.884c-45.887-0.841-84.596-31.154-97.938-72.804c6.408,1.227,12.968,1.886,19.73,1.886 c9.55,0,18.816-1.287,27.617-3.68c-47.955-9.633-84.1-52.001-84.1-102.795c0-0.446,0-0.882,0.011-1.318 c14.133,7.847,30.294,12.562,47.488,13.109c-28.134-18.796-46.637-50.885-46.637-87.262c0-19.212,5.16-37.218,14.193-52.7 c51.707,63.426,128.941,105.156,216.072,109.536c-1.784-7.675-2.718-15.674-2.718-23.896c0-57.891,46.941-104.832,104.832-104.832 c30.173,0,57.404,12.734,76.525,33.102c23.887-4.694,46.313-13.423,66.569-25.438c-7.827,24.485-24.434,45.025-46.089,58.002 c21.209-2.535,41.426-8.171,60.222-16.505C497.448,118.542,479.666,137.004,459.186,151.787z">
-                    </path>
-                </g>
-            </g>
-        </svg>
-    </a>
-    <a href="https://github.com/TuringLang/Turing.jl">
-        <svg width="32px" height="32px" viewBox="-8.2 -8.2 36.40 36.40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="#000000">
-            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-            <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-            <g id="SVGRepo_iconCarrier">
-                <title>github [#142]</title>
-                <desc>Created with Sketch.</desc>
-                <defs></defs>
-                <g id="Page-1" stroke-width="0.0002" fill="none" fill-rule="evenodd">
-                    <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -7559.000000)" fill="#ffffff">
-                        <g id="icons" transform="translate(56.000000, 160.000000)">
-                            <path
-                                d="M94,7399 C99.523,7399 104,7403.59 104,7409.253 C104,7413.782 101.138,7417.624 97.167,7418.981 C96.66,7419.082 96.48,7418.762 96.48,7418.489 C96.48,7418.151 96.492,7417.047 96.492,7415.675 C96.492,7414.719 96.172,7414.095 95.813,7413.777 C98.04,7413.523 100.38,7412.656 100.38,7408.718 C100.38,7407.598 99.992,7406.684 99.35,7405.966 C99.454,7405.707 99.797,7404.664 99.252,7403.252 C99.252,7403.252 98.414,7402.977 96.505,7404.303 C95.706,7404.076 94.85,7403.962 94,7403.958 C93.15,7403.962 92.295,7404.076 91.497,7404.303 C89.586,7402.977 88.746,7403.252 88.746,7403.252 C88.203,7404.664 88.546,7405.707 88.649,7405.966 C88.01,7406.684 87.619,7407.598 87.619,7408.718 C87.619,7412.646 89.954,7413.526 92.175,7413.785 C91.889,7414.041 91.63,7414.493 91.54,7415.156 C90.97,7415.418 89.522,7415.871 88.63,7414.304 C88.63,7414.304 88.101,7413.319 87.097,7413.247 C87.097,7413.247 86.122,7413.234 87.029,7413.87 C87.029,7413.87 87.684,7414.185 88.139,7415.37 C88.139,7415.37 88.726,7417.2 91.508,7416.58 C91.513,7417.437 91.522,7418.245 91.522,7418.489 C91.522,7418.76 91.338,7419.077 90.839,7418.982 C86.865,7417.627 84,7413.783 84,7409.253 C84,7403.59 88.478,7399 94,7399"
-                                id="github-[#142]">
-                            </path>
-                        </g>
-                    </g>
-                </g>
-            </g>
-        </svg>
-    </a>
-    <span class="ext-menu-toggle">&#9776;</span>
+
+    <div class="ext-navbar-icons">
+        <a href="https://x.com/TuringLang" aria-label="Turing on X"><i class="fa-brands fa-x-twitter"></i></a>
+        <a href="https://discourse.julialang.org/c/domain/probprog/48" aria-label="Turing on Discourse"><i class="fa-brands fa-discourse"></i></a>
+        <a href="https://julialang.slack.com/archives/CCYDC34A0" aria-label="Turing on Slack"><i class="fa-brands fa-slack"></i></a>
+        <a href="https://github.com/TuringLang/" aria-label="Turing.jl on GitHub"><i class="fa-brands fa-github"></i></a>
+    </div>
+
+    <span class="ext-menu-toggle"><i class="fa-solid fa-bars"></i></span>
 </nav>
+
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const menuToggle = document.querySelector(".ext-menu-toggle");
         const navLinks = document.querySelector(".ext-nav-links");
         const nav = document.querySelector(".ext-navigation");
-        const navigationHandler = document.getElementById("library-handler");
-        const navigationItemsContainer =
-            document.getElementById("ext-dropdown-items");
+        const libraryHandler = document.getElementById("library-handler");
+        const dropdownContainer = document.getElementById("ext-dropdown-items");
         let lastScrollY = window.scrollY;
+
+        function closeDropdown() {
+            if (dropdownContainer.classList.contains("show")) {
+                libraryHandler.classList.remove("open");
+                dropdownContainer.classList.remove("show");
+                setTimeout(() => {
+                    if (!dropdownContainer.classList.contains("show")) {
+                        dropdownContainer.style.display = "none";
+                    }
+                }, 300);
+            }
+        }
+
+        function openDropdown() {
+            dropdownContainer.style.display = "grid";
+            libraryHandler.classList.add("open");
+            setTimeout(() => {
+                dropdownContainer.classList.add("show");
+            }, 10);
+        }
 
         function setAppropriateHeight() {
             if (window.innerWidth <= 768) {
@@ -415,61 +423,48 @@
             }
         }
 
-        // Toggle main menu for mobile
-        menuToggle.addEventListener("click", () => {
+        menuToggle.addEventListener("click", (event) => {
+            event.stopPropagation();
             navLinks.classList.toggle("show");
             if (navLinks.classList.contains("show")) {
                 setAppropriateHeight();
-                // Ensure the dropdown is hidden when menu is first opened
-                navigationItemsContainer.style.display = "none";
-                navigationItemsContainer.classList.remove("show");
+                closeDropdown();
+                dropdownContainer.style.display = "none";
             }
         });
 
-        // Close menus if clicked outside
+        libraryHandler.addEventListener("click", (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            if (dropdownContainer.classList.contains("show")) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
+            setAppropriateHeight();
+        });
+
+        // Close all menus if a click is registered outside the navigation bar.
         document.addEventListener("click", (event) => {
-            if (
-                !navLinks.contains(event.target) &&
-                !menuToggle.contains(event.target)
-            ) {
+            if (!nav.contains(event.target)) {
                 navLinks.classList.remove("show");
-                navigationItemsContainer.classList.remove("show");
-                navigationHandler.classList.remove("open");
+                closeDropdown();
             }
         });
 
-        // Hide navigation bar on scroll down in mobile view
+        // Hide navigation bar on scroll down in mobile view.
         window.addEventListener("scroll", () => {
             if (window.innerWidth <= 768) {
-                nav.classList.toggle("hide", window.scrollY > lastScrollY);
+                if (window.scrollY > lastScrollY && window.scrollY > nav.offsetHeight){
+                    nav.classList.add("hide");
+                } else {
+                    nav.classList.remove("hide");
+                }
                 lastScrollY = window.scrollY;
             }
         });
 
-        // Library API script
-        navigationHandler.addEventListener("click", (event) => {
-            event.preventDefault(); // Prevent default action of the link
-            if (navigationItemsContainer.classList.contains("show")) {
-                navigationItemsContainer.classList.remove("show");
-                navigationHandler.classList.remove("open");
-                setTimeout(() => {
-                    navigationItemsContainer.style.display = "none";
-                }, 500); // Match the timeout to the CSS transition duration
-            } else {
-                navigationItemsContainer.style.display = "grid";
-                navigationHandler.classList.add("open");
-                setTimeout(() => {
-                    navigationItemsContainer.classList.add("show");
-                }, 10); // Delay to ensure the display change takes effect before adding class
-            }
-            setAppropriateHeight(); // Recalculate height when dropdown changes
-        });
-
-        // Handle window resize
         window.addEventListener("resize", setAppropriateHeight);
-
-        // Initial setup
-        setAppropriateHeight();
     });
 </script>
 <!-- NAVBAR END -->
