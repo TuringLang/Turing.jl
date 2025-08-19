@@ -180,6 +180,31 @@ function AbstractMCMC.sample(
     end
 end
 
+function check_model_kwargs(model::DynamicPPL.Model)
+    if !isempty(model.defaults)
+        # If there are keyword arguments, we need to check that the user has
+        # accounted for this by overloading `might_produce`.
+        might_produce = Libtask.might_produce(typeof((Core.kwcall, NamedTuple(), model.f)))
+        if !might_produce
+            io = IOBuffer()
+            ctx = IOContext(io, :color => true)
+            print(
+                ctx,
+                "Models with keyword arguments need special treatment to be used" *
+                " with particle methods. Please run:\n\n",
+            )
+            printstyled(
+                ctx,
+                "    using Libtask; Libtask.@might_produce($(model.f))";
+                bold=true,
+                color=:blue,
+            )
+            print(ctx, "\n\nbefore sampling from this model with particle methods.\n")
+            error(String(take!(io)))
+        end
+    end
+end
+
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -188,9 +213,7 @@ function DynamicPPL.initialstep(
     nparticles::Int,
     kwargs...,
 )
-    if !isempty(model.defaults)
-        @warn "The use of particle methods for models with keyword arguments requires special care. Please see <documentation link> for more details and be sure to check the results you obtain to make sure that observations are being properly accounted for."
-    end
+    check_model_kwargs(model)
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     set_all_del!(vi)
@@ -316,9 +339,7 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    if !isempty(model.defaults)
-        @warn "The use of particle methods for models with keyword arguments requires special care. Please see <documentation link> for more details and be sure to check the results you obtain to make sure that observations are being properly accounted for."
-    end
+    check_model_kwargs(model)
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
     set_all_del!(vi)
