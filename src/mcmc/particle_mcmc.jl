@@ -576,7 +576,7 @@ end
 # details of the compiler, we set a bunch of methods as might_produce = true. We start with
 # adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
 # call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
 function Libtask.might_produce(
     ::Type{
         <:Tuple{
@@ -588,33 +588,13 @@ function Libtask.might_produce(
 )
     return true
 end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
+Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
+Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 # Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
-)
-    return true
-end
+Libtask.@might_produce(DynamicPPL.tilde_assume!!)
+Libtask.@might_produce(DynamicPPL.tilde_assume)
+Libtask.@might_produce(DynamicPPL.evaluate!!)
+Libtask.@might_produce(DynamicPPL.evaluate_threadsafe!!)
+Libtask.@might_produce(DynamicPPL.evaluate_threadunsafe!!)
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
-# This method deals with models that have keyword arguments, although it is alone not
-# sufficient to make Libtask fully work with keyword arguments. In here, the second argument
-# to Core.kwcall here is `model.f`.
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(Core.kwcall),<:NamedTuple,<:Any,<:DynamicPPL.Model,Vararg}}
-)
-    return true
-end
