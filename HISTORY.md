@@ -1,3 +1,19 @@
+# 0.40.3
+
+SMC and PG can now be used for models with keyword arguments, albeit with one requirement: the user must mark the model function as being able to produce.
+For example, if the model is
+
+```julia
+@model foo(x; y) = a ~ Normal(x, y)
+```
+
+then before samping from this with SMC or PG, you will have to run
+
+```julia
+using Libtask;
+Libtask.@might_produce(foo);
+```
+
 # 0.40.2
 
 `sample(model, NUTS(), N; verbose=false)` now suppresses the 'initial step size' message.
