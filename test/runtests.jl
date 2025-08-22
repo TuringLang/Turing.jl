@@ -58,6 +58,7 @@ end
             @timeit_include("mcmc/external_sampler.jl")
             @timeit_include("mcmc/mh.jl")
             @timeit_include("ext/dynamichmc.jl")
+            @timeit_include("ext/marginallogdensities.jl")
             @timeit_include("mcmc/repeat_sampler.jl")
         end
 
@@ -78,10 +79,6 @@ end
 
     @testset "utilities" begin
         @timeit_include("mcmc/utilities.jl")
-    end
-
-    @testset "extensions" begin
-        @timeit_include("ext/TuringMarginalLogDensitiesExt.jl")
     end
 end
 
