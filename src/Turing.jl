@@ -4,24 +4,26 @@ using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains, Libtask, AbstractMCMC, Bijectors
+@reexport using Distributions, MCMCChains
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
-using DynamicPPL: DynamicPPL, LogDensityFunction
-import DynamicPPL: getspace, NoDist, NamedDist
+using DynamicPPL: DynamicPPL
+import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
 using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
+using AbstractMCMC
 
 using Accessors: Accessors
 
 using Printf: Printf
 using Random: Random
+using LinearAlgebra: I
 
-using ADTypes: ADTypes
+using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
@@ -37,16 +39,12 @@ function setprogress!(progress::Bool)
     @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
     PROGRESS[] = progress
     AbstractMCMC.setprogress!(progress; silent=true)
-    # TODO: `AdvancedVI.turnprogress` is removed in AdvancedVI v0.3
-    AdvancedVI.turnprogress(progress)
     return progress
 end
 
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("essential/Essential.jl")
-using .Essential
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/VariationalInference.jl")
@@ -55,87 +53,105 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
-include("experimental/Experimental.jl")
-include("deprecated.jl") # to be removed in the next minor version release
-
-include("extensions.jl")
-export marginalize
-
 ###########
 # Exports #
 ###########
 # `using` statements for stuff to re-export
 using DynamicPPL:
+    @model,
+    @varname,
     pointwise_loglikelihoods,
     generated_quantities,
+    returned,
     logprior,
     logjoint,
     condition,
     decondition,
     fix,
     unfix,
-    conditioned
+    prefix,
+    conditioned,
+    to_submodel,
+    LogDensityFunction,
+    @addlogprob!
 using StatsBase: predict
-using Bijectors: ordered
 using OrderedCollections: OrderedDict
 
 # Turing essentials - modelling macros and inference algorithms
-export @model,                 # modelling
+export
+    # DEPRECATED
+    generated_quantities,
+    # Modelling - AbstractPPL and DynamicPPL
+    @model,
     @varname,
-    @submodel,
-    DynamicPPL,
-    Prior,                  # Sampling from the prior
-    MH,                     # classic sampling
+    to_submodel,
+    prefix,
+    LogDensityFunction,
+    @addlogprob!,
+    # Sampling - AbstractMCMC
+    sample,
+    MCMCThreads,
+    MCMCDistributed,
+    MCMCSerial,
+    # Samplers - Turing.Inference
+    Prior,
+    MH,
     Emcee,
     ESS,
     Gibbs,
-    GibbsConditional,
-    HMC,                    # Hamiltonian-like sampling
+    HMC,
     SGLD,
     SGHMC,
+    PolynomialStepsize,
     HMCDA,
     NUTS,
-    PolynomialStepsize,
-    IS,                     # particle-based sampling
+    IS,
     SMC,
-    CSMC,
     PG,
-    vi,                     # variational inference
-    ADVI,
-    sample,                 # inference
-    @logprob_str,  # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
-    @prob_str,     # TODO: Remove, see https://github.com/TuringLang/DynamicPPL.jl/issues/356
+    CSMC,
+    RepeatSampler,
     externalsampler,
-    AutoForwardDiff,        # ADTypes
+    # Variational inference - AdvancedVI
+    vi,
+    ADVI,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
+    # ADTypes
+    AutoForwardDiff,
     AutoReverseDiff,
-    AutoZygote,
     AutoMooncake,
-    setprogress!,           # debugging
+    # Debugging - Turing
+    setprogress!,
+    # Distributions
     Flat,
     FlatPos,
     BinomialLogit,
-    BernoulliLogit,         # Part of Distributions >= 0.25.77
     OrderedLogistic,
     LogPoisson,
-    filldist,
-    arraydist,
-    NamedDist,              # Exports from DynamicPPL
+    # Tools to work with Distributions
+    I,  # LinearAlgebra
+    filldist,  # DistributionsAD
+    arraydist,  # DistributionsAD
+    NamedDist,  # DynamicPPL
+    # Predictions - DynamicPPL
     predict,
+    # Querying model probabilities - DynamicPPL
+    returned,
     pointwise_loglikelihoods,
-    generated_quantities,
     logprior,
+    loglikelihood,
     logjoint,
-    LogDensityFunction,
     condition,
     decondition,
+    conditioned,
     fix,
     unfix,
-    conditioned,
-    OrderedDict,
-    ordered,                # Exports from Bijectors
+    OrderedDict, # OrderedCollections
+    # Point estimates - Turing.Optimisation
+    # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,
     maximum_likelihood,
-    # The MAP and MLE exports are only needed for the Optim.jl interface.
     MAP,
     MLE
 

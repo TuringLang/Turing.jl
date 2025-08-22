@@ -16,9 +16,6 @@ Base.maximum(::Flat) = Inf
 Base.rand(rng::Random.AbstractRNG, d::Flat) = rand(rng)
 Distributions.logpdf(::Flat, x::Real) = zero(x)
 
-# TODO: only implement `logpdf(d, ::Real)` if support for Distributions < 0.24 is dropped
-Distributions.pdf(d::Flat, x::Real) = exp(logpdf(d, x))
-
 # For vec support
 Distributions.logpdf(::Flat, x::AbstractVector{<:Real}) = zero(x)
 Distributions.loglikelihood(::Flat, x::AbstractVector{<:Real}) = zero(eltype(x))
@@ -41,17 +38,13 @@ struct FlatPos{T<:Real} <: ContinuousUnivariateDistribution
 end
 
 Base.minimum(d::FlatPos) = d.l
-Base.maximum(d::FlatPos) = Inf
+Base.maximum(::FlatPos) = Inf
 
 Base.rand(rng::Random.AbstractRNG, d::FlatPos) = rand(rng) + d.l
 function Distributions.logpdf(d::FlatPos, x::Real)
     z = float(zero(x))
     return x <= d.l ? oftype(z, -Inf) : z
 end
-
-# TODO: only implement `logpdf(d, ::Real)` if support for Distributions < 0.24 is dropped
-Distributions.pdf(d::FlatPos, x::Real) = exp(logpdf(d, x))
-
 # For vec support
 function Distributions.loglikelihood(d::FlatPos, x::AbstractVector{<:Real})
     lower = d.l
@@ -91,12 +84,7 @@ BinomialLogit(n::Int, logitp::Real) = BinomialLogit{typeof(logitp)}(n, logitp)
 Base.minimum(::BinomialLogit) = 0
 Base.maximum(d::BinomialLogit) = d.n
 
-# TODO: only implement `logpdf(d, k::Real)` if support for Distributions < 0.24 is dropped
-Distributions.pdf(d::BinomialLogit, k::Real) = exp(logpdf(d, k))
-Distributions.logpdf(d::BinomialLogit, k::Real) = _logpdf(d, k)
-Distributions.logpdf(d::BinomialLogit, k::Integer) = _logpdf(d, k)
-
-function _logpdf(d::BinomialLogit, k::Real)
+function Distributions.logpdf(d::BinomialLogit, k::Real)
     n, logitp, logconstant = d.n, d.logitp, d.logconstant
     _insupport = insupport(d, k)
     _k = _insupport ? round(Int, k) : 0
@@ -108,16 +96,6 @@ function Base.rand(rng::Random.AbstractRNG, d::BinomialLogit)
     return rand(rng, Binomial(d.n, logistic(d.logitp)))
 end
 Distributions.sampler(d::BinomialLogit) = sampler(Binomial(d.n, logistic(d.logitp)))
-
-# Part of Distributions >= 0.25.77
-if !isdefined(Distributions, :BernoulliLogit)
-    """
-        BernoulliLogit(logitp::Real)
-
-    Create a univariate logit-parameterised Bernoulli distribution.
-    """
-    BernoulliLogit(logitp::Real) = BinomialLogit(1, logitp)
-end
 
 """
     OrderedLogistic(η, c::AbstractVector)
@@ -148,15 +126,10 @@ function OrderedLogistic(η, cutpoints::AbstractVector)
     return OrderedLogistic{typeof(η),typeof(cutpoints)}(η, cutpoints)
 end
 
-Base.minimum(d::OrderedLogistic) = 0
+Base.minimum(d::OrderedLogistic) = 1
 Base.maximum(d::OrderedLogistic) = length(d.cutpoints) + 1
 
-# TODO: only implement `logpdf(d, k::Real)` if support for Distributions < 0.24 is dropped
-Distributions.pdf(d::OrderedLogistic, k::Real) = exp(logpdf(d, k))
-Distributions.logpdf(d::OrderedLogistic, k::Real) = _logpdf(d, k)
-Distributions.logpdf(d::OrderedLogistic, k::Integer) = _logpdf(d, k)
-
-function _logpdf(d::OrderedLogistic, k::Real)
+function Distributions.logpdf(d::OrderedLogistic, k::Real)
     η, cutpoints = d.η, d.cutpoints
     K = length(cutpoints) + 1
 
@@ -232,18 +205,13 @@ LogPoisson(logλ::Real) = LogPoisson{typeof(logλ)}(logλ)
 Base.minimum(d::LogPoisson) = 0
 Base.maximum(d::LogPoisson) = Inf
 
-function _logpdf(d::LogPoisson, k::Real)
+function Distributions.logpdf(d::LogPoisson, k::Real)
     _insupport = insupport(d, k)
     _k = _insupport ? round(Int, k) : 0
     logp = _k * d.logλ - d.λ - SpecialFunctions.loggamma(_k + 1)
 
     return _insupport ? logp : oftype(logp, -Inf)
 end
-
-# TODO: only implement `logpdf(d, ::Real)` if support for Distributions < 0.24 is dropped
-Distributions.pdf(d::LogPoisson, k::Real) = exp(logpdf(d, k))
-Distributions.logpdf(d::LogPoisson, k::Integer) = _logpdf(d, k)
-Distributions.logpdf(d::LogPoisson, k::Real) = _logpdf(d, k)
 
 Base.rand(rng::Random.AbstractRNG, d::LogPoisson) = rand(rng, Poisson(d.λ))
 Distributions.sampler(d::LogPoisson) = sampler(Poisson(d.λ))

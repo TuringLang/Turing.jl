@@ -9,12 +9,11 @@ import Turing
 # Fix the global Random.seed for reproducibility.
 seed!(23)
 
-include(pkgdir(Turing) * "/test/test_utils/models.jl")
-include(pkgdir(Turing) * "/test/test_utils/numerical_tests.jl")
-include(pkgdir(Turing) * "/test/test_utils/ad_utils.jl")
+include("test_utils/models.jl")
+include("test_utils/numerical_tests.jl")
+include("test_utils/sampler.jl")
 
 Turing.setprogress!(false)
-
 included_paths, excluded_paths = parse_args(ARGS)
 
 # Filter which tests to run and collect timing and allocations information to show in a
@@ -30,21 +29,20 @@ macro timeit_include(path::AbstractString)
     end
 end
 
-@testset "Turing" begin
-    @testset "Test utils" begin
-        @timeit_include("test_utils/test_utils.jl")
-    end
-
+@testset "Turing" verbose = true begin
     @testset "Aqua" begin
         @timeit_include("Aqua.jl")
     end
 
-    @testset "essential" begin
-        @timeit_include("essential/ad.jl")
+    @testset "AD" verbose = true begin
+        @timeit_include("ad.jl")
+    end
+
+    @testset "essential" verbose = true begin
         @timeit_include("essential/container.jl")
     end
 
-    @testset "samplers (without AD)" begin
+    @testset "samplers (without AD)" verbose = true begin
         @timeit_include("mcmc/particle_mcmc.jl")
         @timeit_include("mcmc/emcee.jl")
         @timeit_include("mcmc/ess.jl")
@@ -52,36 +50,28 @@ end
     end
 
     @timeit TIMEROUTPUT "inference" begin
-        @testset "inference with samplers" begin
+        @testset "inference with samplers" verbose = true begin
             @timeit_include("mcmc/gibbs.jl")
-            @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
             @timeit_include("mcmc/Inference.jl")
             @timeit_include("mcmc/sghmc.jl")
-            @timeit_include("mcmc/abstractmcmc.jl")
+            @timeit_include("mcmc/external_sampler.jl")
             @timeit_include("mcmc/mh.jl")
             @timeit_include("ext/dynamichmc.jl")
+            @timeit_include("mcmc/repeat_sampler.jl")
         end
 
         @testset "variational algorithms" begin
             @timeit_include("variational/advi.jl")
         end
 
-        @testset "mode estimation" begin
+        @testset "mode estimation" verbose = true begin
             @timeit_include("optimisation/Optimisation.jl")
             @timeit_include("ext/OptimInterface.jl")
         end
     end
 
-    @testset "experimental" begin
-        @timeit_include("experimental/gibbs.jl")
-    end
-
-    @testset "variational optimisers" begin
-        @timeit_include("variational/optimisers.jl")
-    end
-
-    @testset "stdlib" begin
+    @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
         @timeit_include("stdlib/RandomMeasures.jl")
     end

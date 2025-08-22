@@ -2,6 +2,103 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+### AdvancedPS models and interface
+
+"""
+    set_all_del!(vi::AbstractVarInfo)
+
+Set the "del" flag for all variables in the VarInfo `vi`, thus marking them for
+resampling.
+"""
+function set_all_del!(vi::AbstractVarInfo)
+    # TODO(penelopeysm): Instead of being a 'del' flag on the VarInfo, we
+    # could either:
+    # - keep a boolean 'resample' flag on the trace, or
+    # - modify the model context appropriately.
+    # However, this refactoring will have to wait until InitContext is
+    # merged into DPPL.
+    for vn in keys(vi)
+        DynamicPPL.set_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
+"""
+    unset_all_del!(vi::AbstractVarInfo)
+
+Unset the "del" flag for all variables in the VarInfo `vi`, thus preventing
+them from being resampled.
+"""
+function unset_all_del!(vi::AbstractVarInfo)
+    for vn in keys(vi)
+        DynamicPPL.unset_flag!(vi, vn, "del")
+    end
+    return nothing
+end
+
+struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
+       AdvancedPS.AbstractGenericModel
+    model::M
+    sampler::S
+    varinfo::V
+    evaluator::E
+end
+
+function TracedModel(
+    model::Model,
+    sampler::AbstractSampler,
+    varinfo::AbstractVarInfo,
+    rng::Random.AbstractRNG,
+)
+    spl_context = DynamicPPL.SamplingContext(rng, sampler, model.context)
+    spl_model = DynamicPPL.contextualize(model, spl_context)
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(spl_model, varinfo)
+    if kwargs !== nothing && !isempty(kwargs)
+        error(
+            "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
+        )
+    end
+    evaluator = (spl_model.f, args...)
+    return TracedModel(spl_model, sampler, varinfo, evaluator)
+end
+
+function AdvancedPS.advance!(
+    trace::AdvancedPS.Trace{<:AdvancedPS.LibtaskModel{<:TracedModel}}, isref::Bool=false
+)
+    # Make sure we load/reset the rng in the new replaying mechanism
+    isref ? AdvancedPS.load_state!(trace.rng) : AdvancedPS.save_state!(trace.rng)
+    score = consume(trace.model.ctask)
+    return score
+end
+
+function AdvancedPS.delete_retained!(trace::TracedModel)
+    # This method is called if, during a CSMC update, we perform a resampling
+    # and choose the reference particle as the trajectory to carry on from.
+    # In such a case, we need to ensure that when we continue sampling (i.e.
+    # the next time we hit tilde_assume), we don't use the values in the 
+    # reference particle but rather sample new values.
+    #
+    # Here, we indiscriminately set the 'del' flag for all variables in the
+    # VarInfo. This is slightly overkill: it is not necessary to set the 'del'
+    # flag for variables that were already sampled. However, it allows us to
+    # avoid keeping track of which variables were sampled, which leads to many
+    # simplifications in the VarInfo data structure.
+    set_all_del!(trace.varinfo)
+    return trace
+end
+
+function AdvancedPS.reset_model(trace::TracedModel)
+    return trace
+end
+
+function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
+    return Libtask.TapedTask(
+        taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
+    )
+end
+
+abstract type ParticleInference <: InferenceAlgorithm end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -15,58 +112,28 @@ Sequential Monte Carlo sampler.
 
 $(TYPEDFIELDS)
 """
-struct SMC{space,R} <: ParticleInference
+struct SMC{R} <: ParticleInference
     resampler::R
 end
 
 """
-    SMC(space...)
-    SMC([resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    SMC([resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
+    SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
-Create a sequential Monte Carlo sampler of type [`SMC`](@ref) for the variables in `space`.
+Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function SMC(resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=())
-    return SMC{space,typeof(resampler)}(resampler)
-end
+SMC() = SMC(AdvancedPS.ResampleWithESSThreshold())
 
 # Convenient constructors with ESS threshold
-function SMC(resampler, threshold::Real, space::Tuple=())
-    return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
+function SMC(resampler, threshold::Real)
+    return SMC(AdvancedPS.ResampleWithESSThreshold(resampler, threshold))
 end
-function SMC(threshold::Real, space::Tuple=())
-    return SMC(AdvancedPS.resample_systematic, threshold, space)
+function SMC(threshold::Real)
+    return SMC(AdvancedPS.resample_systematic, threshold)
 end
-
-# If only the space is defined
-SMC(space::Symbol...) = SMC(space)
-SMC(space::Tuple) = SMC(AdvancedPS.ResampleWithESSThreshold(), space)
-
-struct SMCTransition{T,F<:AbstractFloat} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
-    lp::F
-    "The weight of the particle the sample was retrieved from."
-    weight::F
-end
-
-function SMCTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, weight)
-    theta = getparams(model, vi)
-
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
-    lp = getlogp(vi)
-
-    return SMCTransition(theta, lp, weight)
-end
-
-metadata(t::SMCTransition) = (lp=t.lp, weight=t.weight)
-
-DynamicPPL.getlogp(t::SMCTransition) = t.lp
 
 struct SMCState{P,F<:AbstractFloat}
     particles::P
@@ -125,10 +192,9 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Reset the VarInfo.
-    reset_num_produce!(vi)
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!!(vi)
-    empty!!(vi)
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
+    set_all_del!(vi)
+    vi = DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
@@ -145,7 +211,8 @@ function DynamicPPL.initialstep(
     weight = AdvancedPS.getweight(particles, 1)
 
     # Compute the first transition and the first state.
-    transition = SMCTransition(model, particle.model.f.varinfo, weight)
+    stats = (; weight=weight, logevidence=logevidence)
+    transition = Transition(model, particle.model.f.varinfo, stats)
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -163,7 +230,8 @@ function AbstractMCMC.step(
     weight = AdvancedPS.getweight(particles, index)
 
     # Compute the transition and the next state.
-    transition = SMCTransition(model, particle.model.f.varinfo, weight)
+    stats = (; weight=weight, logevidence=state.average_logevidence)
+    transition = Transition(model, particle.model.f.varinfo, stats)
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -182,7 +250,7 @@ Particle Gibbs sampler.
 
 $(TYPEDFIELDS)
 """
-struct PG{space,R} <: ParticleInference
+struct PG{R} <: ParticleInference
     """Number of particles."""
     nparticles::Int
     """Resampling algorithm."""
@@ -190,34 +258,24 @@ struct PG{space,R} <: ParticleInference
 end
 
 """
-    PG(n, space...)
-    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold(), space = ()])
-    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold[, space = ()])
+    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
+    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)
 
-Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles for the variables
-in `space`.
+Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles.
 
 If the algorithm for the resampling step is not specified explicitly, systematic resampling
 is performed if the estimated effective sample size per particle drops below 0.5.
 """
-function PG(
-    nparticles::Int, resampler=AdvancedPS.ResampleWithESSThreshold(), space::Tuple=()
-)
-    return PG{space,typeof(resampler)}(nparticles, resampler)
+function PG(nparticles::Int)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold())
 end
 
 # Convenient constructors with ESS threshold
-function PG(nparticles::Int, resampler, threshold::Real, space::Tuple=())
-    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold), space)
+function PG(nparticles::Int, resampler, threshold::Real)
+    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(resampler, threshold))
 end
-function PG(nparticles::Int, threshold::Real, space::Tuple=())
-    return PG(nparticles, AdvancedPS.resample_systematic, threshold, space)
-end
-
-# If only the number of particles and the space is defined
-PG(nparticles::Int, space::Symbol...) = PG(nparticles, space)
-function PG(nparticles::Int, space::Tuple)
-    return PG(nparticles, AdvancedPS.ResampleWithESSThreshold(), space)
+function PG(nparticles::Int, threshold::Real)
+    return PG(nparticles, AdvancedPS.resample_systematic, threshold)
 end
 
 """
@@ -227,36 +285,28 @@ Equivalent to [`PG`](@ref).
 """
 const CSMC = PG # type alias of PG as Conditional SMC
 
-struct PGTransition{T,F<:AbstractFloat} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample (NOTE: does not work, always set to zero)."
-    lp::F
-    "The log evidence of the sample."
-    logevidence::F
-end
-
 struct PGState
     vi::AbstractVarInfo
     rng::Random.AbstractRNG
 end
 
-function PGTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, logevidence)
-    theta = getparams(model, vi)
+get_varinfo(state::PGState) = state.vi
 
-    # This is pretty useless since we reset the log probability continuously in the
-    # particle sweep.
-    lp = getlogp(vi)
-
-    return PGTransition(theta, lp, logevidence)
-end
-
-metadata(t::PGTransition) = (lp=t.lp, logevidence=t.logevidence)
-
-DynamicPPL.getlogp(t::PGTransition) = t.lp
-
-function getlogevidence(samples, sampler::Sampler{<:PG}, state::PGState)
-    return mean(x.logevidence for x in samples)
+function getlogevidence(
+    transitions::AbstractVector{<:Turing.Inference.Transition},
+    sampler::Sampler{<:PG},
+    state::PGState,
+)
+    logevidences = map(transitions) do t
+        if haskey(t.stat, :logevidence)
+            return t.stat.logevidence
+        else
+            # This should not really happen, but if it does we can handle it
+            # gracefully
+            return missing
+        end
+    end
+    return mean(logevidences)
 end
 
 function DynamicPPL.initialstep(
@@ -266,10 +316,9 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     # Reset the VarInfo before new sweep
-    reset_num_produce!(vi)
-    set_retained_vns_del_by_spl!(vi, spl)
-    resetlogp!!(vi)
+    set_all_del!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -289,7 +338,7 @@ function DynamicPPL.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = PGTransition(model, _vi, logevidence)
+    transition = Transition(model, _vi, (; logevidence=logevidence))
 
     return transition, PGState(_vi, reference.rng)
 end
@@ -299,14 +348,14 @@ function AbstractMCMC.step(
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
-    reset_num_produce!(vi)
-    resetlogp!!(vi)
+    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create reference particle for which the samples will be retained.
+    unset_all_del!(vi)
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
 
     # For all other particles, do not retain the variables but resample them.
-    set_retained_vns_del_by_spl!(vi, spl)
+    set_all_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -329,100 +378,124 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = PGTransition(model, _vi, logevidence)
+    transition = Transition(model, _vi, (; logevidence=logevidence))
 
     return transition, PGState(_vi, newreference.rng)
 end
 
 function DynamicPPL.use_threadsafe_eval(
-    ::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
+    ::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
 )
     return false
 end
 
-function trace_local_varinfo_maybe(varinfo)
-    try
-        trace = AdvancedPS.current_trace()
-        return trace.model.f.varinfo
+"""
+    get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+
+Get the `Trace` local varinfo if one exists.
+
+If executed within a `TapedTask`, return the `varinfo` stored in the "taped globals" of the
+task, otherwise return `vi`.
+"""
+function get_trace_local_varinfo_maybe(varinfo::AbstractVarInfo)
+    trace = try
+        Libtask.get_taped_globals(Any).other
     catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
-            return varinfo
-        else
-            rethrow(e)
-        end
+        e == KeyError(:task_variable) ? nothing : rethrow(e)
+    end
+    return (trace === nothing ? varinfo : trace.model.f.varinfo)::AbstractVarInfo
+end
+
+"""
+    get_trace_local_varinfo_maybe(rng::Random.AbstractRNG)
+
+Get the `Trace` local rng if one exists.
+
+If executed within a `TapedTask`, return the `rng` stored in the "taped globals" of the
+task, otherwise return `vi`.
+"""
+function get_trace_local_rng_maybe(rng::Random.AbstractRNG)
+    return try
+        Libtask.get_taped_globals(Any).rng
+    catch e
+        e == KeyError(:task_variable) ? rng : rethrow(e)
     end
 end
 
-function trace_local_rng_maybe(rng::Random.AbstractRNG)
-    try
-        trace = AdvancedPS.current_trace()
-        return trace.rng
-    catch e
-        # NOTE: this heuristic allows Libtask evaluating a model outside a `Trace`.
-        if e == KeyError(:__trace) || current_task().storage isa Nothing
-            return rng
-        else
-            rethrow(e)
-        end
+"""
+    set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+
+Set the `Trace` local varinfo if executing within a `Trace`. Return `nothing`.
+
+If executed within a `TapedTask`, set the `varinfo` stored in the "taped globals" of the
+task. Otherwise do nothing.
+"""
+function set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+    # TODO(mhauru) This should be done in a try-catch block, as in the commented out code.
+    # However, Libtask currently can't handle this block.
+    trace = #try
+        Libtask.get_taped_globals(Any).other
+    # catch e
+    #     e == KeyError(:task_variable) ? nothing : rethrow(e)
+    # end
+    if trace !== nothing
+        model = trace.model
+        model = Accessors.@set model.f.varinfo = vi
+        trace.model = model
     end
+    return nothing
 end
 
 function DynamicPPL.assume(
-    rng,
-    spl::Sampler{<:Union{PG,SMC}},
-    dist::Distribution,
-    vn::VarName,
-    _vi::AbstractVarInfo,
+    rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, vi::AbstractVarInfo
 )
-    vi = trace_local_varinfo_maybe(_vi)
-    trng = trace_local_rng_maybe(rng)
+    arg_vi_id = objectid(vi)
+    vi = get_trace_local_varinfo_maybe(vi)
+    using_local_vi = objectid(vi) == arg_vi_id
 
-    if inspace(vn, spl)
-        if ~haskey(vi, vn)
-            r = rand(trng, dist)
-            push!!(vi, vn, r, dist, spl)
-        elseif is_flagged(vi, vn, "del")
-            unset_flag!(vi, vn, "del") # Reference particle parent
-            r = rand(trng, dist)
-            vi[vn] = DynamicPPL.tovec(r)
-            DynamicPPL.setgid!(vi, spl.selector, vn)
-            setorder!(vi, vn, get_num_produce(vi))
-        else
-            DynamicPPL.updategid!(vi, vn, spl) # Pick data from reference particle
-            r = vi[vn]
-        end
-        # TODO: Should we make this `zero(promote_type(eltype(dist), eltype(r)))` or something?
-        lp = 0
-    else # vn belongs to other sampler <=> conditioning on vn
-        if haskey(vi, vn)
-            r = vi[vn]
-        else
-            r = rand(rng, dist)
-            push!!(vi, vn, r, dist, DynamicPPL.Selector(:invalid))
-        end
-        lp = logpdf_with_trans(dist, r, istrans(vi, vn))
+    trng = get_trace_local_rng_maybe(rng)
+
+    if ~haskey(vi, vn)
+        r = rand(trng, dist)
+        vi = push!!(vi, vn, r, dist)
+    elseif DynamicPPL.is_flagged(vi, vn, "del")
+        DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
+        # TODO(mhauru):
+        # The below is the only line that differs from assume called on SampleFromPrior.
+        # Could we just call assume on SampleFromPrior with a specific rng?
+        r = rand(trng, dist)
+        vi[vn] = DynamicPPL.tovec(r)
+    else
+        r = vi[vn]
     end
-    return r, lp, vi
+
+    vi = DynamicPPL.accumulate_assume!!(vi, r, 0, vn, dist)
+
+    # TODO(mhauru) Rather than this if-block, we should use try-catch within
+    # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
+    # hence this.
+    if !using_local_vi
+        set_trace_local_varinfo_maybe(vi)
+    end
+    return r, vi
 end
 
-function DynamicPPL.observe(spl::Sampler{<:Union{PG,SMC}}, dist::Distribution, value, vi)
-    # NOTE: The `Libtask.produce` is now hit in `acclogp_observe!!`.
-    return logpdf(dist, value), trace_local_varinfo_maybe(vi)
-end
-
-function DynamicPPL.acclogp!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
+function DynamicPPL.tilde_observe!!(
+    ctx::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, right, left, vn, vi
 )
-    varinfo_trace = trace_local_varinfo_maybe(varinfo)
-    return DynamicPPL.acclogp!!(DynamicPPL.childcontext(context), varinfo_trace, logp)
-end
+    arg_vi_id = objectid(vi)
+    vi = get_trace_local_varinfo_maybe(vi)
+    using_local_vi = objectid(vi) == arg_vi_id
 
-function DynamicPPL.acclogp_observe!!(
-    context::SamplingContext{<:Sampler{<:Union{PG,SMC}}}, varinfo::AbstractVarInfo, logp
-)
-    Libtask.produce(logp)
-    return trace_local_varinfo_maybe(varinfo)
+    left, vi = DynamicPPL.tilde_observe!!(ctx.context, right, left, vn, vi)
+
+    # TODO(mhauru) Rather than this if-block, we should use try-catch within
+    # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
+    # hence this.
+    if !using_local_vi
+        set_trace_local_varinfo_maybe(vi)
+    end
+    return left, vi
 end
 
 # Convenient constructor
@@ -433,10 +506,83 @@ function AdvancedPS.Trace(
     rng::AdvancedPS.TracedRNG,
 )
     newvarinfo = deepcopy(varinfo)
-    DynamicPPL.reset_num_produce!(newvarinfo)
-
-    tmodel = Turing.Essential.TracedModel(model, sampler, newvarinfo, rng)
+    tmodel = TracedModel(model, sampler, newvarinfo, rng)
     newtrace = AdvancedPS.Trace(tmodel, rng)
-    AdvancedPS.addreference!(newtrace.model.ctask.task, newtrace)
     return newtrace
 end
+
+"""
+    ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
+
+Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on change of value.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.LogProbAccumulator{T}
+    "the scalar log likelihood value"
+    logp::T
+end
+
+# Note that this uses the same name as `LogLikelihoodAccumulator`. Thus only one of the two
+# can be used in a given VarInfo.
+DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
+DynamicPPL.logp(acc::ProduceLogLikelihoodAccumulator) = acc.logp
+
+function DynamicPPL.acclogp(acc1::ProduceLogLikelihoodAccumulator, val)
+    # The below line is the only difference from `LogLikelihoodAccumulator`.
+    Libtask.produce(val)
+    return ProduceLogLikelihoodAccumulator(acc1.logp + val)
+end
+
+function DynamicPPL.accumulate_assume!!(
+    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
+)
+    return acc
+end
+function DynamicPPL.accumulate_observe!!(
+    acc::ProduceLogLikelihoodAccumulator, right, left, vn
+)
+    return DynamicPPL.acclogp(acc, Distributions.loglikelihood(right, left))
+end
+
+# We need to tell Libtask which calls may have `produce` calls within them. In practice most
+# of these won't be needed, because of inlining and the fact that `might_produce` is only
+# called on `:invoke` expressions rather than `:call`s, but since those are implementation
+# details of the compiler, we set a bunch of methods as might_produce = true. We start with
+# adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
+# call stack.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{
+        <:Tuple{
+            typeof(Base.:+),
+            ProduceLogLikelihoodAccumulator,
+            DynamicPPL.LogLikelihoodAccumulator,
+        },
+    },
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
+# Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
+# That's the only thing that makes tilde_assume calls result in tilde_observe calls.
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
+)
+    return true
+end
+function Libtask.might_produce(
+    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
+)
+    return true
+end
+Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true

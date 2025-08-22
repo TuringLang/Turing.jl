@@ -3,10 +3,8 @@ name: Format
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
-    branches:
-      - master
   merge_group:
     types: [checks_requested]
 
@@ -20,26 +18,6 @@ jobs:
   format:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-      checks: write
-      issues: write
-      pull-requests: write
-
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: 1
       - name: Format code
-        run: |
-          using Pkg
-          Pkg.add(; name="JuliaFormatter", uuid="98e50ef6-434e-11e9-1051-2b60c6c9e899")
-          using JuliaFormatter
-          format("."; verbose=true)
-        shell: julia --color=yes {0}
-      - uses: reviewdog/action-suggester@v1
-        if: github.event_name == 'pull_request'
-        with:
-          tool_name: JuliaFormatter
-          fail_on_error: true
+        uses: TuringLang/actions/Format@main

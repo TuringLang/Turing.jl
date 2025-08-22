@@ -6,15 +6,13 @@ Turing.jl directly re-exports the entire public API of the following packages:
 
   - [Distributions.jl](https://juliastats.org/Distributions.jl)
   - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
-  - [AbstractMCMC.jl](https://turinglang.org/AbstractMCMC.jl)
-  - [Bijectors.jl](https://turinglang.org/Bijectors.jl)
-  - [Libtask.jl](https://github.com/TuringLang/Libtask.jl)
 
 Please see the individual packages for their documentation.
 
 ## Individual exports and re-exports
 
-**All** of the following symbols are exported unqualified by Turing, even though the documentation suggests that many of them are qualified.
+In this API documentation, for the sake of clarity, we have listed the module that actually defines each of the exported symbols.
+Note, however, that **all** of the following symbols are exported unqualified by Turing.
 That means, for example, you can just write
 
 ```julia
@@ -37,17 +35,23 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Modelling
 
-| Exported symbol | Documentation                     | Description                                  |
-|:--------------- |:--------------------------------- |:-------------------------------------------- |
-| `@model`        | [`DynamicPPL.@model`](@extref)    | Define a probabilistic model                 |
-| `@varname`      | [`AbstractPPL.@varname`](@extref) | Generate a `VarName` from a Julia expression |
-| `@submodel`     | [`DynamicPPL.@submodel`](@extref) | Define a submodel                            |
+| Exported symbol      | Documentation                              | Description                                                                                  |
+|:-------------------- |:------------------------------------------ |:-------------------------------------------------------------------------------------------- |
+| `@model`             | [`DynamicPPL.@model`](@extref)             | Define a probabilistic model                                                                 |
+| `@varname`           | [`AbstractPPL.@varname`](@extref)          | Generate a `VarName` from a Julia expression                                                 |
+| `to_submodel`        | [`DynamicPPL.to_submodel`](@extref)        | Define a submodel                                                                            |
+| `prefix`             | [`DynamicPPL.prefix`](@extref)             | Prefix all variable names in a model with a given VarName                                    |
+| `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
+| `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
 
 ### Inference
 
-| Exported symbol | Documentation                                                                                    | Description         |
-|:--------------- |:------------------------------------------------------------------------------------------------ |:------------------- |
-| `sample`        | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model |
+| Exported symbol   | Documentation                                                                                    | Description                        |
+|:----------------- |:------------------------------------------------------------------------------------------------ |:---------------------------------- |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model                |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                            | Run MCMC using multiple threads    |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                        | Run MCMC using multiple processes  |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                             | Run MCMC using without parallelism |
 
 ### Samplers
 
@@ -58,7 +62,6 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                   |
 | `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                           |
 | `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                      |
-| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | A "pseudo-sampler" to provide analytical conditionals to `Gibbs`    |
 | `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                             |
 | `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                               |
 | `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                         |
@@ -69,16 +72,19 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
 | `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
 | `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
+| `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
 | `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
 
 ### Variational inference
 
-See the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a walkthrough on how to use these.
+See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) for detailed usage and the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a basic walkthrough.
 
-| Exported symbol | Documentation                | Description                             |
-|:--------------- |:---------------------------- |:--------------------------------------- |
-| `vi`            | [`AdvancedVI.vi`](@extref)   | Perform variational inference           |
-| `ADVI`          | [`AdvancedVI.ADVI`](@extref) | Construct an instance of a VI algorithm |
+| Exported symbol        | Documentation                                     | Description                                                                              |
+|:---------------------- |:------------------------------------------------- |:---------------------------------------------------------------------------------------- |
+| `vi`                   | [`Turing.vi`](@ref)                               | Perform variational inference                                                            |
+| `q_locationscale`      | [`Turing.Variational.q_locationscale`](@ref)      | Find a numerically non-degenerate initialization for a location-scale variational family |
+| `q_meanfield_gaussian` | [`Turing.Variational.q_meanfield_gaussian`](@ref) | Find a numerically non-degenerate initialization for a mean-field Gaussian family        |
+| `q_fullrank_gaussian`  | [`Turing.Variational.q_fullrank_gaussian`](@ref)  | Find a numerically non-degenerate initialization for a full-rank Gaussian family         |
 
 ### Automatic differentiation types
 
@@ -89,7 +95,6 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 |:----------------- |:------------------------------------ |:---------------------- |
 | `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend |
 | `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
-| `AutoZygote`      | [`ADTypes.AutoZygote`](@extref)      | Zygote.jl backend      |
 | `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
 
 ### Debugging
@@ -110,52 +115,37 @@ OrderedLogistic
 LogPoisson
 ```
 
-`BernoulliLogit` is part of Distributions.jl since version 0.25.77.
-If you are using an older version of Distributions where this isn't defined, Turing will export the same distribution.
-
-```@docs
-Distributions.BernoulliLogit
-```
-
 ### Tools to work with distributions
 
 | Exported symbol | Documentation                          | Description                                                    |
 |:--------------- |:-------------------------------------- |:-------------------------------------------------------------- |
+| `I`             | [`LinearAlgebra.I`](@extref)           | Identity matrix                                                |
 | `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
 | `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
 | `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |
 
 ### Predictions
 
-```@docs
-predict
-```
+| Exported symbol | Documentation                                                                     | Description                                             |
+|:--------------- |:--------------------------------------------------------------------------------- |:------------------------------------------------------- |
+| `predict`       | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting) | Generate samples from posterior predictive distribution |
 
 ### Querying model probabilities and quantities
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
-| Exported symbol            | Documentation                                                                                                                     | Description                                                     |
-|:-------------------------- |:--------------------------------------------------------------------------------------------------------------------------------- |:--------------------------------------------------------------- |
-| `generated_quantities`     | [`DynamicPPL.generated_quantities`](@extref)                                                                                      | Calculate additional quantities defined in a model              |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                                  | Compute log likelihoods for each sample in a chain              |
-| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                                  | Compute log prior probability                                   |
-| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                                  | Compute log joint probability                                   |
-| `LogDensityFunction`       | [`DynamicPPL.LogDensityFunction`](@extref)                                                                                        | Wrap a Turing model to satisfy LogDensityFunctions.jl interface |
-| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                                | Condition a model on data                                       |
-| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                              | Remove conditioning on data                                     |
-| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                               | Return the conditioned values of a model                        |
-| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                       | Fix the value of a variable                                     |
-| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                     | Unfix the value of a variable                                   |
-| `OrderedDict`              | [`OrderedCollections.OrderedDict`](https://juliacollections.github.io/OrderedCollections.jl/dev/ordered_containers/#OrderedDicts) | An ordered dictionary                                           |
-
-### Extra re-exports from Bijectors
-
-Note that Bijectors itself does not export `ordered`.
-
-```@docs
-Bijectors.ordered
-```
+| Exported symbol            | Documentation                                                                                                                | Description                                        |
+|:-------------------------- |:---------------------------------------------------------------------------------------------------------------------------- |:-------------------------------------------------- |
+| `returned`                 | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple%7BModel,%20NamedTuple%7D) | Calculate additional quantities defined in a model |
+| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                             | Compute log likelihoods for each sample in a chain |
+| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                             | Compute log prior probability                      |
+| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                             | Compute log joint probability                      |
+| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                           | Condition a model on data                          |
+| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                         | Remove conditioning on data                        |
+| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model           |
+| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                        |
+| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                      |
+| `OrderedDict`              | [`OrderedCollections.OrderedDict`](@extref)                                                                                  | An ordered dictionary                              |
 
 ### Point estimates
 

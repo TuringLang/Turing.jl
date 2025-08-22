@@ -17,8 +17,6 @@ using Turing
         n_walkers = 250
 
         spl = Emcee(n_walkers, 2.0)
-        @test DynamicPPL.alg_str(Sampler(spl, gdemo_default)) == "Emcee"
-
         chain = sample(gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end

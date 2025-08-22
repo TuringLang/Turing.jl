@@ -2,10 +2,6 @@
 ### Sampler states
 ###
 
-struct MH{space,P} <: InferenceAlgorithm
-    proposals::P
-end
-
 proposal(p::AdvancedMH.Proposal) = p
 proposal(f::Function) = AdvancedMH.StaticProposal(f)
 proposal(d::Distribution) = AdvancedMH.StaticProposal(d)
@@ -13,16 +9,15 @@ proposal(cov::AbstractMatrix) = AdvancedMH.RandomWalkProposal(MvNormal(cov))
 proposal(x) = error("proposals of type ", typeof(x), " are not supported")
 
 """
-    MH(space...)
+    MH(proposals...)
 
 Construct a Metropolis-Hastings algorithm.
 
-The arguments `space` can be
+The arguments `proposals` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as the proposal distribution.
-- A set of one or more symbols to sample with `MH` in conjunction with `Gibbs`, i.e. `Gibbs(MH(:m), PG(10, :s))`
 - An iterable of pairs or tuples mapping a `Symbol` to a `AdvancedMH.Proposal`, `Distribution`, or `Function`
-  that generates returns a conditional proposal distribution.
+  that returns a conditional proposal distribution.
 - A covariance matrix to use as for mean-zero multivariate normal proposals.
 
 # Examples
@@ -38,15 +33,6 @@ The default `MH` will draw proposal samples from the prior distribution using `A
 end
 
 chain = sample(gdemo(1.5, 2.0), MH(), 1_000)
-mean(chain)
-```
-
-Alternatively, you can specify particular parameters to sample if you want to combine sampling
-from multiple samplers:
-
-```julia
-# Samples s² with MH and m with PG
-chain = sample(gdemo(1.5, 2.0), Gibbs(MH(:s²), PG(10, :m)), 1_000)
 mean(chain)
 ```
 
@@ -118,41 +104,39 @@ mean(chain)
 ```
 
 """
-function MH(space...)
-    syms = Symbol[]
+struct MH{P} <: InferenceAlgorithm
+    proposals::P
 
-    prop_syms = Symbol[]
-    props = AMH.Proposal[]
+    function MH(proposals...)
+        prop_syms = Symbol[]
+        props = AMH.Proposal[]
 
-    for s in space
-        if s isa Symbol
-            # If it's just a symbol, proceed as normal.
-            push!(syms, s)
-        elseif s isa Pair || s isa Tuple
-            # Check to see whether it's a pair that specifies a kernel
-            # or a specific proposal distribution.
-            push!(prop_syms, s[1])
-            push!(props, proposal(s[2]))
-        elseif length(space) == 1
-            # If we hit this block, check to see if it's
-            # a run-of-the-mill proposal or covariance
-            # matrix.
-            prop = proposal(s)
+        for s in proposals
+            if s isa Pair || s isa Tuple
+                # Check to see whether it's a pair that specifies a kernel
+                # or a specific proposal distribution.
+                push!(prop_syms, s[1])
+                push!(props, proposal(s[2]))
+            elseif length(proposals) == 1
+                # If we hit this block, check to see if it's
+                # a run-of-the-mill proposal or covariance
+                # matrix.
+                prop = proposal(s)
 
-            # Return early, we got a covariance matrix.
-            return MH{(),typeof(prop)}(prop)
-        else
-            # Try to convert it to a proposal anyways,
-            # throw an error if not acceptable.
-            prop = proposal(s)
-            push!(props, prop)
+                # Return early, we got a covariance matrix.
+                return new{typeof(prop)}(prop)
+            else
+                # Try to convert it to a proposal anyways,
+                # throw an error if not acceptable.
+                prop = proposal(s)
+                push!(props, prop)
+            end
         end
+
+        proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
+
+        return new{typeof(proposals)}(proposals)
     end
-
-    proposals = NamedTuple{tuple(prop_syms...)}(tuple(props...))
-    syms = vcat(syms, prop_syms)
-
-    return MH{tuple(syms...),typeof(proposals)}(proposals)
 end
 
 # Some of the proposals require working in unconstrained space.
@@ -169,10 +153,33 @@ function MH(model::Model; proposal_type=AMH.StaticProposal)
     return AMH.MetropolisHastings(priors)
 end
 
+"""
+    MHState(varinfo::AbstractVarInfo, logjoint_internal::Real)
+
+State for Metropolis-Hastings sampling.
+
+`varinfo` must have the correct parameters set inside it, but its other fields
+(e.g. accumulators, which track logp) can in general be missing or incorrect.
+
+`logjoint_internal` is the log joint probability of the model, evaluated using
+the parameters and linking status of `varinfo`. It should be equal to
+`DynamicPPL.getlogjoint_internal(varinfo)`. This information is returned by the
+MH sampler so we store this here to avoid re-evaluating the model
+unnecessarily.
+"""
+struct MHState{V<:AbstractVarInfo,L<:Real}
+    varinfo::V
+    logjoint_internal::L
+end
+
+get_varinfo(s::MHState) = s.varinfo
+
 #####################
 # Utility functions #
 #####################
 
+# TODO(DPPL0.38/penelopeysm): This function should no longer be needed
+# once InitContext is merged.
 """
     set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 
@@ -197,31 +204,19 @@ function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTup
     end
 end
 
-"""
-    MHLogDensityFunction
-
-A log density function for the MH sampler.
-
-This variant uses the  `set_namedtuple!` function to update the `VarInfo`.
-"""
-const MHLogDensityFunction{M<:Model,S<:Sampler{<:MH},V<:AbstractVarInfo} = Turing.LogDensityFunction{
-    V,M,<:DynamicPPL.SamplingContext{<:S}
-}
-
-function LogDensityProblems.logdensity(f::MHLogDensityFunction, x::NamedTuple)
-    # TODO: Make this work with immutable `f.varinfo` too.
-    sampler = DynamicPPL.getsampler(f)
-    vi = f.varinfo
-
-    x_old, lj_old = vi[sampler], getlogp(vi)
+# NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
+# interface in that it gets evaluated with a NamedTuple. Hence we need this
+# method just to deal with MH.
+# TODO(DPPL0.38/penelopeysm): Check the extent to which this method is actually
+# needed. If it's still needed, replace this with `init!!(f.model, f.varinfo,
+# ParamsInit(x))`. Much less hacky than `set_namedtuple!` (hopefully...).
+# In general, we should much prefer to either (1) conform to the
+# LogDensityProblems interface or (2) use VarNames anyway.
+function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
+    vi = deepcopy(f.varinfo)
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi, DynamicPPL.getcontext(f)))
-    lj = getlogp(vi_new)
-
-    # Reset old `vi`.
-    setindex!!(vi, x_old, sampler)
-    setlogp!!(vi, lj_old)
-
+    vi_new = last(DynamicPPL.evaluate!!(f.model, vi))
+    lj = f.getlogdensity(vi_new)
     return lj
 end
 
@@ -253,14 +248,14 @@ The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
 function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
-    vns = _getvns(vi, spl)
+    vns = all_varnames_grouped_by_symbol(vi)
     dt = _dist_tuple(spl.alg.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
     return dt, vt
 end
 
 @generated function _val_tuple(vi::VarInfo, vns::NamedTuple{names}) where {names}
-    isempty(names) === 0 && return :(NamedTuple())
+    isempty(names) && return :(NamedTuple())
     expr = Expr(:tuple)
     expr.args = Any[
         :(
@@ -272,6 +267,7 @@ end
     ]
     return expr
 end
+_val_tuple(::VarInfo, ::Tuple{}) = ()
 
 @generated function _dist_tuple(
     props::NamedTuple{propnames}, vi::VarInfo, vns::NamedTuple{names}
@@ -293,6 +289,7 @@ end
     ]
     return expr
 end
+_dist_tuple(::@NamedTuple{}, ::VarInfo, ::Tuple{}) = ()
 
 # Utility functions to link
 should_link(varinfo, sampler, proposal) = false
@@ -313,7 +310,7 @@ end
 
 function maybe_link!!(varinfo, sampler, proposal, model)
     return if should_link(varinfo, sampler, proposal)
-        link!!(varinfo, sampler, model)
+        DynamicPPL.link!!(varinfo, model)
     else
         varinfo
     end
@@ -321,64 +318,71 @@ end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
 function propose!!(
-    rng::AbstractRNG, vi::AbstractVarInfo, model::Model, spl::Sampler{<:MH}, proposal
+    rng::AbstractRNG, prev_state::MHState, model::Model, spl::Sampler{<:MH}, proposal
 )
+    vi = prev_state.varinfo
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl, vi)
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(dt)
-    prev_trans = AMH.Transition(vt, getlogp(vi), false)
+    prev_trans = AMH.Transition(vt, prev_state.logjoint_internal, false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            Turing.LogDensityFunction(
-                vi,
-                model,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
-
-    # TODO: Make this compatible with immutable `VarInfo`.
-    # Update the values in the VarInfo.
+    # trans.params isa NamedTuple
     set_namedtuple!(vi, trans.params)
-    return setlogp!!(vi, trans.lp)
+    # Here, `trans.lp` is equal to `getlogjoint_internal(vi)`. We don't know
+    # how to set this back inside vi (without re-evaluating). However, the next
+    # MH step will require this information to calculate the acceptance
+    # probability, so we return it together with vi.
+    return MHState(vi, trans.lp)
 end
 
 # Make a proposal if we DO have a covariance proposal matrix.
 function propose!!(
     rng::AbstractRNG,
-    vi::AbstractVarInfo,
+    prev_state::MHState,
     model::Model,
     spl::Sampler{<:MH},
     proposal::AdvancedMH.RandomWalkProposal,
 )
+    vi = prev_state.varinfo
     # If this is the case, we can just draw directly from the proposal
     # matrix.
-    vals = vi[spl]
+    vals = vi[:]
 
     # Create a sampler and the previous transition.
     mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
-    prev_trans = AMH.Transition(vals, getlogp(vi), false)
+    prev_trans = AMH.Transition(vals, prev_state.logjoint_internal, false)
 
     # Make a new transition.
+    spl_model = DynamicPPL.contextualize(
+        model, DynamicPPL.SamplingContext(rng, spl, model.context)
+    )
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            Turing.LogDensityFunction(
-                vi,
-                model,
-                DynamicPPL.SamplingContext(rng, spl, DynamicPPL.leafcontext(model.context)),
-            ),
+            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
-
-    return setlogp!!(DynamicPPL.unflatten(vi, spl, trans.params), trans.lp)
+    # trans.params isa AbstractVector
+    vi = DynamicPPL.unflatten(vi, trans.params)
+    # Here, `trans.lp` is equal to `getlogjoint_internal(vi)`. We don't know
+    # how to set this back inside vi (without re-evaluating). However, the next
+    # MH step will require this information to calculate the acceptance
+    # probability, so we return it together with vi.
+    return MHState(vi, trans.lp)
 end
 
 function DynamicPPL.initialstep(
@@ -392,18 +396,18 @@ function DynamicPPL.initialstep(
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
 
-    return Transition(model, vi), vi
+    return Transition(model, vi, nothing), MHState(vi, DynamicPPL.getlogjoint_internal(vi))
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, state::MHState; kwargs...
 )
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    vi = propose!!(rng, vi, model, spl, spl.alg.proposals)
+    new_state = propose!!(rng, state, model, spl, spl.alg.proposals)
 
-    return Transition(model, vi), vi
+    return Transition(model, new_state.varinfo, nothing), new_state
 end
 
 ####
@@ -414,51 +418,5 @@ function DynamicPPL.assume(
 )
     # Just defer to `SampleFromPrior`.
     retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!(vi, vn, spl)
-    # Return.
     return retval
-end
-
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:MH},
-    dist::MultivariateDistribution,
-    vns::AbstractVector{<:VarName},
-    var::AbstractMatrix,
-    vi::AbstractVarInfo,
-)
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dist, vns[1], var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
-    # Return.
-    return retval
-end
-function DynamicPPL.dot_assume(
-    rng,
-    spl::Sampler{<:MH},
-    dists::Union{Distribution,AbstractArray{<:Distribution}},
-    vns::AbstractArray{<:VarName},
-    var::AbstractArray,
-    vi::AbstractVarInfo,
-)
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.dot_assume(rng, SampleFromPrior(), dists, vns, var, vi)
-    # Update the Gibbs IDs because they might have been assigned in the `SampleFromPrior` call.
-    DynamicPPL.updategid!.((vi,), vns, (spl,))
-    return retval
-end
-
-function DynamicPPL.observe(spl::Sampler{<:MH}, d::Distribution, value, vi)
-    return DynamicPPL.observe(SampleFromPrior(), d, value, vi)
-end
-
-function DynamicPPL.dot_observe(
-    spl::Sampler{<:MH},
-    ds::Union{Distribution,AbstractArray{<:Distribution}},
-    value::AbstractArray,
-    vi,
-)
-    return DynamicPPL.dot_observe(SampleFromPrior(), ds, value, vi)
 end

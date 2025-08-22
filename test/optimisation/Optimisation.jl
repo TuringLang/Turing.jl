@@ -1,13 +1,10 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
-using ..ADUtils: ADUtils
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
-using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
-using Mooncake: Mooncake
 using Random: Random
 using Optimization
 using Optimization: Optimization
@@ -27,28 +24,7 @@ using Turing
     hasstats(result) = result.optim_result.stats !== nothing
 
     # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
-    @testset "OptimizationContext" begin
-        # Used for testing how well it works with nested contexts.
-        struct OverrideContext{C,T1,T2} <: DynamicPPL.AbstractContext
-            context::C
-            logprior_weight::T1
-            loglikelihood_weight::T2
-        end
-        DynamicPPL.NodeTrait(::OverrideContext) = DynamicPPL.IsParent()
-        DynamicPPL.childcontext(parent::OverrideContext) = parent.context
-        DynamicPPL.setchildcontext(parent::OverrideContext, child) =
-            OverrideContext(child, parent.logprior_weight, parent.loglikelihood_weight)
-
-        # Only implement what we need for the models above.
-        function DynamicPPL.tilde_assume(context::OverrideContext, right, vn, vi)
-            value, logp, vi = DynamicPPL.tilde_assume(context.context, right, vn, vi)
-            return value, context.logprior_weight, vi
-        end
-        function DynamicPPL.tilde_observe(context::OverrideContext, right, left, vi)
-            logp, vi = DynamicPPL.tilde_observe(context.context, right, left, vi)
-            return context.loglikelihood_weight, vi
-        end
-
+    @testset "OptimLogDensity and contexts" begin
         @model function model1(x)
             μ ~ Uniform(0, 2)
             return x ~ LogNormal(μ, 1)
@@ -65,54 +41,48 @@ using Turing
         @testset "With ConditionContext" begin
             m1 = model1(x)
             m2 = model2() | (x=x,)
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+            # Doesn't matter if we use getlogjoint or getlogjoint_internal since the
+            # VarInfo isn't linked.
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
+            @test ld1(w) == ld2(w)
         end
 
         @testset "With prefixes" begin
-            function prefix_μ(model)
-                return DynamicPPL.contextualize(
-                    model, DynamicPPL.PrefixContext{:inner}(model.context)
-                )
-            end
-            m1 = prefix_μ(model1(x))
-            m2 = prefix_μ(model2() | (var"inner.x"=x,))
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
+            vn = @varname(inner)
+            m1 = prefix(model1(x), vn)
+            m2 = prefix((model2() | (x=x,)), vn)
+            ld1 = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld2 = Turing.Optimisation.OptimLogDensity(m2, DynamicPPL.getlogjoint_internal)
+            @test ld1(w) == ld2(w)
         end
 
-        @testset "Weighted" begin
-            function override(model)
-                return DynamicPPL.contextualize(
-                    model, OverrideContext(model.context, 100, 1)
-                )
-            end
-            m1 = override(model1(x))
-            m2 = override(model2() | (x=x,))
-            ctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-            @test Turing.Optimisation.OptimLogDensity(m1, ctx)(w) ==
-                Turing.Optimisation.OptimLogDensity(m2, ctx)(w)
-        end
-
-        @testset "Default, Likelihood, Prior Contexts" begin
+        @testset "Joint, prior, and likelihood" begin
             m1 = model1(x)
-            defctx = Turing.Optimisation.OptimizationContext(DynamicPPL.DefaultContext())
-            llhctx = Turing.Optimisation.OptimizationContext(DynamicPPL.LikelihoodContext())
-            prictx = Turing.Optimisation.OptimizationContext(DynamicPPL.PriorContext())
             a = [0.3]
+            ld_joint = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogjoint)
+            ld_prior = Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)
+            ld_likelihood = Turing.Optimisation.OptimLogDensity(
+                m1, DynamicPPL.getloglikelihood
+            )
+            @test ld_joint(a) == ld_prior(a) + ld_likelihood(a)
 
-            @test Turing.Optimisation.OptimLogDensity(m1, defctx)(a) ==
-                Turing.Optimisation.OptimLogDensity(m1, llhctx)(a) +
-                  Turing.Optimisation.OptimLogDensity(m1, prictx)(a)
-
-            # test that PriorContext is calculating the right thing
-            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([0.3]) ≈
+            # test that the prior accumulator is calculating the right thing
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), 0.3)
-            @test Turing.Optimisation.OptimLogDensity(m1, prictx)([-0.3]) ≈
+            @test Turing.Optimisation.OptimLogDensity(m1, DynamicPPL.getlogprior)([-0.3]) ≈
                 -Distributions.logpdf(Uniform(0, 2), -0.3)
         end
+    end
+
+    @testset "errors on invalid model" begin
+        @model function invalid_model()
+            x ~ Normal()
+            return x ~ Beta()
+        end
+        m = invalid_model()
+        @test_throws ErrorException maximum_likelihood(m)
+        @test_throws ErrorException maximum_a_posteriori(m)
     end
 
     @testset "gdemo" begin
@@ -539,17 +509,16 @@ using Turing
     # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
     # something larger than the default.
     allowed_incorrect_mle = [
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe,
+        DynamicPPL.TestUtils.demo_dot_assume_observe,
         DynamicPPL.TestUtils.demo_assume_index_observe,
         DynamicPPL.TestUtils.demo_assume_multivariate_observe,
-        DynamicPPL.TestUtils.demo_assume_observe_literal,
+        DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
-        DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_dot_assume_observe_matrix_index,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
-        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         Random.seed!(23)
@@ -619,21 +588,62 @@ using Turing
         @assert get(result, :c) == (; :c => Array{Float64}[])
     end
 
-    @testset "ADType test with $adbackend" for adbackend in ADUtils.adbackends
-        Random.seed!(222)
-        m = DynamicPPL.contextualize(
-            gdemo_default, ADUtils.ADTypeCheckContext(adbackend, gdemo_default.context)
-        )
-        if adbackend isa AutoForwardDiff
-            # TODO: Figure out why this is happening.
-            # https://github.com/TuringLang/Turing.jl/issues/2369
-            @test_throws DivideError maximum_likelihood(m; adtype=adbackend)
-            @test_throws DivideError maximum_a_posteriori(m; adtype=adbackend)
-        else
-            # These will error if the adbackend being used is not the one set.
-            maximum_likelihood(m; adtype=adbackend)
-            maximum_a_posteriori(m; adtype=adbackend)
+    @testset "Collinear coeftable" begin
+        xs = [-1.0, 0.0, 1.0]
+        ys = [0.0, 0.0, 0.0]
+
+        @model function collinear(x, y)
+            a ~ Normal(0, 1)
+            b ~ Normal(0, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, 1)
         end
+
+        model = collinear(xs, ys)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        tab = coeftable(mle_estimate)
+        @assert isnan(tab.cols[2][1])
+        @assert tab.colnms[end] == "Error notes"
+        @assert occursin("singular", tab.cols[end][1])
+    end
+
+    @testset "Negative variance" begin
+        # A model for which the likelihood has a saddle point at x=0, y=0.
+        # Creating an optimisation result for this model at the x=0, y=0 results in negative
+        # variance for one of the variables, because the variance is calculated as the
+        # diagonal of the inverse of the Hessian.
+        @model function saddle_model()
+            x ~ Normal(0, 1)
+            y ~ Normal(x, 1)
+            @addlogprob! x^2 - y^2
+            return nothing
+        end
+        m = saddle_model()
+        optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
+        vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
+        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        ct = coeftable(m)
+        @assert isnan(ct.cols[2][1])
+        @assert ct.colnms[end] == "Error notes"
+        @assert occursin("Negative variance", ct.cols[end][1])
+    end
+
+    @testset "Same coeftable with/without numerrors_warnonly" begin
+        xs = [0.0, 1.0, 2.0]
+
+        @model function extranormal(x)
+            mean ~ Normal(0, 1)
+            return x ~ Normal(mean, 1)
+        end
+
+        model = extranormal(xs)
+        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
+        no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
+        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
     end
 end
 

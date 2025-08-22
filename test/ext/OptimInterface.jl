@@ -2,6 +2,7 @@ module OptimInterfaceTests
 
 using ..Models: gdemo_default
 using Distributions.FillArrays: Zeros
+using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Optim: Optim
 using Random: Random
@@ -137,17 +138,16 @@ using Turing
     # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
     # something larger than the default.
     allowed_incorrect_mle = [
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe,
+        DynamicPPL.TestUtils.demo_dot_assume_observe,
         DynamicPPL.TestUtils.demo_assume_index_observe,
         DynamicPPL.TestUtils.demo_assume_multivariate_observe,
-        DynamicPPL.TestUtils.demo_assume_observe_literal,
+        DynamicPPL.TestUtils.demo_assume_multivariate_observe_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_submodel,
-        DynamicPPL.TestUtils.demo_dot_assume_dot_observe_matrix,
-        DynamicPPL.TestUtils.demo_dot_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_dot_assume_observe_matrix_index,
         DynamicPPL.TestUtils.demo_assume_submodel_observe_index_literal,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
-        DynamicPPL.TestUtils.demo_assume_matrix_dot_observe_matrix,
+        DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)

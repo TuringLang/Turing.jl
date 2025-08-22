@@ -1,7 +1,7 @@
 """
-    SGHMC{AD,space}
+    SGHMC{AD}
 
-Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.e
+Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) sampler.
 
 # Fields
 $(TYPEDFIELDS)
@@ -12,15 +12,14 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-struct SGHMC{AD,space,T<:Real} <: StaticHamiltonian
+struct SGHMC{AD,T<:Real} <: StaticHamiltonian
     learning_rate::T
     momentum_decay::T
     adtype::AD
 end
 
 """
-    SGHMC(
-        space::Symbol...;
+    SGHMC(;
         learning_rate::Real,
         momentum_decay::Real,
         adtype::ADTypes.AbstractADType = AutoForwardDiff(),
@@ -37,16 +36,13 @@ Tianqi Chen, Emily Fox, & Carlos Guestrin (2014). Stochastic Gradient Hamiltonia
 Carlo. In: Proceedings of the 31st International Conference on Machine Learning
 (pp. 1683–1691).
 """
-function SGHMC(
-    space::Symbol...;
+function SGHMC(;
     learning_rate::Real,
     momentum_decay::Real,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
 )
     _learning_rate, _momentum_decay = promote(learning_rate, momentum_decay)
-    return SGHMC{typeof(adtype),space,typeof(_learning_rate)}(
-        _learning_rate, _momentum_decay, adtype
-    )
+    return SGHMC(_learning_rate, _momentum_decay, adtype)
 end
 
 struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
@@ -62,18 +58,17 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi, spl)
-        vi = DynamicPPL.link!!(vi, spl, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    # Transform the samples to unconstrained space.
+    if !DynamicPPL.islinked(vi)
+        vi = DynamicPPL.link!!(vi, model)
     end
 
     # Compute initial sample and state.
-    sample = Transition(model, vi)
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    sample = Transition(model, vi, nothing)
+    ℓ = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
-    state = SGHMCState(ℓ, vi, zero(vi[spl]))
+    state = SGHMCState(ℓ, vi, zero(vi[:]))
 
     return sample, state
 end
@@ -88,7 +83,7 @@ function AbstractMCMC.step(
     # Compute gradient of log density.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
 
     # Update latent variables and velocity according to
@@ -99,12 +94,11 @@ function AbstractMCMC.step(
     α = spl.alg.momentum_decay
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
-    # Save new variables and recompute log density.
-    vi = DynamicPPL.setindex!!(vi, θ, spl)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    # Save new variables.
+    vi = DynamicPPL.unflatten(vi, θ)
 
     # Compute next sample and state.
-    sample = Transition(model, vi)
+    sample = Transition(model, vi, nothing)
     newstate = SGHMCState(ℓ, vi, newv)
 
     return sample, newstate
@@ -124,7 +118,7 @@ Max Welling & Yee Whye Teh (2011). Bayesian Learning via Stochastic Gradient Lan
 Dynamics. In: Proceedings of the 28th International Conference on Machine Learning
 (pp. 681–688).
 """
-struct SGLD{AD,space,S} <: StaticHamiltonian
+struct SGLD{AD,S} <: StaticHamiltonian
     "Step size function."
     stepsize::S
     adtype::AD
@@ -164,8 +158,7 @@ end
 (f::PolynomialStepsize)(t::Int) = f.a / (t + f.b)^f.γ
 
 """
-    SGLD(
-        space::Symbol...;
+    SGLD(;
         stepsize = PolynomialStepsize(0.01),
         adtype::ADTypes.AbstractADType = AutoForwardDiff(),
     )
@@ -185,32 +178,11 @@ Dynamics. In: Proceedings of the 28th International Conference on Machine Learni
 
 See also: [`PolynomialStepsize`](@ref)
 """
-function SGLD(
-    space::Symbol...;
-    stepsize=PolynomialStepsize(0.01),
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+function SGLD(;
+    stepsize=PolynomialStepsize(0.01), adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE
 )
-    return SGLD{typeof(adtype),space,typeof(stepsize)}(stepsize, adtype)
+    return SGLD(stepsize, adtype)
 end
-
-struct SGLDTransition{T,F<:Real} <: AbstractTransition
-    "The parameters for any given sample."
-    θ::T
-    "The joint log probability of the sample."
-    lp::F
-    "The stepsize that was used to obtain the sample."
-    stepsize::F
-end
-
-function SGLDTransition(model::DynamicPPL.Model, vi::AbstractVarInfo, stepsize)
-    theta = getparams(model, vi)
-    lp = getlogp(vi)
-    return SGLDTransition(theta, lp, stepsize)
-end
-
-metadata(t::SGLDTransition) = (lp=t.lp, SGLD_stepsize=t.stepsize)
-
-DynamicPPL.getlogp(t::SGLDTransition) = t.lp
 
 struct SGLDState{L,V<:AbstractVarInfo}
     logdensity::L
@@ -225,20 +197,19 @@ function DynamicPPL.initialstep(
     vi::AbstractVarInfo;
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    if !DynamicPPL.islinked(vi, spl)
-        vi = DynamicPPL.link!!(vi, spl, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    # Transform the samples to unconstrained space.
+    if !DynamicPPL.islinked(vi)
+        vi = DynamicPPL.link!!(vi, model)
     end
 
     # Create first sample and state.
-    sample = SGLDTransition(model, vi, zero(spl.alg.stepsize(0)))
-    ℓ = LogDensityProblemsAD.ADgradient(
-        Turing.LogDensityFunction(vi, model, spl, DynamicPPL.DefaultContext())
+    transition = Transition(model, vi, (; SGLD_stepsize=zero(spl.alg.stepsize(0))))
+    ℓ = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
     )
     state = SGLDState(ℓ, vi, 1)
 
-    return sample, state
+    return transition, state
 end
 
 function AbstractMCMC.step(
@@ -247,19 +218,18 @@ function AbstractMCMC.step(
     # Perform gradient step.
     ℓ = state.logdensity
     vi = state.vi
-    θ = vi[spl]
+    θ = vi[:]
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
     step = state.step
     stepsize = spl.alg.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
-    # Save new variables and recompute log density.
-    vi = DynamicPPL.setindex!!(vi, θ, spl)
-    vi = last(DynamicPPL.evaluate!!(model, vi, DynamicPPL.SamplingContext(rng, spl)))
+    # Save new variables.
+    vi = DynamicPPL.unflatten(vi, θ)
 
     # Compute next sample and state.
-    sample = SGLDTransition(model, vi, stepsize)
+    transition = Transition(model, vi, (; SGLD_stepsize=stepsize))
     newstate = SGLDState(ℓ, vi, state.step + 1)
 
-    return sample, newstate
+    return transition, newstate
 end

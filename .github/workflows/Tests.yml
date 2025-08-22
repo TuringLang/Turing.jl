@@ -3,13 +3,20 @@ name: Tests
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
+  merge_group:
+    types: [checks_requested]
+
+# Cancel existing tests on the same PR if a new commit is added to a pull request
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
   test:
     # Use matrix.test.name here to avoid it taking up the entire window width
-    name: test ${{matrix.test.name}} (${{ matrix.runner.os }}, ${{ matrix.runner.version }}, ${{ matrix.runner.arch }}, ${{ matrix.runner.num_threads }})
+    name: test ${{matrix.test.name}} (${{ matrix.runner.version }}, ${{ matrix.runner.os }}, ${{ matrix.runner.num_threads }})
     runs-on: ${{ matrix.runner.os }}
     continue-on-error: ${{ matrix.runner.version == 'pre' }}
 
@@ -19,69 +26,48 @@ jobs:
         test:
           # Run some of the slower test files individually. The last one catches everything
           # not included in the others.
-          - name: "essential/ad"
-            args: "essential/ad.jl"
           - name: "mcmc/gibbs"
             args: "mcmc/gibbs.jl"
-          - name: "mcmc/hmc"
-            args: "mcmc/hmc.jl"
-          - name: "mcmc/abstractmcmc"
-            args: "mcmc/abstractmcmc.jl"
           - name: "mcmc/Inference"
             args: "mcmc/Inference.jl"
-          - name: "experimental/gibbs"
-            args: "experimental/gibbs.jl"
-          - name: "mcmc/ess"
-            args: "mcmc/ess.jl"
+          - name: "ad"
+            args: "ad.jl"
           - name: "everything else"
-            args: "--skip essential/ad.jl mcmc/gibbs.jl mcmc/hmc.jl mcmc/abstractmcmc.jl mcmc/Inference.jl experimental/gibbs.jl mcmc/ess.jl"
+            args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
           # Default
           - version: '1'
             os: ubuntu-latest
-            arch: x64
-            num_threads: 1
-          # x86
-          - version: '1'
-            os: ubuntu-latest
-            arch: x86
             num_threads: 1
           # Multithreaded
           - version: '1'
             os: ubuntu-latest
-            arch: x64
             num_threads: 2
           # Windows
           - version: '1'
             os: windows-latest
-            arch: x64
             num_threads: 1
           # macOS
           - version: '1'
             os: macos-latest
-            arch: aarch64
             num_threads: 1
           # Minimum supported Julia version
           - version: 'min'
             os: ubuntu-latest
-            arch: x64
             num_threads: 1
           # Minimum supported Julia version, multithreaded
           - version: 'min'
             os: ubuntu-latest
-            arch: x64
             num_threads: 2
           # Pre-release Julia version
           - version: 'pre'
             os: ubuntu-latest
-            arch: x64
             num_threads: 1
 
     steps:
       - name: Print matrix variables
         run: |
           echo "OS: ${{ matrix.runner.os }}"
-          echo "Architecture: ${{ matrix.runner.arch }}"
           echo "Julia version: ${{ matrix.runner.version }}"
           echo "Number of threads: ${{ matrix.runner.num_threads }}"
           echo "Test arguments: ${{ matrix.test.args }}"
@@ -92,7 +78,6 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '${{ matrix.runner.version }}'
-          arch: ${{ matrix.runner.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
       # TODO: Use julia-actions/julia-runtest when test_args are supported

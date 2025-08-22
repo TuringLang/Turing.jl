@@ -1,0 +1,15 @@
+name: Automatically assign PR authors
+
+on:
+  pull_request:
+    types:
+      - opened
+
+permissions:
+  pull-requests: write
+
+jobs:
+  assign-author:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: TuringLang/actions/PRAssign@main

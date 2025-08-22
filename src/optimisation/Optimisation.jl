@@ -4,7 +4,6 @@ using ..Turing
 using NamedArrays: NamedArrays
 using DynamicPPL: DynamicPPL
 using LogDensityProblems: LogDensityProblems
-using LogDensityProblemsAD: LogDensityProblemsAD
 using Optimization: Optimization
 using OptimizationOptimJL: OptimizationOptimJL
 using Random: Random
@@ -16,6 +15,7 @@ using Printf: Printf
 using ForwardDiff: ForwardDiff
 using StatsAPI: StatsAPI
 using Statistics: Statistics
+using LinearAlgebra: LinearAlgebra
 
 export maximum_a_posteriori, maximum_likelihood
 # The MAP and MLE exports are only needed for the Optim.jl interface.
@@ -44,102 +44,69 @@ Concrete type for maximum a posteriori estimation. Only used for the Optim.jl in
 struct MAP <: ModeEstimator end
 
 """
-    OptimizationContext{C<:AbstractContext} <: AbstractContext
+    OptimLogDensity{
+        M<:DynamicPPL.Model,
+        F<:Function,
+        V<:DynamicPPL.AbstractVarInfo,
+        AD<:ADTypes.AbstractADType,
+    }
 
-The `OptimizationContext` transforms variables to their constrained space, but
-does not use the density with respect to the transformation. This context is
-intended to allow an optimizer to sample in R^n freely.
+A struct that wraps a single LogDensityFunction. Can be invoked either using
+
+```julia
+OptimLogDensity(model, varinfo; adtype=adtype)
+```
+
+or
+
+```julia
+OptimLogDensity(model; adtype=adtype)
+```
+
+If not specified, `adtype` defaults to `AutoForwardDiff()`.
+
+An OptimLogDensity does not, in itself, obey the LogDensityProblems interface.
+Thus, if you want to calculate the log density of its contents at the point
+`z`, you should manually call
+
+```julia
+LogDensityProblems.logdensity(f.ldf, z)
+```
+
+However, it is a callable object which returns the *negative* log density of
+the underlying LogDensityFunction at the point `z`. This is done to satisfy
+the Optim.jl interface.
+
+```julia
+optim_ld = OptimLogDensity(model, varinfo)
+optim_ld(z)  # returns -logp
+```
 """
-struct OptimizationContext{C<:DynamicPPL.AbstractContext} <: DynamicPPL.AbstractContext
-    context::C
+struct OptimLogDensity{L<:DynamicPPL.LogDensityFunction}
+    ldf::L
 
-    function OptimizationContext{C}(context::C) where {C<:DynamicPPL.AbstractContext}
-        if !(
-            context isa Union{
-                DynamicPPL.DefaultContext,
-                DynamicPPL.LikelihoodContext,
-                DynamicPPL.PriorContext,
-            }
-        )
-            msg = """
-                `OptimizationContext` supports only leaf contexts of type
-                `DynamicPPL.DefaultContext`, `DynamicPPL.LikelihoodContext`,
-                and `DynamicPPL.PriorContext` (given: `$(typeof(context)))`
-            """
-            throw(ArgumentError(msg))
-        end
-        return new{C}(context)
-    end
-end
-
-OptimizationContext(ctx::DynamicPPL.AbstractContext) = OptimizationContext{typeof(ctx)}(ctx)
-
-DynamicPPL.NodeTrait(::OptimizationContext) = DynamicPPL.IsLeaf()
-
-function DynamicPPL.tilde_assume(ctx::OptimizationContext, dist, vn, vi)
-    r = vi[vn, dist]
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        Distributions.logpdf(dist, r)
-    else
-        # MLE
-        0
-    end
-    return r, lp, vi
-end
-
-_loglikelihood(dist::Distribution, x) = StatsAPI.loglikelihood(dist, x)
-
-function _loglikelihood(dists::AbstractArray{<:Distribution}, x)
-    return StatsAPI.loglikelihood(arraydist(dists), x)
-end
-
-function DynamicPPL.dot_tilde_assume(ctx::OptimizationContext, right, left, vns, vi)
-    # Values should be set and we're using `SampleFromPrior`, hence the `rng` argument
-    # shouldn't affect anything.
-    # TODO: Stop using `get_and_set_val!`.
-    r = DynamicPPL.get_and_set_val!(
-        Random.default_rng(), vi, vns, right, DynamicPPL.SampleFromPrior()
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function,
+        vi::DynamicPPL.AbstractVarInfo;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
     )
-    lp = if ctx.context isa Union{DynamicPPL.DefaultContext,DynamicPPL.PriorContext}
-        # MAP
-        _loglikelihood(right, r)
-    else
-        # MLE
-        0
+        ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+        return new{typeof(ldf)}(ldf)
     end
-    return r, lp, vi
-end
-
-function DynamicPPL.tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.tilde_observe(ctx.context, args...)
-end
-
-function DynamicPPL.dot_tilde_observe(
-    ctx::OptimizationContext{<:DynamicPPL.PriorContext}, args...
-)
-    return DynamicPPL.dot_tilde_observe(ctx.context, args...)
-end
-
-"""
-    OptimLogDensity{M<:DynamicPPL.Model,C<:Context,V<:DynamicPPL.VarInfo}
-
-A struct that stores the negative log density function of a `DynamicPPL` model.
-"""
-const OptimLogDensity{M<:DynamicPPL.Model,C<:OptimizationContext,V<:DynamicPPL.VarInfo} = Turing.LogDensityFunction{
-    V,M,C
-}
-
-"""
-    OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
-
-Create a callable `OptimLogDensity` struct that evaluates a model using the given `context`.
-"""
-function OptimLogDensity(model::DynamicPPL.Model, context::OptimizationContext)
-    init = DynamicPPL.VarInfo(model)
-    return Turing.LogDensityFunction(init, model, context)
+    function OptimLogDensity(
+        model::DynamicPPL.Model,
+        getlogdensity::Function;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+    )
+        # No varinfo
+        return OptimLogDensity(
+            model,
+            getlogdensity,
+            DynamicPPL.ldf_default_varinfo(model, getlogdensity);
+            adtype=adtype,
+        )
+    end
 end
 
 """
@@ -152,42 +119,30 @@ depends on the context of `f`.
 Any second argument is ignored. The two-argument method only exists to match interface the
 required by Optimization.jl.
 """
-function (f::OptimLogDensity)(z::AbstractVector)
-    varinfo = DynamicPPL.unflatten(f.varinfo, z)
-    return -DynamicPPL.getlogp(
-        last(DynamicPPL.evaluate!!(f.model, varinfo, DynamicPPL.getcontext(f)))
-    )
-end
-
+(f::OptimLogDensity)(z::AbstractVector) = -LogDensityProblems.logdensity(f.ldf, z)
 (f::OptimLogDensity)(z, _) = f(z)
-
-# NOTE: This seems a bit weird IMO since this is the _negative_ log-likelihood.
-LogDensityProblems.logdensity(f::OptimLogDensity, z::AbstractVector) = f(z)
 
 # NOTE: The format of this function is dictated by Optim. The first argument sets whether to
 # compute the function value, the second whether to compute the gradient (and stores the
 # gradient). The last one is the actual argument of the objective function.
 function (f::OptimLogDensity)(F, G, z)
     if G !== nothing
-        # Calculate negative log joint and its gradient.
-        # TODO: Make OptimLogDensity already an LogDensityProblems.ADgradient? Allow to
-        # specify AD?
-        ℓ = LogDensityProblemsAD.ADgradient(f)
-        neglogp, ∇neglogp = LogDensityProblems.logdensity_and_gradient(ℓ, z)
+        # Calculate log joint and its gradient.
+        logp, ∇logp = LogDensityProblems.logdensity_and_gradient(f.ldf, z)
 
-        # Save the gradient to the pre-allocated array.
-        copyto!(G, ∇neglogp)
+        # Save the negative gradient to the pre-allocated array.
+        copyto!(G, -∇logp)
 
         # If F is something, the negative log joint is requested as well.
         # We have already computed it as a by-product above and hence return it directly.
         if F !== nothing
-            return neglogp
+            return -logp
         end
     end
 
     # Only negative log joint requested but no gradient.
     if F !== nothing
-        return LogDensityProblems.logdensity(f, z)
+        return -LogDensityProblems.logdensity(f.ldf, z)
     end
 
     return nothing
@@ -228,11 +183,61 @@ end
 
 # Various StatsBase methods for ModeResult
 
-function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
+"""
+    StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
+
+
+Return a table with coefficients and related statistics of the model. level determines the
+level for confidence intervals (by default, 95%).
+
+In case the `numerrors_warnonly` argument is true (the default) numerical errors encountered
+during the computation of the standard errors will be caught and reported in an extra
+"Error notes" column.
+"""
+function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
     # Get columns for coeftable.
     terms = string.(StatsBase.coefnames(m))
     estimates = m.values.array[:, 1]
-    stderrors = StatsBase.stderror(m)
+    # If numerrors_warnonly is true, and if either the information matrix is singular or has
+    # negative entries on its diagonal, then `notes` will be a list of strings for each
+    # value in `m.values`, explaining why the standard error is NaN.
+    notes = nothing
+    local stderrors
+    if numerrors_warnonly
+        infmat = StatsBase.informationmatrix(m)
+        local vcov
+        try
+            vcov = inv(infmat)
+        catch e
+            if isa(e, LinearAlgebra.SingularException)
+                stderrors = fill(NaN, length(m.values))
+                notes = fill("Information matrix is singular", length(m.values))
+            else
+                rethrow(e)
+            end
+        else
+            vars = LinearAlgebra.diag(vcov)
+            stderrors = eltype(vars)[]
+            if any(x -> x < 0, vars)
+                notes = []
+            end
+            for var in vars
+                if var >= 0
+                    push!(stderrors, sqrt(var))
+                    if notes !== nothing
+                        push!(notes, "")
+                    end
+                else
+                    push!(stderrors, NaN)
+                    if notes !== nothing
+                        push!(notes, "Negative variance")
+                    end
+                end
+            end
+        end
+    else
+        stderrors = StatsBase.stderror(m)
+    end
     zscore = estimates ./ stderrors
     p = map(z -> StatsAPI.pvalue(Distributions.Normal(), z; tail=:both), zscore)
 
@@ -244,7 +249,7 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
     level_ = 100 * level
     level_percentage = isinteger(level_) ? Int(level_) : level_
 
-    cols = [estimates, stderrors, zscore, p, ci_low, ci_high]
+    cols = Vector[estimates, stderrors, zscore, p, ci_low, ci_high]
     colnms = [
         "Coef.",
         "Std. Error",
@@ -253,6 +258,10 @@ function StatsBase.coeftable(m::ModeResult; level::Real=0.95)
         "Lower $(level_percentage)%",
         "Upper $(level_percentage)%",
     ]
+    if notes !== nothing
+        push!(cols, notes)
+        push!(colnms, "Error notes")
+    end
     return StatsBase.CoefTable(cols, colnms, terms)
 end
 
@@ -263,9 +272,14 @@ function StatsBase.informationmatrix(
 
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
-    linked = DynamicPPL.istrans(m.f.varinfo)
+    old_ldf = m.f.ldf
+    linked = DynamicPPL.istrans(old_ldf.varinfo)
     if linked
-        m = Accessors.@set m.f.varinfo = DynamicPPL.invlink!!(m.f.varinfo, m.f.model)
+        new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
+        new_f = OptimLogDensity(
+            old_ldf.model, old_ldf.getlogdensity, new_vi; adtype=old_ldf.adtype
+        )
+        m = Accessors.@set m.f = new_f
     end
 
     # Calculate the Hessian, which is the information matrix because the negative of the log
@@ -275,7 +289,12 @@ function StatsBase.informationmatrix(
 
     # Link it back if we invlinked it.
     if linked
-        m = Accessors.@set m.f.varinfo = DynamicPPL.link!!(m.f.varinfo, m.f.model)
+        invlinked_ldf = m.f.ldf
+        new_vi = DynamicPPL.link!!(invlinked_ldf.varinfo, invlinked_ldf.model)
+        new_f = OptimLogDensity(
+            invlinked_ldf.model, old_ldf.getlogdensity, new_vi; adtype=invlinked_ldf.adtype
+        )
+        m = Accessors.@set m.f = new_f
     end
 
     return NamedArrays.NamedArray(info, (varnames, varnames))
@@ -296,13 +315,14 @@ Return the values of all the variables with the symbol(s) `var_symbol` in the mo
 argument should be either a `Symbol` or a vector of `Symbol`s.
 """
 function Base.get(m::ModeResult, var_symbols::AbstractVector{Symbol})
-    log_density = m.f
+    log_density = m.f.ldf
     # Get all the variable names in the model. This is the same as the list of keys in
     # m.values, but they are more convenient to filter when they are VarNames rather than
     # Symbols.
-    varnames = collect(
-        map(first, Turing.Inference.getparams(log_density.model, log_density.varinfo))
-    )
+    vals_dict = Turing.Inference.getparams(log_density.model, log_density.varinfo)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    vns_and_vals = mapreduce(collect, vcat, iters)
+    varnames = collect(map(first, vns_and_vals))
     # For each symbol s in var_symbols, pick all the values from m.values for which the
     # variable name has that symbol.
     et = eltype(m.values)
@@ -328,9 +348,11 @@ richer format of `ModeResult`. It also takes care of transforming them back to t
 parameter space in case the optimization was done in a transformed space.
 """
 function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
-    varinfo_new = DynamicPPL.unflatten(log_density.varinfo, solution.u)
+    varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
     # `getparams` performs invlinking if needed
-    vns_vals_iter = Turing.Inference.getparams(log_density.model, varinfo_new)
+    vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+    vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     return ModeResult(
@@ -414,12 +436,15 @@ end
     OptimizationProblem(log_density::OptimLogDensity, adtype, constraints)
 
 Create an `OptimizationProblem` for the objective function defined by `log_density`.
+
+Note that the adtype parameter here overrides any adtype parameter the
+OptimLogDensity was constructed with.
 """
 function Optimization.OptimizationProblem(log_density::OptimLogDensity, adtype, constraints)
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it in the objective function as below.
     f = Optimization.OptimizationFunction(log_density, adtype; cons=constraints.cons)
-    initial_params = log_density.varinfo[:]
+    initial_params = log_density.ldf.varinfo[:]
     prob = if !has_constraints(constraints)
         Optimization.OptimizationProblem(f, initial_params)
     else
@@ -456,6 +481,8 @@ Under the hood this function calls `Optimization.solve`.
     if non-box constraints are present.
 
 # Keyword arguments
+- `check_model::Bool=true`: If true, the model is checked for errors before
+    optimisation begins.
 - `initial_params::Union{AbstractVector,Nothing}=nothing`: Initial value for the
     optimization. Optional, unless non-box constraints are specified. If omitted it is
     generated by either sampling from the prior distribution or uniformly from the box
@@ -469,6 +496,7 @@ function estimate_mode(
     model::DynamicPPL.Model,
     estimator::ModeEstimator,
     solver=nothing;
+    check_model::Bool=true,
     initial_params=nothing,
     adtype=ADTypes.AutoForwardDiff(),
     cons=nothing,
@@ -478,6 +506,13 @@ function estimate_mode(
     ub=nothing,
     kwargs...,
 )
+    if check_model
+        spl_model = DynamicPPL.contextualize(
+            model, DynamicPPL.SamplingContext(model.context)
+        )
+        DynamicPPL.check_model(spl_model, DynamicPPL.VarInfo(); error_on_failure=true)
+    end
+
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
     initial_params = generate_initial_params(model, initial_params, constraints)
     if solver === nothing
@@ -485,27 +520,31 @@ function estimate_mode(
     end
 
     # Create an OptimLogDensity object that can be used to evaluate the objective function,
-    # i.e. the negative log density. Set its VarInfo to the initial parameters.
-    log_density = let
-        inner_context = if estimator isa MAP
-            DynamicPPL.DefaultContext()
-        else
-            DynamicPPL.LikelihoodContext()
-        end
-        ctx = OptimizationContext(inner_context)
-        ld = OptimLogDensity(model, ctx)
-        Accessors.@set ld.varinfo = DynamicPPL.unflatten(ld.varinfo, initial_params)
-    end
+    # i.e. the negative log density.
+    # Note that we use `getlogjoint` rather than `getlogjoint_internal`: this
+    # is intentional, because even though the VarInfo may be linked, the
+    # optimisation target should not take the Jacobian term into account.
+    getlogdensity = estimator isa MAP ? DynamicPPL.getlogjoint : DynamicPPL.getloglikelihood
 
+    # Set its VarInfo to the initial parameters.
+    # TODO(penelopeysm): Unclear if this is really needed? Any time that logp is calculated
+    # (using `LogDensityProblems.logdensity(ldf, x)`) the parameters in the
+    # varinfo are completely ignored. The parameters only matter if you are calling evaluate!!
+    # directly on the fields of the LogDensityFunction
+    vi = DynamicPPL.ldf_default_varinfo(model, getlogdensity)
+    vi = DynamicPPL.unflatten(vi, initial_params)
+
+    # Link the varinfo if needed.
     # TODO(mhauru) We currently couple together the questions of whether the user specified
     # bounds/constraints and whether we transform the objective function to an
     # unconstrained space. These should be separate concerns, but for that we need to
     # implement getting the bounds of the prior distributions.
     optimise_in_unconstrained_space = !has_constraints(constraints)
     if optimise_in_unconstrained_space
-        transformed_varinfo = DynamicPPL.link(log_density.varinfo, log_density.model)
-        log_density = Accessors.@set log_density.varinfo = transformed_varinfo
+        vi = DynamicPPL.link(vi, model)
     end
+
+    log_density = OptimLogDensity(model, getlogdensity, vi)
 
     prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
     solution = Optimization.solve(prob, solver; kwargs...)

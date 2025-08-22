@@ -1,11 +1,4 @@
 style="blue"
 format_markdown = true
 import_to_using = false
-# TODO
-# We ignore these files because when formatting was first put in place they were being worked on.
-# These ignores should be removed once the relevant PRs are merged/closed.
-ignore = [
-    # https://github.com/TuringLang/Turing.jl/pull/2328/files
-    "src/experimental/gibbs.jl",
-    "test/experimental/gibbs.jl",
-]
+ignore = ["README.md"]

@@ -3,11 +3,12 @@ name: Documentation
 on:
   push:
     branches:
-      - master
+      - main
     tags: '*'
   pull_request:
-    branches:
-      - master
+  merge_group:
+    types: [checks_requested]
+  workflow_dispatch:
 
 concurrency:
   # Skip intermediate builds: always.
@@ -17,21 +18,12 @@ concurrency:
 
 permissions:
   contents: write
-  pull-requests: read
-  statuses: write
+  pull-requests: write
 
 jobs:
   docs:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@latest
-        with:
-          version: '1'
-      - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Build and deploy
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: julia --project=docs/ docs/make.jl
+      - name: Build and deploy Documenter.jl docs
+        uses: TuringLang/actions/DocsDocumenter@main

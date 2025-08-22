@@ -1,11 +1,11 @@
 module ParticleMCMCTests
 
 using ..Models: gdemo_default
-#using ..Models: MoGtest, MoGtest_default
+using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
-using DynamicPPL: getspace
 using Random: Random
+using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -13,47 +13,15 @@ using Turing
     @testset "constructor" begin
         s = SMC()
         @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === ()
-
-        s = SMC(:x)
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x,)
-
-        s = SMC((:x,))
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x,)
-
-        s = SMC(:x, :y)
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x, :y)
-
-        s = SMC((:x, :y))
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x, :y)
 
         s = SMC(0.6)
         @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === ()
-
-        s = SMC(0.6, (:x,))
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === (:x,)
 
         s = SMC(resample_multinomial, 0.6)
         @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === ()
-
-        s = SMC(resample_multinomial, 0.6, (:x,))
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === (:x,)
 
         s = SMC(resample_systematic)
         @test s.resampler === resample_systematic
-        @test getspace(s) === ()
-
-        s = SMC(resample_systematic, (:x,))
-        @test s.resampler === resample_systematic
-        @test getspace(s) === (:x,)
     end
 
     @testset "models" begin
@@ -67,6 +35,7 @@ using Turing
 
         tested = sample(normal(), SMC(), 100)
 
+        # TODO(mhauru) This needs an explanation for why it fails.
         # failing test
         @model function fail_smc()
             a ~ Normal(4, 5)
@@ -79,6 +48,10 @@ using Turing
         end
 
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
+    end
+
+    @testset "chain log-density metadata" begin
+        test_chain_logp_metadata(SMC())
     end
 
     @testset "logevidence" begin
@@ -97,7 +70,10 @@ using Turing
         chains_smc = sample(test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
+        # the chain itself has a logevidence field
         @test chains_smc.logevidence ≈ -2 * log(2)
+        # but each transition also contains the logevidence
+        @test chains_smc[:logevidence] ≈ fill(chains_smc.logevidence, 100)
     end
 end
 
@@ -106,57 +82,22 @@ end
         s = PG(10)
         @test s.nparticles == 10
         @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === ()
-
-        s = PG(20, :x)
-        @test s.nparticles == 20
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x,)
-
-        s = PG(30, (:x,))
-        @test s.nparticles == 30
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x,)
-
-        s = PG(40, :x, :y)
-        @test s.nparticles == 40
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x, :y)
-
-        s = PG(50, (:x, :y))
-        @test s.nparticles == 50
-        @test s.resampler == ResampleWithESSThreshold()
-        @test getspace(s) === (:x, :y)
 
         s = PG(60, 0.6)
         @test s.nparticles == 60
         @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === ()
-
-        s = PG(70, 0.6, (:x,))
-        @test s.nparticles == 70
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-        @test getspace(s) === (:x,)
 
         s = PG(80, resample_multinomial, 0.6)
         @test s.nparticles == 80
         @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === ()
-
-        s = PG(90, resample_multinomial, 0.6, (:x,))
-        @test s.nparticles == 90
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-        @test getspace(s) === (:x,)
 
         s = PG(100, resample_systematic)
         @test s.nparticles == 100
         @test s.resampler === resample_systematic
-        @test getspace(s) === ()
+    end
 
-        s = PG(110, resample_systematic, (:x,))
-        @test s.nparticles == 110
-        @test s.resampler === resample_systematic
-        @test getspace(s) === (:x,)
+    @testset "chain log-density metadata" begin
+        test_chain_logp_metadata(PG(10))
     end
 
     @testset "logevidence" begin
@@ -176,6 +117,7 @@ end
 
         @test all(isone, chains_pg[:x])
         @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
+        @test chains_pg[:logevidence] ≈ fill(chains_pg.logevidence, 100)
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
@@ -185,69 +127,29 @@ end
         @test length(unique(c[:s])) == 1
     end
 
+    @testset "addlogprob leads to reweighting" begin
+        # Make sure that PG takes @addlogprob! into account. It didn't use to:
+        # https://github.com/TuringLang/Turing.jl/issues/1996
+        @model function addlogprob_demo()
+            x ~ Normal(0, 1)
+            if x < 0
+                @addlogprob! -10.0
+            else
+                # Need a balanced number of addlogprobs in all branches, or
+                # else PG will error
+                @addlogprob! 0.0
+            end
+        end
+        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        # Result should be biased towards x > 0.
+        @test mean(c[:x]) > 0.7
+    end
+
     # https://github.com/TuringLang/Turing.jl/issues/2007
     @testset "keyword arguments not supported" begin
         @model kwarg_demo(; x=2) = return x
         @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
     end
 end
-
-# @testset "pmmh.jl" begin
-#     @testset "pmmh constructor" begin
-#         N = 2000
-#         s1 = PMMH(N, SMC(10, :s), MH(1,(:m, s -> Normal(s, sqrt(1)))))
-#         s2 = PMMH(N, SMC(10, :s), MH(1, :m))
-#         s3 = PIMH(N, SMC())
-#
-#         c1 = sample(gdemo_default, s1)
-#         c2 = sample(gdemo_default, s2)
-#         c3 = sample(gdemo_default, s3)
-#     end
-#     @numerical_testset "pmmh inference" begin
-#         alg = PMMH(2000, SMC(20, :m), MH(1, (:s, GKernel(1))))
-#         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain, atol = 0.1)
-#
-#         # PMMH with prior as proposal
-#         alg = PMMH(2000, SMC(20, :m), MH(1, :s))
-#         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain, atol = 0.1)
-#
-#         # PIMH
-#         alg = PIMH(2000, SMC())
-#         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain)
-#
-#         # MoGtest
-#         pmmh = PMMH(2000,
-#             SMC(10, :z1, :z2, :z3, :z4),
-#             MH(1, :mu1, :mu2))
-#         chain = sample(MoGtest_default, pmmh)
-#
-#         check_MoGtest_default(chain, atol = 0.1)
-#     end
-# end
-
-# @testset "ipmcmc.jl" begin
-#     @testset "ipmcmc constructor" begin
-#         Random.seed!(125)
-#
-#         N = 50
-#         s1 = IPMCMC(10, N, 4, 2)
-#         s2 = IPMCMC(10, N, 4)
-#
-#         c1 = sample(gdemo_default, s1)
-#         c2 = sample(gdemo_default, s2)
-#     end
-#     @numerical_testset "ipmcmc inference" begin
-#         alg = IPMCMC(30, 500, 4)
-#         chain = sample(gdemo_default, alg)
-#         check_gdemo(chain)
-#
-#         alg2 = IPMCMC(15, 100, 10)
-#         chain2 = sample(MoGtest_default, alg2)
-#         check_MoGtest_default(chain2, atol = 0.2)
-#     end
-# end
 
 end

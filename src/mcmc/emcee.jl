@@ -13,7 +13,7 @@ Foreman-Mackey, D., Hogg, D. W., Lang, D., & Goodman, J. (2013).
 emcee: The MCMC Hammer. Publications of the Astronomical Society of the
 Pacific, 125 (925), 306. https://doi.org/10.1086/670067
 """
-struct Emcee{space,E<:AMH.Ensemble} <: InferenceAlgorithm
+struct Emcee{E<:AMH.Ensemble} <: InferenceAlgorithm
     ensemble::E
 end
 
@@ -23,7 +23,7 @@ function Emcee(n_walkers::Int, stretch_length=2.0)
     # ensemble sampling.
     prop = AMH.StretchProposal(nothing, stretch_length)
     ensemble = AMH.Ensemble(n_walkers, prop)
-    return Emcee{(),typeof(ensemble)}(ensemble)
+    return Emcee{typeof(ensemble)}(ensemble)
 end
 
 struct EmceeState{V<:AbstractVarInfo,S}
@@ -53,22 +53,26 @@ function AbstractMCMC.step(
         length(initial_params) == n ||
             throw(ArgumentError("initial parameters have to be specified for each walker"))
         vis = map(vis, initial_params) do vi, init
-            vi = DynamicPPL.initialize_parameters!!(vi, init, spl, model)
+            # TODO(DPPL0.38/penelopeysm) This whole thing can be replaced with init!!
+            vi = DynamicPPL.initialize_parameters!!(vi, init, model)
 
             # Update log joint probability.
-            last(DynamicPPL.evaluate!!(model, rng, vi, SampleFromPrior()))
+            spl_model = DynamicPPL.contextualize(
+                model, DynamicPPL.SamplingContext(rng, SampleFromPrior(), model.context)
+            )
+            last(DynamicPPL.evaluate!!(spl_model, vi))
         end
     end
 
     # Compute initial transition and states.
-    transition = map(Base.Fix1(Transition, model), vis)
+    transition = [Transition(model, vi, nothing) for vi in vis]
 
     # TODO: Make compatible with immutable `AbstractVarInfo`.
     state = EmceeState(
         vis[1],
         map(vis) do vi
-            vi = DynamicPPL.link!!(vi, spl, model)
-            AMH.Transition(vi[spl], getlogp(vi), false)
+            vi = DynamicPPL.link!!(vi, model)
+            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
@@ -81,17 +85,19 @@ function AbstractMCMC.step(
     # Generate a log joint function.
     vi = state.vi
     densitymodel = AMH.DensityModel(
-        Base.Fix1(LogDensityProblems.logdensity, Turing.LogDensityFunction(model, vi))
+        Base.Fix1(
+            LogDensityProblems.logdensity,
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
+        ),
     )
 
     # Compute the next states.
-    states = last(AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states))
+    t, states = AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
-        vi = setindex!!(vi, _state.params, spl)
-        t = Transition(getparams(model, vi), _state.lp)
-        return t
+        vi = DynamicPPL.unflatten(vi, _state.params)
+        return Transition(model, vi, t)
     end
     newstate = EmceeState(vi, states)
 
