@@ -69,6 +69,11 @@ end
             @timeit_include("optimisation/Optimisation.jl")
             @timeit_include("ext/OptimInterface.jl")
         end
+
+        @testset "marginalization" verbose = true begin
+            @timeit_include("ext/marginallogdensities.jl")
+        end
+
     end
 
     @testset "stdlib" verbose = true begin
