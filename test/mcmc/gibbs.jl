@@ -383,7 +383,7 @@ end
         # As above but different samplers and using kwargs.
         s3 = Gibbs(:s => CSMC(3), :m => HMCDA(200, 0.65, 0.15))
         s4 = Gibbs(@varname(s) => HMC(0.1, 5), @varname(m) => ESS())
-        # Multiple instnaces of the same sampler. This implements running, in this case,
+        # Multiple instances of the same sampler. This implements running, in this case,
         # 3 steps of HMC on m and 2 steps of PG on m in every iteration of Gibbs.
         s5 = begin
             hmc = HMC(0.1, 5)

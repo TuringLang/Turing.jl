@@ -81,7 +81,7 @@ export InferenceAlgorithm,
     externalsampler
 
 ###############################################
-# Abstract inferface for inference algorithms #
+# Abstract interface for inference algorithms #
 ###############################################
 
 include("algorithm.jl")
