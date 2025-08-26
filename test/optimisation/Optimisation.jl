@@ -505,7 +505,7 @@ using Turing
     # Some of the models have one variance parameter per observation, and so
     # the MLE should have the variances set to 0. Since we're working in
     # transformed space, this corresponds to `-Inf`, which is of course not achievable.
-    # In particular, it can result in "early termniation" of the optimization process
+    # In particular, it can result in "early termination" of the optimization process
     # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
     # something larger than the default.
     allowed_incorrect_mle = [

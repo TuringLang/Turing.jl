@@ -601,7 +601,7 @@ end
     match_linking!!(varinfo_local, prev_state_local, model)
 
 Make sure the linked/invlinked status of varinfo_local matches that of the previous
-state for this sampler. This is relevant when multilple samplers are sampling the same
+state for this sampler. This is relevant when multiple samplers are sampling the same
 variables, and one might need it to be linked while the other doesn't.
 """
 function match_linking!!(varinfo_local, prev_state_local, model)
