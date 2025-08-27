@@ -53,6 +53,8 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+include("extensions.jl")
+
 ###########
 # Exports #
 ###########
@@ -153,6 +155,8 @@ export
     maximum_a_posteriori,
     maximum_likelihood,
     MAP,
-    MLE
+    MLE,
+    # MarginalLogDensities extension
+    marginalize
 
 end
