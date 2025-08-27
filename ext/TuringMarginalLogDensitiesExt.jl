@@ -18,7 +18,9 @@ _to_varname(n::DynamicPPL.AbstractPPL.VarName) = n
 function Turing.marginalize(
     model::DynamicPPL.Model,
     varnames::Vector,
-    method::MarginalLogDensities.AbstractMarginalizer = MarginalLogDensities.LaplaceApprox(),
+    getlogprob = DynamicPPL.getlogjoint,
+    method::MarginalLogDensities.AbstractMarginalizer = MarginalLogDensities.LaplaceApprox();
+    kwargs...
 )
     # Determine the indices for the variables to marginalise out.
     varinfo = DynamicPPL.typed_varinfo(model)
@@ -30,15 +32,14 @@ function Turing.marginalize(
 
     f = Turing.Optimisation.OptimLogDensity(
         model,
-        Turing.DynamicPPL.getlogjoint,
-        # Turing.DynamicPPL.typed_varinfo(model)
+        getlogprob,
         varinfo_linked
     )
 
     # HACK: need the sign-flip here because `OptimizationContext` is a hacky impl which
     # represent the _negative_ log-density.
     mdl = MarginalLogDensities.MarginalLogDensity(
-        Drop2ndArgAndFlipSign(f), varinfo_linked[:], varindices, (), method
+        Drop2ndArgAndFlipSign(f), varinfo_linked[:], varindices, (), method; kwargs...
     )
     return mdl
 end

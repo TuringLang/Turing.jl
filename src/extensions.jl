@@ -1,3 +1,3 @@
-function marginalize(model, varnames, method)
+function marginalize(model, varnames, getlogprob, method; kwargs...)
     error("This function is available after importing MarginalLogDensities.")
 end

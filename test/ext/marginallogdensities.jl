@@ -1,6 +1,7 @@
 module TuringMarginalLogDensitiesTest
 
 using Turing, MarginalLogDensities, Test
+using Turing.DynamicPPL: getlogprior, getlogjoint
 
 @testset "MarginalLogDensities" begin
     # Simple test case.
@@ -10,10 +11,14 @@ using Turing, MarginalLogDensities, Test
     end
     model = demo();
     # Marginalize out `x`.
-    marginalized = marginalize(model, [@varname(x)]);
-    marginalized = marginalize(model, [:x]);
-    # Compute the marginal log-density of `y = 0.0`.
-    @test marginalized([0.0]) ≈ logpdf(Normal(0, 1), 0.0) atol=2e-1
+
+    for vn in [@varname(x), :x]
+        for getlogprob in [getlogprior, getlogjoint]
+            marginalized = marginalize(model, [vn], getlogprob, hess_adtype=AutoForwardDiff());
+            # Compute the marginal log-density of `y = 0.0`.
+            @test marginalized([0.0]) ≈ logpdf(Normal(0, 1), 0.0) atol=1e-5
+        end
+    end
 end
 
 end
