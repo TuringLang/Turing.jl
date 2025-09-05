@@ -1,3 +1,7 @@
+# 0.40.3
+
+Fix a method ambiguity caused by a bugfix in DynamicPPL 0.37.2.
+
 # 0.40.2
 
 `sample(model, NUTS(), N; verbose=false)` now suppresses the 'initial step size' message.
