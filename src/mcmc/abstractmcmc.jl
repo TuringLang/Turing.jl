@@ -57,27 +57,3 @@ function AbstractMCMC.sample(
     check_model && _check_model(model, alg)
     return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
 end
-
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    sampler::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble,
-    N::Integer,
-    n_chains::Integer;
-    chain_type=MCMCChains.Chains,
-    progress=PROGRESS[],
-    kwargs...,
-)
-    return AbstractMCMC.mcmcsample(
-        rng,
-        model,
-        sampler,
-        ensemble,
-        N,
-        n_chains;
-        chain_type=chain_type,
-        progress=progress,
-        kwargs...,
-    )
-end
