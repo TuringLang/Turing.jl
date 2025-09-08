@@ -4,6 +4,7 @@ using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
+using AbstractMCMC: AbstractMCMC
 import DynamicPPL
 using DynamicPPL: Sampler
 import ForwardDiff
@@ -72,7 +73,48 @@ using Turing
         end
     end
 
-    @testset "chain save/resume" begin
+    @testset "save/resume correctly reloads state" begin
+        struct StaticSampler <: Turing.Inference.InferenceAlgorithm end
+        function DynamicPPL.initialstep(
+            rng, model, ::DynamicPPL.Sampler{<:StaticSampler}, vi; kwargs...
+        )
+            return Turing.Inference.Transition(model, vi, nothing), vi
+        end
+        function AbstractMCMC.step(
+            rng,
+            model,
+            ::DynamicPPL.Sampler{<:StaticSampler},
+            vi::AbstractVarInfo;
+            kwargs...,
+        )
+            return Turing.Inference.Transition(model, vi, nothing), vi
+        end
+
+        @model demo() = x ~ Normal()
+
+        @testset "single-chain" begin
+            chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
+            @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
+            chn2 = sample(demo(), StaticSampler(), 10; resume_from=chn1)
+            xval = chn1[:x][1]
+            @test all(chn2[:x] .== xval)
+        end
+
+        @testset "multiple-chain" for nchains in [1, 3]
+            chn1 = sample(
+                demo(), StaticSampler(), MCMCThreads(), 10, nchains; save_state=true
+            )
+            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test length(chn1.info.samplerstate) == nchains
+            chn2 = sample(
+                demo(), StaticSampler(), MCMCThreads(), 10, nchains; resume_from=chn1
+            )
+            xval = chn1[:x][1, :]
+            @test all(i -> chn2[:x][i, :] == xval, 1:10)
+        end
+    end
+
+    @testset "single-chain save/resume numerical accuracy" begin
         alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
         alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4))
