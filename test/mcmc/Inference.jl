@@ -84,7 +84,7 @@ using Turing
             rng,
             model,
             ::DynamicPPL.Sampler{<:StaticSampler},
-            vi::AbstractVarInfo;
+            vi::DynamicPPL.AbstractVarInfo;
             kwargs...,
         )
             return Turing.Inference.Transition(model, vi, nothing), vi
