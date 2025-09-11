@@ -1,3 +1,7 @@
+# 0.40.4
+
+HMC and NUTS samplers no longer take an extra single step before starting the chain.
+
 # 0.40.3
 
 This patch makes the `resume_from` keyword argument work correctly when sampling multiple chains.

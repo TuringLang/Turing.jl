@@ -171,6 +171,27 @@ using Turing
         @test Array(res1) == Array(res2) == Array(res3)
     end
 
+    @testset "initial params are respected" begin
+        @model demo_norm() = x ~ Beta(2, 2)
+        init_x = 0.5
+        @testset "$spl_name" for (spl_name) in (("HMC", HMC(0.1, 10)), ("NUTS", NUTS()))
+            chain = sample(
+                demo_norm(), NUTS(), 5; discard_adapt=false, initial_params=(x=init_x,)
+            )
+            @test chain[:x][1] == init_x
+            chain = sample(
+                demo_norm(),
+                NUTS(),
+                MCMCThreads(),
+                5,
+                5;
+                discard_adapt=false,
+                initial_params=(fill((x=init_x,), 5)),
+            )
+            @test all(chain[:x][:, 1] .== init_x)
+        end
+    end
+
     @testset "warning for difficult init params" begin
         attempt = 0
         @model function demo_warn_initial_params()
