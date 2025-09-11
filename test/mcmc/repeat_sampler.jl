@@ -35,7 +35,8 @@ using Turing
             num_chains;
             chain_type=Chains,
         )
-        @test chn1.value == chn2.value
+        # isequal to avoid comparing `missing`s in chain stats
+        @test isequal(chn1.value, chn2.value)
     end
 end
 

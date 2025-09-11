@@ -51,8 +51,6 @@ using Turing
     end
 
     @testset "single distribution correctness" begin
-        rng = StableRNG(1)
-
         n_samples = 10_000
         mean_tol = 0.1
         var_atol = 1.0
@@ -132,7 +130,7 @@ using Turing
 
                             @model m() = x ~ dist
 
-                            chn = sample(rng, m(), HMC(0.05, 20), n_samples)
+                            chn = sample(StableRNG(468), m(), HMC(0.05, 20), n_samples)
 
                             # Numerical tests.
                             check_dist_numerical(
