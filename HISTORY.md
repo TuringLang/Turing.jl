@@ -1,6 +1,11 @@
-# 0.40.4
+# 0.41.0
 
 HMC and NUTS samplers no longer take an extra single step before starting the chain.
+This means that if you do not discard any samples at the start, the first sample will be the initial parameters (which may be user-provided).
+
+Note that if the initial sample is included, the corresponding sampler statistics will be `missing`.
+Due to a technical limitation of MCMCChains.jl, this causes all indexing into MCMCChains to return `Union{Float64, Missing}` or similar.
+If you want the old behaviour, you can discard the first sample (e.g. using `discard_initial=1`).
 
 # 0.40.3
 
