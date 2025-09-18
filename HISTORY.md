@@ -1,3 +1,12 @@
+# 0.40.3
+
+This patch makes the `resume_from` keyword argument work correctly when sampling multiple chains.
+
+In the process this also fixes a method ambiguity caused by a bugfix in DynamicPPL 0.37.2.
+
+This patch means that if you are using `RepeatSampler()` to sample from a model, and you want to obtain `MCMCChains.Chains` from it, you need to specify `sample(...; chain_type=MCMCChains.Chains)`.
+This only applies if the sampler itself is a `RepeatSampler`; it doesn't apply if you are using `RepeatSampler` _within_ another sampler like Gibbs.
+
 # 0.40.2
 
 `sample(model, NUTS(), N; verbose=false)` now suppresses the 'initial step size' message.

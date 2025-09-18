@@ -2,6 +2,7 @@ module RepeatSamplerTests
 
 using ..Models: gdemo_default
 using DynamicPPL: Sampler
+using MCMCChains: Chains
 using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
@@ -26,7 +27,13 @@ using Turing
         )
         repeat_sampler = RepeatSampler(sampler, num_repeats)
         chn2 = sample(
-            copy(rng), gdemo_default, repeat_sampler, MCMCThreads(), num_samples, num_chains
+            copy(rng),
+            gdemo_default,
+            repeat_sampler,
+            MCMCThreads(),
+            num_samples,
+            num_chains;
+            chain_type=Chains,
         )
         @test chn1.value == chn2.value
     end
