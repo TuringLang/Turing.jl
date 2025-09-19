@@ -41,7 +41,9 @@ using Turing
                 Random.seed!(5)
                 chain2 = sample(model, sampler, MCMCThreads(), 10, 4)
 
-                @test chain1.value == chain2.value
+                # For HMC, the first step does not have stats, so we need to use isequal to
+                # avoid comparing `missing`s
+                @test isequal(chain1.value, chain2.value)
             end
 
             # Should also be stable with an explicit RNG
@@ -54,7 +56,7 @@ using Turing
                 Random.seed!(rng, local_seed)
                 chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
-                @test chain1.value == chain2.value
+                @test isequal(chain1.value, chain2.value)
             end
         end
 
@@ -608,8 +610,8 @@ using Turing
 
     @testset "names_values" begin
         ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
-        @test all(xs[:, 1] .=== [1, missing, 3])
-        @test all(xs[:, 2] .=== [missing, 2, 4])
+        @test isequal(xs[:, 1], [1, missing, 3])
+        @test isequal(xs[:, 2], [missing, 2, 4])
     end
 
     @testset "check model" begin

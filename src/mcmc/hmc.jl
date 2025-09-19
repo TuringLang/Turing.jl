@@ -216,32 +216,12 @@ function DynamicPPL.initialstep(
     else
         ϵ = spl.alg.ϵ
     end
-
-    # Generate a kernel.
+    # Generate a kernel and adaptor.
     kernel = make_ahmc_kernel(spl.alg, ϵ)
-
-    # Create initial transition and state.
-    # Already perform one step since otherwise we don't get any statistics.
-    t = AHMC.transition(rng, hamiltonian, kernel, z)
-
-    # Adaptation
     adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
-    if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, kernel, _ = AHMC.adapt!(
-            hamiltonian, kernel, adaptor, 1, nadapts, t.z.θ, t.stat.acceptance_rate
-        )
-    end
 
-    # Update VarInfo parameters based on acceptance
-    new_params = if t.stat.is_accept
-        t.z.θ
-    else
-        theta
-    end
-    vi = DynamicPPL.unflatten(vi, new_params)
-
-    transition = Transition(model, vi, t)
-    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
+    transition = Transition(model, vi, NamedTuple())
+    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
 
     return transition, state
 end
