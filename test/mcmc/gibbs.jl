@@ -946,7 +946,7 @@ end
     @testset "GibbsConditional" begin
         # Test with the inverse gamma example from the issue
         @model function inverse_gdemo(x)
-            λ ~ Gamma(2, 3)
+            λ ~ Gamma(2, inv(3))
             m ~ Normal(0, sqrt(1 / λ))
             for i in 1:length(x)
                 x[i] ~ Normal(m, sqrt(1 / λ))
@@ -956,7 +956,7 @@ end
         # Define analytical conditionals
         function cond_λ(c::NamedTuple)
             a = 2.0
-            b = 3.0
+            b = inv(3)
             m = c.m
             x = c.x
             n = length(x)

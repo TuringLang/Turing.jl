@@ -18,7 +18,7 @@ a `Distribution` from which to sample the variable `sym`.
 ```julia
 # Define a model
 @model function inverse_gdemo(x)
-    λ ~ Gamma(2, 3)
+    λ ~ Gamma(2, inv(3))
     m ~ Normal(0, sqrt(1 / λ))
     for i in 1:length(x)
         x[i] ~ Normal(m, sqrt(1 / λ))
@@ -28,7 +28,7 @@ end
 # Define analytical conditionals
 function cond_λ(c::NamedTuple)
     a = 2.0
-    b = 3.0
+    b = inv(3)
     m = c.m
     x = c.x
     n = length(x)
@@ -75,25 +75,39 @@ Traverse the context stack to find global variable information from
 GibbsContext, ConditionContext, FixedContext, etc.
 """
 function find_global_varinfo(context, fallback_vi)
-    # Start with the given context and traverse down
+    # Traverse the entire context stack to find relevant contexts
     current_context = context
+    gibbs_context = nothing
+    condition_context = nothing
+    fixed_context = nothing
 
     while current_context !== nothing
-        if current_context isa GibbsContext
-            # Found GibbsContext, return its global varinfo
-            return get_global_varinfo(current_context)
-        elseif hasproperty(current_context, :childcontext) &&
-            isdefined(DynamicPPL, :childcontext)
-            # Move to child context if it exists
+        # Use NodeTrait for robust context checking
+        if DynamicPPL.NodeTrait(current_context) isa DynamicPPL.IsParent
+            if current_context isa GibbsContext
+                gibbs_context = current_context
+            elseif current_context isa DynamicPPL.ConditionContext
+                condition_context = current_context
+            elseif current_context isa DynamicPPL.FixedContext
+                fixed_context = current_context
+            end
+            # Move to child context
             current_context = DynamicPPL.childcontext(current_context)
         else
-            # No more child contexts
             break
         end
     end
 
-    # If no GibbsContext found, use the fallback
-    return fallback_vi
+    # Return the most relevant context's varinfo
+    if gibbs_context !== nothing
+        return get_global_varinfo(gibbs_context)
+    elseif condition_context !== nothing
+        return DynamicPPL.getvarinfo(condition_context)
+    elseif fixed_context !== nothing
+        return DynamicPPL.getvarinfo(fixed_context)
+    else
+        return fallback_vi
+    end
 end
 
 """
@@ -121,19 +135,15 @@ Perform a step of GibbsConditional sampling.
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:GibbsConditional{S}},
+    sampler::DynamicPPL.Sampler{<:GibbsConditional},
     state::DynamicPPL.AbstractVarInfo;
     kwargs...,
-) where {S}
+)
     alg = sampler.alg
 
     # For GibbsConditional within Gibbs, we need to get all variable values
-    # Traverse the context stack to find all conditioned/fixed/Gibbs variables
-    global_vi = if hasproperty(model, :context)
-        find_global_varinfo(model.context, state)
-    else
-        state
-    end
+    # Model always has a context field, so we can traverse it directly
+    global_vi = find_global_varinfo(model.context, state)
 
     # Extract conditioned values as a NamedTuple
     # Include both random variables and observed data
@@ -147,11 +157,9 @@ function AbstractMCMC.step(
     # Sample from the conditional distribution
     updated = rand(rng, conddist)
 
-    # Update the variable in state
+    # Update the variable in state using unflatten for simplicity
     # The Gibbs sampler ensures that state only contains one variable
-    # Get the variable name from the keys
-    varname = first(keys(state))
-    new_vi = DynamicPPL.setindex!!(state, updated, varname)
+    new_vi = DynamicPPL.unflatten(state, [updated])
 
     return nothing, new_vi
 end

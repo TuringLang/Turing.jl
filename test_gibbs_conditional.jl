@@ -3,10 +3,11 @@ using Turing.Inference: GibbsConditional
 using Distributions
 using Random
 using Statistics
+using Test
 
 # Test with the inverse gamma example from the issue
 @model function inverse_gdemo(x)
-    λ ~ Gamma(2, 3)
+    λ ~ Gamma(2, inv(3))
     m ~ Normal(0, sqrt(1 / λ))
     for i in 1:length(x)
         x[i] ~ Normal(m, sqrt(1 / λ))
@@ -16,7 +17,7 @@ end
 # Define analytical conditionals
 function cond_λ(c::NamedTuple)
     a = 2.0
-    b = 3.0
+    b = inv(3)
     m = c.m
     x = c.x
     n = length(x)
@@ -34,45 +35,67 @@ function cond_m(c::NamedTuple)
     return Normal(m_mean, sqrt(m_var))
 end
 
-# Generate some observed data
-Random.seed!(42)
-x_obs = [1.0, 2.0, 3.0, 2.5, 1.5]
+@testset "GibbsConditional Integration Tests" begin
+    # Generate some observed data
+    Random.seed!(42)
+    x_obs = [1.0, 2.0, 3.0, 2.5, 1.5]
 
-# Create the model
-model = inverse_gdemo(x_obs)
+    # Create the model
+    model = inverse_gdemo(x_obs)
 
-# Sample using GibbsConditional
-println("Testing GibbsConditional sampler...")
-sampler = Gibbs(:λ => GibbsConditional(:λ, cond_λ), :m => GibbsConditional(:m, cond_m))
+    @testset "Basic GibbsConditional sampling" begin
+        # Sample using GibbsConditional
+        sampler = Gibbs(:λ => GibbsConditional(:λ, cond_λ), :m => GibbsConditional(:m, cond_m))
 
-# Run a short chain to test
-chain = sample(model, sampler, 100)
+        # Run a short chain to test
+        chain = sample(model, sampler, 100)
 
-println("Sampling completed successfully!")
-println("\nChain summary:")
-println(chain)
+        # Test that sampling completed successfully
+        @test chain isa MCMCChains.Chains
+        @test size(chain, 1) == 100
+        @test :λ in names(chain)
+        @test :m in names(chain)
+    end
 
-# Extract samples
-λ_samples = vec(chain[:λ])
-m_samples = vec(chain[:m])
+    @testset "Sample statistics" begin
+        # Generate samples for statistics testing
+        sampler = Gibbs(:λ => GibbsConditional(:λ, cond_λ), :m => GibbsConditional(:m, cond_m))
+        chain = sample(model, sampler, 100)
 
-println("\nλ statistics:")
-println("  Mean: ", mean(λ_samples))
-println("  Std:  ", std(λ_samples))
-println("  Min:  ", minimum(λ_samples))
-println("  Max:  ", maximum(λ_samples))
+        # Extract samples
+        λ_samples = vec(chain[:λ])
+        m_samples = vec(chain[:m])
 
-println("\nm statistics:")
-println("  Mean: ", mean(m_samples))
-println("  Std:  ", std(m_samples))
-println("  Min:  ", minimum(m_samples))
-println("  Max:  ", maximum(m_samples))
+        # Test λ statistics
+        @test mean(λ_samples) > 0  # λ should be positive
+        @test minimum(λ_samples) > 0  # All λ samples should be positive
+        @test std(λ_samples) > 0  # Should have some variability
+        @test isfinite(mean(λ_samples))
+        @test isfinite(std(λ_samples))
 
-# Test mixing with other samplers
-println("\n\nTesting mixed samplers...")
-sampler2 = Gibbs(:λ => GibbsConditional(:λ, cond_λ), :m => MH())
+        # Test m statistics
+        @test isfinite(mean(m_samples))
+        @test isfinite(std(m_samples))
+        @test std(m_samples) > 0  # Should have some variability
+    end
 
-chain2 = sample(model, sampler2, 100)
-println("Mixed sampling completed successfully!")
-println("\nMixed chain summary:")
-println(chain2)
+    @testset "Mixed samplers" begin
+        # Test mixing with other samplers
+        sampler2 = Gibbs(:λ => GibbsConditional(:λ, cond_λ), :m => MH())
+
+        chain2 = sample(model, sampler2, 100)
+
+        # Test that mixed sampling completed successfully
+        @test chain2 isa MCMCChains.Chains
+        @test size(chain2, 1) == 100
+        @test :λ in names(chain2)
+        @test :m in names(chain2)
+
+        # Test that values are reasonable
+        λ_samples2 = vec(chain2[:λ])
+        m_samples2 = vec(chain2[:m])
+        @test all(λ_samples2 .> 0)  # All λ should be positive
+        @test all(isfinite.(λ_samples2))
+        @test all(isfinite.(m_samples2))
+    end
+end
