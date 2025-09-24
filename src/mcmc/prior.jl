@@ -13,7 +13,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     vi = DynamicPPL.setaccs!!(
-        vi,
+        DynamicPPL.VarInfo(),
         (
             DynamicPPL.ValuesAsInModelAccumulator(true),
             DynamicPPL.LogPriorAccumulator(),

@@ -161,7 +161,7 @@ function find_initial_params(
             @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
 
         # Resample and try again.
-        varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
+        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
     end
 
     # if we failed to find valid initial parameters, error

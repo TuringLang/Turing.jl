@@ -45,6 +45,8 @@ using Turing.Inference: AdvancedHMC
         rng::Random.AbstractRNG,
         model::AbstractMCMC.LogDensityModel,
         sampler::MySampler;
+        # This initial_params should be an AbstractVector because the model is just a
+        # LogDensityModel, not a DynamicPPL.Model
         initial_params::AbstractVector,
         kwargs...,
     )
@@ -82,7 +84,10 @@ using Turing.Inference: AdvancedHMC
     model = test_external_sampler()
     a, b = 0.5, 0.0
 
-    chn = sample(model, externalsampler(MySampler()), 10; initial_params=[a, b])
+    # This `initial_params` should be an InitStrategy
+    chn = sample(
+        model, externalsampler(MySampler()), 10; initial_params=InitFromParams((a=a, b=b))
+    )
     @test chn isa MCMCChains.Chains
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
@@ -167,9 +172,7 @@ function initialize_mh_with_prior_proposal(model)
     )
 end
 
-function test_initial_params(
-    model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...
-)
+function test_initial_params(model, sampler, initial_params=InitFromPrior(); kwargs...)
     # Execute the transition with two different RNGs and check that the resulting
     # parameter values are the same.
     rng1 = Random.MersenneTwister(42)
@@ -204,7 +207,7 @@ end
                 n_adapts=1_000,
                 discard_initial=1_000,
                 # FIXME: Remove this once we can run `test_initial_params` above.
-                initial_params=DynamicPPL.VarInfo(model)[:],
+                initial_params=InitFromPrior(),
             )
 
             @testset "inference" begin

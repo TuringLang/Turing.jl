@@ -53,7 +53,6 @@ Combinatorics = "1"
 Distributions = "0.25"
 DistributionsAD = "0.6.3"
 DynamicHMC = "2.1.6, 3.0"
-DynamicPPL = "0.37.2"
 FiniteDifferences = "0.10.8, 0.11, 0.12"
 ForwardDiff = "0.10.12 - 0.10.32, 0.10, 1"
 HypothesisTests = "0.11"
@@ -77,3 +76,6 @@ StatsBase = "0.33, 0.34"
 StatsFuns = "0.9.5, 1"
 TimerOutputs = "0.5"
 julia = "1.10"
+
+[sources]
+DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/setleafcontext-model"}

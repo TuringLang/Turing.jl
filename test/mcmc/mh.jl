@@ -49,7 +49,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # Set the initial parameters, because if we get unlucky with the initial state,
         # these chains are too short to converge to reasonable numbers.
         discard_initial = 1_000
-        initial_params = [1.0, 1.0]
+        initial_params = InitFromParams((s=1.0, m=1.0))
 
         @testset "gdemo_default" begin
             alg = MH()
@@ -81,13 +81,16 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
                 @varname(mu1) => MH((:mu1, GKernel(1))),
                 @varname(mu2) => MH((:mu2, GKernel(1))),
             )
+            initial_params = InitFromParams((
+                mu1=1.0, mu2=1.0, z1=0.0, z2=0.0, z3=1.0, z4=1.0
+            ))
             chain = sample(
                 StableRNG(seed),
                 MoGtest_default,
                 gibbs,
                 500;
                 discard_initial=100,
-                initial_params=[1.0, 1.0, 0.0, 0.0, 1.0, 4.0],
+                initial_params=initial_params,
             )
             check_MoGtest_default(chain; atol=0.2)
         end

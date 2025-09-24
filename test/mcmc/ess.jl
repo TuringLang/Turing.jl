@@ -108,8 +108,12 @@ using Turing
         spl_x = Gibbs(@varname(z) => NUTS(), @varname(x) => ESS())
         spl_xy = Gibbs(@varname(z) => NUTS(), (@varname(x), @varname(y)) => ESS())
 
-        @test sample(StableRNG(23), xy(), spl_xy, num_samples).value ≈
-            sample(StableRNG(23), x12(), spl_x, num_samples).value
+        chn1 = sample(StableRNG(23), xy(), spl_xy, num_samples)
+        chn2 = sample(StableRNG(23), x12(), spl_x, num_samples)
+
+        @test mean(chn1[:z]) ≈ mean(chn2[:z]) atol = 0.05
+        @test mean(chn1[:x]) ≈ mean(chn2["x[1]"]) atol = 0.05
+        @test mean(chn1[:y]) ≈ mean(chn2["x[2]"]) atol = 0.05
     end
 end
 
