@@ -140,7 +140,9 @@ function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
 end
 
 # Tilde pipeline
-function DynamicPPL.tilde_assume!!(context::GibbsContext, right, vn, vi)
+function DynamicPPL.tilde_assume!!(
+    context::GibbsContext, right::Distribution, vn::VarName, vi::DynamicPPL.AbstractVarInfo
+)
     child_context = DynamicPPL.childcontext(context)
 
     # Note that `child_context` may contain `PrefixContext`s -- in which case
@@ -195,47 +197,6 @@ function DynamicPPL.tilde_assume!!(context::GibbsContext, right, vn, vi)
             # child_context might be a PrefixContext so we have to be careful to not
             # overwrite it.
             DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext()),
-            right,
-            vn,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, vi
-    end
-end
-
-# As above but with an RNG.
-function DynamicPPL.tilde_assume!!(
-    rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
-)
-    # See comment in the above, rng-less version of this method for an explanation.
-    child_context = DynamicPPL.childcontext(context)
-    vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
-
-    return if is_target_varname(context, vn)
-        # This branch means that that `sampler` is supposed to handle
-        # this variable. We can thus use its default behaviour, with
-        # the 'local' sampler-specific VarInfo.
-        DynamicPPL.tilde_assume!!(rng, child_context, sampler, right, vn, vi)
-    elseif has_conditioned_gibbs(context, vn)
-        # This branch means that a different sampler is supposed to handle this
-        # variable. From the perspective of this sampler, this variable is
-        # conditioned on, so we can just treat it as an observation.
-        # The only catch is that the value that we need is to be obtained from
-        # the global VarInfo (since the local VarInfo has no knowledge of it).
-        # Note that tilde_observe!! will trigger resampling in particle methods
-        # for variables that are handled by other Gibbs component samplers.
-        val = get_conditioned_gibbs(context, vn)
-        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
-    else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
-        # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume!!(
-            # child_context might be a PrefixContext so we have to be careful to not
-            # overwrite it.
-            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext(rng)),
             right,
             vn,
             get_global_varinfo(context),
@@ -363,7 +324,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:Gibbs};
-    initial_params=nothing,
+    initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
     kwargs...,
 )
     alg = spl.alg
@@ -388,7 +349,7 @@ function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::DynamicPPL.Sampler{<:Gibbs};
-    initial_params=nothing,
+    initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
     kwargs...,
 )
     alg = spl.alg
@@ -425,7 +386,7 @@ function gibbs_initialstep_recursive(
     samplers,
     vi,
     states=();
-    initial_params=nothing,
+    initial_params,
     kwargs...,
 )
     # End recursion
@@ -435,13 +396,6 @@ function gibbs_initialstep_recursive(
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
-
-    # Get the initial values for this component sampler.
-    initial_params_local = if initial_params === nothing
-        nothing
-    else
-        DynamicPPL.subset(vi, varnames)[:]
-    end
 
     # Construct the conditioned model.
     conditioned_model, context = make_conditional(model, varnames, vi)
@@ -453,7 +407,7 @@ function gibbs_initialstep_recursive(
         sampler;
         # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
         # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
-        initial_params=initial_params_local,
+        initial_params=initial_params,
         kwargs...,
     )
     new_vi_local = get_varinfo(new_state)
