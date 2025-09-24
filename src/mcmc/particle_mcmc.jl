@@ -144,6 +144,7 @@ function AbstractMCMC.sample(
     N::Integer;
     chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
+    initial_params=DynamicPPL.init_strategy(sampler),
     initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     kwargs...,
@@ -155,6 +156,7 @@ function AbstractMCMC.sample(
             sampler,
             N;
             chain_type=chain_type,
+            initial_params=initial_params,
             progress=progress,
             nparticles=N,
             kwargs...,
@@ -166,6 +168,7 @@ function AbstractMCMC.sample(
             sampler,
             N;
             chain_type,
+            initial_params=initial_params,
             initial_state,
             progress=progress,
             nparticles=N,

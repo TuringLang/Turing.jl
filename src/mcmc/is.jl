@@ -51,7 +51,9 @@ struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
 end
 DynamicPPL.NodeTrait(::ISContext) = DynamicPPL.IsLeaf()
 
-function DynamicPPL.tilde_assume!!(ctx::ISContext, dist::Distribution, vn::VarName, vi)
+function DynamicPPL.tilde_assume!!(
+    ctx::ISContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
+)
     if haskey(vi, vn)
         r = vi[vn]
     else
@@ -60,4 +62,9 @@ function DynamicPPL.tilde_assume!!(ctx::ISContext, dist::Distribution, vn::VarNa
     end
     vi = DynamicPPL.accumulate_assume!!(vi, r, 0.0, vn, dist)
     return r, vi
+end
+function DynamicPPL.tilde_observe!!(
+    ::ISContext, right::Distribution, left, vn::Union{VarName,Nothing}, vi::AbstractVarInfo
+)
+    return DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
 end
