@@ -36,10 +36,10 @@ function unset_all_del!(vi::AbstractVarInfo)
     return nothing
 end
 
-# TODO(penelopeysm / DPPL 0.38): Figure this out
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
+DynamicPPL.NodeTrait(::ParticleMCMCContext) = DynamicPPL.IsLeaf()
 
 struct TracedModel{V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
     model::M
@@ -75,8 +75,7 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
     # In such a case, we need to ensure that when we continue sampling (i.e.
     # the next time we hit tilde_assume!!), we don't use the values in the 
     # reference particle but rather sample new values.
-    trace = Accessors.@set trace.resample = true
-    return trace
+    return TracedModel(trace.model, trace.varinfo, trace.evaluator, true)
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
@@ -309,8 +308,6 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    # Reset the VarInfo before new sweep
-    set_all_del!(vi)
 
     # Create a new set of particles
     num_particles = spl.alg.nparticles
@@ -347,9 +344,6 @@ function AbstractMCMC.step(
 
     # Create reference particle for which the samples will be retained.
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, vi, state.rng, false))
-
-    # For all other particles, do not retain the variables but resample them.
-    set_all_del!(vi)
 
     # Create a new set of particles.
     num_particles = spl.alg.nparticles
@@ -410,7 +404,7 @@ function get_trace_local_resampled_maybe(fallback_resampled::Bool)
     catch e
         e == KeyError(:task_variable) ? nothing : rethrow(e)
     end
-    return (trace === nothing ? fallback_resampled : trace.resample)::Bool
+    return (trace === nothing ? fallback_resampled : trace.model.f.resample)::Bool
 end
 
 """
@@ -479,7 +473,13 @@ function DynamicPPL.tilde_assume!!(
     return x, vi
 end
 
-function DynamicPPL.tilde_observe!!(::ParticleMCMCContext, right, left, vn, vi)
+function DynamicPPL.tilde_observe!!(
+    ::ParticleMCMCContext,
+    right::Distribution,
+    left,
+    vn::Union{VarName,Nothing},
+    vi::AbstractVarInfo,
+)
     arg_vi_id = objectid(vi)
     vi = get_trace_local_varinfo_maybe(vi)
     using_local_vi = objectid(vi) == arg_vi_id

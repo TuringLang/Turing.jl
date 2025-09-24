@@ -353,19 +353,9 @@ This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated h
 support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
 incompatible with step_warmup.
 """
-function initial_varinfo(rng, model, spl, initial_params)
+function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractInitStrategy)
     vi = DynamicPPL.default_varinfo(rng, model, spl)
-
-    # Update the parameters if provided.
-    if initial_params !== nothing
-        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, model)
-
-        # Update joint log probability.
-        # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
-        # and https://github.com/TuringLang/Turing.jl/issues/1563
-        # to avoid that existing variables are resampled
-        vi = last(DynamicPPL.evaluate!!(model, vi))
-    end
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
     return vi
 end
 
