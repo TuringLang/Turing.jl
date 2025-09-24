@@ -415,3 +415,8 @@ function DynamicPPL.tilde_assume!!(
     end
     return DynamicPPL.tilde_assume!!(dispatch_ctx, right, vn, vi)
 end
+function DynamicPPL.tilde_observe!!(
+    ::MHContext, right::Distribution, left, vn::Union{VarName,Nothing}, vi::AbstractVarInfo
+)
+    return DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
+end

@@ -46,9 +46,10 @@ function getlogevidence(samples::Vector{<:Transition}, ::Sampler{<:IS}, state)
     return logsumexp(map(x -> x.loglikelihood, samples)) - log(length(samples))
 end
 
-struct ISContext{R<:AbstractRNG}
+struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
+DynamicPPL.NodeTrait(::ISContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume!!(ctx::ISContext, dist::Distribution, vn::VarName, vi)
     if haskey(vi, vn)

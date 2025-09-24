@@ -695,7 +695,7 @@ end
                 # Determine initial parameters to make comparison as fair as possible.
                 # posterior_mean returns a NamedTuple so we can plug it in directly.
                 posterior_mean = DynamicPPL.TestUtils.posterior_mean(model)
-                initial_params = fill(InitFromParams(initial_params), num_chains)
+                initial_params = fill(InitFromParams(posterior_mean), num_chains)
 
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)
