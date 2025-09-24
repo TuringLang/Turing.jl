@@ -80,7 +80,7 @@ function HMC(
     return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
-DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
+DynamicPPL.init_strategy(::Sampler{<:Hamiltonian}) = DynamicPPL.InitFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
@@ -160,12 +160,7 @@ function find_initial_params(
             @warn "failed to find valid initial parameters in $(attempts) tries; consider providing explicit initial parameters using the `initial_params` keyword"
 
         # Resample and try again.
-        # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
-        varinfo = last(
-            DynamicPPL.evaluate_and_sample!!(
-                rng, model, varinfo, DynamicPPL.SampleFromUniform()
-            ),
-        )
+        varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromUniform())
     end
 
     # if we failed to find valid initial parameters, error
@@ -469,15 +464,6 @@ function make_ahmc_kernel(alg::NUTS, ϵ)
             AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)
         ),
     )
-end
-
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
-)
-    return DynamicPPL.assume(dist, vn, vi)
 end
 
 ####

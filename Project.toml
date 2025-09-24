@@ -45,7 +45,7 @@ Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
-TuringOptimExt = "Optim"
+TuringOptimExt = ["Optim", "AbstractPPL"]
 
 [compat]
 ADTypes = "1.9"

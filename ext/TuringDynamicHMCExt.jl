@@ -44,10 +44,6 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
-    return DynamicPPL.SampleFromUniform()
-end
-
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,

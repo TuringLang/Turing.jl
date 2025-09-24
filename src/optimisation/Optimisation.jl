@@ -508,8 +508,7 @@ function estimate_mode(
     kwargs...,
 )
     if check_model
-        new_context = DynamicPPL.setleafcontext(model.context, DynamicPPL.InitContext())
-        new_model = DynamicPPL.contextualize(model, new_context)
+        new_model = DynamicPPL.setleafcontext(model, DynamicPPL.InitContext())
         DynamicPPL.check_model(new_model, DynamicPPL.VarInfo(); error_on_failure=true)
     end
 

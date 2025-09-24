@@ -24,8 +24,6 @@ using DynamicPPL:
     getdist,
     Model,
     Sampler,
-    SampleFromPrior,
-    SampleFromUniform,
     DefaultContext,
     set_flag!,
     unset_flag!
@@ -59,8 +57,6 @@ export InferenceAlgorithm,
     Hamiltonian,
     StaticHamiltonian,
     AdaptiveHamiltonian,
-    SampleFromUniform,
-    SampleFromPrior,
     MH,
     ESS,
     Emcee,
@@ -315,11 +311,10 @@ end
 getlogevidence(transitions, sampler, state) = missing
 
 # Default MCMCChains.Chains constructor.
-# This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
+    ts::Vector{<:Transition},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -378,11 +373,10 @@ function AbstractMCMC.bundle_samples(
     return sort_chain ? sort(chain) : chain
 end
 
-# This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
+    ts::Vector{<:Transition},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,

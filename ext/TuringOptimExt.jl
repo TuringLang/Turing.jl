@@ -1,7 +1,8 @@
 module TuringOptimExt
 
 using Turing: Turing
-import Turing: AbstractPPL, DynamicPPL, NamedArrays, Accessors, Optimisation
+using AbstractPPL: AbstractPPL
+import Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
 using Optim: Optim
 
 ####################

@@ -36,30 +36,28 @@ function unset_all_del!(vi::AbstractVarInfo)
     return nothing
 end
 
-struct TracedModel{S<:AbstractSampler,V<:AbstractVarInfo,M<:Model,E<:Tuple} <:
-       AdvancedPS.AbstractGenericModel
+# TODO(penelopeysm / DPPL 0.38): Figure this out
+struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
+    rng::R
+end
+
+struct TracedModel{V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
     model::M
-    sampler::S
     varinfo::V
     evaluator::E
+    resample::Bool
 end
 
 function TracedModel(
-    model::Model,
-    sampler::AbstractSampler,
-    varinfo::AbstractVarInfo,
-    rng::Random.AbstractRNG,
+    model::Model, varinfo::AbstractVarInfo, rng::Random.AbstractRNG, resample::Bool
 )
-    spl_context = DynamicPPL.SamplingContext(rng, sampler, model.context)
-    spl_model = DynamicPPL.contextualize(model, spl_context)
-    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(spl_model, varinfo)
-    if kwargs !== nothing && !isempty(kwargs)
-        error(
-            "Sampling with `$(sampler.alg)` does not support models with keyword arguments. See issue #2007 for more details.",
-        )
-    end
-    evaluator = (spl_model.f, args...)
-    return TracedModel(spl_model, sampler, varinfo, evaluator)
+    model = DynamicPPL.setleafcontext(model, ParticleMCMCContext(rng))
+    args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
+    isempty(kwargs) || error(
+        "Particle sampling methods do not currently support models with keyword arguments.",
+    )
+    evaluator = (model.f, args...)
+    return TracedModel(model, varinfo, evaluator, resample)
 end
 
 function AdvancedPS.advance!(
@@ -75,15 +73,9 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
     # This method is called if, during a CSMC update, we perform a resampling
     # and choose the reference particle as the trajectory to carry on from.
     # In such a case, we need to ensure that when we continue sampling (i.e.
-    # the next time we hit tilde_assume), we don't use the values in the 
+    # the next time we hit tilde_assume!!), we don't use the values in the 
     # reference particle but rather sample new values.
-    #
-    # Here, we indiscriminately set the 'del' flag for all variables in the
-    # VarInfo. This is slightly overkill: it is not necessary to set the 'del'
-    # flag for variables that were already sampled. However, it allows us to
-    # avoid keeping track of which variables were sampled, which leads to many
-    # simplifications in the VarInfo data structure.
-    set_all_del!(trace.varinfo)
+    trace = Accessors.@set trace.resample = true
     return trace
 end
 
@@ -198,7 +190,7 @@ function DynamicPPL.initialstep(
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
-        [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:nparticles],
+        [AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
         rng,
     )
@@ -323,7 +315,10 @@ function DynamicPPL.initialstep(
     # Create a new set of particles
     num_particles = spl.alg.nparticles
     particles = AdvancedPS.ParticleContainer(
-        [AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG()) for _ in 1:num_particles],
+        [
+            AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for
+            _ in 1:num_particles
+        ],
         AdvancedPS.TracedRNG(),
         rng,
     )
@@ -351,8 +346,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create reference particle for which the samples will be retained.
-    unset_all_del!(vi)
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, spl, vi, state.rng))
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, vi, state.rng, false))
 
     # For all other particles, do not retain the variables but resample them.
     set_all_del!(vi)
@@ -361,7 +355,7 @@ function AbstractMCMC.step(
     num_particles = spl.alg.nparticles
     x = map(1:num_particles) do i
         if i != num_particles
-            return AdvancedPS.Trace(model, spl, vi, AdvancedPS.TracedRNG())
+            return AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true)
         else
             return reference
         end
@@ -383,11 +377,7 @@ function AbstractMCMC.step(
     return transition, PGState(_vi, newreference.rng)
 end
 
-function DynamicPPL.use_threadsafe_eval(
-    ::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, ::AbstractVarInfo
-)
-    return false
-end
+DynamicPPL.use_threadsafe_eval(::ParticleMCMCContext, ::AbstractVarInfo) = false
 
 """
     get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
@@ -407,7 +397,24 @@ function get_trace_local_varinfo_maybe(varinfo::AbstractVarInfo)
 end
 
 """
-    get_trace_local_varinfo_maybe(rng::Random.AbstractRNG)
+    get_trace_local_resampled_maybe(fallback_resampled::Bool)
+
+Get the `Trace` local `resampled` if one exists.
+
+If executed within a `TapedTask`, return the `resampled` stored in the "taped globals" of
+the task, otherwise return `fallback_resampled`.
+"""
+function get_trace_local_resampled_maybe(fallback_resampled::Bool)
+    trace = try
+        Libtask.get_taped_globals(Any).other
+    catch e
+        e == KeyError(:task_variable) ? nothing : rethrow(e)
+    end
+    return (trace === nothing ? fallback_resampled : trace.resample)::Bool
+end
+
+"""
+    get_trace_local_rng_maybe(rng::Random.AbstractRNG)
 
 Get the `Trace` local rng if one exists.
 
@@ -446,33 +453,22 @@ function set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
     return nothing
 end
 
-# TODO(penelopeysm / DPPL 0.38): Figure this out
-struct ParticleMCMCContext <: DynamicPPL.AbstractContext end
-
-function DynamicPPL.assume(
-    rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, vi::AbstractVarInfo
+function DynamicPPL.tilde_assume!!(
+    ctx::ParticleMCMCContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
 )
     arg_vi_id = objectid(vi)
     vi = get_trace_local_varinfo_maybe(vi)
     using_local_vi = objectid(vi) == arg_vi_id
 
-    trng = get_trace_local_rng_maybe(rng)
+    trng = get_trace_local_rng_maybe(ctx.rng)
+    resample = get_trace_local_resampled_maybe(true)
 
-    if ~haskey(vi, vn)
-        r = rand(trng, dist)
-        vi = push!!(vi, vn, r, dist)
-    elseif DynamicPPL.is_flagged(vi, vn, "del")
-        DynamicPPL.unset_flag!(vi, vn, "del") # Reference particle parent
-        # TODO(mhauru):
-        # The below is the only line that differs from assume called on SampleFromPrior.
-        # Could we just call assume on SampleFromPrior with a specific rng?
-        r = rand(trng, dist)
-        vi[vn] = DynamicPPL.tovec(r)
+    dispatch_ctx = if ~haskey(vi, vn) || resample
+        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior())
     else
-        r = vi[vn]
+        DynamicPPL.DefaultContext()
     end
-
-    vi = DynamicPPL.accumulate_assume!!(vi, r, 0, vn, dist)
+    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, vi)
 
     # TODO(mhauru) Rather than this if-block, we should use try-catch within
     # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
@@ -480,17 +476,15 @@ function DynamicPPL.assume(
     if !using_local_vi
         set_trace_local_varinfo_maybe(vi)
     end
-    return r, vi
+    return x, vi
 end
 
-function DynamicPPL.tilde_observe!!(
-    ctx::DynamicPPL.SamplingContext{<:Sampler{<:Union{PG,SMC}}}, right, left, vn, vi
-)
+function DynamicPPL.tilde_observe!!(::ParticleMCMCContext, right, left, vn, vi)
     arg_vi_id = objectid(vi)
     vi = get_trace_local_varinfo_maybe(vi)
     using_local_vi = objectid(vi) == arg_vi_id
 
-    left, vi = DynamicPPL.tilde_observe!!(ctx.context, right, left, vn, vi)
+    left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
 
     # TODO(mhauru) Rather than this if-block, we should use try-catch within
     # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
@@ -503,13 +497,10 @@ end
 
 # Convenient constructor
 function AdvancedPS.Trace(
-    model::Model,
-    sampler::Sampler{<:Union{SMC,PG}},
-    varinfo::AbstractVarInfo,
-    rng::AdvancedPS.TracedRNG,
+    model::Model, varinfo::AbstractVarInfo, rng::AdvancedPS.TracedRNG, resample::Bool
 )
     newvarinfo = deepcopy(varinfo)
-    tmodel = TracedModel(model, sampler, newvarinfo, rng)
+    tmodel = TracedModel(model, newvarinfo, rng, resample)
     newtrace = AdvancedPS.Trace(tmodel, rng)
     return newtrace
 end
@@ -576,7 +567,6 @@ Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}
 # Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
 function Libtask.might_produce(
     ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
