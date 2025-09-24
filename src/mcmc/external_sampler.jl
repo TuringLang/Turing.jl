@@ -117,7 +117,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::Sampler{<:ExternalSampler};
     initial_state=nothing,
-    initial_params=nothing,
+    initial_params=DynamicPPL.init_strategy(sampler_wrapper.alg.sampler),
     kwargs...,
 )
     alg = sampler_wrapper.alg
@@ -125,16 +125,16 @@ function AbstractMCMC.step(
 
     # Initialise varinfo with initial params and link the varinfo if needed.
     varinfo = DynamicPPL.VarInfo(model)
+    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
+
     if requires_unconstrained_space(alg)
-        if initial_params !== nothing
-            # If we have initial parameters, we need to set the varinfo before linking.
-            varinfo = DynamicPPL.link(DynamicPPL.unflatten(varinfo, initial_params), model)
-            # Extract initial parameters in unconstrained space.
-            initial_params = varinfo[:]
-        else
-            varinfo = DynamicPPL.link(varinfo, model)
-        end
+        varinfo = DynamicPPL.link(varinfo, model)
     end
+
+    # We need to extract the vectorised initial_params, because the later call to
+    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
+    # to be a vector.
+    initial_params_vector = varinfo[:]
 
     # Construct LogDensityFunction
     f = DynamicPPL.LogDensityFunction(
@@ -144,7 +144,11 @@ function AbstractMCMC.step(
     # Then just call `AbstractMCMC.step` with the right arguments.
     if initial_state === nothing
         transition_inner, state_inner = AbstractMCMC.step(
-            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params, kwargs...
+            rng,
+            AbstractMCMC.LogDensityModel(f),
+            sampler;
+            initial_params=initial_params_vector,
+            kwargs...,
         )
     else
         transition_inner, state_inner = AbstractMCMC.step(
@@ -152,7 +156,7 @@ function AbstractMCMC.step(
             AbstractMCMC.LogDensityModel(f),
             sampler,
             initial_state;
-            initial_params,
+            initial_params=initial_params_vector,
             kwargs...,
         )
     end

@@ -146,7 +146,8 @@ function find_initial_params(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     varinfo::DynamicPPL.AbstractVarInfo,
-    hamiltonian::AHMC.Hamiltonian;
+    hamiltonian::AHMC.Hamiltonian,
+    init_strategy::DynamicPPL.AbstractInitStrategy;
     max_attempts::Int=1000,
 )
     varinfo = deepcopy(varinfo)  # Don't mutate
@@ -157,10 +158,10 @@ function find_initial_params(
         isfinite(z) && return varinfo, z
 
         attempts == 10 &&
-            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing explicit initial parameters using the `initial_params` keyword"
+            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
 
         # Resample and try again.
-        varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromUniform())
+        varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
     end
 
     # if we failed to find valid initial parameters, error
@@ -174,7 +175,9 @@ function DynamicPPL.initialstep(
     model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
     vi_original::AbstractVarInfo;
-    initial_params=nothing,
+    # the initial_params kwarg is always passed on from sample(), cf. DynamicPPL
+    # src/sampler.jl, so we don't need to provide a default value here
+    initial_params::DynamicPPL.AbstractInitStrategy,
     nadapts=0,
     verbose::Bool=true,
     kwargs...,
@@ -195,13 +198,15 @@ function DynamicPPL.initialstep(
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # If no initial parameters are provided, resample until the log probability
-    # and its gradient are finite. Otherwise, just use the existing parameters.
-    vi, z = if initial_params === nothing
-        find_initial_params(rng, model, vi, hamiltonian)
-    else
-        vi, AHMC.phasepoint(rng, theta, hamiltonian)
-    end
+    # Note that there is already one round of 'initialisation' before we reach this step,
+    # inside DynamicPPL's `AbstractMCMC.step` implementation. That leads to a possible issue
+    # that this `find_initial_params` function might override the parameters set by the
+    # user.
+    # Luckily for us, `find_initial_params` always checks if the logp and its gradient are
+    # finite. If it is already finite with the params inside the current `vi`, it doesn't
+    # attempt to find new ones. This means that the parameters passed to `sample()` will be
+    # respected instead of being overridden here.
+    vi, z = find_initial_params(rng, model, vi, hamiltonian, initial_params)
     theta = vi[:]
 
     # Find good eps if not provided one

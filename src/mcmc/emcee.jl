@@ -31,12 +31,16 @@ struct EmceeState{V<:AbstractVarInfo,S}
     states::S
 end
 
+# Utility function to tetrieve the number of walkers
+_get_n_walkers(e::Emcee) = e.ensemble.n_walkers
+_get_n_walkers(spl::Sampler{<:Emcee}) = _get_n_walkers(spl.alg)
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
     spl::Sampler{<:Emcee};
     resume_from=nothing,
-    initial_params=nothing,
+    initial_params=fill(DynamicPPL.init_strategy(spl), _get_n_walkers(spl)),
     kwargs...,
 )
     if resume_from !== nothing
@@ -45,21 +49,19 @@ function AbstractMCMC.step(
     end
 
     # Sample from the prior
-    n = spl.alg.ensemble.n_walkers
+    n = _get_n_walkers(spl)
     vis = [VarInfo(rng, model) for _ in 1:n]
 
     # Update the parameters if provided.
-    if initial_params !== nothing
-        if !(
-            initial_params isa AbstractVector{<:DynamicPPL.AbstractInitStrategy} &&
-            length(initial_params) == n
-        )
-            err_msg = "initial_params for `Emcee` must be a vector of `DynamicPPL.AbstractInitStrategy`, with length equal to the number of walkers ($n)"
-            throw(ArgumentError(err_msg))
-        end
-        vis = map(vis, initial_params) do vi, strategy
-            DynamicPPL.init!!(rng, model, vi, strategy)
-        end
+    if !(
+        initial_params isa AbstractVector{<:DynamicPPL.AbstractInitStrategy} &&
+        length(initial_params) == n
+    )
+        err_msg = "initial_params for `Emcee` must be a vector of `DynamicPPL.AbstractInitStrategy`, with length equal to the number of walkers ($n)"
+        throw(ArgumentError(err_msg))
+    end
+    vis = map(vis, initial_params) do vi, strategy
+        last(DynamicPPL.init!!(rng, model, vi, strategy))
     end
 
     # Compute initial transition and states.
