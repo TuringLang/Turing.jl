@@ -1,7 +1,7 @@
 module TuringOptimExt
 
 using Turing: Turing
-import Turing: DynamicPPL, NamedArrays, Accessors, Optimisation
+import Turing: AbstractPPL, DynamicPPL, NamedArrays, Accessors, Optimisation
 using Optim: Optim
 
 ####################
@@ -186,7 +186,7 @@ function _optimize(
         f.ldf.model, f.ldf.getlogdensity, vi_optimum; adtype=f.ldf.adtype
     )
     vals_dict = Turing.Inference.getparams(f.ldf.model, vi_optimum)
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    iters = map(AbstractPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
     vns_vals_iter = mapreduce(collect, vcat, iters)
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)

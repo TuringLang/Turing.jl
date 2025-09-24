@@ -262,13 +262,13 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     dicts = map(ts) do t
         # In general getparams returns a dict of VarName => values. We need to also
         # split it up into constituent elements using
-        # `DynamicPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
+        # `AbstractPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
         # won't understand it.
         vals = getparams(model, t)
         nms_and_vs = if isempty(vals)
             Tuple{VarName,Any}[]
         else
-            iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+            iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
             mapreduce(collect, vcat, iters)
         end
         nms = map(first, nms_and_vs)
