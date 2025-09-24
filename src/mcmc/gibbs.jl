@@ -47,7 +47,7 @@ A context used in the implementation of the Turing.jl Gibbs sampler.
 There will be one `GibbsContext` for each iteration of a component sampler.
 
 `target_varnames` is a a tuple of `VarName`s that the current component sampler
-is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
+is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume!!`
 calls to its child context. For other variables, their values will be fixed to
 the values they have in `global_varinfo`.
 
@@ -140,7 +140,7 @@ function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
 end
 
 # Tilde pipeline
-function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
+function DynamicPPL.tilde_assume!!(context::GibbsContext, right, vn, vi)
     child_context = DynamicPPL.childcontext(context)
 
     # Note that `child_context` may contain `PrefixContext`s -- in which case
@@ -175,7 +175,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
 
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.
-        DynamicPPL.tilde_assume(child_context, right, vn, vi)
+        DynamicPPL.tilde_assume!!(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # This branch means that a different sampler is supposed to handle this
         # variable. From the perspective of this sampler, this variable is
@@ -191,9 +191,10 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume(
-            child_context,
-            DynamicPPL.SampleFromPrior(),
+        value, new_global_vi = DynamicPPL.tilde_assume!!(
+            # child_context might be a PrefixContext so we have to be careful to not
+            # overwrite it.
+            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext()),
             right,
             vn,
             get_global_varinfo(context),
@@ -204,7 +205,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
 end
 
 # As above but with an RNG.
-function DynamicPPL.tilde_assume(
+function DynamicPPL.tilde_assume!!(
     rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
 )
     # See comment in the above, rng-less version of this method for an explanation.
@@ -215,7 +216,7 @@ function DynamicPPL.tilde_assume(
         # This branch means that that `sampler` is supposed to handle
         # this variable. We can thus use its default behaviour, with
         # the 'local' sampler-specific VarInfo.
-        DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
+        DynamicPPL.tilde_assume!!(rng, child_context, sampler, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # This branch means that a different sampler is supposed to handle this
         # variable. From the perspective of this sampler, this variable is
@@ -231,10 +232,10 @@ function DynamicPPL.tilde_assume(
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume(
-            rng,
-            child_context,
-            DynamicPPL.SampleFromPrior(),
+        value, new_global_vi = DynamicPPL.tilde_assume!!(
+            # child_context might be a PrefixContext so we have to be careful to not
+            # overwrite it.
+            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext(rng)),
             right,
             vn,
             get_global_varinfo(context),

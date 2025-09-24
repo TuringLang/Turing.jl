@@ -156,10 +156,7 @@ function Distributions._rand!(
 )
     model = d.model
     varinfo = deepcopy(d.varinfo)
-    for vn in keys(varinfo)
-        DynamicPPL.set_flag!(varinfo, vn, "del")
-    end
-    DynamicPPL.evaluate!!(model, varinfo, DynamicPPL.SamplingContext(rng))
+    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromPrior())
     x .= varinfo[:]
     return x
 end

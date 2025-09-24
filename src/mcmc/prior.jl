@@ -12,11 +12,6 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    # TODO(DPPL0.38/penelopeysm): replace with init!!
-    sampling_model = DynamicPPL.contextualize(
-        model, DynamicPPL.SamplingContext(rng, DynamicPPL.SampleFromPrior(), model.context)
-    )
-    vi = VarInfo()
     vi = DynamicPPL.setaccs!!(
         vi,
         (
@@ -25,6 +20,6 @@ function AbstractMCMC.step(
             DynamicPPL.LogLikelihoodAccumulator(),
         ),
     )
-    _, vi = DynamicPPL.evaluate!!(sampling_model, vi)
+    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior())
     return Transition(model, vi, nothing; reevaluate=false), nothing
 end

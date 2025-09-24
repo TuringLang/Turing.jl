@@ -329,13 +329,11 @@ function propose!!(
     prev_trans = AMH.Transition(vt, prev_state.logjoint_internal, false)
 
     # Make a new transition.
-    spl_model = DynamicPPL.contextualize(
-        model, DynamicPPL.SamplingContext(rng, spl, model.context)
-    )
+    model = DynamicPPL.setleafcontext(model, MHContext(rng))
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
@@ -366,13 +364,11 @@ function propose!!(
     prev_trans = AMH.Transition(vals, prev_state.logjoint_internal, false)
 
     # Make a new transition.
-    spl_model = DynamicPPL.contextualize(
-        model, DynamicPPL.SamplingContext(rng, spl, model.context)
-    )
+    model = DynamicPPL.setleafcontext(model, MHContext(rng))
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
@@ -410,13 +406,20 @@ function AbstractMCMC.step(
     return Transition(model, new_state.varinfo, nothing), new_state
 end
 
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng::Random.AbstractRNG, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi
+struct MHContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
+    rng::R
+end
+DynamicPPL.NodeTrait(::MHContext) = DynamicPPL.IsLeaf()
+
+function DynamicPPL.tilde_assume!!(
+    context::MHContext, right::Distribution, vn::VarName, vi::AbstractVarInfo
 )
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
-    return retval
+    # Allow MH to sample new variables from the prior if it's not already present in the
+    # VarInfo.
+    dispatch_ctx = if haskey(vi, vn)
+        DynamicPPL.DefaultContext()
+    else
+        DynamicPPL.InitContext(context.rng, DynamicPPL.InitFromPrior())
+    end
+    return DynamicPPL.tilde_assume!!(dispatch_ctx, right, vn, vi)
 end

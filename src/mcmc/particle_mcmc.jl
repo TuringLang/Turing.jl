@@ -446,6 +446,9 @@ function set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
     return nothing
 end
 
+# TODO(penelopeysm / DPPL 0.38): Figure this out
+struct ParticleMCMCContext <: DynamicPPL.AbstractContext end
+
 function DynamicPPL.assume(
     rng, ::Sampler{<:Union{PG,SMC}}, dist::Distribution, vn::VarName, vi::AbstractVarInfo
 )

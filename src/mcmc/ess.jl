@@ -82,23 +82,12 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    varinfo = p.varinfo
-    # TODO: Surely there's a better way of doing this now that we have `SamplingContext`?
-    # TODO(DPPL0.38/penelopeysm): This can be replaced with `init!!(p.model,
-    # p.varinfo, PriorInit())` after TuringLang/DynamicPPL.jl#984. The reason
-    # why we had to use the 'del' flag before this was because
-    # SampleFromPrior() wouldn't overwrite existing variables.
-    # The main problem I'm rather unsure about is ESS-within-Gibbs. The
-    # current implementation I think makes sure to only resample the variables
-    # that 'belong' to the current ESS sampler. InitContext on the other hand
-    # would resample all variables in the model (??) Need to think about this
-    # carefully.
-    vns = keys(varinfo)
-    for vn in vns
-        set_flag!(varinfo, vn, "del")
-    end
-    p.model(rng, varinfo)
-    return varinfo[:]
+    # TODO(penelopeysm/DPPL 0.38) The main problem I'm rather unsure about is
+    # ESS-within-Gibbs. The current implementation I think makes sure to only resample the
+    # variables that 'belong' to the current ESS sampler. InitContext on the other hand
+    # would resample all variables in the model (??) Need to think about this carefully.
+    _, vi = DynamicPPL.init!!(p.model, p.varinfo, DynamicPPL.InitFromPrior())
+    return vi[:]
 end
 
 # Mean of prior distribution

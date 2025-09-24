@@ -46,21 +46,19 @@ function AbstractMCMC.step(
 
     # Sample from the prior
     n = spl.alg.ensemble.n_walkers
-    vis = [VarInfo(rng, model, SampleFromPrior()) for _ in 1:n]
+    vis = [VarInfo(rng, model) for _ in 1:n]
 
     # Update the parameters if provided.
     if initial_params !== nothing
-        length(initial_params) == n ||
-            throw(ArgumentError("initial parameters have to be specified for each walker"))
-        vis = map(vis, initial_params) do vi, init
-            # TODO(DPPL0.38/penelopeysm) This whole thing can be replaced with init!!
-            vi = DynamicPPL.initialize_parameters!!(vi, init, model)
-
-            # Update log joint probability.
-            spl_model = DynamicPPL.contextualize(
-                model, DynamicPPL.SamplingContext(rng, SampleFromPrior(), model.context)
-            )
-            last(DynamicPPL.evaluate!!(spl_model, vi))
+        if !(
+            initial_params isa AbstractVector{<:DynamicPPL.AbstractInitStrategy} &&
+            length(initial_params) == n
+        )
+            err_msg = "initial_params for `Emcee` must be a vector of `DynamicPPL.AbstractInitStrategy`, with length equal to the number of walkers ($n)"
+            throw(ArgumentError(err_msg))
+        end
+        vis = map(vis, initial_params) do vi, strategy
+            DynamicPPL.init!!(rng, model, vi, strategy)
         end
     end
 

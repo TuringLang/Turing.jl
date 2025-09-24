@@ -1,9 +1,9 @@
 # TODO: Implement additional checks for certain samplers, e.g.
 # HMC not supporting discrete parameters.
 function _check_model(model::DynamicPPL.Model)
-    # TODO(DPPL0.38/penelopeysm): use InitContext
-    spl_model = DynamicPPL.contextualize(model, DynamicPPL.SamplingContext(model.context))
-    return DynamicPPL.check_model(spl_model, VarInfo(); error_on_failure=true)
+    new_context = DynamicPPL.setleafcontext(model.context, DynamicPPL.InitContext())
+    new_model = DynamicPPL.contextualize(model, new_context)
+    return DynamicPPL.check_model(new_model, VarInfo(); error_on_failure=true)
 end
 function _check_model(model::DynamicPPL.Model, alg::InferenceAlgorithm)
     return _check_model(model)

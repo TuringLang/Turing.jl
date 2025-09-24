@@ -508,10 +508,9 @@ function estimate_mode(
     kwargs...,
 )
     if check_model
-        spl_model = DynamicPPL.contextualize(
-            model, DynamicPPL.SamplingContext(model.context)
-        )
-        DynamicPPL.check_model(spl_model, DynamicPPL.VarInfo(); error_on_failure=true)
+        new_context = DynamicPPL.setleafcontext(model.context, DynamicPPL.InitContext())
+        new_model = DynamicPPL.contextualize(model, new_context)
+        DynamicPPL.check_model(new_model, DynamicPPL.VarInfo(); error_on_failure=true)
     end
 
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)

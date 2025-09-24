@@ -1,5 +1,11 @@
 # 0.41.0
 
+## DynamicPPL 0.38
+
+Lorem ipsum dynamicppl sit amet
+
+## Initial step in MCMC sampling
+
 HMC and NUTS samplers no longer take an extra single step before starting the chain.
 This means that if you do not discard any samples at the start, the first sample will be the initial parameters (which may be user-provided).
 
