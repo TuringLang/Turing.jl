@@ -207,7 +207,22 @@ end
 # method just to deal with MH.
 function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
-    _, vi_new = DynamicPPL.init!!(f.model, vi, DynamicPPL.InitFromParams(x))
+    # Note that the NamedTuple `x` does NOT conform to the structure required for
+    # `InitFromParams`. In particular, for models that look like this:
+    #
+    # @model function f()
+    #     v = Vector{Vector{Float64}}
+    #     v[1] ~ MvNormal(zeros(2), I)
+    # end
+    #
+    # `InitFromParams` will expect Dict(@varname(v[1]) => [x1, x2]), but `x` will have the
+    # format `(v = [x1, x2])`. Hence we still need this `set_namedtuple!` function.
+    #
+    # In general `init!!(f.model, vi, InitFromParams(x))` will work iff the model only
+    # contains 'basic' varnames.
+    set_namedtuple!(vi, x)
+    # Update log probability.
+    _, vi_new = DynamicPPL.evaluate!!(f.model, vi)
     lj = f.getlogdensity(vi_new)
     return lj
 end

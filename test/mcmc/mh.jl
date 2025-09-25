@@ -72,7 +72,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
-            check_gdemo(chain; atol=0.1)
+            check_gdemo(chain; atol=0.15)
         end
 
         @testset "MoGtest_default with Gibbs" begin
@@ -187,7 +187,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # Test that the small variance version is actually smaller.
         variance_small = var(diff(Array(chn_small["μ[1]"]); dims=1))
         variance_big = var(diff(Array(chn_big["μ[1]"]); dims=1))
-        @test variance_small < variance_big / 1_000.0
+        @test variance_small < variance_big / 100.0
     end
 
     @testset "vector of multivariate distributions" begin

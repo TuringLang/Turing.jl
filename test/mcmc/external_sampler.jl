@@ -208,16 +208,18 @@ end
             sampler_ext = DynamicPPL.Sampler(
                 externalsampler(sampler; adtype, unconstrained=true)
             )
-            # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
+
+            # TODO: AdvancedHMC samplers do not return the initial parameters as the first
+            # step, so `test_initial_params` will fail. This should be fixed upstream in
+            # AdvancedHMC.jl. For reasons that are beyond my current understanding, this was
+            # done in https://github.com/TuringLang/AdvancedHMC.jl/pull/366, but the PR
+            # was then reverted and never looked at again.
             # @testset "initial_params" begin
             #     test_initial_params(model, sampler_ext; n_adapts=0)
             # end
 
             sample_kwargs = (
-                n_adapts=1_000,
-                discard_initial=1_000,
-                # FIXME: Remove this once we can run `test_initial_params` above.
-                initial_params=InitFromPrior(),
+                n_adapts=1_000, discard_initial=1_000, initial_params=InitFromUniform()
             )
 
             @testset "inference" begin

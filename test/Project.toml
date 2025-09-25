@@ -78,4 +78,4 @@ TimerOutputs = "0.5"
 julia = "1.10"
 
 [sources]
-DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/setleafcontext-model"}
+DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/turing-fixes"}

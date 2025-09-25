@@ -124,7 +124,7 @@ function AbstractMCMC.step(
     sampler = alg.sampler
 
     # Initialise varinfo with initial params and link the varinfo if needed.
-    varinfo = DynamicPPL.VarInfo(rng, model)
+    varinfo = DynamicPPL.VarInfo(model)
     _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
 
     if requires_unconstrained_space(alg)
