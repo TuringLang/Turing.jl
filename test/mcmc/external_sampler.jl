@@ -172,14 +172,24 @@ function initialize_mh_with_prior_proposal(model)
     )
 end
 
-function test_initial_params(model, sampler, initial_params=InitFromPrior(); kwargs...)
+function test_initial_params(model, sampler; kwargs...)
+    # Generate some parameters.
+    dict = DynamicPPL.values_as(VarInfo(model), Dict)
+    init_strategy = DynamicPPL.InitFromParams(dict)
+
     # Execute the transition with two different RNGs and check that the resulting
-    # parameter values are the same.
+    # parameter values are the same. This ensures that the `initial_params` are
+    # respected (i.e., regardless of the RNG, the first step should always return
+    # the same parameters).
     rng1 = Random.MersenneTwister(42)
     rng2 = Random.MersenneTwister(43)
 
-    transition1, _ = AbstractMCMC.step(rng1, model, sampler; initial_params, kwargs...)
-    transition2, _ = AbstractMCMC.step(rng2, model, sampler; initial_params, kwargs...)
+    transition1, _ = AbstractMCMC.step(
+        rng1, model, sampler; initial_params=init_strategy, kwargs...
+    )
+    transition2, _ = AbstractMCMC.step(
+        rng2, model, sampler; initial_params=init_strategy, kwargs...
+    )
     vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
     vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
     for vn in union(keys(vn_to_val1), keys(vn_to_val2))
