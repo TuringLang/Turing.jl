@@ -82,7 +82,7 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    _, vi = DynamicPPL.init!!(p.model, p.varinfo, DynamicPPL.InitFromPrior())
+    _, vi = DynamicPPL.init!!(rng, p.model, p.varinfo, DynamicPPL.InitFromPrior())
     return vi[:]
 end
 
