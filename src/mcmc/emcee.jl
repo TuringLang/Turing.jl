@@ -36,7 +36,9 @@ _get_n_walkers(e::Emcee) = e.ensemble.n_walkers
 _get_n_walkers(spl::Sampler{<:Emcee}) = _get_n_walkers(spl.alg)
 
 # Because Emcee expects n_walkers initialisations, we need to override this
-DynamicPPL.init_strategy(spl::Sampler{<:Emcee}) = fill(InitFromPrior(), _get_n_walkers(spl))
+function DynamicPPL.init_strategy(spl::Sampler{<:Emcee})
+    return fill(DynamicPPL.InitFromPrior(), _get_n_walkers(spl))
+end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,

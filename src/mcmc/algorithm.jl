@@ -12,3 +12,7 @@ this wrapping occurs automatically.
 abstract type InferenceAlgorithm end
 
 DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
+
+function DynamicPPL.init_strategy(sampler::Sampler{<:InferenceAlgorithm})
+    return DynamicPPL.InitFromPrior()
+end

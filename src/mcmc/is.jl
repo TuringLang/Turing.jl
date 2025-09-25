@@ -37,7 +37,7 @@ function AbstractMCMC.step(
 )
     model = DynamicPPL.setleafcontext(model, ISContext(rng))
     _, vi = DynamicPPL.evaluate!!(model, DynamicPPL.VarInfo())
-    vi = DynamicPPL.typed_varinfo(vi, model)
+    vi = DynamicPPL.typed_varinfo(vi)
     return Transition(model, vi, nothing), nothing
 end
 

@@ -90,6 +90,7 @@ function AbstractMCMC.sample(
     N::Integer;
     chain_type=DynamicPPL.default_chain_type(sampler),
     resume_from=nothing,
+    initial_params=DynamicPPL.init_strategy(sampler),
     initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     nadapts=sampler.alg.n_adapts,
