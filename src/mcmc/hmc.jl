@@ -124,6 +124,7 @@ function AbstractMCMC.sample(
             progress=progress,
             nadapts=_nadapts,
             discard_initial=_discard_initial,
+            initial_params=initial_params,
             kwargs...,
         )
     else
@@ -138,6 +139,7 @@ function AbstractMCMC.sample(
             nadapts=0,
             discard_adapt=false,
             discard_initial=0,
+            initial_params=initial_params,
             kwargs...,
         )
     end
