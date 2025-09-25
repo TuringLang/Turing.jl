@@ -2,7 +2,7 @@ module ESSTests
 
 using ..Models: MoGtest, MoGtest_default, gdemo, gdemo_default
 using ..NumericalTests: check_MoGtest_default, check_numerical
-using ..SamplerTestUtils: check_rng_respected
+using ..SamplerTestUtils: test_rng_respected
 using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
@@ -40,9 +40,9 @@ using Turing
     end
 
     @testset "RNG is respected" begin
-        check_rng_respected(ESS())
-        check_rng_respected(Gibbs(:x => ESS(), :y => MH()))
-        check_rng_respected(Gibbs(:x => ESS(), :y => ESS()))
+        test_rng_respected(ESS())
+        test_rng_respected(Gibbs(:x => ESS(), :y => MH()))
+        test_rng_respected(Gibbs(:x => ESS(), :y => ESS()))
     end
 
     @testset "ESS inference" begin

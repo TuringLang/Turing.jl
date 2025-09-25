@@ -174,7 +174,7 @@ end
 
 function test_initial_params(model, sampler; kwargs...)
     # Generate some parameters.
-    dict = DynamicPPL.values_as(VarInfo(model), Dict)
+    dict = DynamicPPL.values_as(DynamicPPL.VarInfo(model), Dict)
     init_strategy = DynamicPPL.InitFromParams(dict)
 
     # Execute the transition with two different RNGs and check that the resulting

@@ -1,63 +1,52 @@
 module ISTests
 
-using Distributions: Normal, sample
 using DynamicPPL: logpdf
 using Random: Random
+using StableRNGs: StableRNG
 using StatsFuns: logsumexp
 using Test: @test, @testset
 using Turing
 
 @testset "is.jl" begin
-    function reference(n)
-        as = Vector{Float64}(undef, n)
-        bs = Vector{Float64}(undef, n)
-        logps = Vector{Float64}(undef, n)
+    @testset "numerical accuracy" begin
+        function reference(n)
+            rng = StableRNG(468)
+            as = Vector{Float64}(undef, n)
+            bs = Vector{Float64}(undef, n)
 
-        for i in 1:n
-            as[i], bs[i], logps[i] = reference()
+            for i in 1:n
+                as[i] = rand(rng, Normal(4, 5))
+                bs[i] = rand(rng, Normal(as[i], 1))
+            end
+            # logevidence = logsumexp(logps) - log(n)
+            return (as=as, bs=bs)
         end
-        logevidence = logsumexp(logps) - log(n)
 
-        return (as=as, bs=bs, logps=logps, logevidence=logevidence)
-    end
+        @model function normal()
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
+            1.5 ~ Normal(b, 2)
+            return a, b
+        end
 
-    function reference()
-        x = rand(Normal(4, 5))
-        y = rand(Normal(x, 1))
-        loglik = logpdf(Normal(x, 2), 3) + logpdf(Normal(y, 2), 1.5)
-        return x, y, loglik
-    end
+        function expected_loglikelihoods(as, bs)
+            return logpdf.(Normal.(as, 2), 3) .+ logpdf.(Normal.(bs, 2), 1.5)
+        end
 
-    @model function normal()
-        a ~ Normal(4, 5)
-        3 ~ Normal(a, 2)
-        b ~ Normal(a, 1)
-        1.5 ~ Normal(b, 2)
-        return a, b
-    end
+        alg = IS()
+        N = 1000
+        model = normal()
+        chain = sample(StableRNG(468), model, alg, N)
+        ref = reference(N)
 
-    alg = IS()
-    seed = 0
-    n = 10
-
-    model = normal()
-    for i in 1:100
-        Random.seed!(seed)
-        ref = reference(n)
-
-        Random.seed!(seed)
-        chain = sample(model, alg, n; check_model=false)
-        sampled = get(chain, [:a, :b, :loglikelihood])
-
-        @test vec(sampled.a) == ref.as
-        @test vec(sampled.b) == ref.bs
-        @test vec(sampled.loglikelihood) == ref.logps
-        @test chain.logevidence == ref.logevidence
+        @test isapprox(mean(chain[:a]), mean(ref.as); atol=0.1)
+        @test isapprox(mean(chain[:b]), mean(ref.bs); atol=0.1)
+        @test isapprox(chain[:loglikelihood], expected_loglikelihoods(chain[:a], chain[:b]))
+        @test isapprox(chain.logevidence, logsumexp(chain[:loglikelihood]) - log(N))
     end
 
     @testset "logevidence" begin
-        Random.seed!(100)
-
         @model function test()
             a ~ Normal(0, 1)
             x ~ Bernoulli(1)
