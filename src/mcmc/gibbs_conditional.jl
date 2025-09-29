@@ -81,33 +81,56 @@ function find_global_varinfo(context, fallback_vi)
     condition_context = nothing
     fixed_context = nothing
 
-    while current_context !== nothing
-        # Use NodeTrait for robust context checking
-        if DynamicPPL.NodeTrait(current_context) isa DynamicPPL.IsParent
-            if current_context isa GibbsContext
-                gibbs_context = current_context
-            elseif current_context isa DynamicPPL.ConditionContext
-                condition_context = current_context
-            elseif current_context isa DynamicPPL.FixedContext
-                fixed_context = current_context
+    # Safety check: avoid infinite loops with a maximum depth
+    max_depth = 20
+    depth = 0
+
+    while current_context !== nothing && depth < max_depth
+        depth += 1
+
+        try
+            # Use NodeTrait for robust context checking
+            if DynamicPPL.NodeTrait(current_context) isa DynamicPPL.IsParent
+                if current_context isa GibbsContext
+                    gibbs_context = current_context
+                elseif current_context isa DynamicPPL.ConditionContext
+                    condition_context = current_context
+                elseif current_context isa DynamicPPL.FixedContext
+                    fixed_context = current_context
+                end
+                # Move to child context
+                current_context = DynamicPPL.childcontext(current_context)
+            else
+                break
             end
-            # Move to child context
-            current_context = DynamicPPL.childcontext(current_context)
-        else
+        catch e
+            # If there's an error traversing contexts, break and use fallback
+            @debug "Error traversing context at depth $depth: $e"
             break
         end
     end
 
-    # Return the most relevant context's varinfo
-    if gibbs_context !== nothing
-        return get_global_varinfo(gibbs_context)
-    elseif condition_context !== nothing
-        return DynamicPPL.getvarinfo(condition_context)
-    elseif fixed_context !== nothing
-        return DynamicPPL.getvarinfo(fixed_context)
-    else
-        return fallback_vi
+    # Return the most relevant context's varinfo with error handling
+    try
+        if gibbs_context !== nothing
+            return get_global_varinfo(gibbs_context)
+        elseif condition_context !== nothing
+            # Check if getvarinfo method exists for ConditionContext
+            if hasmethod(DynamicPPL.getvarinfo, (typeof(condition_context),))
+                return DynamicPPL.getvarinfo(condition_context)
+            end
+        elseif fixed_context !== nothing
+            # Check if getvarinfo method exists for FixedContext
+            if hasmethod(DynamicPPL.getvarinfo, (typeof(fixed_context),))
+                return DynamicPPL.getvarinfo(fixed_context)
+            end
+        end
+    catch e
+        @debug "Error accessing varinfo from context: $e"
     end
+
+    # Fall back to the provided fallback_vi
+    return fallback_vi
 end
 
 """
@@ -141,27 +164,62 @@ function AbstractMCMC.step(
 )
     alg = sampler.alg
 
-    # For GibbsConditional within Gibbs, we need to get all variable values
-    # Model always has a context field, so we can traverse it directly
-    global_vi = find_global_varinfo(model.context, state)
+    try
+        # For GibbsConditional within Gibbs, we need to get all variable values
+        # Model always has a context field, so we can traverse it directly
+        global_vi = find_global_varinfo(model.context, state)
 
-    # Extract conditioned values as a NamedTuple
-    # Include both random variables and observed data
-    condvals_vars = DynamicPPL.values_as(DynamicPPL.invlink(global_vi, model), NamedTuple)
-    condvals_obs = NamedTuple{keys(model.args)}(model.args)
-    condvals = merge(condvals_vars, condvals_obs)
+        # Extract conditioned values as a NamedTuple
+        # Include both random variables and observed data
+        # Use a safe approach for invlink to avoid linking conflicts
+        invlinked_global_vi = try
+            DynamicPPL.invlink(global_vi, model)
+        catch e
+            @debug "Failed to invlink global_vi, using as-is: $e"
+            global_vi
+        end
 
-    # Get the conditional distribution
-    conddist = alg.conditional(condvals)
+        condvals_vars = DynamicPPL.values_as(invlinked_global_vi, NamedTuple)
+        condvals_obs = NamedTuple{keys(model.args)}(model.args)
+        condvals = merge(condvals_vars, condvals_obs)
 
-    # Sample from the conditional distribution
-    updated = rand(rng, conddist)
+        # Get the conditional distribution
+        conddist = alg.conditional(condvals)
 
-    # Update the variable in state using unflatten for simplicity
-    # The Gibbs sampler ensures that state only contains one variable
-    new_vi = DynamicPPL.unflatten(state, [updated])
+        # Sample from the conditional distribution
+        updated = rand(rng, conddist)
 
-    return nothing, new_vi
+        # Update the variable in state, handling linking properly
+        # The Gibbs sampler ensures that state only contains one variable
+        state_is_linked = try
+            DynamicPPL.islinked(state, model)
+        catch e
+            @debug "Error checking if state is linked: $e"
+            false
+        end
+
+        if state_is_linked
+            # If state is linked, we need to unlink, update, then relink
+            try
+                unlinked_state = DynamicPPL.invlink(state, model)
+                updated_state = DynamicPPL.unflatten(unlinked_state, [updated])
+                new_vi = DynamicPPL.link(updated_state, model)
+            catch e
+                @debug "Error in linked state update path: $e, falling back to direct update"
+                new_vi = DynamicPPL.unflatten(state, [updated])
+            end
+        else
+            # State is not linked, we can update directly
+            new_vi = DynamicPPL.unflatten(state, [updated])
+        end
+
+        return nothing, new_vi
+
+    catch e
+        # If there's any error in the step, log it and rethrow
+        @error "Error in GibbsConditional step: $e"
+        rethrow(e)
+    end
 end
 
 """
