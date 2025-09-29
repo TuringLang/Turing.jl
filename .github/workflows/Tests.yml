@@ -83,11 +83,11 @@ jobs:
 
       - uses: julia-actions/julia-buildpkg@v1
 
-      # TODO: Use julia-actions/julia-runtest when test_args are supported
-      # Custom calls of Pkg.test tend to miss features such as e.g. adjustments for CompatHelper PRs
-      # Ref https://github.com/julia-actions/julia-runtest/pull/73
-      - name: Call Pkg.test
-        run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.runner.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test.args }}
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: ${{ matrix.test.args }}
+        env:
+          JULIA_NUM_THREADS: ${{ matrix.runner.num_threads }}
 
       - uses: julia-actions/julia-processcoverage@v1
 
