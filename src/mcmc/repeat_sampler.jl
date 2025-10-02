@@ -95,7 +95,7 @@ function AbstractMCMC.sample(
     sampler::RepeatSampler{<:Sampler},
     N::Integer;
     initial_params=DynamicPPL.init_strategy(sampler),
-    chain_type=MCMCChains.Chains,
+    chain_type=TURING_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )
@@ -119,7 +119,7 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     initial_params=fill(DynamicPPL.init_strategy(sampler), n_chains),
-    chain_type=MCMCChains.Chains,
+    chain_type=TURING_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )

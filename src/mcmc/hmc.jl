@@ -88,7 +88,7 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
+    chain_type=TURING_CHAIN_TYPE,
     resume_from=nothing,
     initial_params=DynamicPPL.init_strategy(sampler),
     initial_state=DynamicPPL.loadstate(resume_from),

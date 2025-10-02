@@ -80,6 +80,8 @@ export InferenceAlgorithm,
 # Abstract interface for inference algorithms #
 ###############################################
 
+const TURING_CHAIN_TYPE = MCMCChains.Chains
+
 include("algorithm.jl")
 
 ####################
