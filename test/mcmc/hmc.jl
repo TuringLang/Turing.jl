@@ -197,6 +197,16 @@ using Turing
         @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
     end
 
+    @testset "NUTS initial parameters" begin
+        @model function f()
+            x ~ Normal()
+            return 10 ~ Normal(x)
+        end
+        chn1 = sample(StableRNG(468), f(), NUTS(), 100; save_state=true)
+        chn2 = sample(StableRNG(468), f(), NUTS(), 10; initial_state=chn1.info.samplerstate)
+        @test isapprox(chn1[:x], 5.0; atol=2.0)
+    end
+
     @testset "(partially) issue: #2095" begin
         @model function vector_of_dirichlet((::Type{TV})=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
