@@ -1,3 +1,7 @@
+# 0.40.4
+
+Fixes a bug where `initial_state` was not respected for NUTS if `resume_from` was not also specified.
+
 # 0.40.3
 
 This patch makes the `resume_from` keyword argument work correctly when sampling multiple chains.
