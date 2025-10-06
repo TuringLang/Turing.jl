@@ -93,9 +93,10 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 
 | Exported symbol   | Documentation                        | Description            |
 |:----------------- |:------------------------------------ |:---------------------- |
+| `AutoEnzyme`      | [`ADTypes.AutoEnzyme`](@extref)      | Enzyme.jl backend      |
 | `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend |
-| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
 | `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
+| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
 
 ### Debugging
 
