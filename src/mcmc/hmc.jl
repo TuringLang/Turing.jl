@@ -336,13 +336,13 @@ struct NUTS{AD<:ADTypes.AbstractADType,metricT<:AHMC.AbstractMetric} <: Adaptive
     end
 end
 
-for alg in (:HMC, :HMCDA, :NUTS)
-    @eval getmetricT(::$alg{<:Any,metricT}) where {metricT} = metricT
-end
-
 #####
 ##### HMC core functions
 #####
+
+getmetricT(::HMC{<:Any,metricT}) where {metricT} = metricT
+getmetricT(::HMCDA{<:Any,metricT}) where {metricT} = metricT
+getmetricT(::NUTS{<:Any,metricT}) where {metricT} = metricT
 
 getstepsize(sampler::Sampler{<:Hamiltonian}, state) = sampler.alg.ϵ
 getstepsize(sampler::Sampler{<:AdaptiveHamiltonian}, state) = AHMC.getϵ(state.adaptor)
@@ -389,24 +389,21 @@ end
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
-    pc = AHMC.MassMatrixAdaptor(metric)
-    da = AHMC.StepSizeAdaptor(alg.δ, ϵ)
-
-    if iszero(alg.n_adapts)
-        adaptor = AHMC.Adaptation.NoAdaptation()
+function AHMCAdaptor(
+    alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric, num_warmup::Integer
+)
+    return if iszero(num_warmup)
+        AHMC.Adaptation.NoAdaptation()
     else
+        pc = AHMC.MassMatrixAdaptor(metric)
+        da = AHMC.StepSizeAdaptor(alg.δ, alg.ϵ)
         if metric == AHMC.UnitEuclideanMetric
-            adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
+            AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
         else
-            adaptor = AHMC.StanHMCAdaptor(pc, da)
-            AHMC.initialize!(adaptor, alg.n_adapts)
+            AHMC.StanHMCAdaptor(pc, da)
         end
     end
-
-    return adaptor
 end
-
-function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...)
+function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, num_warmup::Integer; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
 end
