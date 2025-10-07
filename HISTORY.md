@@ -1,5 +1,22 @@
 # 0.41.0
 
+## Breaking changes
+
+**HMCDA and NUTS constructors**
+
+HMCDA and NUTS previously used to take an optional first positional argument, which specified the number of adaptation steps to take.
+Alternatively, this could also be specified via the `nadapts` keyword argument to `sample()`.
+This has been removed: you should use the `num_warmup` keyword argument to `sample()` instead, which is consistent with all other samplers in Turing.jl.
+Warmup steps are always adaptation steps for HMCDA and NUTS, so there is no need to specify the number of adaptation steps separately.
+
+The default number of warmup steps is still the same: `min(1000, N ÷ 2)` where `N` is the total number of samples requested.
+
+Likewise, the `discard_adapt::Bool` keyword argument to `sample()` has been removed.
+In its place you can use `discard_initial::Int` to specify how many initial samples to discard.
+If you want to discard all warmup steps, just omit the `discard_initial` argument: it will automatically set `discard_initial=num_warmup`.
+
+**Initial step**
+
 HMC and NUTS samplers no longer take an extra single step before starting the chain.
 This means that if you do not discard any samples at the start, the first sample will be the initial parameters (which may be user-provided).
 
