@@ -1,6 +1,7 @@
 abstract type Hamiltonian <: InferenceAlgorithm end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
+default_num_warmup(::AdaptiveHamiltonian, N::Int) = min(1000, N ÷ 2)
 
 ###
 ### Sampler states
@@ -14,7 +15,7 @@ struct HMCState{
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
 }
     vi::TV
-    i::Int
+    nadapts_done::Int
     kernel::TKernel
     hamiltonian::THam
     z::PhType
@@ -81,66 +82,6 @@ function HMC(
 end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
-
-# Handle setting `nadapts` and `discard_initial`
-function AbstractMCMC.sample(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:AdaptiveHamiltonian},
-    N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
-    progress=PROGRESS[],
-    nadapts=sampler.alg.n_adapts,
-    discard_adapt=true,
-    discard_initial=-1,
-    kwargs...,
-)
-    if resume_from === nothing
-        # If `nadapts` is `-1`, then the user called a convenience
-        # constructor like `NUTS()` or `NUTS(0.65)`,
-        # and we should set a default for them.
-        if nadapts == -1
-            _nadapts = min(1000, N ÷ 2)
-        else
-            _nadapts = nadapts
-        end
-
-        # If `discard_initial` is `-1`, then users did not specify the keyword argument.
-        if discard_initial == -1
-            _discard_initial = discard_adapt ? _nadapts : 0
-        else
-            _discard_initial = discard_initial
-        end
-
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            progress=progress,
-            nadapts=_nadapts,
-            discard_initial=_discard_initial,
-            kwargs...,
-        )
-    else
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            initial_state=initial_state,
-            progress=progress,
-            nadapts=0,
-            discard_adapt=false,
-            discard_initial=0,
-            kwargs...,
-        )
-    end
-end
 
 function find_initial_params(
     rng::Random.AbstractRNG,
@@ -221,42 +162,34 @@ function DynamicPPL.initialstep(
     adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
 
     transition = Transition(model, vi, NamedTuple())
-    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
+    state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor)
 
     return transition, state
 end
 
-function AbstractMCMC.step(
+function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::Model,
-    spl::Sampler{<:Hamiltonian},
+    spl::Sampler{<:AdaptiveHamiltonian},
     state::HMCState;
-    nadapts=0,
+    num_warmup,
     kwargs...,
 )
-    # Get step size
-    @debug "current ϵ" getstepsize(spl, state)
-
     # Compute transition.
     hamiltonian = state.hamiltonian
     z = state.z
     t = AHMC.transition(rng, hamiltonian, state.kernel, z)
 
     # Adaptation
-    i = state.i + 1
-    if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, kernel, _ = AHMC.adapt!(
-            hamiltonian,
-            state.kernel,
-            state.adaptor,
-            i,
-            nadapts,
-            t.z.θ,
-            t.stat.acceptance_rate,
-        )
-    else
-        kernel = state.kernel
-    end
+    hamiltonian, kernel, _ = AHMC.adapt!(
+        hamiltonian,
+        state.kernel,
+        state.adaptor,
+        state.nadapts_done + 1,
+        num_warmup,
+        t.z.θ,
+        t.stat.acceptance_rate,
+    )
 
     # Update variables
     vi = state.vi
@@ -266,8 +199,34 @@ function AbstractMCMC.step(
 
     # Compute next transition and state.
     transition = Transition(model, vi, t)
-    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
+    newstate = HMCState(vi, state.nadapts_done + 1, kernel, hamiltonian, t.z, state.adaptor)
 
+    return transition, newstate
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Sampler{<:Hamiltonian},
+    state::HMCState;
+    kwargs...,
+)
+    # Compute transition.
+    hamiltonian = state.hamiltonian
+    z = state.z
+    t = AHMC.transition(rng, hamiltonian, state.kernel, z)
+
+    # Update variables
+    vi = state.vi
+    if t.stat.is_accept
+        vi = DynamicPPL.unflatten(vi, t.z.θ)
+    end
+
+    # Compute next transition and state.
+    transition = Transition(model, vi, t)
+    newstate = HMCState(
+        vi, state.nadapts_done, state.kernel, hamiltonian, t.z, state.adaptor
+    )
     return transition, newstate
 end
 
@@ -281,28 +240,32 @@ function get_hamiltonian(model, spl, vi, state, n)
     return AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 end
 
+_NADAPTS_DOCSTRING = """
+!!! note
+    In Turing <= v0.40, there was also had a field `n_adapts` to specify the number of
+adaptation steps. This has been removed in v0.41; please use the `num_warmup` keyword
+argument in the `sample` function instead.
+
+    Likewise, the `discard_adapt` keyword argument in `sample` used to work only with adaptive Hamiltonian samplers like NUTS. This has been removed; please use the `discard_initial` keyword argument instead (which works with all samplers).
+
+    For information on how to use these keyword arguments, please see: https://turinglang.org/docs/usage/sampling-options/#thinning-and-warmup.
+"""
+
 """
     HMCDA(
-        n_adapts::Int, δ::Float64, λ::Float64; ϵ::Float64 = 0.0;
-        adtype::ADTypes.AbstractADType = AutoForwardDiff(),
+        δ::Float64,
+        λ::Float64,
+        ϵ::Float64 = 0.0,
+        metric::Type{<:AHMC.AbstractMetric} = AHMC.UnitEuclideanMetric;
+        adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE
     )
 
 Hamiltonian Monte Carlo sampler with Dual Averaging algorithm.
 
-# Usage
-
-```julia
-HMCDA(200, 0.65, 0.3)
-```
-
 # Arguments
 
-- `n_adapts`: Numbers of samples to use for adaptation.
-- `δ`: Target acceptance rate. 65% is often recommended.
-- `λ`: Target leapfrog length.
-- `ϵ`: Initial step size; 0 means automatically search by Turing.
-- `adtype`: The automatic differentiation (AD) backend.
-    If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
+
+$(_NADAPTS_DOCSTRING)
 
 # Reference
 
@@ -312,123 +275,65 @@ Hoffman, Matthew D., and Andrew Gelman. "The No-U-turn sampler: adaptively
 setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
-struct HMCDA{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
-    δ::Float64     # target accept rate
-    λ::Float64     # target leapfrog length
-    ϵ::Float64     # (initial) step size
+struct HMCDA{AD<:ADTypes.AbstractADType,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+    "target acceptance ratio"
+    δ::Float64
+    "target leapfrog length"
+    λ::Float64
+    "initial step size"
+    ϵ::Float64
+    "automatic differentiation backend; Turing's default is ForwardDiff"
     adtype::AD
-end
 
-function HMCDA(
-    n_adapts::Int,
-    δ::Float64,
-    λ::Float64,
-    ϵ::Float64,
-    ::Type{metricT};
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-) where {metricT<:AHMC.AbstractMetric}
-    return HMCDA{typeof(adtype),metricT}(n_adapts, δ, λ, ϵ, adtype)
-end
-
-function HMCDA(
-    δ::Float64,
-    λ::Float64;
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
-    return HMCDA(-1, δ, λ, init_ϵ, metricT; adtype=adtype)
-end
-
-function HMCDA(n_adapts::Int, δ::Float64, λ::Float64, ::Tuple{}; kwargs...)
-    return HMCDA(n_adapts, δ, λ; kwargs...)
-end
-
-function HMCDA(
-    n_adapts::Int,
-    δ::Float64,
-    λ::Float64;
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.UnitEuclideanMetric,
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
-    return HMCDA(n_adapts, δ, λ, init_ϵ, metricT; adtype=adtype)
+    function HMCDA(
+        δ::Float64,
+        λ::Float64,
+        init_ϵ::Float64=0.0,
+        metric::Type{metricT}=AHMC.UnitEuclideanMetric;
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+    ) where {metricT<:AHMC.AbstractMetric}
+        return new{typeof(adtype),metricT}(δ, λ, init_ϵ, adtype)
+    end
 end
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()
+    NUTS(
+        δ::Float64 = 0.65;
+        max_depth::Int = 10,
+        Δ_max::Float64 = 1000.0,
+        init_ϵ::Float64 = 0.0,
+        metric::Type{<:AHMC.AbstractMetric} = AHMC.DiagEuclideanMetric,
+        adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE
+    )
 
 No-U-Turn Sampler (NUTS) sampler.
 
-Usage:
+$(TYPEDFIELDS)
 
-```julia
-NUTS()            # Use default NUTS configuration.
-NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
-```
-
-Arguments:
-
-- `n_adapts::Int` : The number of samples to use with adaptation.
-- `δ::Float64` : Target acceptance rate for dual averaging.
-- `max_depth::Int` : Maximum doubling tree depth.
-- `Δ_max::Float64` : Maximum divergence during doubling tree.
-- `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
-- `adtype::ADTypes.AbstractADType` : The automatic differentiation (AD) backend.
-    If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
-
+$(_NADAPTS_DOCSTRING)
 """
-struct NUTS{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
-    δ::Float64        # target accept rate
-    max_depth::Int         # maximum tree depth
+struct NUTS{AD<:ADTypes.AbstractADType,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+    "target acceptance rate"
+    δ::Float64
+    "maximum tree depth"
+    max_depth::Int
+    "maximum divergence during doubling tree"
     Δ_max::Float64
-    ϵ::Float64     # (initial) step size
+    "initial step size; use 0 to automatically search using a heuristic"
+    ϵ::Float64
+    "automatic differentiation backend; Turing's default is ForwardDiff"
     adtype::AD
-end
 
-function NUTS(
-    n_adapts::Int,
-    δ::Float64,
-    max_depth::Int,
-    Δ_max::Float64,
-    ϵ::Float64,
-    ::Type{metricT};
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-) where {metricT}
-    return NUTS{typeof(adtype),metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
-end
-
-function NUTS(n_adapts::Int, δ::Float64, ::Tuple{}; kwargs...)
-    return NUTS(n_adapts, δ; kwargs...)
-end
-
-function NUTS(
-    n_adapts::Int,
-    δ::Float64;
-    max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
-    return NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
-end
-
-function NUTS(
-    δ::Float64;
-    max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
-    metricT=AHMC.DiagEuclideanMetric,
-    adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
-    return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
-end
-
-function NUTS(; kwargs...)
-    return NUTS(-1, 0.65; kwargs...)
+    function NUTS(
+        δ::Float64=0.65;
+        max_depth::Int=10,
+        Δ_max::Float64=1000.0,
+        ϵ::Float64=0.0,
+        metric::Type{metricT}=AHMC.DiagEuclideanMetric,
+        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
+    ) where {metricT<:AHMC.AbstractMetric}
+        return new{AD,metricT}(δ, max_depth, Δ_max, ϵ, adtype)
+    end
 end
 
 for alg in (:HMC, :HMCDA, :NUTS)

@@ -122,8 +122,8 @@ using Turing
     end
 
     @testset "hmcda inference" begin
-        alg1 = HMCDA(500, 0.8, 0.015)
-        res1 = sample(StableRNG(seed), gdemo_default, alg1, 3_000)
+        alg1 = HMCDA(0.8, 0.015)
+        res1 = sample(StableRNG(seed), gdemo_default, alg1, 3_000; num_warmup=500)
         check_gdemo(res1)
     end
 
@@ -132,43 +132,46 @@ using Turing
     # explicitly specifying the seeds here.
     @testset "hmcda+gibbs inference" begin
         Random.seed!(12345)
-        alg = Gibbs(:s => PG(20), :m => HMCDA(500, 0.8, 0.25; init_ϵ=0.05))
-        res = sample(StableRNG(123), gdemo_default, alg, 3000; discard_initial=1000)
+        alg = Gibbs(:s => PG(20), :m => HMCDA(0.8, 0.25; init_ϵ=0.05))
+        res = sample(
+            StableRNG(123), gdemo_default, alg, 3000; num_warmup=500, discard_initial=1000
+        )
         check_gdemo(res)
     end
 
     @testset "nuts inference" begin
-        alg = NUTS(1000, 0.8)
+        alg = NUTS(0.8)
         res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
     end
 
-    @testset "check discard" begin
-        alg = NUTS(100, 0.8)
-
-        c1 = sample(StableRNG(seed), gdemo_default, alg, 500; discard_adapt=true)
-        c2 = sample(StableRNG(seed), gdemo_default, alg, 500; discard_adapt=false)
-
+    @testset "check that chain size is unaffected by warmup/discard" begin
+        alg = NUTS(0.8)
+        c1 = sample(gdemo_default, alg, 500; num_warmup=100, discard_initial=100)
+        c2 = sample(gdemo_default, alg, 500; num_warmup=100, discard_initial=0)
+        c3 = sample(gdemo_default, alg, 500; num_warmup=0, discard_initial=100)
+        c4 = sample(gdemo_default, alg, 500; num_warmup=0, discard_initial=0)
         @test size(c1, 1) == 500
         @test size(c2, 1) == 500
+        @test size(c3, 1) == 500
+        @test size(c4, 1) == 500
     end
 
     @testset "AHMC resize" begin
-        alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65))
+        alg1 = Gibbs(:m => PG(10), :s => NUTS(0.65))
         alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3))
-        alg3 = Gibbs(:m => PG(10), :s => HMCDA(100, 0.65, 0.3))
-        @test sample(StableRNG(seed), gdemo_default, alg1, 10) isa Chains
-        @test sample(StableRNG(seed), gdemo_default, alg2, 10) isa Chains
-        @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains
+        alg3 = Gibbs(:m => PG(10), :s => HMCDA(0.65, 0.3))
+        @test sample(gdemo_default, alg1, 10) isa Chains
+        @test sample(gdemo_default, alg2, 10) isa Chains
+        @test sample(gdemo_default, alg3, 10) isa Chains
     end
 
     # issue #1923
     @testset "reproducibility" begin
-        alg = NUTS(1000, 0.8)
-        res1 = sample(StableRNG(seed), gdemo_default, alg, 10)
-        res2 = sample(StableRNG(seed), gdemo_default, alg, 10)
-        res3 = sample(StableRNG(seed), gdemo_default, alg, 10)
-        @test Array(res1) == Array(res2) == Array(res3)
+        alg = NUTS(0.8)
+        res1 = sample(Xoshiro(seed), gdemo_default, alg, 10)
+        res2 = sample(Xoshiro(seed), gdemo_default, alg, 10)
+        @test Array(res1) == Array(res2)
     end
 
     @testset "initial params are respected" begin
@@ -270,7 +273,7 @@ using Turing
     end
 
     @testset "getstepsize: Turing.jl#2400" begin
-        algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
+        algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5)]
         @testset "$(alg)" for alg in algs
             # Construct a HMC state by taking a single step
             spl = Sampler(alg)

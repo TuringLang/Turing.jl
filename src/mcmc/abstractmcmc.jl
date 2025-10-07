@@ -55,5 +55,14 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
+    return AbstractMCMC.sample(
+        rng,
+        model,
+        Sampler(alg),
+        ensemble,
+        N,
+        n_chains;
+        num_warmup=default_num_warmup(alg, N),
+        kwargs...,
+    )
 end

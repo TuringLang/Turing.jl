@@ -49,7 +49,7 @@ TuringOptimExt = "Optim"
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.5"
+AbstractMCMC = "5.8.2"
 AbstractPPL = "0.11, 0.12, 0.13"
 Accessors = "0.1"
 AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6, 0.7, 0.8"

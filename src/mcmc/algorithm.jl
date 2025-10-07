@@ -11,4 +11,8 @@ this wrapping occurs automatically.
 """
 abstract type InferenceAlgorithm end
 
-DynamicPPL.default_chain_type(sampler::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
+DynamicPPL.default_chain_type(::Sampler{<:InferenceAlgorithm}) = MCMCChains.Chains
+
+# Overloaded by adaptive Hamiltonians
+# The second argument is the number of samples requested
+default_num_warmup(::InferenceAlgorithm, ::Int) = 0
