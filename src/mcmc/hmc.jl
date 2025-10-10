@@ -120,6 +120,7 @@ function AbstractMCMC.sample(
             sampler,
             N;
             chain_type=chain_type,
+            initial_state=initial_state,
             progress=progress,
             nadapts=_nadapts,
             discard_initial=_discard_initial,
