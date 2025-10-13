@@ -18,7 +18,8 @@ jobs:
     # Use matrix.test.name here to avoid it taking up the entire window width
     name: test ${{matrix.test.name}} (${{ matrix.runner.version }}, ${{ matrix.runner.os }}, ${{ matrix.runner.num_threads }})
     runs-on: ${{ matrix.runner.os }}
-    continue-on-error: ${{ matrix.runner.version == 'pre' }}
+    # TODO(mhauru) The || version == '1' should be removed, see below comment for details.
+    continue-on-error: ${{ matrix.runner.version == 'pre' || matrix.runner.version == '1'}}
 
     strategy:
       fail-fast: false
