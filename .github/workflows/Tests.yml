@@ -18,8 +18,7 @@ jobs:
     # Use matrix.test.name here to avoid it taking up the entire window width
     name: test ${{matrix.test.name}} (${{ matrix.runner.version }}, ${{ matrix.runner.os }}, ${{ matrix.runner.num_threads }})
     runs-on: ${{ matrix.runner.os }}
-    # TODO(mhauru) The || version == '1' should be removed, see below comment for details.
-    continue-on-error: ${{ matrix.runner.version == 'pre' || matrix.runner.version == '1'}}
+    continue-on-error: ${{ matrix.runner.version == 'pre' }}
 
     strategy:
       fail-fast: false
@@ -37,7 +36,6 @@ jobs:
             args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
           # TODO(mhauru) All the ones below that run on 1.11 should actually be run on 1.
-          # The last one, the one that currently only runs on 1, should be deleted.
           # The current setup is a temporary arrangement to deal with issues where Mooncake
           # and Libtask are broken on 1.12.
           # Default
@@ -64,14 +62,11 @@ jobs:
           - version: 'min'
             os: ubuntu-latest
             num_threads: 2
+          # TODO(mhauru) Start running 'pre' again once it differs from '1'.
           # Pre-release Julia version
-          - version: 'pre'
-            os: ubuntu-latest
-            num_threads: 1
-          # TODO(mhauru) See comment at the top of this block: The below should eventually be removed.
-          - version: '1'
-            os: ubuntu-latest
-            num_threads: 2
+          # - version: 'pre'
+          #   os: ubuntu-latest
+          #   num_threads: 1
 
     steps:
       - name: Print matrix variables
