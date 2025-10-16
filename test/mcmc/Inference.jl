@@ -97,7 +97,7 @@ using Turing
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
             @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
-            chn2 = sample(demo(), StaticSampler(), 10; resume_from=chn1)
+            chn2 = sample(demo(), StaticSampler(), 10; initial_state=chn1.info.samplerstate)
             xval = chn1[:x][1]
             @test all(chn2[:x] .== xval)
         end
@@ -109,7 +109,12 @@ using Turing
             @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
             @test length(chn1.info.samplerstate) == nchains
             chn2 = sample(
-                demo(), StaticSampler(), MCMCThreads(), 10, nchains; resume_from=chn1
+                demo(),
+                StaticSampler(),
+                MCMCThreads(),
+                10,
+                nchains;
+                initial_state=chn1.info.samplerstate,
             )
             xval = chn1[:x][1, :]
             @test all(i -> chn2[:x][i, :] == xval, 1:10)
@@ -124,10 +129,22 @@ using Turing
         chn1 = sample(StableRNG(seed), gdemo_default, alg1, 10_000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_contd = sample(StableRNG(seed), gdemo_default, alg1, 2_000; resume_from=chn1)
+        chn1_contd = sample(
+            StableRNG(seed),
+            gdemo_default,
+            alg1,
+            2_000;
+            initial_state=chn1.info.samplerstate,
+        )
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(StableRNG(seed), gdemo_default, alg1, 2_000; resume_from=chn1)
+        chn1_contd2 = sample(
+            StableRNG(seed),
+            gdemo_default,
+            alg1,
+            2_000;
+            initial_state=chn1.info.samplerstate,
+        )
         check_gdemo(chn1_contd2)
 
         chn2 = sample(
@@ -140,7 +157,13 @@ using Turing
         )
         check_gdemo(chn2)
 
-        chn2_contd = sample(StableRNG(seed), gdemo_default, alg2, 2_000; resume_from=chn2)
+        chn2_contd = sample(
+            StableRNG(seed),
+            gdemo_default,
+            alg2,
+            2_000;
+            initial_state=chn2.info.samplerstate,
+        )
         check_gdemo(chn2_contd)
 
         chn3 = sample(
@@ -153,7 +176,13 @@ using Turing
         )
         check_gdemo(chn3)
 
-        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 5_000; resume_from=chn3)
+        chn3_contd = sample(
+            StableRNG(seed),
+            gdemo_default,
+            alg3,
+            5_000;
+            initial_state=chn3.info.samplerstate,
+        )
         check_gdemo(chn3_contd)
     end
 
