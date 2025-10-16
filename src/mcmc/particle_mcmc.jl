@@ -76,8 +76,8 @@ struct SMC{R} <: ParticleInference
 end
 
 """
-    SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
-    SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
+SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 
@@ -111,38 +111,22 @@ function AbstractMCMC.sample(
     sampler::Sampler{<:SMC},
     N::Integer;
     chain_type=TURING_CHAIN_TYPE,
-    resume_from=nothing,
     initial_params=DynamicPPL.init_strategy(sampler),
-    initial_state=DynamicPPL.loadstate(resume_from),
     progress=PROGRESS[],
     kwargs...,
 )
-    if resume_from === nothing
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type=chain_type,
-            initial_params=initial_params,
-            progress=progress,
-            nparticles=N,
-            kwargs...,
-        )
-    else
-        return AbstractMCMC.mcmcsample(
-            rng,
-            model,
-            sampler,
-            N;
-            chain_type,
-            initial_params=initial_params,
-            initial_state,
-            progress=progress,
-            nparticles=N,
-            kwargs...,
-        )
-    end
+    # need to add on the `nparticles` keyword argument for `initialstep` to make use of
+    return AbstractMCMC.mcmcsample(
+        rng,
+        model,
+        sampler,
+        N;
+        chain_type=chain_type,
+        initial_params=initial_params,
+        progress=progress,
+        nparticles=N,
+        kwargs...,
+    )
 end
 
 function DynamicPPL.initialstep(
@@ -155,7 +139,6 @@ function DynamicPPL.initialstep(
 )
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    set_all_del!(vi)
     vi = DynamicPPL.empty!!(vi)
 
     # Create a new set of particles.
@@ -220,8 +203,8 @@ struct PG{R} <: ParticleInference
 end
 
 """
-    PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
-    PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)
+PG(n, [resampler = AdvancedPS.ResampleWithESSThreshold()])
+PG(n, [resampler = AdvancedPS.resample_systematic, ]threshold)
 
 Create a Particle Gibbs sampler of type [`PG`](@ref) with `n` particles.
 
@@ -241,7 +224,7 @@ function PG(nparticles::Int, threshold::Real)
 end
 
 """
-    CSMC(...)
+CSMC(...)
 
 Equivalent to [`PG`](@ref).
 """
@@ -345,7 +328,7 @@ end
 DynamicPPL.use_threadsafe_eval(::ParticleMCMCContext, ::AbstractVarInfo) = false
 
 """
-    get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
 
 Get the `Trace` local varinfo if one exists.
 
@@ -362,7 +345,7 @@ function get_trace_local_varinfo_maybe(varinfo::AbstractVarInfo)
 end
 
 """
-    get_trace_local_resampled_maybe(fallback_resampled::Bool)
+get_trace_local_resampled_maybe(fallback_resampled::Bool)
 
 Get the `Trace` local `resampled` if one exists.
 
@@ -379,7 +362,7 @@ function get_trace_local_resampled_maybe(fallback_resampled::Bool)
 end
 
 """
-    get_trace_local_rng_maybe(rng::Random.AbstractRNG)
+get_trace_local_rng_maybe(rng::Random.AbstractRNG)
 
 Get the `Trace` local rng if one exists.
 
@@ -395,7 +378,7 @@ function get_trace_local_rng_maybe(rng::Random.AbstractRNG)
 end
 
 """
-    set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
 
 Set the `Trace` local varinfo if executing within a `Trace`. Return `nothing`.
 
@@ -477,7 +460,7 @@ function AdvancedPS.Trace(
 end
 
 """
-    ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
+ProduceLogLikelihoodAccumulator{T<:Real} <: AbstractAccumulator
 
 Exactly like `LogLikelihoodAccumulator`, but calls `Libtask.produce` on change of value.
 

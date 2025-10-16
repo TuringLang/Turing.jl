@@ -89,16 +89,15 @@ function AbstractMCMC.sample(
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
     chain_type=TURING_CHAIN_TYPE,
-    resume_from=nothing,
     initial_params=DynamicPPL.init_strategy(sampler),
-    initial_state=DynamicPPL.loadstate(resume_from),
+    initial_state=nothing,
     progress=PROGRESS[],
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
     kwargs...,
 )
-    if resume_from === nothing
+    if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
         # and we should set a default for them.

@@ -41,18 +41,8 @@ function DynamicPPL.init_strategy(spl::Sampler{<:Emcee})
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Emcee};
-    resume_from=nothing,
-    initial_params,
-    kwargs...,
+    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:Emcee}; initial_params, kwargs...
 )
-    if resume_from !== nothing
-        state = loadstate(resume_from)
-        return AbstractMCMC.step(rng, model, spl, state; kwargs...)
-    end
-
     # Sample from the prior
     n = _get_n_walkers(spl)
     vis = [VarInfo(rng, model) for _ in 1:n]
