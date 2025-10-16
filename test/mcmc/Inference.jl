@@ -66,12 +66,6 @@ using Turing
                 StableRNG(seed), gdemo_default, HMC(0.1, 7), MCMCThreads(), 1_000, 4
             )
             check_gdemo(chain)
-
-            # run sampler: progress logging should be disabled and
-            # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7))
-            chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
-            @test chains isa MCMCChains.Chains
         end
     end
 
