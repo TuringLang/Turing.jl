@@ -118,9 +118,9 @@ using Turing
         chn1 = sample(StableRNG(23), xy(), spl_xy, num_samples)
         chn2 = sample(StableRNG(23), x12(), spl_x, num_samples)
 
-        @test mean(chn1[:z]) ≈ mean(chn2[:z]) atol = 0.05
-        @test mean(chn1[:x]) ≈ mean(chn2["x[1]"]) atol = 0.05
-        @test mean(chn1[:y]) ≈ mean(chn2["x[2]"]) atol = 0.05
+        @test chn1.value ≈ chn2.value
+        @test mean(chn1[:z]) ≈ mean(Beta(2.0, 2.0)) atol = 0.05
+        @test mean(chn1[:y]) ≈ -3.0 atol = 0.05
     end
 end
 
