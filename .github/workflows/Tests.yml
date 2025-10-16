@@ -35,20 +35,23 @@ jobs:
           - name: "everything else"
             args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
+          # TODO(mhauru) All the ones below that run on 1.11 should actually be run on 1.
+          # The current setup is a temporary arrangement to deal with issues where Mooncake
+          # and Libtask are broken on 1.12.
           # Default
-          - version: '1'
+          - version: '1.11'
             os: ubuntu-latest
             num_threads: 1
           # Multithreaded
-          - version: '1'
+          - version: '1.11'
             os: ubuntu-latest
             num_threads: 2
           # Windows
-          - version: '1'
+          - version: '1.11'
             os: windows-latest
             num_threads: 1
           # macOS
-          - version: '1'
+          - version: '1.11'
             os: macos-latest
             num_threads: 1
           # Minimum supported Julia version
@@ -59,10 +62,11 @@ jobs:
           - version: 'min'
             os: ubuntu-latest
             num_threads: 2
+          # TODO(mhauru) Start running 'pre' again once it differs from '1'.
           # Pre-release Julia version
-          - version: 'pre'
-            os: ubuntu-latest
-            num_threads: 1
+          # - version: 'pre'
+          #   os: ubuntu-latest
+          #   num_threads: 1
 
     steps:
       - name: Print matrix variables
