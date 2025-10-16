@@ -274,7 +274,7 @@ function StatsBase.informationmatrix(
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
     old_ldf = m.f.ldf
-    linked = DynamicPPL.istrans(old_ldf.varinfo)
+    linked = DynamicPPL.is_transformed(old_ldf.varinfo)
     if linked
         new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
         new_f = OptimLogDensity(
