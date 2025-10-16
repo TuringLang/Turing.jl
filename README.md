@@ -5,7 +5,7 @@
 <a href="https://turinglang.org/"><img src="https://img.shields.io/badge/docs-tutorials-blue.svg" alt="Tutorials" /></a>
 <a href="https://turinglang.org/Turing.jl/stable"><img src="https://img.shields.io/badge/docs-API-blue.svg" alt="API docs" /></a>
 <a href="https://github.com/TuringLang/Turing.jl/actions/workflows/Tests.yml"><img src="https://github.com/TuringLang/Turing.jl/actions/workflows/Tests.yml/badge.svg" alt="Tests" /></a>
-<a href="https://coveralls.io/github/TuringLang/Turing.jl?branch=main"><img src="https://coveralls.io/repos/github/TuringLang/Turing.jl/badge.svg?branch=main" alt="Coverage" /></a>
+<a href="https://codecov.io/gh/TuringLang/Turing.jl"><img src="https://codecov.io/gh/TuringLang/Turing.jl/branch/main/graph/badge.svg" alt="Code Coverage" /></a>
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 

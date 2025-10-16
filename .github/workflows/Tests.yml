@@ -35,20 +35,23 @@ jobs:
           - name: "everything else"
             args: "--skip mcmc/gibbs.jl mcmc/Inference.jl ad.jl"
         runner:
+          # TODO(mhauru) All the ones below that run on 1.11 should actually be run on 1.
+          # The current setup is a temporary arrangement to deal with issues where Mooncake
+          # and Libtask are broken on 1.12.
           # Default
-          - version: '1'
+          - version: '1.11'
             os: ubuntu-latest
             num_threads: 1
           # Multithreaded
-          - version: '1'
+          - version: '1.11'
             os: ubuntu-latest
             num_threads: 2
           # Windows
-          - version: '1'
+          - version: '1.11'
             os: windows-latest
             num_threads: 1
           # macOS
-          - version: '1'
+          - version: '1.11'
             os: macos-latest
             num_threads: 1
           # Minimum supported Julia version
@@ -59,54 +62,41 @@ jobs:
           - version: 'min'
             os: ubuntu-latest
             num_threads: 2
+          # TODO(mhauru) Start running 'pre' again once it differs from '1'.
           # Pre-release Julia version
-          - version: 'pre'
-            os: ubuntu-latest
-            num_threads: 1
+          # - version: 'pre'
+          #   os: ubuntu-latest
+          #   num_threads: 1
 
     steps:
       - name: Print matrix variables
+
         run: |
           echo "OS: ${{ matrix.runner.os }}"
           echo "Julia version: ${{ matrix.runner.version }}"
           echo "Number of threads: ${{ matrix.runner.num_threads }}"
           echo "Test arguments: ${{ matrix.test.args }}"
-      - name: (De)activate coverage analysis
-        run: echo "COVERAGE=${{ matrix.runner.version == '1' && matrix.runner.os == 'ubuntu-latest' && matrix.runner.num_threads == 2 }}" >> "$GITHUB_ENV"
-        shell: bash
+
       - uses: actions/checkout@v4
+
       - uses: julia-actions/setup-julia@v2
         with:
           version: '${{ matrix.runner.version }}'
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      # TODO: Use julia-actions/julia-runtest when test_args are supported
-      # Custom calls of Pkg.test tend to miss features such as e.g. adjustments for CompatHelper PRs
-      # Ref https://github.com/julia-actions/julia-runtest/pull/73
-      - name: Call Pkg.test
-        run: julia --color=yes --inline=yes --depwarn=yes --check-bounds=yes --threads=${{ matrix.runner.num_threads }} --project=@. -e 'import Pkg; Pkg.test(; coverage=parse(Bool, ENV["COVERAGE"]), test_args=ARGS)' -- ${{ matrix.test.args }}
-      - uses: julia-actions/julia-processcoverage@v1
-        if: ${{ env.COVERAGE }}
-      - uses: codecov/codecov-action@v4
-        if: ${{ env.COVERAGE }}
-        with:
-          fail_ci_if_error: true
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: lcov.info
-      - uses: coverallsapp/github-action@v2
-        if: ${{ env.COVERAGE }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: lcov.info
-          flag-name: run-${{ join(matrix.*, '-') }}
-          parallel: true
 
-  finish:
-    needs: test
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@v2
-      with:
-        parallel-finished: true
+      - uses: julia-actions/cache@v2
+
+      - uses: julia-actions/julia-buildpkg@v1
+
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          test_args: ${{ matrix.test.args }}
+        env:
+          JULIA_NUM_THREADS: ${{ matrix.runner.num_threads }}
+
+      - uses: julia-actions/julia-processcoverage@v1
+
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true

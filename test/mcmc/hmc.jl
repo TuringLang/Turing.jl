@@ -222,6 +222,27 @@ using Turing
         @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
     end
 
+    @testset "NUTS initial parameters" begin
+        @model function f()
+            x ~ Normal()
+            return 10 ~ Normal(x)
+        end
+        chn1 = sample(StableRNG(468), f(), NUTS(), 100; save_state=true)
+        # chn1 should end up around x = 5.
+        chn2 = sample(
+            StableRNG(468),
+            f(),
+            NUTS(),
+            10;
+            nadapts=0,
+            discard_adapt=false,
+            initial_state=chn1.info.samplerstate,
+        )
+        # if chn2 uses initial_state, its first sample should be somewhere around 5. if
+        # initial_state isn't used, it will be sampled from [-2, 2] so this test should fail
+        @test isapprox(chn2[:x][1], 5.0; atol=2.0)
+    end
+
     @testset "(partially) issue: #2095" begin
         @model function vector_of_dirichlet((::Type{TV})=Vector{Float64}) where {TV}
             xs = Vector{TV}(undef, 2)
