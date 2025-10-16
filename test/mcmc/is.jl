@@ -18,7 +18,6 @@ using Turing
                 as[i] = rand(rng, Normal(4, 5))
                 bs[i] = rand(rng, Normal(as[i], 1))
             end
-            # logevidence = logsumexp(logps) - log(n)
             return (as=as, bs=bs)
         end
 

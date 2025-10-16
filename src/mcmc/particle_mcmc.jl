@@ -4,38 +4,6 @@
 
 ### AdvancedPS models and interface
 
-"""
-    set_all_del!(vi::AbstractVarInfo)
-
-Set the "del" flag for all variables in the VarInfo `vi`, thus marking them for
-resampling.
-"""
-function set_all_del!(vi::AbstractVarInfo)
-    # TODO(penelopeysm): Instead of being a 'del' flag on the VarInfo, we
-    # could either:
-    # - keep a boolean 'resample' flag on the trace, or
-    # - modify the model context appropriately.
-    # However, this refactoring will have to wait until InitContext is
-    # merged into DPPL.
-    for vn in keys(vi)
-        DynamicPPL.set_flag!(vi, vn, "del")
-    end
-    return nothing
-end
-
-"""
-    unset_all_del!(vi::AbstractVarInfo)
-
-Unset the "del" flag for all variables in the VarInfo `vi`, thus preventing
-them from being resampled.
-"""
-function unset_all_del!(vi::AbstractVarInfo)
-    for vn in keys(vi)
-        DynamicPPL.unset_flag!(vi, vn, "del")
-    end
-    return nothing
-end
-
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end

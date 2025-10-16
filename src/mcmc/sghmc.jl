@@ -59,7 +59,7 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Transform the samples to unconstrained space.
-    if !DynamicPPL.islinked(vi)
+    if !DynamicPPL.is_transformed(vi)
         vi = DynamicPPL.link!!(vi, model)
     end
 
@@ -198,7 +198,7 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Transform the samples to unconstrained space.
-    if !DynamicPPL.islinked(vi)
+    if !DynamicPPL.is_transformed(vi)
         vi = DynamicPPL.link!!(vi, model)
     end
 

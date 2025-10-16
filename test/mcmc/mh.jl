@@ -234,7 +234,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         alg = MH()
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test !DynamicPPL.islinked(vi)
+        @test !DynamicPPL.is_transformed(vi)
 
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
         vi = deepcopy(vi_base)
@@ -242,14 +242,14 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test DynamicPPL.islinked(vi)
+        @test DynamicPPL.is_transformed(vi)
 
         # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
         vi = deepcopy(vi_base)
         alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test DynamicPPL.islinked(vi)
+        @test DynamicPPL.is_transformed(vi)
 
         # Don't link if at least one proposal is NOT `RandomWalkProposal`.
         # TODO: make it so that only those that are using `RandomWalkProposal`
@@ -262,7 +262,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         )
         spl = DynamicPPL.Sampler(alg)
         vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
-        @test !DynamicPPL.islinked(vi)
+        @test !DynamicPPL.is_transformed(vi)
     end
 
     @testset "`filldist` proposal (issue #2180)" begin

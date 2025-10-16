@@ -52,7 +52,7 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.islinked(vi)
+    if !DynamicPPL.is_transformed(vi)
         vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi))
     end

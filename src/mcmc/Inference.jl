@@ -13,7 +13,6 @@ using DynamicPPL:
     # or implement it for other VarInfo types and export it from DPPL.
     all_varnames_grouped_by_symbol,
     syms,
-    islinked,
     setindex!!,
     push!!,
     setlogp!!,
@@ -24,9 +23,7 @@ using DynamicPPL:
     getdist,
     Model,
     Sampler,
-    DefaultContext,
-    set_flag!,
-    unset_flag!
+    DefaultContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
