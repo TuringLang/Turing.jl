@@ -29,18 +29,23 @@ using Turing
             return a, b
         end
 
-        function expected_loglikelihoods(as, bs)
-            return logpdf.(Normal.(as, 2), 3) .+ logpdf.(Normal.(bs, 2), 1.5)
-        end
-
         alg = IS()
         N = 1000
         model = normal()
         chain = sample(StableRNG(468), model, alg, N)
         ref = reference(N)
 
+        # Note that in general, mean(chain) will differ from mean(ref). This is because the
+        # sampling process introduces extra calls to rand(), etc. which changes the output.
+        # These tests therefore are only meant to check that the results are qualitatively
+        # similar to the reference implementation of IS, and hence the atol is set to
+        # something fairly large.
         @test isapprox(mean(chain[:a]), mean(ref.as); atol=0.1)
         @test isapprox(mean(chain[:b]), mean(ref.bs); atol=0.1)
+
+        function expected_loglikelihoods(as, bs)
+            return logpdf.(Normal.(as, 2), 3) .+ logpdf.(Normal.(bs, 2), 1.5)
+        end
         @test isapprox(chain[:loglikelihood], expected_loglikelihoods(chain[:a], chain[:b]))
         @test isapprox(chain.logevidence, logsumexp(chain[:loglikelihood]) - log(N))
     end
