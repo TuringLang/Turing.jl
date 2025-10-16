@@ -13,13 +13,16 @@ TODO LINK TO DPPL DOCS WHEN THIS IS LIVE
 There are three kinds of initialisation strategies provided out of the box with Turing.jl (they are exported so you can use these directly with `using Turing`):
 
   - `InitFromPrior()`: Sample from the prior distribution. This is the default for most samplers in Turing.jl (if you don't specify `initial_params`).
+
   - `InitFromUniform(a, b)`: Sample uniformly from `[a, b]` in linked space. This is the default for Hamiltonian samplers. If `a` and `b` are not specified it defaults to `[-2, 2]`, which preserves the behaviour in previous versions (and mimics that of Stan).
-  - `InitFromParams(p)`: Explicitly provide a set of initial parameters. **Note: `p` must be either a `NamedTuple` or a `Dict{<:VarName}`; it can no longer be a `Vector`.** Parameters must be provided in unlinked space, even if the sampler later performs linking.
+  - `InitFromParams(p)`: Explicitly provide a set of initial parameters. **Note: `p` must be either a `NamedTuple` or an `AbstractDict{<:VarName}`; it can no longer be a `Vector`.** Parameters must be provided in unlinked space, even if the sampler later performs linking.
+    
+      + For this release of Turing.jl, you can also provide a `NamedTuple` or `AbstractDict{<:VarName}` and this will be automatically wrapped in `InitFromParams` for you.
 
 This change is made because Vectors are semantically ambiguous.
 It is not clear which element of the vector corresponds to which variable in the model, nor is it clear whether the parameters are in linked or unlinked space.
 Previously, both of these would depend on the internal structure of the VarInfo, which is an implementation detail.
-In contrast, the behaviour of `Dict`s and `NamedTuple`s is invariant to the ordering of variables and it is also easier for readers to understand which variable is being set to which value.
+In contrast, the behaviour of `AbstractDict`s and `NamedTuple`s is invariant to the ordering of variables and it is also easier for readers to understand which variable is being set to which value.
 
 If you were previously using `varinfo[:]` to extract a vector of initial parameters, you can now use `Dict(k => varinfo[k] for k in keys(varinfo)` to extract a Dict of initial parameters.
 
