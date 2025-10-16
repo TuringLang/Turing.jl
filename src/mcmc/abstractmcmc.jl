@@ -12,6 +12,8 @@ end
 # Default definitions for the interface #
 #########################################
 
+const DEFAULT_CHAIN_TYPE = MCMCChains.Chains
+
 function AbstractMCMC.sample(
     model::AbstractModel, alg::InferenceAlgorithm, N::Integer; kwargs...
 )
@@ -24,10 +26,11 @@ function AbstractMCMC.sample(
     alg::InferenceAlgorithm,
     N::Integer;
     check_model::Bool=true,
+    chain_type=DEFAULT_CHAIN_TYPE,
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), N; kwargs...)
+    return AbstractMCMC.sample(rng, model, Sampler(alg), N; chain_type, kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -50,9 +53,12 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
+    chain_type=DEFAULT_CHAIN_TYPE,
     check_model::Bool=true,
     kwargs...,
 )
     check_model && _check_model(model, alg)
-    return AbstractMCMC.sample(rng, model, Sampler(alg), ensemble, N, n_chains; kwargs...)
+    return AbstractMCMC.sample(
+        rng, model, Sampler(alg), ensemble, N, n_chains; chain_type, kwargs...
+    )
 end
