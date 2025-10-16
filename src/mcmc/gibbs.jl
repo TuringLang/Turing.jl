@@ -1,12 +1,11 @@
 """
-    isgibbscomponent(alg::Union{InferenceAlgorithm, AbstractMCMC.AbstractSampler})
+    isgibbscomponent(spl::AbstractSampler)
 
-Return a boolean indicating whether `alg` is a valid component for a Gibbs sampler.
+Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
 Defaults to `false` if no method has been defined for a particular algorithm type.
 """
-isgibbscomponent(::InferenceAlgorithm) = false
-isgibbscomponent(spl::Sampler) = isgibbscomponent(spl.alg)
+isgibbscomponent(::AbstractSampler) = false
 
 isgibbscomponent(::ESS) = true
 isgibbscomponent(::HMC) = true
@@ -237,9 +236,6 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
-wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
-wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
-
 to_varname(x::VarName) = x
 to_varname(x::Symbol) = VarName{x}()
 to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
@@ -269,10 +265,8 @@ Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 # Fields
 $(TYPEDFIELDS)
 """
-struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
-       InferenceAlgorithm
-    # TODO(mhauru) Revisit whether A should have a fixed element type once
-    # InferenceAlgorithm/Sampler types have been cleaned up.
+struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: AbstractSampler
+    # TODO(mhauru) Revisit whether A should have a fixed element type.
     "varnames representing variables for each sampler"
     varnames::V
     "samplers for each entry in `varnames`"
@@ -290,7 +284,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
             end
         end
 
-        samplers = tuple(map(wrap_in_sampler, samplers)...)
+        samplers = tuple(samplers...)
         varnames = tuple(map(to_varname_list, varnames)...)
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
@@ -323,13 +317,12 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs};
+    spl::Gibbs;
     initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
     kwargs...,
 )
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
@@ -348,13 +341,12 @@ end
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs};
+    spl::Gibbs;
     initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
     kwargs...,
 )
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
@@ -434,14 +426,13 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
+    spl::Gibbs,
     state::GibbsState;
     kwargs...,
 )
     vi = get_varinfo(state)
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
@@ -454,14 +445,13 @@ end
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
+    spl::Gibbs,
     state::GibbsState;
     kwargs...,
 )
     vi = get_varinfo(state)
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
@@ -472,7 +462,7 @@ function AbstractMCMC.step_warmup(
 end
 
 """
-    setparams_varinfo!!(model, sampler::Sampler, state, params::AbstractVarInfo)
+    setparams_varinfo!!(model, sampler::AbstractSampler, state, params::AbstractVarInfo)
 
 A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
 `AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
@@ -481,12 +471,12 @@ A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameter
 `model` is typically a `DynamicPPL.Model`, but can also be e.g. an
 `AbstractMCMC.LogDensityModel`.
 """
-function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
+function setparams_varinfo!!(model, ::AbstractSampler, state, params::AbstractVarInfo)
     return AbstractMCMC.setparams!!(model, state, params[:])
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::MHState, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::MH, state::MHState, params::AbstractVarInfo
 )
     # Re-evaluate to update the logprob.
     new_vi = last(DynamicPPL.evaluate!!(model, params))
@@ -494,10 +484,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:ESS},
-    state::AbstractVarInfo,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::ESS, state::AbstractVarInfo, params::AbstractVarInfo
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
@@ -506,12 +493,12 @@ end
 
 function setparams_varinfo!!(
     model::DynamicPPL.Model,
-    sampler::Sampler{<:ExternalSampler},
+    sampler::ExternalSampler,
     state::TuringState,
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.adtype
     )
     new_inner_state = setparams_varinfo!!(
         AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
@@ -520,10 +507,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:Hamiltonian},
-    state::HMCState,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::Hamiltonian, state::HMCState, params::AbstractVarInfo
 )
     θ_new = params[:]
     hamiltonian = get_hamiltonian(model, sampler, params, state, length(θ_new))
@@ -537,7 +521,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler{<:PG}, state::PGState, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::PG, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
 end

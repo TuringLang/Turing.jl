@@ -1,7 +1,6 @@
 module RepeatSamplerTests
 
 using ..Models: gdemo_default
-using DynamicPPL: Sampler
 using MCMCChains: MCMCChains
 using Random: Xoshiro
 using Test: @test, @testset
@@ -17,7 +16,7 @@ using Turing
     # Use Xoshiro instead of StableRNGs as the output should always be
     # similar regardless of what kind of random seed is used (as long
     # as there is a random seed).
-    for sampler in [MH(), Sampler(HMC(0.01, 4))]
+    for sampler in [MH(), HMC(0.01, 4)]
         chn1 = sample(
             Xoshiro(0),
             gdemo_default,

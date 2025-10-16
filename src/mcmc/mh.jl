@@ -104,7 +104,7 @@ mean(chain)
 ```
 
 """
-struct MH{P} <: InferenceAlgorithm
+struct MH{P} <: AbstractSampler
     proposals::P
 
     function MH(proposals...)
@@ -247,16 +247,16 @@ function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::Abst
 end
 
 """
-    dist_val_tuple(spl::Sampler{<:MH}, vi::VarInfo)
+    dist_val_tuple(spl::MH, vi::VarInfo)
 
 Return two `NamedTuples`.
 
 The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
-function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
+function dist_val_tuple(spl::MH, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
     vns = all_varnames_grouped_by_symbol(vi)
-    dt = _dist_tuple(spl.alg.proposals, vi, vns)
+    dt = _dist_tuple(spl.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
     return dt, vt
 end
@@ -324,9 +324,7 @@ function maybe_link!!(varinfo, sampler, proposal, model)
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
-function propose!!(
-    rng::AbstractRNG, prev_state::MHState, model::Model, spl::Sampler{<:MH}, proposal
-)
+function propose!!(rng::AbstractRNG, prev_state::MHState, model::Model, spl::MH, proposal)
     vi = prev_state.varinfo
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl, vi)
@@ -358,7 +356,7 @@ function propose!!(
     rng::AbstractRNG,
     prev_state::MHState,
     model::Model,
-    spl::Sampler{<:MH},
+    spl::MH,
     proposal::AdvancedMH.RandomWalkProposal,
 )
     vi = prev_state.varinfo
@@ -367,7 +365,7 @@ function propose!!(
     vals = vi[:]
 
     # Create a sampler and the previous transition.
-    mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
+    mh_sampler = AMH.MetropolisHastings(spl.proposals)
     prev_trans = AMH.Transition(vals, prev_state.logjoint_internal, false)
 
     # Make a new transition.
@@ -388,27 +386,23 @@ function propose!!(
     return MHState(vi, trans.lp)
 end
 
-function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:MH},
-    vi::AbstractVarInfo;
-    kwargs...,
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, vi::AbstractVarInfo; kwargs...
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
-    vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
+    vi = maybe_link!!(vi, spl, spl.proposals, model)
 
     return Transition(model, vi, nothing), MHState(vi, DynamicPPL.getlogjoint_internal(vi))
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, state::MHState; kwargs...
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, state::MHState; kwargs...
 )
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    new_state = propose!!(rng, state, model, spl, spl.alg.proposals)
+    new_state = propose!!(rng, state, model, spl, spl.proposals)
 
     return Transition(model, new_state.varinfo, nothing), new_state
 end

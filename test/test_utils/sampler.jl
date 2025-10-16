@@ -42,4 +42,54 @@ function test_rng_respected(spl)
     @test isapprox(chn1[:y], chn2[:y])
 end
 
+"""
+    test_sampler_analytical(models, sampler, args...; kwargs...)
+
+Test that `sampler` produces correct marginal posterior means on each model in `models`.
+
+In short, this method iterates through `models`, calls `AbstractMCMC.sample` on the `model`
+and `sampler` to produce a `chain`, and then checks the chain's mean for every (leaf)
+varname `vn` against the corresponding value returned by
+`DynamicPPL.TestUtils.posterior_mean` for each model.
+
+For this to work, each model in `models` must have a known analytical posterior mean
+that can be computed by `DynamicPPL.TestUtils.posterior_mean`.
+
+# Arguments
+- `models`: A collection of instances of `DynamicPPL.Model` to test on.
+- `sampler`: The `AbstractMCMC.AbstractSampler` to test.
+- `args...`: Arguments forwarded to `sample`.
+
+# Keyword arguments
+- `varnames_filter`: A filter to apply to `varnames(model)`, allowing comparison for only
+    a subset of the varnames.
+- `atol=1e-1`: Absolute tolerance used in `@test`.
+- `rtol=1e-3`: Relative tolerance used in `@test`.
+- `kwargs...`: Keyword arguments forwarded to `sample`.
+"""
+function test_sampler_analytical(
+    models,
+    sampler::AbstractMCMC.AbstractSampler,
+    args...;
+    varnames_filter=Returns(true),
+    atol=1e-1,
+    rtol=1e-3,
+    sampler_name=typeof(sampler),
+    kwargs...,
+)
+    @testset "$(sampler_name) on $(nameof(model))" for model in models
+        chain = AbstractMCMC.sample(model, sampler, args...; kwargs...)
+        target_values = DynamicPPL.TestUtils.posterior_mean(model)
+        for vn in filter(varnames_filter, DynamicPPL.TestUtils.varnames(model))
+            # We want to compare elementwise which can be achieved by
+            # extracting the leaves of the `VarName` and the corresponding value.
+            for vn_leaf in AbstractPPL.varname_leaves(vn, get(target_values, vn))
+                target_value = get(target_values, vn_leaf)
+                chain_mean_value = mean(chain[Symbol(varname)])
+                @test chain_mean_value ≈ target_value atol = atol rtol = rtol
+            end
+        end
+    end
+end
+
 end

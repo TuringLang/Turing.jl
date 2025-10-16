@@ -20,11 +20,11 @@ Mean
 │ 1   │ m          │ 0.824853 │
 ```
 """
-struct ESS <: InferenceAlgorithm end
+struct ESS <: AbstractSampler end
 
 # always accept in the first step
-function DynamicPPL.initialstep(
-    rng::AbstractRNG, model::Model, ::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
 )
     for vn in keys(vi)
         dist = getdist(vi, vn)
@@ -35,7 +35,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, ::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
 )
     # obtain previous sample
     f = vi[:]

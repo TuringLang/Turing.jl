@@ -134,26 +134,24 @@ end
 
 # Test that the samplers are being called in the correct order, on the correct target
 # variables.
+#
 @testset "Sampler call order" begin
     # A wrapper around inference algorithms to allow intercepting the dispatch cascade to
     # collect testing information.
-    struct AlgWrapper{Alg<:Inference.InferenceAlgorithm} <: Inference.InferenceAlgorithm
+    struct AlgWrapper{Alg<:AbstractSampler} <: AbstractSampler
         inner::Alg
     end
-
-    unwrap_sampler(sampler::DynamicPPL.Sampler{<:AlgWrapper}) =
-        DynamicPPL.Sampler(sampler.alg.inner)
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
     Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
     function Inference.setparams_varinfo!!(
         model::DynamicPPL.Model,
-        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        sampler::AlgWrapper,
         state,
         params::DynamicPPL.AbstractVarInfo,
     )
-        return Inference.setparams_varinfo!!(model, unwrap_sampler(sampler), state, params)
+        return Inference.setparams_varinfo!!(model, sampler.inner, state, params)
     end
 
     # targets_and_algs will be a list of tuples, where the first element is the target_vns
@@ -175,25 +173,23 @@ end
     function AbstractMCMC.step(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
-        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        sampler::AlgWrapper,
         args...;
         kwargs...,
     )
-        capture_targets_and_algs(sampler.alg.inner, model.context)
-        return AbstractMCMC.step(rng, model, unwrap_sampler(sampler), args...; kwargs...)
+        capture_targets_and_algs(sampler.inner, model.context)
+        return AbstractMCMC.step(rng, model, sampler.inner, args...; kwargs...)
     end
 
-    function DynamicPPL.initialstep(
+    function Turing.Inference.initialstep(
         rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
-        sampler::DynamicPPL.Sampler{<:AlgWrapper},
+        sampler::AlgWrapper,
         args...;
         kwargs...,
     )
-        capture_targets_and_algs(sampler.alg.inner, model.context)
-        return DynamicPPL.initialstep(
-            rng, model, unwrap_sampler(sampler), args...; kwargs...
-        )
+        capture_targets_and_algs(sampler.inner, model.context)
+        return Turing.Inference.initialstep(rng, model, sampler.inner, args...; kwargs...)
     end
 
     struct Wrapper{T<:Real}
@@ -279,7 +275,7 @@ end
 @testset "Gibbs warmup" begin
     # An inference algorithm, for testing purposes, that records how many warm-up steps
     # and how many non-warm-up steps haven been taken.
-    mutable struct WarmupCounter <: Inference.InferenceAlgorithm
+    mutable struct WarmupCounter <: AbstractSampler
         warmup_init_count::Int
         non_warmup_init_count::Int
         warmup_count::Int
@@ -298,7 +294,7 @@ end
     Turing.Inference.get_varinfo(state::VarInfoState) = state.vi
     function Turing.Inference.setparams_varinfo!!(
         ::DynamicPPL.Model,
-        ::DynamicPPL.Sampler,
+        ::WarmupCounter,
         ::VarInfoState,
         params::DynamicPPL.AbstractVarInfo,
     )
@@ -306,23 +302,17 @@ end
     end
 
     function AbstractMCMC.step(
-        ::Random.AbstractRNG,
-        model::DynamicPPL.Model,
-        spl::DynamicPPL.Sampler{<:WarmupCounter};
-        kwargs...,
+        ::Random.AbstractRNG, model::DynamicPPL.Model, spl::WarmupCounter; kwargs...
     )
-        spl.alg.non_warmup_init_count += 1
+        spl.non_warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
         return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
     end
 
     function AbstractMCMC.step_warmup(
-        ::Random.AbstractRNG,
-        model::DynamicPPL.Model,
-        spl::DynamicPPL.Sampler{<:WarmupCounter};
-        kwargs...,
+        ::Random.AbstractRNG, model::DynamicPPL.Model, spl::WarmupCounter; kwargs...
     )
-        spl.alg.warmup_init_count += 1
+        spl.warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
         return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
     end
@@ -330,22 +320,22 @@ end
     function AbstractMCMC.step(
         ::Random.AbstractRNG,
         model::DynamicPPL.Model,
-        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        spl::WarmupCounter,
         s::VarInfoState;
         kwargs...,
     )
-        spl.alg.non_warmup_count += 1
+        spl.non_warmup_count += 1
         return Turing.Inference.Transition(model, s.vi, nothing), s
     end
 
     function AbstractMCMC.step_warmup(
         ::Random.AbstractRNG,
         model::DynamicPPL.Model,
-        spl::DynamicPPL.Sampler{<:WarmupCounter},
+        spl::WarmupCounter,
         s::VarInfoState;
         kwargs...,
     )
-        spl.alg.warmup_count += 1
+        spl.warmup_count += 1
         return Turing.Inference.Transition(model, s.vi, nothing), s
     end
 
@@ -486,7 +476,7 @@ end
         @nospecialize function AbstractMCMC.bundle_samples(
             samples::Vector,
             ::typeof(model),
-            ::DynamicPPL.Sampler{<:Gibbs},
+            ::Gibbs,
             state,
             ::Type{MCMCChains.Chains};
             kwargs...,
@@ -670,14 +660,10 @@ end
             @testset "$sampler" for sampler in samplers
                 # Check that taking steps performs as expected.
                 rng = Random.default_rng()
-                transition, state = AbstractMCMC.step(
-                    rng, model, DynamicPPL.Sampler(sampler)
-                )
+                transition, state = AbstractMCMC.step(rng, model, sampler)
                 check_transition_varnames(transition, vns)
                 for _ in 1:5
-                    transition, state = AbstractMCMC.step(
-                        rng, model, DynamicPPL.Sampler(sampler), state
-                    )
+                    transition, state = AbstractMCMC.step(rng, model, sampler, state)
                     check_transition_varnames(transition, vns)
                 end
             end
@@ -747,15 +733,13 @@ end
         @testset "with both `s` and `m` as random" begin
             model = gdemo(1.5, 2.0)
             vns = (@varname(s), @varname(m))
-            alg = Gibbs(vns => MH())
+            spl = Gibbs(vns => MH())
 
             # `step`
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
+            transition, state = AbstractMCMC.step(rng, model, spl)
             check_transition_varnames(transition, vns)
             for _ in 1:5
-                transition, state = AbstractMCMC.step(
-                    rng, model, DynamicPPL.Sampler(alg), state
-                )
+                transition, state = AbstractMCMC.step(rng, model, spl, state)
                 check_transition_varnames(transition, vns)
             end
 
@@ -768,15 +752,13 @@ end
         @testset "without `m` as random" begin
             model = gdemo(1.5, 2.0) | (m=7 / 6,)
             vns = (@varname(s),)
-            alg = Gibbs(vns => MH())
+            spl = Gibbs(vns => MH())
 
             # `step`
-            transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
+            transition, state = AbstractMCMC.step(rng, model, spl)
             check_transition_varnames(transition, vns)
             for _ in 1:5
-                transition, state = AbstractMCMC.step(
-                    rng, model, DynamicPPL.Sampler(alg), state
-                )
+                transition, state = AbstractMCMC.step(rng, model, spl, state)
                 check_transition_varnames(transition, vns)
             end
         end
@@ -818,7 +800,7 @@ end
     @testset "CSMC + ESS" begin
         rng = Random.default_rng()
         model = MoGtest_default
-        alg = Gibbs(
+        spl = Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
             @varname(mu1) => ESS(),
             @varname(mu2) => ESS(),
@@ -832,25 +814,23 @@ end
             @varname(mu2)
         )
         # `step`
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
+        transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)
         for _ in 1:5
-            transition, state = AbstractMCMC.step(
-                rng, model, DynamicPPL.Sampler(alg), state
-            )
+            transition, state = AbstractMCMC.step(rng, model, spl, state)
             check_transition_varnames(transition, vns)
         end
 
         # Sample!
         Random.seed!(42)
-        chain = sample(MoGtest_default, alg, 1000; progress=false)
+        chain = sample(MoGtest_default, spl, 1000; progress=false)
         check_MoGtest_default(chain; atol=0.2)
     end
 
     @testset "CSMC + ESS (usage of implicit varname)" begin
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
-        alg = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
+        spl = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
         vns = (
             @varname(z[1]),
             @varname(z[2]),
@@ -860,18 +840,16 @@ end
             @varname(mu2)
         )
         # `step`
-        transition, state = AbstractMCMC.step(rng, model, DynamicPPL.Sampler(alg))
+        transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)
         for _ in 1:5
-            transition, state = AbstractMCMC.step(
-                rng, model, DynamicPPL.Sampler(alg), state
-            )
+            transition, state = AbstractMCMC.step(rng, model, spl, state)
             check_transition_varnames(transition, vns)
         end
 
         # Sample!
         Random.seed!(42)
-        chain = sample(model, alg, 1000; progress=false)
+        chain = sample(model, spl, 1000; progress=false)
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 

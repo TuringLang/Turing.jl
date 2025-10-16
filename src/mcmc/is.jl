@@ -24,16 +24,16 @@ end
 sample(gdemo([1.5, 2]), IS(), 1000)
 ```
 """
-struct IS <: InferenceAlgorithm end
+struct IS <: AbstractSampler end
 
-function DynamicPPL.initialstep(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:IS}, vi::AbstractVarInfo; kwargs...
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::Model, spl::IS, vi::AbstractVarInfo; kwargs...
 )
     return Transition(model, vi, nothing), nothing
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:IS}, ::Nothing; kwargs...
+    rng::Random.AbstractRNG, model::Model, spl::IS, ::Nothing; kwargs...
 )
     model = DynamicPPL.setleafcontext(model, ISContext(rng))
     _, vi = DynamicPPL.evaluate!!(model, DynamicPPL.VarInfo())
@@ -42,7 +42,7 @@ function AbstractMCMC.step(
 end
 
 # Calculate evidence.
-function getlogevidence(samples::Vector{<:Transition}, ::Sampler{<:IS}, state)
+function getlogevidence(samples::Vector{<:Transition}, ::IS, state)
     return logsumexp(map(x -> x.loglikelihood, samples)) - log(length(samples))
 end
 

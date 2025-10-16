@@ -20,7 +20,7 @@ using Turing
     @testset "constructor" begin
         vi = DynamicPPL.VarInfo()
         vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        sampler = Sampler(PG(10))
+        sampler = PG(10)
         model = test()
         trace = AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), false)
 
@@ -45,7 +45,7 @@ using Turing
         end
         vi = DynamicPPL.VarInfo()
         vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        sampler = Sampler(PG(10))
+        sampler = PG(10)
         model = normal()
 
         trace = AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), false)

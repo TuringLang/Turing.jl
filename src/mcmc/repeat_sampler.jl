@@ -24,8 +24,8 @@ struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSa
     end
 end
 
-function RepeatSampler(alg::InferenceAlgorithm, num_repeat::Int)
-    return RepeatSampler(Sampler(alg), num_repeat)
+function RepeatSampler(alg::AbstractSampler, num_repeat::Int)
+    return RepeatSampler(alg, num_repeat)
 end
 
 function setparams_varinfo!!(model::DynamicPPL.Model, sampler::RepeatSampler, state, params)
@@ -85,17 +85,17 @@ end
 # Need some extra leg work to make RepeatSampler work seamlessly with DynamicPPL models +
 # samplers, instead of generic AbstractMCMC samplers.
 
-function DynamicPPL.init_strategy(spl::RepeatSampler{<:Sampler})
-    return DynamicPPL.init_strategy(spl.sampler)
+function Turing.Inference.init_strategy(spl::RepeatSampler)
+    return Turing.Inference.init_strategy(spl.sampler)
 end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::RepeatSampler{<:Sampler},
+    sampler::RepeatSampler,
     N::Integer;
-    initial_params=DynamicPPL.init_strategy(sampler),
-    chain_type=TURING_CHAIN_TYPE,
+    initial_params=Turing.Inference.init_strategy(sampler),
+    chain_type=DEFAULT_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )
@@ -104,7 +104,7 @@ function AbstractMCMC.sample(
         model,
         sampler,
         N;
-        initial_params=initial_params,
+        initial_params=_convert_initial_params(initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,
@@ -114,12 +114,12 @@ end
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::RepeatSampler{<:Sampler},
+    sampler::RepeatSampler,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
-    initial_params=fill(DynamicPPL.init_strategy(sampler), n_chains),
-    chain_type=TURING_CHAIN_TYPE,
+    initial_params=fill(Turing.Inference.init_strategy(sampler), n_chains),
+    chain_type=DEFAULT_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )
@@ -130,7 +130,7 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
-        initial_params=initial_params,
+        initial_params=map(_convert_initial_params, initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,

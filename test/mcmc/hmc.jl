@@ -295,11 +295,10 @@ using Turing
     end
 
     @testset "getstepsize: Turing.jl#2400" begin
-        algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
-        @testset "$(alg)" for alg in algs
+        spls = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
+        @testset "$(spl)" for spl in spls
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg)
-            hmc_state = DynamicPPL.initialstep(
+            hmc_state = Turing.Inference.initialstep(
                 Random.default_rng(),
                 gdemo_default,
                 spl,

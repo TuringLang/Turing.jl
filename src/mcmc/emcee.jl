@@ -13,7 +13,7 @@ Foreman-Mackey, D., Hogg, D. W., Lang, D., & Goodman, J. (2013).
 emcee: The MCMC Hammer. Publications of the Astronomical Society of the
 Pacific, 125 (925), 306. https://doi.org/10.1086/670067
 """
-struct Emcee{E<:AMH.Ensemble} <: InferenceAlgorithm
+struct Emcee{E<:AMH.Ensemble} <: AbstractSampler
     ensemble::E
 end
 
@@ -33,23 +33,20 @@ end
 
 # Utility function to tetrieve the number of walkers
 _get_n_walkers(e::Emcee) = e.ensemble.n_walkers
-_get_n_walkers(spl::Sampler{<:Emcee}) = _get_n_walkers(spl.alg)
 
 # Because Emcee expects n_walkers initialisations, we need to override this
-function DynamicPPL.init_strategy(spl::Sampler{<:Emcee})
+function Turing.Inference.init_strategy(spl::Emcee)
     return fill(DynamicPPL.InitFromPrior(), _get_n_walkers(spl))
 end
-# TODO(penelopeysm / DPPL 0.38) This is type piracy (!!!) The function
-# `_convert_initial_params` will be moved to Turing soon, and this piracy SHOULD be removed
-# in https://github.com/TuringLang/Turing.jl/pull/2689, PLEASE make sure it is!
-function DynamicPPL._convert_initial_params(
+# We also have to explicitly allow this or else it will error...
+function Turing.Inference._convert_initial_params(
     x::AbstractVector{<:DynamicPPL.AbstractInitStrategy}
 )
     return x
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:Emcee}; initial_params, kwargs...
+    rng::Random.AbstractRNG, model::Model, spl::Emcee; initial_params, kwargs...
 )
     # Sample from the prior
     n = _get_n_walkers(spl)
@@ -83,7 +80,7 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:Emcee}, state::EmceeState; kwargs...
+    rng::AbstractRNG, model::Model, spl::Emcee, state::EmceeState; kwargs...
 )
     # Generate a log joint function.
     vi = state.vi
@@ -95,7 +92,7 @@ function AbstractMCMC.step(
     )
 
     # Compute the next states.
-    t, states = AbstractMCMC.step(rng, densitymodel, spl.alg.ensemble, state.states)
+    t, states = AbstractMCMC.step(rng, densitymodel, spl.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
@@ -110,7 +107,7 @@ end
 function AbstractMCMC.bundle_samples(
     samples::Vector{<:Vector},
     model::AbstractModel,
-    spl::Sampler{<:Emcee},
+    spl::Emcee,
     state::EmceeState,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
