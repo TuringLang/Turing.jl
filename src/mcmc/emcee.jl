@@ -39,6 +39,14 @@ _get_n_walkers(spl::Sampler{<:Emcee}) = _get_n_walkers(spl.alg)
 function DynamicPPL.init_strategy(spl::Sampler{<:Emcee})
     return fill(DynamicPPL.InitFromPrior(), _get_n_walkers(spl))
 end
+# TODO(penelopeysm / DPPL 0.38) This is type piracy (!!!) The function
+# `_convert_initial_params` will be moved to Turing soon, and this piracy SHOULD be removed
+# in https://github.com/TuringLang/Turing.jl/pull/2689, PLEASE make sure it is!
+function DynamicPPL._convert_initial_params(
+    x::AbstractVector{<:DynamicPPL.AbstractInitStrategy}
+)
+    return x
+end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG, model::Model, spl::Sampler{<:Emcee}; initial_params, kwargs...
