@@ -403,9 +403,6 @@ end
         @test sample(gdemo_default, s4, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
-
-        g = DynamicPPL.Sampler(s3)
-        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
     # Test various combinations of samplers against models for which we know the analytical
