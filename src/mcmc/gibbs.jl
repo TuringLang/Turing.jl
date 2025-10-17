@@ -315,11 +315,7 @@ function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractIni
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Gibbs;
-    initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
-    kwargs...,
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; initial_params, kwargs...
 )
     varnames = spl.varnames
     samplers = spl.samplers
@@ -339,11 +335,7 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.step_warmup(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Gibbs;
-    initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.init_strategy(spl),
-    kwargs...,
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; initial_params, kwargs...
 )
     varnames = spl.varnames
     samplers = spl.samplers

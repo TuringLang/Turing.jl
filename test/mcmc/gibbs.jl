@@ -138,7 +138,7 @@ end
 @testset "Sampler call order" begin
     # A wrapper around inference algorithms to allow intercepting the dispatch cascade to
     # collect testing information.
-    struct AlgWrapper{Alg<:AbstractSampler} <: AbstractSampler
+    struct AlgWrapper{Alg<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSampler
         inner::Alg
     end
 
@@ -275,7 +275,7 @@ end
 @testset "Gibbs warmup" begin
     # An inference algorithm, for testing purposes, that records how many warm-up steps
     # and how many non-warm-up steps haven been taken.
-    mutable struct WarmupCounter <: AbstractSampler
+    mutable struct WarmupCounter <: AbstractMCMC.AbstractSampler
         warmup_init_count::Int
         non_warmup_init_count::Int
         warmup_count::Int
