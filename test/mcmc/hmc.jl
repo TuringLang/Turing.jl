@@ -4,7 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-using DynamicPPL: DynamicPPL, Sampler
+using DynamicPPL: DynamicPPL
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff

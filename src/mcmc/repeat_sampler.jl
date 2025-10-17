@@ -24,11 +24,12 @@ struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSa
     end
 end
 
-function RepeatSampler(alg::AbstractSampler, num_repeat::Int)
-    return RepeatSampler(alg, num_repeat)
-end
-
-function setparams_varinfo!!(model::DynamicPPL.Model, sampler::RepeatSampler, state, params)
+function setparams_varinfo!!(
+    model::DynamicPPL.Model,
+    sampler::RepeatSampler,
+    state,
+    params::DynamicPPL.AbstractVarInfo,
+)
     return setparams_varinfo!!(model, sampler.sampler, state, params)
 end
 
@@ -37,6 +38,14 @@ function AbstractMCMC.step(
     model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler;
     kwargs...,
+)
+    return AbstractMCMC.step(rng, model, sampler.sampler; kwargs...)
+end
+# The following method needed for method ambiguity resolution.
+# TODO(penelopeysm): Remove this method once the default `AbstractMCMC.step(rng,
+# ::DynamicPPL.Model, ::AbstractSampler)` method in `src/mcmc/abstractmcmc.jl` is removed.
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::RepeatSampler; kwargs...
 )
     return AbstractMCMC.step(rng, model, sampler.sampler; kwargs...)
 end
@@ -94,11 +103,13 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::RepeatSampler,
     N::Integer;
+    check_model=true,
     initial_params=Turing.Inference.init_strategy(sampler),
     chain_type=DEFAULT_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )
+    check_model && _check_model(model, sampler)
     return AbstractMCMC.mcmcsample(
         rng,
         model,
@@ -118,11 +129,13 @@ function AbstractMCMC.sample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer,
     n_chains::Integer;
+    check_model=true,
     initial_params=fill(Turing.Inference.init_strategy(sampler), n_chains),
     chain_type=DEFAULT_CHAIN_TYPE,
     progress=PROGRESS[],
     kwargs...,
 )
+    check_model && _check_model(model, sampler)
     return AbstractMCMC.mcmcsample(
         rng,
         model,

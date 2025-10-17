@@ -88,8 +88,9 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::AdaptiveHamiltonian,
     N::Integer;
+    check_model=true,
     chain_type=DEFAULT_CHAIN_TYPE,
-    initial_params=DynamicPPL.init_strategy(sampler),
+    initial_params=Turing.Inference.init_strategy(sampler),
     initial_state=nothing,
     progress=PROGRESS[],
     nadapts=sampler.n_adapts,
@@ -97,6 +98,7 @@ function AbstractMCMC.sample(
     discard_initial=-1,
     kwargs...,
 )
+    check_model && _check_model(model, sampler)
     if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
@@ -442,7 +444,7 @@ end
 ##### HMC core functions
 #####
 
-getstepsize(sampler::Hamiltonian, state) = sampler.alg.ϵ
+getstepsize(sampler::Hamiltonian, state) = sampler.ϵ
 getstepsize(sampler::AdaptiveHamiltonian, state) = AHMC.getϵ(state.adaptor)
 function getstepsize(
     sampler::AdaptiveHamiltonian,

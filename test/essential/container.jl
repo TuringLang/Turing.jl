@@ -2,7 +2,7 @@ module ContainerTests
 
 using AdvancedPS: AdvancedPS
 using Distributions: Bernoulli, Beta, Gamma, Normal
-using DynamicPPL: DynamicPPL, @model, Sampler
+using DynamicPPL: DynamicPPL, @model
 using Test: @test, @testset
 using Turing
 

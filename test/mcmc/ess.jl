@@ -5,7 +5,6 @@ using ..NumericalTests: check_MoGtest_default, check_numerical
 using ..SamplerTestUtils: test_rng_respected, test_sampler_analytical
 using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @testset

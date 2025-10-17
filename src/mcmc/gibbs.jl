@@ -309,7 +309,7 @@ support calling both step and step_warmup as the initial step. DynamicPPL initia
 incompatible with step_warmup.
 """
 function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractInitStrategy)
-    vi = DynamicPPL.default_varinfo(rng, model, spl)
+    vi = Turing.Inference.default_varinfo(rng, model, spl)
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
     return vi
 end
@@ -471,7 +471,9 @@ A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameter
 `model` is typically a `DynamicPPL.Model`, but can also be e.g. an
 `AbstractMCMC.LogDensityModel`.
 """
-function setparams_varinfo!!(model, ::AbstractSampler, state, params::AbstractVarInfo)
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, ::AbstractSampler, state, params::AbstractVarInfo
+)
     return AbstractMCMC.setparams!!(model, state, params[:])
 end
 
@@ -500,8 +502,8 @@ function setparams_varinfo!!(
     logdensity = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.adtype
     )
-    new_inner_state = setparams_varinfo!!(
-        AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
+    new_inner_state = AbstractMCMC.setparams!!(
+        AbstractMCMC.LogDensityModel(logdensity), state.state, params[:]
     )
     return TuringState(new_inner_state, params, logdensity)
 end

@@ -1,5 +1,8 @@
 module SamplerTestUtils
 
+using AbstractMCMC
+using AbstractPPL
+using DynamicPPL
 using Random
 using Turing
 using Test
@@ -85,7 +88,7 @@ function test_sampler_analytical(
             # extracting the leaves of the `VarName` and the corresponding value.
             for vn_leaf in AbstractPPL.varname_leaves(vn, get(target_values, vn))
                 target_value = get(target_values, vn_leaf)
-                chain_mean_value = mean(chain[Symbol(varname)])
+                chain_mean_value = mean(chain[Symbol(vn_leaf)])
                 @test chain_mean_value ≈ target_value atol = atol rtol = rtol
             end
         end

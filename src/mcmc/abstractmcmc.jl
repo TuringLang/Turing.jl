@@ -82,7 +82,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, spl)
-    return AbstractMCMC.sample(
+    return AbstractMCMC.mcmcsample(
         rng,
         model,
         spl,
@@ -115,11 +115,15 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     chain_type=DEFAULT_CHAIN_TYPE,
     check_model::Bool=true,
-    initial_params=init_strategy(spl),
+    initial_params=fill(init_strategy(spl), n_chains),
     kwargs...,
 )
     check_model && _check_model(model, spl)
-    return AbstractMCMC.sample(
+    if !(initial_params isa AbstractVector) || length(initial_params) != n_chains
+        errmsg = "`initial_params` must be an AbstractVector of length `n_chains`; one element per chain"
+        throw(ArgumentError(errmsg))
+    end
+    return AbstractMCMC.mcmcsample(
         rng,
         model,
         spl,

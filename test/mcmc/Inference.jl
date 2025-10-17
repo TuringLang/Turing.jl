@@ -69,7 +69,7 @@ using Turing
     end
 
     @testset "save/resume correctly reloads state" begin
-        struct StaticSampler <: AbstractSampler end
+        struct StaticSampler <: AbstractMCMC.AbstractSampler end
         function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
             return Turing.Inference.Transition(model, vi, nothing), vi
         end

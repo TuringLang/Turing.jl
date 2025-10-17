@@ -110,11 +110,13 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::SMC,
     N::Integer;
+    check_model=true,
     chain_type=DEFAULT_CHAIN_TYPE,
-    initial_params=DynamicPPL.init_strategy(sampler),
+    initial_params=Turing.Inference.init_strategy(sampler),
     progress=PROGRESS[],
     kwargs...,
 )
+    check_model && _check_model(model, sampler)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
