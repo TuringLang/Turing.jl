@@ -33,8 +33,7 @@ requirejs.config({
       "highlight"
     ]
   }
-}
-});
+}});
 ////////////////////////////////////////////////////////////////////////////////
 require(['jquery', 'katex', 'katex-auto-render'], function($, katex, renderMathInElement) {
 $(document).ready(function() {
@@ -59,7 +58,6 @@ $(document).ready(function() {
     }
   ]
 }
-
   );
 })
 
