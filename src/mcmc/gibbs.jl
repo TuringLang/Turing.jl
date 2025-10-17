@@ -308,23 +308,22 @@ This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated h
 support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
 incompatible with step_warmup.
 """
-function initial_varinfo(
-    rng,
-    model,
-    spl,
-    initial_params::DynamicPPL.AbstractInitStrategy=Turing.Inference.init_strategy(spl),
-)
+function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractInitStrategy)
     vi = Turing.Inference.default_varinfo(rng, model, spl)
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
     return vi
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; kwargs...
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::Gibbs;
+    initial_params=Turing.Inference.init_strategy(spl),
+    kwargs...,
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    vi = initial_varinfo(rng, model, spl)
+    vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
         rng,
@@ -340,11 +339,15 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.step_warmup(
-    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; kwargs...
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::Gibbs;
+    initial_params=Turing.Inference.init_strategy(spl),
+    kwargs...,
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    vi = initial_varinfo(rng, model, spl)
+    vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
         rng,
