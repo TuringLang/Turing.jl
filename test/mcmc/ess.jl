@@ -2,10 +2,9 @@ module ESSTests
 
 using ..Models: MoGtest, MoGtest_default, gdemo, gdemo_default
 using ..NumericalTests: check_MoGtest_default, check_numerical
-using ..SamplerTestUtils: test_rng_respected
+using ..SamplerTestUtils: test_rng_respected, test_sampler_analytical
 using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @testset
@@ -85,9 +84,9 @@ using Turing
                 model | (s=DynamicPPL.TestUtils.posterior_mean(model).s,)
             end
 
-            DynamicPPL.TestUtils.test_sampler(
+            test_sampler_analytical(
                 models_conditioned,
-                DynamicPPL.Sampler(ESS()),
+                ESS(),
                 2000;
                 # Filter out the varnames we've conditioned on.
                 varnames_filter=vn -> DynamicPPL.getsym(vn) != :s,

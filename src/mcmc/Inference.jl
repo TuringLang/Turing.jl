@@ -22,7 +22,6 @@ using DynamicPPL:
     getsym,
     getdist,
     Model,
-    Sampler,
     DefaultContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
@@ -50,8 +49,7 @@ import Random
 import MCMCChains
 import StatsBase: predict
 
-export InferenceAlgorithm,
-    Hamiltonian,
+export Hamiltonian,
     StaticHamiltonian,
     AdaptiveHamiltonian,
     MH,
@@ -71,15 +69,16 @@ export InferenceAlgorithm,
     RepeatSampler,
     Prior,
     predict,
-    externalsampler
+    externalsampler,
+    init_strategy,
+    loadstate
 
-###############################################
-# Abstract interface for inference algorithms #
-###############################################
+#########################################
+# Generic AbstractMCMC methods dispatch #
+#########################################
 
-const TURING_CHAIN_TYPE = MCMCChains.Chains
-
-include("algorithm.jl")
+const DEFAULT_CHAIN_TYPE = MCMCChains.Chains
+include("abstractmcmc.jl")
 
 ####################
 # Sampler wrappers #
@@ -312,8 +311,8 @@ getlogevidence(transitions, sampler, state) = missing
 # Default MCMCChains.Chains constructor.
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Transition},
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
+    model::DynamicPPL.Model,
+    spl::AbstractSampler,
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -374,8 +373,8 @@ end
 
 function AbstractMCMC.bundle_samples(
     ts::Vector{<:Transition},
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
+    model::DynamicPPL.Model,
+    spl::AbstractSampler,
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
@@ -416,7 +415,7 @@ function group_varnames_by_symbol(vns)
     return d
 end
 
-function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
+function save(c::MCMCChains.Chains, spl::AbstractSampler, model, vi, samples)
     nt = NamedTuple{(:sampler, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
@@ -435,18 +434,12 @@ include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
 
-#################################################
-# Generic AbstractMCMC methods dispatch #
-#################################################
-
-include("abstractmcmc.jl")
-
 ################
 # Typing tools #
 ################
 
 function DynamicPPL.get_matching_type(
-    spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
+    spl::Union{PG,SMC}, vi, ::Type{TV}
 ) where {T,N,TV<:Array{T,N}}
     return Array{T,N}
 end

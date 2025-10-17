@@ -18,13 +18,6 @@ using Turing
     @testset "sghmc constructor" begin
         alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1)
         @test alg isa SGHMC
-        sampler = DynamicPPL.Sampler(alg)
-        @test sampler isa DynamicPPL.Sampler{<:SGHMC}
-
-        alg = SGHMC(; learning_rate=0.01, momentum_decay=0.1)
-        @test alg isa SGHMC
-        sampler = DynamicPPL.Sampler(alg)
-        @test sampler isa DynamicPPL.Sampler{<:SGHMC}
     end
 
     @testset "sghmc inference" begin
@@ -43,13 +36,6 @@ end
     @testset "sgld constructor" begin
         alg = SGLD(; stepsize=PolynomialStepsize(0.25))
         @test alg isa SGLD
-        sampler = DynamicPPL.Sampler(alg)
-        @test sampler isa DynamicPPL.Sampler{<:SGLD}
-
-        alg = SGLD(; stepsize=PolynomialStepsize(0.25))
-        @test alg isa SGLD
-        sampler = DynamicPPL.Sampler(alg)
-        @test sampler isa DynamicPPL.Sampler{<:SGLD}
     end
 
     @testset "sgld inference" begin

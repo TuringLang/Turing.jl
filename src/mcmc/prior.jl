@@ -3,12 +3,12 @@
 
 Algorithm for sampling from the prior.
 """
-struct Prior <: InferenceAlgorithm end
+struct Prior <: AbstractSampler end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:Prior},
+    sampler::Prior,
     state=nothing;
     kwargs...,
 )

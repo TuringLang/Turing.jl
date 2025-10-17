@@ -4,7 +4,6 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Distributions: sample
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing

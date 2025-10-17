@@ -160,6 +160,8 @@ export
     maximum_a_posteriori,
     maximum_likelihood,
     MAP,
-    MLE
+    MLE,
+    # Chain save/resume
+    loadstate
 
 end

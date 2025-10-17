@@ -6,7 +6,6 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 using AbstractMCMC: AbstractMCMC
 import DynamicPPL
-using DynamicPPL: Sampler
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
@@ -70,18 +69,12 @@ using Turing
     end
 
     @testset "save/resume correctly reloads state" begin
-        struct StaticSampler <: Turing.Inference.InferenceAlgorithm end
-        function DynamicPPL.initialstep(
-            rng, model, ::DynamicPPL.Sampler{<:StaticSampler}, vi; kwargs...
-        )
+        struct StaticSampler <: AbstractMCMC.AbstractSampler end
+        function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
             return Turing.Inference.Transition(model, vi, nothing), vi
         end
         function AbstractMCMC.step(
-            rng,
-            model,
-            ::DynamicPPL.Sampler{<:StaticSampler},
-            vi::DynamicPPL.AbstractVarInfo;
-            kwargs...,
+            rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
         )
             return Turing.Inference.Transition(model, vi, nothing), vi
         end
@@ -91,7 +84,7 @@ using Turing
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
             @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
-            chn2 = sample(demo(), StaticSampler(), 10; initial_state=chn1.info.samplerstate)
+            chn2 = sample(demo(), StaticSampler(), 10; initial_state=loadstate(chn1))
             xval = chn1[:x][1]
             @test all(chn2[:x] .== xval)
         end
@@ -108,7 +101,7 @@ using Turing
                 MCMCThreads(),
                 10,
                 nchains;
-                initial_state=chn1.info.samplerstate,
+                initial_state=loadstate(chn1),
             )
             xval = chn1[:x][1, :]
             @test all(i -> chn2[:x][i, :] == xval, 1:10)
@@ -124,20 +117,12 @@ using Turing
         check_gdemo(chn1)
 
         chn1_contd = sample(
-            StableRNG(seed),
-            gdemo_default,
-            alg1,
-            2_000;
-            initial_state=chn1.info.samplerstate,
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
         )
         check_gdemo(chn1_contd)
 
         chn1_contd2 = sample(
-            StableRNG(seed),
-            gdemo_default,
-            alg1,
-            2_000;
-            initial_state=chn1.info.samplerstate,
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
         )
         check_gdemo(chn1_contd2)
 
@@ -152,11 +137,7 @@ using Turing
         check_gdemo(chn2)
 
         chn2_contd = sample(
-            StableRNG(seed),
-            gdemo_default,
-            alg2,
-            2_000;
-            initial_state=chn2.info.samplerstate,
+            StableRNG(seed), gdemo_default, alg2, 2_000; initial_state=loadstate(chn2)
         )
         check_gdemo(chn2_contd)
 
@@ -171,11 +152,7 @@ using Turing
         check_gdemo(chn3)
 
         chn3_contd = sample(
-            StableRNG(seed),
-            gdemo_default,
-            alg3,
-            5_000;
-            initial_state=chn3.info.samplerstate,
+            StableRNG(seed), gdemo_default, alg3, 5_000; initial_state=loadstate(chn3)
         )
         check_gdemo(chn3_contd)
     end
