@@ -2,6 +2,8 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+LIBTASK_BROKEN = v"1.12.0" <= VERSION < v"1.12.2"
+
 ### AdvancedPS models and interface
 
 """
@@ -114,6 +116,13 @@ $(TYPEDFIELDS)
 """
 struct SMC{R} <: ParticleInference
     resampler::R
+
+    function SMC(resampler::R) where {R}
+        @static if LIBTASK_BROKEN
+            error("SMC is not yet supported on Julia v1.12; please use Julia v1.11")
+        end
+        return new{R}(resampler)
+    end
 end
 
 """
@@ -255,6 +264,13 @@ struct PG{R} <: ParticleInference
     nparticles::Int
     """Resampling algorithm."""
     resampler::R
+
+    function PG(nparticles::Int, resampler::R) where {R}
+        @static if LIBTASK_BROKEN
+            error("PG is not yet supported on Julia v1.12; please use Julia v1.11")
+        end
+        return new{R}(nparticles, resampler)
+    end
 end
 
 """
