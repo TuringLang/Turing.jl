@@ -80,7 +80,7 @@ function HMC(
     return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
-DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
+DynamicPPL.init_strategy(::Sampler{<:Hamiltonian}) = DynamicPPL.InitFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
@@ -88,16 +88,16 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::Sampler{<:AdaptiveHamiltonian},
     N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
+    chain_type=TURING_CHAIN_TYPE,
+    initial_params=DynamicPPL.init_strategy(sampler),
+    initial_state=nothing,
     progress=PROGRESS[],
     nadapts=sampler.alg.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
     kwargs...,
 )
-    if resume_from === nothing
+    if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
         # and we should set a default for them.
@@ -124,6 +124,7 @@ function AbstractMCMC.sample(
             progress=progress,
             nadapts=_nadapts,
             discard_initial=_discard_initial,
+            initial_params=initial_params,
             kwargs...,
         )
     else
@@ -138,6 +139,7 @@ function AbstractMCMC.sample(
             nadapts=0,
             discard_adapt=false,
             discard_initial=0,
+            initial_params=initial_params,
             kwargs...,
         )
     end
@@ -147,7 +149,8 @@ function find_initial_params(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     varinfo::DynamicPPL.AbstractVarInfo,
-    hamiltonian::AHMC.Hamiltonian;
+    hamiltonian::AHMC.Hamiltonian,
+    init_strategy::DynamicPPL.AbstractInitStrategy;
     max_attempts::Int=1000,
 )
     varinfo = deepcopy(varinfo)  # Don't mutate
@@ -158,15 +161,10 @@ function find_initial_params(
         isfinite(z) && return varinfo, z
 
         attempts == 10 &&
-            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing explicit initial parameters using the `initial_params` keyword"
+            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
 
         # Resample and try again.
-        # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
-        varinfo = last(
-            DynamicPPL.evaluate_and_sample!!(
-                rng, model, varinfo, DynamicPPL.SampleFromUniform()
-            ),
-        )
+        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
     end
 
     # if we failed to find valid initial parameters, error
@@ -180,7 +178,9 @@ function DynamicPPL.initialstep(
     model::AbstractModel,
     spl::Sampler{<:Hamiltonian},
     vi_original::AbstractVarInfo;
-    initial_params=nothing,
+    # the initial_params kwarg is always passed on from sample(), cf. DynamicPPL
+    # src/sampler.jl, so we don't need to provide a default value here
+    initial_params::DynamicPPL.AbstractInitStrategy,
     nadapts=0,
     verbose::Bool=true,
     kwargs...,
@@ -201,13 +201,15 @@ function DynamicPPL.initialstep(
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # If no initial parameters are provided, resample until the log probability
-    # and its gradient are finite. Otherwise, just use the existing parameters.
-    vi, z = if initial_params === nothing
-        find_initial_params(rng, model, vi, hamiltonian)
-    else
-        vi, AHMC.phasepoint(rng, theta, hamiltonian)
-    end
+    # Note that there is already one round of 'initialisation' before we reach this step,
+    # inside DynamicPPL's `AbstractMCMC.step` implementation. That leads to a possible issue
+    # that this `find_initial_params` function might override the parameters set by the
+    # user.
+    # Luckily for us, `find_initial_params` always checks if the logp and its gradient are
+    # finite. If it is already finite with the params inside the current `vi`, it doesn't
+    # attempt to find new ones. This means that the parameters passed to `sample()` will be
+    # respected instead of being overridden here.
+    vi, z = find_initial_params(rng, model, vi, hamiltonian, initial_params)
     theta = vi[:]
 
     # Find good eps if not provided one
@@ -470,15 +472,6 @@ function make_ahmc_kernel(alg::NUTS, ϵ)
             AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)
         ),
     )
-end
-
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
-)
-    return DynamicPPL.assume(dist, vn, vi)
 end
 
 ####

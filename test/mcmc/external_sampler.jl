@@ -45,6 +45,8 @@ using Turing.Inference: AdvancedHMC
         rng::Random.AbstractRNG,
         model::AbstractMCMC.LogDensityModel,
         sampler::MySampler;
+        # This initial_params should be an AbstractVector because the model is just a
+        # LogDensityModel, not a DynamicPPL.Model
         initial_params::AbstractVector,
         kwargs...,
     )
@@ -82,7 +84,10 @@ using Turing.Inference: AdvancedHMC
     model = test_external_sampler()
     a, b = 0.5, 0.0
 
-    chn = sample(model, externalsampler(MySampler()), 10; initial_params=[a, b])
+    # This `initial_params` should be an InitStrategy
+    chn = sample(
+        model, externalsampler(MySampler()), 10; initial_params=InitFromParams((a=a, b=b))
+    )
     @test chn isa MCMCChains.Chains
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
@@ -156,10 +161,7 @@ function Distributions._rand!(
 )
     model = d.model
     varinfo = deepcopy(d.varinfo)
-    for vn in keys(varinfo)
-        DynamicPPL.set_flag!(varinfo, vn, "del")
-    end
-    DynamicPPL.evaluate!!(model, varinfo, DynamicPPL.SamplingContext(rng))
+    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromPrior())
     x .= varinfo[:]
     return x
 end
@@ -170,16 +172,24 @@ function initialize_mh_with_prior_proposal(model)
     )
 end
 
-function test_initial_params(
-    model, sampler, initial_params=DynamicPPL.VarInfo(model)[:]; kwargs...
-)
+function test_initial_params(model, sampler; kwargs...)
+    # Generate some parameters.
+    dict = DynamicPPL.values_as(DynamicPPL.VarInfo(model), Dict)
+    init_strategy = DynamicPPL.InitFromParams(dict)
+
     # Execute the transition with two different RNGs and check that the resulting
-    # parameter values are the same.
+    # parameter values are the same. This ensures that the `initial_params` are
+    # respected (i.e., regardless of the RNG, the first step should always return
+    # the same parameters).
     rng1 = Random.MersenneTwister(42)
     rng2 = Random.MersenneTwister(43)
 
-    transition1, _ = AbstractMCMC.step(rng1, model, sampler; initial_params, kwargs...)
-    transition2, _ = AbstractMCMC.step(rng2, model, sampler; initial_params, kwargs...)
+    transition1, _ = AbstractMCMC.step(
+        rng1, model, sampler; initial_params=init_strategy, kwargs...
+    )
+    transition2, _ = AbstractMCMC.step(
+        rng2, model, sampler; initial_params=init_strategy, kwargs...
+    )
     vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
     vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
     for vn in union(keys(vn_to_val1), keys(vn_to_val2))
@@ -198,16 +208,18 @@ end
             sampler_ext = DynamicPPL.Sampler(
                 externalsampler(sampler; adtype, unconstrained=true)
             )
-            # FIXME: Once https://github.com/TuringLang/AdvancedHMC.jl/pull/366 goes through, uncomment.
+
+            # TODO: AdvancedHMC samplers do not return the initial parameters as the first
+            # step, so `test_initial_params` will fail. This should be fixed upstream in
+            # AdvancedHMC.jl. For reasons that are beyond my current understanding, this was
+            # done in https://github.com/TuringLang/AdvancedHMC.jl/pull/366, but the PR
+            # was then reverted and never looked at again.
             # @testset "initial_params" begin
             #     test_initial_params(model, sampler_ext; n_adapts=0)
             # end
 
             sample_kwargs = (
-                n_adapts=1_000,
-                discard_initial=1_000,
-                # FIXME: Remove this once we can run `test_initial_params` above.
-                initial_params=DynamicPPL.VarInfo(model)[:],
+                n_adapts=1_000, discard_initial=1_000, initial_params=InitFromUniform()
             )
 
             @testset "inference" begin

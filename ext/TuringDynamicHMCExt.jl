@@ -44,10 +44,6 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
-    return DynamicPPL.SampleFromUniform()
-end
-
 function DynamicPPL.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -56,7 +52,7 @@ function DynamicPPL.initialstep(
     kwargs...,
 )
     # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.islinked(vi)
+    if !DynamicPPL.is_transformed(vi)
         vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi))
     end

@@ -31,37 +31,40 @@ struct EmceeState{V<:AbstractVarInfo,S}
     states::S
 end
 
-function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Emcee};
-    resume_from=nothing,
-    initial_params=nothing,
-    kwargs...,
-)
-    if resume_from !== nothing
-        state = loadstate(resume_from)
-        return AbstractMCMC.step(rng, model, spl, state; kwargs...)
-    end
+# Utility function to tetrieve the number of walkers
+_get_n_walkers(e::Emcee) = e.ensemble.n_walkers
+_get_n_walkers(spl::Sampler{<:Emcee}) = _get_n_walkers(spl.alg)
 
+# Because Emcee expects n_walkers initialisations, we need to override this
+function DynamicPPL.init_strategy(spl::Sampler{<:Emcee})
+    return fill(DynamicPPL.InitFromPrior(), _get_n_walkers(spl))
+end
+# TODO(penelopeysm / DPPL 0.38) This is type piracy (!!!) The function
+# `_convert_initial_params` will be moved to Turing soon, and this piracy SHOULD be removed
+# in https://github.com/TuringLang/Turing.jl/pull/2689, PLEASE make sure it is!
+function DynamicPPL._convert_initial_params(
+    x::AbstractVector{<:DynamicPPL.AbstractInitStrategy}
+)
+    return x
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::Model, spl::Sampler{<:Emcee}; initial_params, kwargs...
+)
     # Sample from the prior
-    n = spl.alg.ensemble.n_walkers
-    vis = [VarInfo(rng, model, SampleFromPrior()) for _ in 1:n]
+    n = _get_n_walkers(spl)
+    vis = [VarInfo(rng, model) for _ in 1:n]
 
     # Update the parameters if provided.
-    if initial_params !== nothing
-        length(initial_params) == n ||
-            throw(ArgumentError("initial parameters have to be specified for each walker"))
-        vis = map(vis, initial_params) do vi, init
-            # TODO(DPPL0.38/penelopeysm) This whole thing can be replaced with init!!
-            vi = DynamicPPL.initialize_parameters!!(vi, init, model)
-
-            # Update log joint probability.
-            spl_model = DynamicPPL.contextualize(
-                model, DynamicPPL.SamplingContext(rng, SampleFromPrior(), model.context)
-            )
-            last(DynamicPPL.evaluate!!(spl_model, vi))
-        end
+    if !(
+        initial_params isa AbstractVector{<:DynamicPPL.AbstractInitStrategy} &&
+        length(initial_params) == n
+    )
+        err_msg = "initial_params for `Emcee` must be a vector of `DynamicPPL.AbstractInitStrategy`, with length equal to the number of walkers ($n)"
+        throw(ArgumentError(err_msg))
+    end
+    vis = map(vis, initial_params) do vi, strategy
+        last(DynamicPPL.init!!(rng, model, vi, strategy))
     end
 
     # Compute initial transition and states.

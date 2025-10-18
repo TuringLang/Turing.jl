@@ -73,7 +73,10 @@ using DynamicPPL:
     conditioned,
     to_submodel,
     LogDensityFunction,
-    @addlogprob!
+    @addlogprob!,
+    InitFromPrior,
+    InitFromUniform,
+    InitFromParams
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
@@ -148,6 +151,10 @@ export
     fix,
     unfix,
     OrderedDict, # OrderedCollections
+    # Initialisation strategies for models
+    InitFromPrior,
+    InitFromUniform,
+    InitFromParams,
     # Point estimates - Turing.Optimisation
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,

@@ -403,9 +403,6 @@ end
         @test sample(gdemo_default, s4, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
         @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
-
-        g = DynamicPPL.Sampler(s3)
-        @test sample(gdemo_default, g, N) isa MCMCChains.Chains
     end
 
     # Test various combinations of samplers against models for which we know the analytical
@@ -693,13 +690,9 @@ end
                 num_chains = 4
 
                 # Determine initial parameters to make comparison as fair as possible.
+                # posterior_mean returns a NamedTuple so we can plug it in directly.
                 posterior_mean = DynamicPPL.TestUtils.posterior_mean(model)
-                initial_params = DynamicPPL.TestUtils.update_values!!(
-                    DynamicPPL.VarInfo(model),
-                    posterior_mean,
-                    DynamicPPL.TestUtils.varnames(model),
-                )[:]
-                initial_params = fill(initial_params, num_chains)
+                initial_params = fill(InitFromParams(posterior_mean), num_chains)
 
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)

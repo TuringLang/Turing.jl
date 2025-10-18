@@ -2,6 +2,7 @@ module ESSTests
 
 using ..Models: MoGtest, MoGtest_default, gdemo, gdemo_default
 using ..NumericalTests: check_MoGtest_default, check_numerical
+using ..SamplerTestUtils: test_rng_respected
 using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using DynamicPPL: Sampler
@@ -36,6 +37,12 @@ using Turing
 
         s2 = Gibbs(:m => ESS(), :s => MH())
         c3 = sample(gdemo_default, s2, N)
+    end
+
+    @testset "RNG is respected" begin
+        test_rng_respected(ESS())
+        test_rng_respected(Gibbs(:x => ESS(), :y => MH()))
+        test_rng_respected(Gibbs(:x => ESS(), :y => ESS()))
     end
 
     @testset "ESS inference" begin
@@ -108,8 +115,12 @@ using Turing
         spl_x = Gibbs(@varname(z) => NUTS(), @varname(x) => ESS())
         spl_xy = Gibbs(@varname(z) => NUTS(), (@varname(x), @varname(y)) => ESS())
 
-        @test sample(StableRNG(23), xy(), spl_xy, num_samples).value ≈
-            sample(StableRNG(23), x12(), spl_x, num_samples).value
+        chn1 = sample(StableRNG(23), xy(), spl_xy, num_samples)
+        chn2 = sample(StableRNG(23), x12(), spl_x, num_samples)
+
+        @test chn1.value ≈ chn2.value
+        @test mean(chn1[:z]) ≈ mean(Beta(2.0, 2.0)) atol = 0.05
+        @test mean(chn1[:y]) ≈ -3.0 atol = 0.05
     end
 end
 

@@ -1,5 +1,6 @@
 module SamplerTestUtils
 
+using Random
 using Turing
 using Test
 
@@ -22,6 +23,23 @@ function test_chain_logp_metadata(spl)
     # This should always be true, but it also indirectly checks that the 
     # log-joint is also calculated in unlinked space.
     @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+end
+
+"""
+Check that sampling is deterministic when using the same RNG seed.
+"""
+function test_rng_respected(spl)
+    @model function f(z)
+        # put at least two variables here so that we can meaningfully test Gibbs
+        x ~ Normal()
+        y ~ Normal()
+        return z ~ Normal(x + y)
+    end
+    model = f(2.0)
+    chn1 = sample(Xoshiro(468), model, spl, 100)
+    chn2 = sample(Xoshiro(468), model, spl, 100)
+    @test isapprox(chn1[:x], chn2[:x])
+    @test isapprox(chn1[:y], chn2[:y])
 end
 
 end

@@ -13,7 +13,6 @@ using DynamicPPL:
     # or implement it for other VarInfo types and export it from DPPL.
     all_varnames_grouped_by_symbol,
     syms,
-    islinked,
     setindex!!,
     push!!,
     setlogp!!,
@@ -24,11 +23,7 @@ using DynamicPPL:
     getdist,
     Model,
     Sampler,
-    SampleFromPrior,
-    SampleFromUniform,
-    DefaultContext,
-    set_flag!,
-    unset_flag!
+    DefaultContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -59,8 +54,6 @@ export InferenceAlgorithm,
     Hamiltonian,
     StaticHamiltonian,
     AdaptiveHamiltonian,
-    SampleFromUniform,
-    SampleFromPrior,
     MH,
     ESS,
     Emcee,
@@ -83,6 +76,8 @@ export InferenceAlgorithm,
 ###############################################
 # Abstract interface for inference algorithms #
 ###############################################
+
+const TURING_CHAIN_TYPE = MCMCChains.Chains
 
 include("algorithm.jl")
 
@@ -262,13 +257,13 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     dicts = map(ts) do t
         # In general getparams returns a dict of VarName => values. We need to also
         # split it up into constituent elements using
-        # `DynamicPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
+        # `AbstractPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
         # won't understand it.
         vals = getparams(model, t)
         nms_and_vs = if isempty(vals)
             Tuple{VarName,Any}[]
         else
-            iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+            iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
             mapreduce(collect, vcat, iters)
         end
         nms = map(first, nms_and_vs)
@@ -315,11 +310,10 @@ end
 getlogevidence(transitions, sampler, state) = missing
 
 # Default MCMCChains.Chains constructor.
-# This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
+    ts::Vector{<:Transition},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -378,11 +372,10 @@ function AbstractMCMC.bundle_samples(
     return sort_chain ? sort(chain) : chain
 end
 
-# This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
+    ts::Vector{<:Transition},
     model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    spl::Union{Sampler{<:InferenceAlgorithm},RepeatSampler},
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
