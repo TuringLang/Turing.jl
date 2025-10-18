@@ -1,3 +1,7 @@
+# 0.40.6
+
+Error more loudly and usefully when attempting to use particle methods on Julia 1.12.
+
 # 0.40.5
 
 Bump Optimization.jl compatibility to include v5.
