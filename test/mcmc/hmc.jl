@@ -236,7 +236,7 @@ using Turing
             10;
             nadapts=0,
             discard_adapt=false,
-            initial_state=chn1.info.samplerstate,
+            initial_state=loadstate(chn1),
         )
         # if chn2 uses initial_state, its first sample should be somewhere around 5. if
         # initial_state isn't used, it will be sampled from [-2, 2] so this test should fail

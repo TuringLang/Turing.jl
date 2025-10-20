@@ -136,7 +136,16 @@ function AbstractMCMC.sample(
     )
 end
 
-loadstate(c::MCMCChains.Chains) = c.info.samplerstate
+function loadstate(chain::MCMCChains.Chains)
+    if !haskey(chain.info, :samplerstate)
+        throw(
+            ArgumentError(
+                "the chain object does not contain the final state of the sampler; to save the final state you must sample with `save_state=true`",
+            ),
+        )
+    end
+    return chain.info[:samplerstate]
+end
 
 # TODO(penelopeysm): Remove initialstep and generalise MCMC sampling procedures
 function initialstep end
