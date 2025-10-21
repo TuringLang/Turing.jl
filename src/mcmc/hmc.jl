@@ -82,7 +82,48 @@ end
 
 DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
 
-# Handle setting `nadapts` and `discard_initial`
+"""
+    sample(
+        rng::AbstractRNG,
+        model::DynamicPPL.Model,
+        sampler::Sampler{<:AdaptiveHamiltonian},
+        N::Integer;
+        nadapts=sampler.alg.n_adapts,
+        discard_adapt=true,
+        discard_initial=-1,
+        kwargs...
+    )
+
+Sample from `model` using an adaptive Hamiltonian sampler (NUTS or HMCDA).
+
+This method handles adaptation and warm-up for adaptive Hamiltonian samplers.
+
+# Keyword Arguments
+
+- `nadapts::Int`: Number of adaptation steps. During these steps, the sampler adapts its
+  step size and mass matrix. Defaults to the sampler's `n_adapts` value. If set to `-1`
+  (the default for convenience constructors like `NUTS()`), automatically becomes
+  `min(1000, N ÷ 2)`.
+
+- `discard_adapt::Bool`: Whether to discard the adaptation samples from the returned chain.
+  Defaults to `true`. When `true`, the adaptation samples are not included in the final results,
+  as they may not be from the target distribution whilst the sampler is still adapting.
+
+- `discard_initial::Int`: Number of initial samples to discard from the chain. Defaults to `-1`
+  (automatic). When `-1`, this becomes `nadapts` if `discard_adapt` is `true`, otherwise `0`.
+  Use this to manually specify how many initial samples to discard.
+
+- `initial_params`: Initial parameter values for sampling. See `DynamicPPL.initialstep` for details.
+
+Additional keyword arguments (e.g., `verbose`, `progress`, `chain_type`) are passed to the underlying
+sampling implementation. For more information on available options, see the
+[sampling options documentation](https://turinglang.org/docs/usage/sampling-options).
+
+# Note
+
+When resuming from a previous run using `resume_from`, adaptation is disabled
+(`nadapts=0`, `discard_adapt=false`, `discard_initial=0`).
+"""
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -175,6 +216,36 @@ function find_initial_params(
     )
 end
 
+"""
+    initialstep(
+        rng::AbstractRNG,
+        model::AbstractModel,
+        spl::Sampler{<:Hamiltonian},
+        vi::AbstractVarInfo;
+        initial_params=nothing,
+        nadapts=0,
+        verbose::Bool=true,
+        kwargs...
+    )
+
+Perform the initial step for Hamiltonian Monte Carlo sampling.
+
+This function initialises the Hamiltonian, finds a suitable step size (if not provided),
+and performs the first sampling step.
+
+# Keyword Arguments
+
+For common keyword arguments like `initial_params` and `verbose`, see the generic
+`DynamicPPL.initialstep` documentation.
+
+- `nadapts::Int`: Number of adaptation steps to be performed. Used internally to set up adaptation.
+  Defaults to `0`.
+
+# Note
+
+If automatic initial parameter search fails after many attempts, an error is raised with
+suggestions for how to proceed. Consider providing explicit `initial_params` if this occurs.
+"""
 function DynamicPPL.initialstep(
     rng::AbstractRNG,
     model::AbstractModel,
@@ -334,7 +405,7 @@ setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
 struct HMCDA{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
+    n_adapts::Int         # number of samples with adaptation for ϵ
     δ::Float64     # target accept rate
     λ::Float64     # target leapfrog length
     ϵ::Float64     # (initial) step size
@@ -386,10 +457,10 @@ Usage:
 
 ```julia
 NUTS()            # Use default NUTS configuration.
-NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
+NUTS(1000, 0.65)  # Use 1000 adaptation steps, and target accept ratio 0.65.
 ```
 
-Arguments:
+# Arguments
 
 - `n_adapts::Int` : The number of samples to use with adaptation.
 - `δ::Float64` : Target acceptance rate for dual averaging.
@@ -398,10 +469,9 @@ Arguments:
 - `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
 - `adtype::ADTypes.AbstractADType` : The automatic differentiation (AD) backend.
     If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
-
 """
 struct NUTS{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
+    n_adapts::Int         # number of samples with adaptation for ϵ
     δ::Float64        # target accept rate
     max_depth::Int         # maximum tree depth
     Δ_max::Float64
