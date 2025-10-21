@@ -4,7 +4,7 @@
 
 Turing.jl v0.41 brings with it all the underlying changes in DynamicPPL 0.38.
 
-The only user-facing difference is that initial parameters for MCMC sampling must now be specified in a different form.
+The main user-facing difference is that initial parameters for MCMC sampling must now be specified in a different form.
 You still need to use the `initial_params` keyword argument to `sample`, but the allowed values are different.
 For almost all samplers in Turing.jl (except `Emcee`) this should now be a `DynamicPPL.AbstractInitStrategy`.
 
