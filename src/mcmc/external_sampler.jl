@@ -142,7 +142,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::ExternalSampler;
     initial_state=nothing,
-    initial_params=Turing.Inference.init_strategy(sampler_wrapper.sampler),
+    initial_params, # passed through from sample
     kwargs...,
 )
     sampler = sampler_wrapper.sampler
