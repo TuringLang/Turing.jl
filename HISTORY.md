@@ -3,12 +3,17 @@
 ## DynamicPPL 0.38
 
 Turing.jl v0.41 brings with it all the underlying changes in DynamicPPL 0.38.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/blob/main/HISTORY.md) for full details: in this section we only describe the changes that will directly affect end-users of Turing.jl.
 
-The main user-facing difference is that initial parameters for MCMC sampling must now be specified in a different form.
+### Performance
+
+A number of functions such as `returned` and `predict` will have substantially better performance in this release.
+
+### Initial parameters
+
+**Initial parameters for MCMC sampling must now be specified in a different form.**
 You still need to use the `initial_params` keyword argument to `sample`, but the allowed values are different.
 For almost all samplers in Turing.jl (except `Emcee`) this should now be a `DynamicPPL.AbstractInitStrategy`.
-
-TODO LINK TO DPPL DOCS WHEN THIS IS LIVE
 
 There are three kinds of initialisation strategies provided out of the box with Turing.jl (they are exported so you can use these directly with `using Turing`):
 
@@ -25,6 +30,22 @@ Previously, both of these would depend on the internal structure of the VarInfo,
 In contrast, the behaviour of `AbstractDict`s and `NamedTuple`s is invariant to the ordering of variables and it is also easier for readers to understand which variable is being set to which value.
 
 If you were previously using `varinfo[:]` to extract a vector of initial parameters, you can now use `Dict(k => varinfo[k] for k in keys(varinfo)` to extract a Dict of initial parameters.
+
+For more details about initialisation you can also refer to [the main TuringLang docs](https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters), and/or the [DynamicPPL API docs](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.InitFromPrior).
+
+### `resume_from` and `loadstate`
+
+The `resume_from` keyword argument to `sample` is now removed.
+Instead of `sample(...; resume_from=chain)` you can use `sample(...; initial_state=loadstate(chain))` which is entirely equivalent.
+`loadstate` is exported from Turing now instead of in DynamicPPL.
+
+Note that `loadstate` only works for `MCMCChains.Chains`.
+For FlexiChains users please consult the FlexiChains docs directly where this functionality is described in detail.
+
+### `pointwise_logdensities`
+
+`pointwise_logdensities(model, chn)`, `pointwise_loglikelihoods(...)`, and `pointwise_prior_logdensities(...)` now return an `MCMCChains.Chains` object if `chn` is itself an `MCMCChains.Chains` object.
+The old behaviour of returning an `OrderedDict` is still available: you just need to pass `OrderedDict` as the third argument, i.e., `pointwise_logdensities(model, chn, OrderedDict)`.
 
 ## Initial step in MCMC sampling
 
