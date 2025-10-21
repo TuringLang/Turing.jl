@@ -56,7 +56,7 @@ function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
     )
 end
 
-abstract type ParticleInference <: InferenceAlgorithm end
+abstract type ParticleInference <: AbstractSampler end
 
 ####
 #### Generic Sequential Monte Carlo sampler.
@@ -101,20 +101,22 @@ struct SMCState{P,F<:AbstractFloat}
     average_logevidence::F
 end
 
-function getlogevidence(samples, sampler::Sampler{<:SMC}, state::SMCState)
+function getlogevidence(samples, ::SMC, state::SMCState)
     return state.average_logevidence
 end
 
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::Sampler{<:SMC},
+    sampler::SMC,
     N::Integer;
-    chain_type=TURING_CHAIN_TYPE,
-    initial_params=DynamicPPL.init_strategy(sampler),
+    check_model=true,
+    chain_type=DEFAULT_CHAIN_TYPE,
+    initial_params=Turing.Inference.init_strategy(sampler),
     progress=PROGRESS[],
     kwargs...,
 )
+    check_model && _check_model(model, sampler)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
@@ -129,10 +131,10 @@ function AbstractMCMC.sample(
     )
 end
 
-function DynamicPPL.initialstep(
+function Turing.Inference.initialstep(
     rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:SMC},
+    model::DynamicPPL.Model,
+    spl::SMC,
     vi::AbstractVarInfo;
     nparticles::Int,
     kwargs...,
@@ -149,7 +151,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.resampler, spl)
 
     # Extract the first particle and its weight.
     particle = particles.vals[1]
@@ -164,7 +166,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    ::AbstractRNG, model::AbstractModel, spl::Sampler{<:SMC}, state::SMCState; kwargs...
+    ::AbstractRNG, model::DynamicPPL.Model, spl::SMC, state::SMCState; kwargs...
 )
     # Extract the index of the current particle.
     index = state.particleindex
@@ -238,9 +240,7 @@ end
 get_varinfo(state::PGState) = state.vi
 
 function getlogevidence(
-    transitions::AbstractVector{<:Turing.Inference.Transition},
-    sampler::Sampler{<:PG},
-    state::PGState,
+    transitions::AbstractVector{<:Turing.Inference.Transition}, ::PG, ::PGState
 )
     logevidences = map(transitions) do t
         if haskey(t.stat, :logevidence)
@@ -254,17 +254,13 @@ function getlogevidence(
     return mean(logevidences)
 end
 
-function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:PG},
-    vi::AbstractVarInfo;
-    kwargs...,
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, vi::AbstractVarInfo; kwargs...
 )
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create a new set of particles
-    num_particles = spl.alg.nparticles
+    num_particles = spl.nparticles
     particles = AdvancedPS.ParticleContainer(
         [
             AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for
@@ -275,7 +271,7 @@ function DynamicPPL.initialstep(
     )
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.resampler, spl)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)
@@ -290,7 +286,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::AbstractModel, spl::Sampler{<:PG}, state::PGState; kwargs...
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, state::PGState; kwargs...
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
@@ -300,7 +296,7 @@ function AbstractMCMC.step(
     reference = AdvancedPS.forkr(AdvancedPS.Trace(model, vi, state.rng, false))
 
     # Create a new set of particles.
-    num_particles = spl.alg.nparticles
+    num_particles = spl.nparticles
     x = map(1:num_particles) do i
         if i != num_particles
             return AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true)
@@ -311,7 +307,7 @@ function AbstractMCMC.step(
     particles = AdvancedPS.ParticleContainer(x, AdvancedPS.TracedRNG(), rng)
 
     # Perform a particle sweep.
-    logevidence = AdvancedPS.sweep!(rng, particles, spl.alg.resampler, spl, reference)
+    logevidence = AdvancedPS.sweep!(rng, particles, spl.resampler, spl, reference)
 
     # Pick a particle to be retained.
     Ws = AdvancedPS.getweights(particles)

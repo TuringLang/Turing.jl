@@ -4,7 +4,6 @@ using AdvancedMH: AdvancedMH
 using Distributions:
     Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal, Normal, sample
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using LinearAlgebra: I
 using Random: Random
 using StableRNGs: StableRNG
@@ -116,7 +115,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
 
         model = M(zeros(2), I, 1)
-        sampler = Inference.Sampler(MH())
+        sampler = MH()
 
         dt, vt = Inference.dist_val_tuple(sampler, DynamicPPL.VarInfo(model))
 
@@ -231,24 +230,21 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # Don't link when no proposals are given since we're using priors
         # as proposals.
         vi = deepcopy(vi_base)
-        alg = MH()
-        spl = DynamicPPL.Sampler(alg)
-        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
+        spl = MH()
+        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
         @test !DynamicPPL.is_transformed(vi)
 
         # Link if proposal is `AdvancedHM.RandomWalkProposal`
         vi = deepcopy(vi_base)
         d = length(vi_base[:])
-        alg = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
-        spl = DynamicPPL.Sampler(alg)
-        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
+        spl = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
+        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
         @test DynamicPPL.is_transformed(vi)
 
         # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
         vi = deepcopy(vi_base)
-        alg = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
-        spl = DynamicPPL.Sampler(alg)
-        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
+        spl = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
+        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
         @test DynamicPPL.is_transformed(vi)
 
         # Don't link if at least one proposal is NOT `RandomWalkProposal`.
@@ -256,12 +252,11 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # are linked! I.e. resolve https://github.com/TuringLang/Turing.jl/issues/1583.
         # https://github.com/TuringLang/Turing.jl/pull/1582#issuecomment-817148192
         vi = deepcopy(vi_base)
-        alg = MH(
+        spl = MH(
             :m => AdvancedMH.StaticProposal(Normal()),
             :s => AdvancedMH.RandomWalkProposal(Normal()),
         )
-        spl = DynamicPPL.Sampler(alg)
-        vi = Turing.Inference.maybe_link!!(vi, spl, alg.proposals, gdemo_default)
+        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
         @test !DynamicPPL.is_transformed(vi)
     end
 

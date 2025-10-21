@@ -4,7 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-using DynamicPPL: DynamicPPL, Sampler
+using DynamicPPL: DynamicPPL
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -236,7 +236,7 @@ using Turing
             10;
             nadapts=0,
             discard_adapt=false,
-            initial_state=chn1.info.samplerstate,
+            initial_state=loadstate(chn1),
         )
         # if chn2 uses initial_state, its first sample should be somewhere around 5. if
         # initial_state isn't used, it will be sampled from [-2, 2] so this test should fail
@@ -295,11 +295,10 @@ using Turing
     end
 
     @testset "getstepsize: Turing.jl#2400" begin
-        algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
-        @testset "$(alg)" for alg in algs
+        spls = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
+        @testset "$(spl)" for spl in spls
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg)
-            hmc_state = DynamicPPL.initialstep(
+            hmc_state = Turing.Inference.initialstep(
                 Random.default_rng(),
                 gdemo_default,
                 spl,

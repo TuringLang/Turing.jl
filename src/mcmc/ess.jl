@@ -20,11 +20,11 @@ Mean
 │ 1   │ m          │ 0.824853 │
 ```
 """
-struct ESS <: InferenceAlgorithm end
+struct ESS <: AbstractSampler end
 
 # always accept in the first step
-function DynamicPPL.initialstep(
-    rng::AbstractRNG, model::Model, ::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
 )
     for vn in keys(vi)
         dist = getdist(vi, vn)
@@ -35,7 +35,7 @@ function DynamicPPL.initialstep(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, ::Sampler{<:ESS}, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
 )
     # obtain previous sample
     f = vi[:]
@@ -103,3 +103,18 @@ struct ESSLikelihood{L<:DynamicPPL.LogDensityFunction}
 end
 
 (ℓ::ESSLikelihood)(f::AbstractVector) = LogDensityProblems.logdensity(ℓ.ldf, f)
+
+# Needed for method ambiguity resolution, even though this method is never going to be
+# called in practice. This just shuts Aqua up.
+# TODO(penelopeysm): Remove this when the default `step(rng, ::DynamicPPL.Model,
+# ::AbstractSampler) method in `src/mcmc/abstractmcmc.jl` is removed.
+function AbstractMCMC.step(
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::EllipticalSliceSampling.ESS;
+    kwargs...,
+)
+    return error(
+        "This method is not implemented! If you want to use the ESS sampler in Turing.jl, please use `Turing.ESS()` instead. If you want the default behaviour in EllipticalSliceSampling.jl, wrap your model in a different subtype of `AbstractMCMC.AbstractModel`, and then implement the necessary EllipticalSliceSampling.jl methods on it.",
+    )
+end

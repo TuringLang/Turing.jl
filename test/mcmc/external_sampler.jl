@@ -1,6 +1,7 @@
 module ExternalSamplerTests
 
 using ..Models: gdemo_default
+using ..SamplerTestUtils: test_sampler_analytical
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
@@ -205,9 +206,7 @@ end
             # Need some functionality to initialize the sampler.
             # TODO: Remove this once the constructors in the respective packages become "lazy".
             sampler = initialize_nuts(model)
-            sampler_ext = DynamicPPL.Sampler(
-                externalsampler(sampler; adtype, unconstrained=true)
-            )
+            sampler_ext = externalsampler(sampler; adtype, unconstrained=true)
 
             # TODO: AdvancedHMC samplers do not return the initial parameters as the first
             # step, so `test_initial_params` will fail. This should be fixed upstream in
@@ -223,7 +222,7 @@ end
             )
 
             @testset "inference" begin
-                DynamicPPL.TestUtils.test_sampler(
+                test_sampler_analytical(
                     [model],
                     sampler_ext,
                     2_000;
@@ -252,14 +251,12 @@ end
                 # Need some functionality to initialize the sampler.
                 # TODO: Remove this once the constructors in the respective packages become "lazy".
                 sampler = initialize_mh_rw(model)
-                sampler_ext = DynamicPPL.Sampler(
-                    externalsampler(sampler; unconstrained=true)
-                )
+                sampler_ext = externalsampler(sampler; unconstrained=true)
                 @testset "initial_params" begin
                     test_initial_params(model, sampler_ext)
                 end
                 @testset "inference" begin
-                    DynamicPPL.TestUtils.test_sampler(
+                    test_sampler_analytical(
                         [model],
                         sampler_ext,
                         2_000;
@@ -286,12 +283,12 @@ end
         # @testset "MH with prior proposal" begin
         #     @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         #         sampler = initialize_mh_with_prior_proposal(model);
-        #         sampler_ext = DynamicPPL.Sampler(externalsampler(sampler; unconstrained=false))
+        #         sampler_ext = externalsampler(sampler; unconstrained=false)
         #         @testset "initial_params" begin
         #             test_initial_params(model, sampler_ext)
         #         end
         #         @testset "inference" begin
-        #             DynamicPPL.TestUtils.test_sampler(
+        #             test_sampler_analytical(
         #                 [model],
         #                 sampler_ext,
         #                 10_000;
