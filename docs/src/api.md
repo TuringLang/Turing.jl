@@ -75,6 +75,16 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
 | `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
 
+### Initialisation strategies
+
+Turing.jl provides several strategies to initialise parameters for models.
+
+| Exported symbol   | Documentation                           | Description                                                     |
+|:----------------- |:--------------------------------------- |:--------------------------------------------------------------- |
+| `InitFromPrior`   | [`DynamicPPL.InitFromPrior`](@extref)   | Obtain initial parameters from the prior distribution           |
+| `InitFromUniform` | [`DynamicPPL.InitFromUniform`](@extref) | Obtain initial parameters by sampling uniformly in linked space |
+| `InitFromParams`  | [`DynamicPPL.InitFromParams`](@extref)  | Manually specify (possibly a subset of) initial parameters      |
+
 ### Variational inference
 
 See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) for detailed usage and the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a basic walkthrough.

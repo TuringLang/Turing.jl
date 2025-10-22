@@ -6,7 +6,6 @@ using Test: @test, @testset
 using Distributions: sample
 using DynamicHMC: DynamicHMC
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using Random: Random
 using Turing
 

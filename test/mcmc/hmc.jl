@@ -4,7 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
-using DynamicPPL: DynamicPPL, Sampler
+using DynamicPPL: DynamicPPL
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -177,7 +177,11 @@ using Turing
         @testset "$spl_name" for (spl_name, spl) in
                                  (("HMC", HMC(0.1, 10)), ("NUTS", NUTS()))
             chain = sample(
-                demo_norm(), spl, 5; discard_adapt=false, initial_params=(x=init_x,)
+                demo_norm(),
+                spl,
+                5;
+                discard_adapt=false,
+                initial_params=InitFromParams((x=init_x,)),
             )
             @test chain[:x][1] == init_x
             chain = sample(
@@ -187,7 +191,7 @@ using Turing
                 5,
                 5;
                 discard_adapt=false,
-                initial_params=(fill((x=init_x,), 5)),
+                initial_params=(fill(InitFromParams((x=init_x,)), 5)),
             )
             @test all(chain[:x][1, :] .== init_x)
         end
@@ -202,12 +206,11 @@ using Turing
             end
         end
 
-        @test_logs (
-            :warn,
-            "failed to find valid initial parameters in 10 tries; consider providing explicit initial parameters using the `initial_params` keyword",
-        ) (:info,) match_mode = :any begin
-            sample(demo_warn_initial_params(), NUTS(), 5)
-        end
+        # verbose=false to suppress the initial step size notification, which messes with
+        # the test
+        @test_logs (:warn, r"consider providing a different initialisation strategy") sample(
+            demo_warn_initial_params(), NUTS(), 5; verbose=false
+        )
     end
 
     @testset "error for impossible model" begin
@@ -233,7 +236,7 @@ using Turing
             10;
             nadapts=0,
             discard_adapt=false,
-            initial_state=chn1.info.samplerstate,
+            initial_state=loadstate(chn1),
         )
         # if chn2 uses initial_state, its first sample should be somewhere around 5. if
         # initial_state isn't used, it will be sampled from [-2, 2] so this test should fail
@@ -274,7 +277,8 @@ using Turing
         model = buggy_model()
         num_samples = 1_000
 
-        chain = sample(model, NUTS(), num_samples; initial_params=[0.5, 1.75, 1.0])
+        initial_params = InitFromParams((lb=0.5, ub=1.75, x=1.0))
+        chain = sample(model, NUTS(), num_samples; initial_params=initial_params)
         chain_prior = sample(model, Prior(), num_samples)
 
         # Extract the `x` like this because running `generated_quantities` was how
@@ -291,12 +295,15 @@ using Turing
     end
 
     @testset "getstepsize: Turing.jl#2400" begin
-        algs = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
-        @testset "$(alg)" for alg in algs
+        spls = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
+        @testset "$(spl)" for spl in spls
             # Construct a HMC state by taking a single step
-            spl = Sampler(alg)
-            hmc_state = DynamicPPL.initialstep(
-                Random.default_rng(), gdemo_default, spl, DynamicPPL.VarInfo(gdemo_default)
+            hmc_state = Turing.Inference.initialstep(
+                Random.default_rng(),
+                gdemo_default,
+                spl,
+                DynamicPPL.VarInfo(gdemo_default);
+                initial_params=InitFromUniform(),
             )[2]
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64

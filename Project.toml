@@ -45,7 +45,7 @@ Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
-TuringOptimExt = "Optim"
+TuringOptimExt = ["Optim", "AbstractPPL"]
 
 [compat]
 ADTypes = "1.9"
@@ -64,7 +64,7 @@ Distributions = "0.25.77"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.37.2"
+DynamicPPL = "0.38"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3, 1"
 Libtask = "0.9.3"
