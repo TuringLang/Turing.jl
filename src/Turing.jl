@@ -117,6 +117,9 @@ export
     q_locationscale,
     q_meanfield_gaussian,
     q_fullrank_gaussian,
+    KLMinRepGradProxDescent,
+    KLMinRepGradDescent,
+    KLMinScoreGradDescent,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,

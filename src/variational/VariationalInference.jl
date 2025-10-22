@@ -1,21 +1,24 @@
 
 module Variational
 
-using DynamicPPL
+using AdvancedVI:
+    AdvancedVI, KLMinRepGradDescent, KLMinRepGradProxDescent, KLMinScoreGradDescent
 using ADTypes
+using Bijectors: Bijectors
 using Distributions
+using DynamicPPL
 using LinearAlgebra
 using LogDensityProblems
 using Random
+using ..Turing: DEFAULT_ADTYPE, PROGRESS
 
-import ..Turing: DEFAULT_ADTYPE, PROGRESS
-
-import AdvancedVI
-import Bijectors
-
-export vi, q_locationscale, q_meanfield_gaussian, q_fullrank_gaussian
-
-include("deprecated.jl")
+export vi,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
+    KLMinRepGradProxDescent,
+    KLMinRepGradDescent,
+    KLMinScoreGradDescent
 
 """
     q_initialize_scale(
@@ -248,76 +251,61 @@ end
 """
     vi(
         [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model;
+        model::DynamicPPL.Model,
         q,
-        n_iterations::Int;
-        objective::AdvancedVI.AbstractVariationalObjective = AdvancedVI.RepGradELBO(
-            10; entropy = AdvancedVI.ClosedFormEntropyZeroGradient()
-        ),
+        max_iter::Int;
+        algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(DEFAULT_ADTYPE; n_samples=10),
         show_progress::Bool = Turing.PROGRESS[],
-        optimizer::Optimisers.AbstractRule = AdvancedVI.DoWG(),
-        averager::AdvancedVI.AbstractAverager = AdvancedVI.PolynomialAveraging(),
-        operator::AdvancedVI.AbstractOperator = AdvancedVI.ProximalLocationScaleEntropy(),
-        adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE,
         kwargs...
     )
 
-Approximating the target `model` via variational inference by optimizing `objective` with the initialization `q`.
+Approximate the target `model` via the variational inference algorithm `algorithm` by starting from the initial variational approximation `q`.
 This is a thin wrapper around `AdvancedVI.optimize`.
+The default `algorithm` assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
+For other variational families, refer to `AdvancedVI` to determine the best algorithm and options.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
 - `q`: The initial variational approximation.
-- `n_iterations`: Number of optimization steps.
+- `max_iter`: Maximum number of steps.
 
 # Keyword Arguments
-- `objective`: Variational objective to be optimized.
+- `algorithm`: Variational inference algorithm.
 - `show_progress`: Whether to show the progress bar.
-- `optimizer`: Optimization algorithm.
-- `averager`: Parameter averaging strategy.
-- `operator`: Operator applied after each optimization step.
-- `adtype`: Automatic differentiation backend.
+- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiation the variational objective.
 
 See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
 # Returns 
-- `q`: Variational distribution formed by the last iterate of the optimization run.
-- `q_avg`: Variational distribution formed by the averaged iterates according to `averager`.
-- `state`: Collection of states used for optimization. This can be used to resume from a past call to `vi`.
-- `info`: Information generated during the optimization run.
+- `q`: Output variational distribution of `algorithm`.
+- `state`: Collection of states used by `algorithm`. This can be used to resume from a past call to `vi`.
+- `info`: Information generated while executing `algorithm`.
 """
 function vi(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     q,
-    n_iterations::Int;
-    objective=AdvancedVI.RepGradELBO(
-        10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()
-    ),
-    show_progress::Bool=PROGRESS[],
-    optimizer=AdvancedVI.DoWG(),
-    averager=AdvancedVI.PolynomialAveraging(),
-    operator=AdvancedVI.ProximalLocationScaleEntropy(),
+    max_iter::Int,
+    args...;
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
+    algorithm=KLMinRepGradProxDescent(adtype; n_samples=10),
+    show_progress::Bool=PROGRESS[],
     kwargs...,
 )
     return AdvancedVI.optimize(
         rng,
-        LogDensityFunction(model),
-        objective,
+        algorithm,
+        max_iter,
+        LogDensityFunction(model; adtype),
         q,
-        n_iterations;
+        args...;
         show_progress=show_progress,
-        adtype,
-        optimizer,
-        averager,
-        operator,
         kwargs...,
     )
 end
 
-function vi(model::DynamicPPL.Model, q, n_iterations::Int; kwargs...)
-    return vi(Random.default_rng(), model, q, n_iterations; kwargs...)
+function vi(model::DynamicPPL.Model, q, max_iter::Int; kwargs...)
+    return vi(Random.default_rng(), model, q, max_iter; kwargs...)
 end
 
 end
