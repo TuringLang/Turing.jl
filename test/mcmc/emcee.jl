@@ -4,7 +4,6 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Distributions: sample
 using DynamicPPL: DynamicPPL
-using DynamicPPL: Sampler
 using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing
@@ -34,18 +33,21 @@ using Turing
         nwalkers = 250
         spl = Emcee(nwalkers, 2.0)
 
-        # No initial parameters, with im- and explicit `initial_params=nothing`
         Random.seed!(1234)
         chain1 = sample(gdemo_default, spl, 1)
         Random.seed!(1234)
-        chain2 = sample(gdemo_default, spl, 1; initial_params=nothing)
+        chain2 = sample(gdemo_default, spl, 1)
         @test Array(chain1) == Array(chain2)
 
+        initial_nt = DynamicPPL.InitFromParams((s=2.0, m=1.0))
         # Initial parameters have to be specified for every walker
-        @test_throws ArgumentError sample(gdemo_default, spl, 1; initial_params=[2.0, 1.0])
+        @test_throws ArgumentError sample(gdemo_default, spl, 1; initial_params=initial_nt)
+        @test_throws r"must be a vector of" sample(
+            gdemo_default, spl, 1; initial_params=initial_nt
+        )
 
         # Initial parameters
-        chain = sample(gdemo_default, spl, 1; initial_params=fill([2.0, 1.0], nwalkers))
+        chain = sample(gdemo_default, spl, 1; initial_params=fill(initial_nt, nwalkers))
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
     end

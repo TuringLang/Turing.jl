@@ -43,6 +43,7 @@ end
     end
 
     @testset "samplers (without AD)" verbose = true begin
+        @timeit_include("mcmc/abstractmcmc.jl")
         @timeit_include("mcmc/particle_mcmc.jl")
         @timeit_include("mcmc/emcee.jl")
         @timeit_include("mcmc/ess.jl")

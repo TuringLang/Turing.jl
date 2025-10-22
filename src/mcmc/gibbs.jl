@@ -1,12 +1,11 @@
 """
-    isgibbscomponent(alg::Union{InferenceAlgorithm, AbstractMCMC.AbstractSampler})
+    isgibbscomponent(spl::AbstractSampler)
 
-Return a boolean indicating whether `alg` is a valid component for a Gibbs sampler.
+Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
 Defaults to `false` if no method has been defined for a particular algorithm type.
 """
-isgibbscomponent(::InferenceAlgorithm) = false
-isgibbscomponent(spl::Sampler) = isgibbscomponent(spl.alg)
+isgibbscomponent(::AbstractSampler) = false
 
 isgibbscomponent(::ESS) = true
 isgibbscomponent(::HMC) = true
@@ -47,7 +46,7 @@ A context used in the implementation of the Turing.jl Gibbs sampler.
 There will be one `GibbsContext` for each iteration of a component sampler.
 
 `target_varnames` is a a tuple of `VarName`s that the current component sampler
-is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume`
+is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume!!`
 calls to its child context. For other variables, their values will be fixed to
 the values they have in `global_varinfo`.
 
@@ -140,7 +139,9 @@ function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
 end
 
 # Tilde pipeline
-function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
+function DynamicPPL.tilde_assume!!(
+    context::GibbsContext, right::Distribution, vn::VarName, vi::DynamicPPL.AbstractVarInfo
+)
     child_context = DynamicPPL.childcontext(context)
 
     # Note that `child_context` may contain `PrefixContext`s -- in which case
@@ -175,7 +176,7 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
 
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.
-        DynamicPPL.tilde_assume(child_context, right, vn, vi)
+        DynamicPPL.tilde_assume!!(child_context, right, vn, vi)
     elseif has_conditioned_gibbs(context, vn)
         # This branch means that a different sampler is supposed to handle this
         # variable. From the perspective of this sampler, this variable is
@@ -191,50 +192,10 @@ function DynamicPPL.tilde_assume(context::GibbsContext, right, vn, vi)
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume(
-            child_context,
-            DynamicPPL.SampleFromPrior(),
-            right,
-            vn,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
-        value, vi
-    end
-end
-
-# As above but with an RNG.
-function DynamicPPL.tilde_assume(
-    rng::Random.AbstractRNG, context::GibbsContext, sampler, right, vn, vi
-)
-    # See comment in the above, rng-less version of this method for an explanation.
-    child_context = DynamicPPL.childcontext(context)
-    vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
-
-    return if is_target_varname(context, vn)
-        # This branch means that that `sampler` is supposed to handle
-        # this variable. We can thus use its default behaviour, with
-        # the 'local' sampler-specific VarInfo.
-        DynamicPPL.tilde_assume(rng, child_context, sampler, right, vn, vi)
-    elseif has_conditioned_gibbs(context, vn)
-        # This branch means that a different sampler is supposed to handle this
-        # variable. From the perspective of this sampler, this variable is
-        # conditioned on, so we can just treat it as an observation.
-        # The only catch is that the value that we need is to be obtained from
-        # the global VarInfo (since the local VarInfo has no knowledge of it).
-        # Note that tilde_observe!! will trigger resampling in particle methods
-        # for variables that are handled by other Gibbs component samplers.
-        val = get_conditioned_gibbs(context, vn)
-        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
-    else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
-        # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume(
-            rng,
-            child_context,
-            DynamicPPL.SampleFromPrior(),
+        value, new_global_vi = DynamicPPL.tilde_assume!!(
+            # child_context might be a PrefixContext so we have to be careful to not
+            # overwrite it.
+            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext()),
             right,
             vn,
             get_global_varinfo(context),
@@ -275,9 +236,6 @@ function make_conditional(
     return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
-wrap_in_sampler(x::AbstractMCMC.AbstractSampler) = x
-wrap_in_sampler(x::InferenceAlgorithm) = DynamicPPL.Sampler(x)
-
 to_varname(x::VarName) = x
 to_varname(x::Symbol) = VarName{x}()
 to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
@@ -307,10 +265,8 @@ Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 # Fields
 $(TYPEDFIELDS)
 """
-struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
-       InferenceAlgorithm
-    # TODO(mhauru) Revisit whether A should have a fixed element type once
-    # InferenceAlgorithm/Sampler types have been cleaned up.
+struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: AbstractSampler
+    # TODO(mhauru) Revisit whether A should have a fixed element type.
     "varnames representing variables for each sampler"
     varnames::V
     "samplers for each entry in `varnames`"
@@ -328,7 +284,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <:
             end
         end
 
-        samplers = tuple(map(wrap_in_sampler, samplers)...)
+        samplers = tuple(samplers...)
         varnames = tuple(map(to_varname_list, varnames)...)
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
@@ -352,32 +308,21 @@ This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated h
 support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
 incompatible with step_warmup.
 """
-function initial_varinfo(rng, model, spl, initial_params)
-    vi = DynamicPPL.default_varinfo(rng, model, spl)
-
-    # Update the parameters if provided.
-    if initial_params !== nothing
-        vi = DynamicPPL.initialize_parameters!!(vi, initial_params, model)
-
-        # Update joint log probability.
-        # This is a quick fix for https://github.com/TuringLang/Turing.jl/issues/1588
-        # and https://github.com/TuringLang/Turing.jl/issues/1563
-        # to avoid that existing variables are resampled
-        vi = last(DynamicPPL.evaluate!!(model, vi))
-    end
+function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractInitStrategy)
+    vi = Turing.Inference.default_varinfo(rng, model, spl)
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
     return vi
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs};
-    initial_params=nothing,
+    spl::Gibbs;
+    initial_params=Turing.Inference.init_strategy(spl),
     kwargs...,
 )
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
@@ -396,13 +341,12 @@ end
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs};
-    initial_params=nothing,
+    spl::Gibbs;
+    initial_params=Turing.Inference.init_strategy(spl),
     kwargs...,
 )
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     vi = initial_varinfo(rng, model, spl, initial_params)
 
     vi, states = gibbs_initialstep_recursive(
@@ -434,7 +378,7 @@ function gibbs_initialstep_recursive(
     samplers,
     vi,
     states=();
-    initial_params=nothing,
+    initial_params,
     kwargs...,
 )
     # End recursion
@@ -444,13 +388,6 @@ function gibbs_initialstep_recursive(
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
-
-    # Get the initial values for this component sampler.
-    initial_params_local = if initial_params === nothing
-        nothing
-    else
-        DynamicPPL.subset(vi, varnames)[:]
-    end
 
     # Construct the conditioned model.
     conditioned_model, context = make_conditional(model, varnames, vi)
@@ -462,7 +399,7 @@ function gibbs_initialstep_recursive(
         sampler;
         # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
         # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
-        initial_params=initial_params_local,
+        initial_params=initial_params,
         kwargs...,
     )
     new_vi_local = get_varinfo(new_state)
@@ -489,14 +426,13 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
+    spl::Gibbs,
     state::GibbsState;
     kwargs...,
 )
     vi = get_varinfo(state)
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
@@ -509,14 +445,13 @@ end
 function AbstractMCMC.step_warmup(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:Gibbs},
+    spl::Gibbs,
     state::GibbsState;
     kwargs...,
 )
     vi = get_varinfo(state)
-    alg = spl.alg
-    varnames = alg.varnames
-    samplers = alg.samplers
+    varnames = spl.varnames
+    samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
@@ -527,7 +462,7 @@ function AbstractMCMC.step_warmup(
 end
 
 """
-    setparams_varinfo!!(model, sampler::Sampler, state, params::AbstractVarInfo)
+    setparams_varinfo!!(model, sampler::AbstractSampler, state, params::AbstractVarInfo)
 
 A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
 `AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
@@ -536,12 +471,14 @@ A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameter
 `model` is typically a `DynamicPPL.Model`, but can also be e.g. an
 `AbstractMCMC.LogDensityModel`.
 """
-function setparams_varinfo!!(model, ::Sampler, state, params::AbstractVarInfo)
+function setparams_varinfo!!(
+    model::DynamicPPL.Model, ::AbstractSampler, state, params::AbstractVarInfo
+)
     return AbstractMCMC.setparams!!(model, state, params[:])
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler{<:MH}, state::MHState, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::MH, state::MHState, params::AbstractVarInfo
 )
     # Re-evaluate to update the logprob.
     new_vi = last(DynamicPPL.evaluate!!(model, params))
@@ -549,10 +486,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:ESS},
-    state::AbstractVarInfo,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::ESS, state::AbstractVarInfo, params::AbstractVarInfo
 )
     # The state is already a VarInfo, so we can just return `params`, but first we need to
     # update its logprob.
@@ -561,24 +495,21 @@ end
 
 function setparams_varinfo!!(
     model::DynamicPPL.Model,
-    sampler::Sampler{<:ExternalSampler},
+    sampler::ExternalSampler,
     state::TuringState,
     params::AbstractVarInfo,
 )
     logdensity = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.adtype
     )
-    new_inner_state = setparams_varinfo!!(
-        AbstractMCMC.LogDensityModel(logdensity), sampler, state.state, params
+    new_inner_state = AbstractMCMC.setparams!!(
+        AbstractMCMC.LogDensityModel(logdensity), state.state, params[:]
     )
     return TuringState(new_inner_state, params, logdensity)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::Sampler{<:Hamiltonian},
-    state::HMCState,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model, sampler::Hamiltonian, state::HMCState, params::AbstractVarInfo
 )
     θ_new = params[:]
     hamiltonian = get_hamiltonian(model, sampler, params, state, length(θ_new))
@@ -592,7 +523,7 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Sampler{<:PG}, state::PGState, params::AbstractVarInfo
+    model::DynamicPPL.Model, sampler::PG, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
 end
@@ -606,22 +537,22 @@ variables, and one might need it to be linked while the other doesn't.
 """
 function match_linking!!(varinfo_local, prev_state_local, model)
     prev_varinfo_local = get_varinfo(prev_state_local)
-    was_linked = DynamicPPL.istrans(prev_varinfo_local)
-    is_linked = DynamicPPL.istrans(varinfo_local)
+    was_linked = DynamicPPL.is_transformed(prev_varinfo_local)
+    is_linked = DynamicPPL.is_transformed(varinfo_local)
     if was_linked && !is_linked
         varinfo_local = DynamicPPL.link!!(varinfo_local, model)
     elseif !was_linked && is_linked
         varinfo_local = DynamicPPL.invlink!!(varinfo_local, model)
     end
     # TODO(mhauru) The above might run into trouble if some variables are linked and others
-    # are not. `istrans(varinfo)` returns an `all` over the individual variables. This could
+    # are not. `is_transformed(varinfo)` returns an `all` over the individual variables. This could
     # especially be a problem with dynamic models, where new variables may get introduced,
     # but also in cases where component samplers have partial overlap in their target
     # variables. The below is how I would like to implement this, but DynamicPPL at this
     # time does not support linking individual variables selected by `VarName`. It soon
     # should though, so come back to this.
     # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2401
-    # prev_links_dict = Dict(vn => DynamicPPL.istrans(prev_varinfo_local, vn) for vn in keys(prev_varinfo_local))
+    # prev_links_dict = Dict(vn => DynamicPPL.is_transformed(prev_varinfo_local, vn) for vn in keys(prev_varinfo_local))
     # any_linked = any(values(prev_links_dict))
     # for vn in keys(varinfo_local)
     #     was_linked = if haskey(prev_varinfo_local, vn)
@@ -631,7 +562,7 @@ function match_linking!!(varinfo_local, prev_state_local, model)
     #         # of the variables of the old state were linked.
     #         any_linked
     #     end
-    #     is_linked = DynamicPPL.istrans(varinfo_local, vn)
+    #     is_linked = DynamicPPL.is_transformed(varinfo_local, vn)
     #     if was_linked && !is_linked
     #         varinfo_local = DynamicPPL.invlink!!(varinfo_local, vn)
     #     elseif !was_linked && is_linked

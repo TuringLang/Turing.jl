@@ -1,6 +1,7 @@
 module OptimisationTests
 
 using ..Models: gdemo, gdemo_default
+using AbstractPPL: AbstractPPL
 using Distributions
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
@@ -495,7 +496,7 @@ using Turing
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
                     @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                 end
             end
@@ -534,7 +535,7 @@ using Turing
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
                     if model.f in allowed_incorrect_mle
                         @test isfinite(get(result_true, vn_leaf))
                     else

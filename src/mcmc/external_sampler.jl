@@ -1,7 +1,8 @@
 """
     ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
 
-Represents a sampler that is not an implementation of `InferenceAlgorithm`.
+Represents a sampler that does not have a custom implementation of `AbstractMCMC.step(rng,
+::DynamicPPL.Model, spl)`.
 
 The `Unconstrained` type-parameter is to indicate whether the sampler requires unconstrained space.
 
@@ -10,25 +11,49 @@ $(TYPEDFIELDS)
 
 # Turing.jl's interface for external samplers
 
-When implementing a new `MySampler <: AbstractSampler`,
-`MySampler` must first and foremost conform to the `AbstractMCMC` interface to work with Turing.jl's `externalsampler` function.
-In particular, it must implement:
+If you implement a new `MySampler <: AbstractSampler` and want it to work with Turing.jl
+models, there are two options:
 
-- `AbstractMCMC.step` (the main function for taking a step in MCMC sampling; this is documented in AbstractMCMC.jl)
-- `Turing.Inference.getparams(::DynamicPPL.Model, external_transition)`: How to extract the parameters from the transition returned by your sampler (i.e., the first return value of `step`).
-  There is a default implementation for this method, which is to return `external_transition.θ`.
+1. Directly implement the `AbstractMCMC.step` methods for `DynamicPPL.Model`. This is the
+   most powerful option and is what Turing.jl's in-house samplers do. Implementing this
+   means that you can directly call `sample(model, MySampler(), N)`.
+
+2. Implement a generic `AbstractMCMC.step` method for `AbstractMCMC.LogDensityModel`. This
+   struct wraps an object that obeys the LogDensityProblems.jl interface, so your `step`
+   implementation does not need to know anything about Turing.jl or DynamicPPL.jl. To use
+   this with Turing.jl, you will need to wrap your sampler: `sample(model,
+   externalsampler(MySampler()), N)`.
+
+This section describes the latter.
+
+`MySampler` must implement the following methods:
+
+- `AbstractMCMC.step` (the main function for taking a step in MCMC sampling; this is
+  documented in AbstractMCMC.jl)
+- `Turing.Inference.getparams(::DynamicPPL.Model, external_transition)`: How to extract the
+  parameters from the transition returned by your sampler (i.e., the first return value of
+  `step`). There is a default implementation for this method, which is to return
+  `external_transition.θ`.
 
 !!! note
-    In a future breaking release of Turing, this is likely to change to `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`, with no default method. `Turing.Inference.getparams` is technically an internal method, so the aim here is to unify the interface for samplers at a higher level.
+    In a future breaking release of Turing, this is likely to change to
+    `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`, with no default method.
+    `Turing.Inference.getparams` is technically an internal method, so the aim here is to
+    unify the interface for samplers at a higher level.
 
-There are a few more optional functions which you can implement to improve the integration with Turing.jl:
+There are a few more optional functions which you can implement to improve the integration
+with Turing.jl:
 
-- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want your sampler to function as a component in Turing's Gibbs sampler, you should make this evaluate to `true`.
+- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want your sampler to function as
+  a component in Turing's Gibbs sampler, you should make this evaluate to `true`.
 
-- `Turing.Inference.requires_unconstrained_space(::MySampler)`: If your sampler requires unconstrained space, you should return `true`. This tells Turing to perform linking on the VarInfo before evaluation, and ensures that the parameter values passed to your sampler will always be in unconstrained (Euclidean) space.
+- `Turing.Inference.requires_unconstrained_space(::MySampler)`: If your sampler requires
+  unconstrained space, you should return `true`. This tells Turing to perform linking on the
+  VarInfo before evaluation, and ensures that the parameter values passed to your sampler
+  will always be in unconstrained (Euclidean) space.
 """
 struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <:
-       InferenceAlgorithm
+       AbstractSampler
     "the sampler to wrap"
     sampler::S
     "the automatic differentiation (AD) backend to use"
@@ -115,36 +140,39 @@ getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.pa
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler_wrapper::Sampler{<:ExternalSampler};
+    sampler_wrapper::ExternalSampler;
     initial_state=nothing,
-    initial_params=nothing,
+    initial_params, # passed through from sample
     kwargs...,
 )
-    alg = sampler_wrapper.alg
-    sampler = alg.sampler
+    sampler = sampler_wrapper.sampler
 
     # Initialise varinfo with initial params and link the varinfo if needed.
     varinfo = DynamicPPL.VarInfo(model)
-    if requires_unconstrained_space(alg)
-        if initial_params !== nothing
-            # If we have initial parameters, we need to set the varinfo before linking.
-            varinfo = DynamicPPL.link(DynamicPPL.unflatten(varinfo, initial_params), model)
-            # Extract initial parameters in unconstrained space.
-            initial_params = varinfo[:]
-        else
-            varinfo = DynamicPPL.link(varinfo, model)
-        end
+    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
+
+    if requires_unconstrained_space(sampler_wrapper)
+        varinfo = DynamicPPL.link(varinfo, model)
     end
+
+    # We need to extract the vectorised initial_params, because the later call to
+    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
+    # to be a vector.
+    initial_params_vector = varinfo[:]
 
     # Construct LogDensityFunction
     f = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, varinfo; adtype=alg.adtype
+        model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
     )
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     if initial_state === nothing
         transition_inner, state_inner = AbstractMCMC.step(
-            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params, kwargs...
+            rng,
+            AbstractMCMC.LogDensityModel(f),
+            sampler;
+            initial_params=initial_params_vector,
+            kwargs...,
         )
     else
         transition_inner, state_inner = AbstractMCMC.step(
@@ -152,7 +180,7 @@ function AbstractMCMC.step(
             AbstractMCMC.LogDensityModel(f),
             sampler,
             initial_state;
-            initial_params,
+            initial_params=initial_params_vector,
             kwargs...,
         )
     end
@@ -170,11 +198,11 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler_wrapper::Sampler{<:ExternalSampler},
+    sampler_wrapper::ExternalSampler,
     state::TuringState;
     kwargs...,
 )
-    sampler = sampler_wrapper.alg.sampler
+    sampler = sampler_wrapper.sampler
     f = state.ldf
 
     # Then just call `AdvancedMCMC.step` with the right arguments.

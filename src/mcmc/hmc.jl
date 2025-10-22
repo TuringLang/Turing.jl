@@ -1,4 +1,4 @@
-abstract type Hamiltonian <: InferenceAlgorithm end
+abstract type Hamiltonian <: AbstractSampler end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 
@@ -80,24 +80,26 @@ function HMC(
     return HMC(ϵ, n_leapfrog, metricT; adtype=adtype)
 end
 
-DynamicPPL.initialsampler(::Sampler{<:Hamiltonian}) = SampleFromUniform()
+Turing.Inference.init_strategy(::Hamiltonian) = DynamicPPL.InitFromUniform()
 
 # Handle setting `nadapts` and `discard_initial`
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::Sampler{<:AdaptiveHamiltonian},
+    sampler::AdaptiveHamiltonian,
     N::Integer;
-    chain_type=DynamicPPL.default_chain_type(sampler),
-    resume_from=nothing,
-    initial_state=DynamicPPL.loadstate(resume_from),
+    check_model=true,
+    chain_type=DEFAULT_CHAIN_TYPE,
+    initial_params=Turing.Inference.init_strategy(sampler),
+    initial_state=nothing,
     progress=PROGRESS[],
-    nadapts=sampler.alg.n_adapts,
+    nadapts=sampler.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
     kwargs...,
 )
-    if resume_from === nothing
+    check_model && _check_model(model, sampler)
+    if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
         # and we should set a default for them.
@@ -124,6 +126,7 @@ function AbstractMCMC.sample(
             progress=progress,
             nadapts=_nadapts,
             discard_initial=_discard_initial,
+            initial_params=initial_params,
             kwargs...,
         )
     else
@@ -138,6 +141,7 @@ function AbstractMCMC.sample(
             nadapts=0,
             discard_adapt=false,
             discard_initial=0,
+            initial_params=initial_params,
             kwargs...,
         )
     end
@@ -147,7 +151,8 @@ function find_initial_params(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     varinfo::DynamicPPL.AbstractVarInfo,
-    hamiltonian::AHMC.Hamiltonian;
+    hamiltonian::AHMC.Hamiltonian,
+    init_strategy::DynamicPPL.AbstractInitStrategy;
     max_attempts::Int=1000,
 )
     varinfo = deepcopy(varinfo)  # Don't mutate
@@ -158,15 +163,10 @@ function find_initial_params(
         isfinite(z) && return varinfo, z
 
         attempts == 10 &&
-            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing explicit initial parameters using the `initial_params` keyword"
+            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
 
         # Resample and try again.
-        # NOTE: varinfo has to be linked to make sure this samples in unconstrained space
-        varinfo = last(
-            DynamicPPL.evaluate_and_sample!!(
-                rng, model, varinfo, DynamicPPL.SampleFromUniform()
-            ),
-        )
+        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
     end
 
     # if we failed to find valid initial parameters, error
@@ -175,12 +175,14 @@ function find_initial_params(
     )
 end
 
-function DynamicPPL.initialstep(
+function Turing.Inference.initialstep(
     rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:Hamiltonian},
+    model::DynamicPPL.Model,
+    spl::Hamiltonian,
     vi_original::AbstractVarInfo;
-    initial_params=nothing,
+    # the initial_params kwarg is always passed on from sample(), cf. DynamicPPL
+    # src/sampler.jl, so we don't need to provide a default value here
+    initial_params::DynamicPPL.AbstractInitStrategy,
     nadapts=0,
     verbose::Bool=true,
     kwargs...,
@@ -192,65 +194,47 @@ function DynamicPPL.initialstep(
     theta = vi[:]
 
     # Create a Hamiltonian.
-    metricT = getmetricT(spl.alg)
+    metricT = getmetricT(spl)
     metric = metricT(length(theta))
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # If no initial parameters are provided, resample until the log probability
-    # and its gradient are finite. Otherwise, just use the existing parameters.
-    vi, z = if initial_params === nothing
-        find_initial_params(rng, model, vi, hamiltonian)
-    else
-        vi, AHMC.phasepoint(rng, theta, hamiltonian)
-    end
+    # Note that there is already one round of 'initialisation' before we reach this step,
+    # inside DynamicPPL's `AbstractMCMC.step` implementation. That leads to a possible issue
+    # that this `find_initial_params` function might override the parameters set by the
+    # user.
+    # Luckily for us, `find_initial_params` always checks if the logp and its gradient are
+    # finite. If it is already finite with the params inside the current `vi`, it doesn't
+    # attempt to find new ones. This means that the parameters passed to `sample()` will be
+    # respected instead of being overridden here.
+    vi, z = find_initial_params(rng, model, vi, hamiltonian, initial_params)
     theta = vi[:]
 
     # Find good eps if not provided one
-    if iszero(spl.alg.ϵ)
+    if iszero(spl.ϵ)
         ϵ = AHMC.find_good_stepsize(rng, hamiltonian, theta)
         verbose && @info "Found initial step size" ϵ
     else
-        ϵ = spl.alg.ϵ
+        ϵ = spl.ϵ
     end
+    # Generate a kernel and adaptor.
+    kernel = make_ahmc_kernel(spl, ϵ)
+    adaptor = AHMCAdaptor(spl, hamiltonian.metric; ϵ=ϵ)
 
-    # Generate a kernel.
-    kernel = make_ahmc_kernel(spl.alg, ϵ)
-
-    # Create initial transition and state.
-    # Already perform one step since otherwise we don't get any statistics.
-    t = AHMC.transition(rng, hamiltonian, kernel, z)
-
-    # Adaptation
-    adaptor = AHMCAdaptor(spl.alg, hamiltonian.metric; ϵ=ϵ)
-    if spl.alg isa AdaptiveHamiltonian
-        hamiltonian, kernel, _ = AHMC.adapt!(
-            hamiltonian, kernel, adaptor, 1, nadapts, t.z.θ, t.stat.acceptance_rate
-        )
-    end
-
-    # Update VarInfo parameters based on acceptance
-    new_params = if t.stat.is_accept
-        t.z.θ
-    else
-        theta
-    end
-    vi = DynamicPPL.unflatten(vi, new_params)
-
-    transition = Transition(model, vi, t)
-    state = HMCState(vi, 1, kernel, hamiltonian, t.z, adaptor)
+    transition = Transition(model, vi, NamedTuple())
+    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
 
     return transition, state
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
-    model::Model,
-    spl::Sampler{<:Hamiltonian},
+    model::DynamicPPL.Model,
+    spl::Hamiltonian,
     state::HMCState;
     nadapts=0,
     kwargs...,
@@ -265,7 +249,7 @@ function AbstractMCMC.step(
 
     # Adaptation
     i = state.i + 1
-    if spl.alg isa AdaptiveHamiltonian
+    if spl isa AdaptiveHamiltonian
         hamiltonian, kernel, _ = AHMC.adapt!(
             hamiltonian,
             state.kernel,
@@ -295,7 +279,7 @@ end
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
@@ -460,17 +444,17 @@ end
 ##### HMC core functions
 #####
 
-getstepsize(sampler::Sampler{<:Hamiltonian}, state) = sampler.alg.ϵ
-getstepsize(sampler::Sampler{<:AdaptiveHamiltonian}, state) = AHMC.getϵ(state.adaptor)
+getstepsize(sampler::Hamiltonian, state) = sampler.ϵ
+getstepsize(sampler::AdaptiveHamiltonian, state) = AHMC.getϵ(state.adaptor)
 function getstepsize(
-    sampler::Sampler{<:AdaptiveHamiltonian},
+    sampler::AdaptiveHamiltonian,
     state::HMCState{TV,TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
 ) where {TV,TKernel,THam,PhType}
     return state.kernel.τ.integrator.ϵ
 end
 
-gen_metric(dim::Int, spl::Sampler{<:Hamiltonian}, state) = AHMC.UnitEuclideanMetric(dim)
-function gen_metric(dim::Int, spl::Sampler{<:AdaptiveHamiltonian}, state)
+gen_metric(dim::Int, spl::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
+function gen_metric(dim::Int, spl::AdaptiveHamiltonian, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
 
@@ -490,15 +474,6 @@ function make_ahmc_kernel(alg::NUTS, ϵ)
             AHMC.Leapfrog(ϵ), AHMC.GeneralisedNoUTurn(alg.max_depth, alg.Δ_max)
         ),
     )
-end
-
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng, ::Sampler{<:Hamiltonian}, dist::Distribution, vn::VarName, vi
-)
-    return DynamicPPL.assume(dist, vn, vi)
 end
 
 ####

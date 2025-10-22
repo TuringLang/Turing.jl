@@ -2,6 +2,7 @@ module Optimisation
 
 using ..Turing
 using NamedArrays: NamedArrays
+using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
 using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
@@ -273,7 +274,7 @@ function StatsBase.informationmatrix(
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
     old_ldf = m.f.ldf
-    linked = DynamicPPL.istrans(old_ldf.varinfo)
+    linked = DynamicPPL.is_transformed(old_ldf.varinfo)
     if linked
         new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
         new_f = OptimLogDensity(
@@ -320,7 +321,7 @@ function Base.get(m::ModeResult, var_symbols::AbstractVector{Symbol})
     # m.values, but they are more convenient to filter when they are VarNames rather than
     # Symbols.
     vals_dict = Turing.Inference.getparams(log_density.model, log_density.varinfo)
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    iters = map(AbstractPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
     vns_and_vals = mapreduce(collect, vcat, iters)
     varnames = collect(map(first, vns_and_vals))
     # For each symbol s in var_symbols, pick all the values from m.values for which the
@@ -351,7 +352,7 @@ function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.Optimizati
     varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
     # `getparams` performs invlinking if needed
     vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+    iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
     vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
@@ -507,10 +508,8 @@ function estimate_mode(
     kwargs...,
 )
     if check_model
-        spl_model = DynamicPPL.contextualize(
-            model, DynamicPPL.SamplingContext(model.context)
-        )
-        DynamicPPL.check_model(spl_model, DynamicPPL.VarInfo(); error_on_failure=true)
+        new_model = DynamicPPL.setleafcontext(model, DynamicPPL.InitContext())
+        DynamicPPL.check_model(new_model, DynamicPPL.VarInfo(); error_on_failure=true)
     end
 
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)
