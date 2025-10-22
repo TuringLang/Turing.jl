@@ -9,6 +9,10 @@ Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.j
 
 A number of functions such as `returned` and `predict` will have substantially better performance in this release.
 
+### `ProductNamedTupleDistribution`
+
+`Distributions.ProductNamedTupleDistribution` can now be used on the right-hand side of `~` in Turing models.
+
 ### Initial parameters
 
 **Initial parameters for MCMC sampling must now be specified in a different form.**
