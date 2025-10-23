@@ -115,7 +115,9 @@ This method handles adaptation and warm-up for adaptive Hamiltonian samplers.
 
 - `initial_params`: Initial parameter values for sampling. See `DynamicPPL.initialstep` for details.
 
-Additional keyword arguments are passed to the underlying sampling implementation.
+Additional keyword arguments (e.g., `verbose`, `progress`, `chain_type`) are passed to the underlying
+sampling implementation. For more information on available options, see the
+[sampling options documentation](https://turinglang.org/docs/usage/sampling-options).
 
 # Note
 
@@ -233,16 +235,11 @@ and performs the first sampling step.
 
 # Keyword Arguments
 
-- `initial_params`: Initial parameter values to use for sampling. If `nothing` (the default),
-  parameters are resampled from the prior until valid initial values with finite log probability
-  and gradient are found. If provided, these values are used directly without validation.
-  Must be in the same format as the model's parameters.
+For common keyword arguments like `initial_params` and `verbose`, see the generic
+`DynamicPPL.initialstep` documentation.
 
 - `nadapts::Int`: Number of adaptation steps to be performed. Used internally to set up adaptation.
   Defaults to `0`.
-
-- `verbose::Bool`: Whether to print informative messages (e.g., the automatically determined step size).
-  Defaults to `true`.
 
 # Note
 
@@ -408,7 +405,7 @@ setting path lengths in Hamiltonian Monte Carlo." Journal of Machine Learning
 Research 15, no. 1 (2014): 1593-1623.
 """
 struct HMCDA{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
+    n_adapts::Int         # number of samples with adaptation for ϵ
     δ::Float64     # target accept rate
     λ::Float64     # target leapfrog length
     ϵ::Float64     # (initial) step size
@@ -460,7 +457,7 @@ Usage:
 
 ```julia
 NUTS()            # Use default NUTS configuration.
-NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
+NUTS(1000, 0.65)  # Use 1000 adaptation steps, and target accept ratio 0.65.
 ```
 
 # Arguments
@@ -474,7 +471,7 @@ NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
     If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 """
 struct NUTS{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
-    n_adapts::Int         # number of samples with adaption for ϵ
+    n_adapts::Int         # number of samples with adaptation for ϵ
     δ::Float64        # target accept rate
     max_depth::Int         # maximum tree depth
     Δ_max::Float64
