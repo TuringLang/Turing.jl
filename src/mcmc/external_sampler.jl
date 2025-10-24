@@ -1,5 +1,5 @@
 """
-    ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained}
+    ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType}
 
 Represents a sampler that does not have a custom implementation of `AbstractMCMC.step(rng,
 ::DynamicPPL.Model, spl)`.
@@ -14,45 +14,59 @@ $(TYPEDFIELDS)
 If you implement a new `MySampler <: AbstractSampler` and want it to work with Turing.jl
 models, there are two options:
 
-1. Directly implement the `AbstractMCMC.step` methods for `DynamicPPL.Model`. This is the
-   most powerful option and is what Turing.jl's in-house samplers do. Implementing this
-   means that you can directly call `sample(model, MySampler(), N)`.
+1. Directly implement the `AbstractMCMC.step` methods for `DynamicPPL.Model`. That is to
+   say, implement `AbstractMCMC.step(rng::Random.AbstractRNG, model::DynamicPPL.Model,
+   sampler::MySampler; kwargs...)` and related methods. This is the most powerful option and
+   is what Turing.jl's in-house samplers do. Implementing this means that you can directly
+   call `sample(model, MySampler(), N)`.
 
-2. Implement a generic `AbstractMCMC.step` method for `AbstractMCMC.LogDensityModel`. This
-   struct wraps an object that obeys the LogDensityProblems.jl interface, so your `step`
+2. Implement a generic `AbstractMCMC.step` method for `AbstractMCMC.LogDensityModel` (the
+   same signature as above except that `model::AbstractMCMC.LogDensityModel`). This struct
+   wraps an object that obeys the LogDensityProblems.jl interface, so your `step`
    implementation does not need to know anything about Turing.jl or DynamicPPL.jl. To use
    this with Turing.jl, you will need to wrap your sampler: `sample(model,
    externalsampler(MySampler()), N)`.
 
 This section describes the latter.
 
-`MySampler` must implement the following methods:
+`MySampler` **must** implement the following methods:
 
 - `AbstractMCMC.step` (the main function for taking a step in MCMC sampling; this is
-  documented in AbstractMCMC.jl)
-- `Turing.Inference.getparams(::DynamicPPL.Model, external_transition)`: How to extract the
-  parameters from the transition returned by your sampler (i.e., the first return value of
-  `step`). There is a default implementation for this method, which is to return
-  `external_transition.θ`.
+  documented in AbstractMCMC.jl). This function must return a tuple of two elements, a
+  'transition' and a 'state'.
 
-!!! note
-    In a future breaking release of Turing, this is likely to change to
-    `AbstractMCMC.getparams(::DynamicPPL.Model, external_state)`, with no default method.
-    `Turing.Inference.getparams` is technically an internal method, so the aim here is to
-    unify the interface for samplers at a higher level.
+- `AbstractMCMC.getparams(external_state)`: How to extract the parameters from the **state**
+  returned by your sampler (i.e., the **second** return value of `step`). For your sampler
+  to work with Turing.jl, this function should return a Vector of parameter values. Note that
+  this function does not need to perform any linking or unlinking; Turing.jl will take care of
+  this for you. You should return the parameters *exactly* as your sampler sees them.
+
+- `AbstractMCMC.getstats(external_state)`: Extract sampler statistics corresponding to this
+  iteration from the **state** returned by your sampler (i.e., the **second** return value
+  of `step`). For your sampler to work with Turing.jl, this function should return a
+  `NamedTuple`. If there are no statistics to return, return `NamedTuple()`.
+
+  Note that `getstats` should not include log-probabilities as these will be recalculated by
+  Turing automatically for you.
+
+Notice that both of these functions take the **state** as input, not the **transition**. In
+other words, the transition is completely useless for the external sampler interface. This is
+in line with long-term plans for removing transitions from AbstractMCMC.jl and only using
+states.
 
 There are a few more optional functions which you can implement to improve the integration
 with Turing.jl:
 
-- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want your sampler to function as
-  a component in Turing's Gibbs sampler, you should make this evaluate to `true`.
-
-- `Turing.Inference.requires_unconstrained_space(::MySampler)`: If your sampler requires
+- `AbstractMCMC.requires_unconstrained_space(::MySampler)`: If your sampler requires
   unconstrained space, you should return `true`. This tells Turing to perform linking on the
   VarInfo before evaluation, and ensures that the parameter values passed to your sampler
   will always be in unconstrained (Euclidean) space.
+
+- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want to disallow your sampler
+  from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
+  that the default is `true`, so you should only need to implement this in special cases.
 """
-struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrained} <:
+struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
        AbstractSampler
     "the sampler to wrap"
     sampler::S
@@ -67,31 +81,18 @@ struct ExternalSampler{S<:AbstractSampler,AD<:ADTypes.AbstractADType,Unconstrain
     # Arguments
     - `sampler::AbstractSampler`: The sampler to wrap.
     - `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
-    - `unconstrained::Val=Val{true}()`: Value type containing a boolean indicating whether the sampler requires unconstrained space.
+    - `unconstrained::Val`: Value type containing a boolean indicating whether the sampler requires unconstrained space.
     """
     function ExternalSampler(
-        sampler::AbstractSampler,
-        adtype::ADTypes.AbstractADType,
-        (::Val{unconstrained})=Val(true),
+        sampler::AbstractSampler, adtype::ADTypes.AbstractADType, ::Val{unconstrained}
     ) where {unconstrained}
         if !(unconstrained isa Bool)
             throw(
                 ArgumentError("Expected Val{true} or Val{false}, got Val{$unconstrained}")
             )
         end
-        return new{typeof(sampler),typeof(adtype),unconstrained}(sampler, adtype)
+        return new{unconstrained,typeof(sampler),typeof(adtype)}(sampler, adtype)
     end
-end
-
-"""
-    requires_unconstrained_space(sampler::ExternalSampler)
-
-Return `true` if the sampler requires unconstrained space, and `false` otherwise.
-"""
-function requires_unconstrained_space(
-    ::ExternalSampler{<:Any,<:Any,Unconstrained}
-) where {Unconstrained}
-    return Unconstrained
 end
 
 """
@@ -106,10 +107,10 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
 - `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
 """
-function externalsampler(
-    sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained::Bool=true
-)
-    return ExternalSampler(sampler, adtype, Val(unconstrained))
+function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE)
+    return ExternalSampler(
+        sampler, adtype, Val(AbstractMCMC.requires_unconstrained_space(sampler))
+    )
 end
 
 # TODO(penelopeysm): Can't we clean this up somehow?
@@ -128,30 +129,22 @@ end
 get_varinfo(state::TuringState) = state.varinfo
 get_varinfo(state::AbstractVarInfo) = state
 
-getparams(::DynamicPPL.Model, transition::AdvancedHMC.Transition) = transition.z.θ
-function getparams(model::DynamicPPL.Model, state::AdvancedHMC.HMCState)
-    return getparams(model, state.transition)
-end
-getstats(transition::AdvancedHMC.Transition) = transition.stat
-
-getparams(::DynamicPPL.Model, transition::AdvancedMH.Transition) = transition.params
-
 # TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler_wrapper::ExternalSampler;
+    sampler_wrapper::ExternalSampler{unconstrained};
     initial_state=nothing,
     initial_params, # passed through from sample
     kwargs...,
-)
+) where {unconstrained}
     sampler = sampler_wrapper.sampler
 
     # Initialise varinfo with initial params and link the varinfo if needed.
     varinfo = DynamicPPL.VarInfo(model)
     _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
 
-    if requires_unconstrained_space(sampler_wrapper)
+    if unconstrained
         varinfo = DynamicPPL.link(varinfo, model)
     end
 
@@ -166,16 +159,17 @@ function AbstractMCMC.step(
     )
 
     # Then just call `AbstractMCMC.step` with the right arguments.
-    if initial_state === nothing
-        transition_inner, state_inner = AbstractMCMC.step(
+    _, state_inner = if initial_state === nothing
+        AbstractMCMC.step(
             rng,
             AbstractMCMC.LogDensityModel(f),
             sampler;
             initial_params=initial_params_vector,
             kwargs...,
         )
+
     else
-        transition_inner, state_inner = AbstractMCMC.step(
+        AbstractMCMC.step(
             rng,
             AbstractMCMC.LogDensityModel(f),
             sampler,
@@ -185,13 +179,12 @@ function AbstractMCMC.step(
         )
     end
 
-    # NOTE: This is Turing.Inference.getparams, not AbstractMCMC.getparams (!!!!!)
-    # The latter uses the state rather than the transition.
-    # TODO(penelopeysm): Make this use AbstractMCMC.getparams instead
-    new_parameters = Turing.Inference.getparams(f.model, transition_inner)
+    new_parameters = AbstractMCMC.getparams(f.model, state_inner)
     new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
+    new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Transition(f.model, new_vi, transition_inner), TuringState(state_inner, new_vi, f)
+        Turing.Inference.Transition(f.model, new_vi, new_stats),
+        TuringState(state_inner, new_vi, f),
     )
 end
 
@@ -206,16 +199,22 @@ function AbstractMCMC.step(
     f = state.ldf
 
     # Then just call `AdvancedMCMC.step` with the right arguments.
-    transition_inner, state_inner = AbstractMCMC.step(
+    _, state_inner = AbstractMCMC.step(
         rng, AbstractMCMC.LogDensityModel(f), sampler, state.state; kwargs...
     )
 
-    # NOTE: This is Turing.Inference.getparams, not AbstractMCMC.getparams (!!!!!)
-    # The latter uses the state rather than the transition.
-    # TODO(penelopeysm): Make this use AbstractMCMC.getparams instead
-    new_parameters = Turing.Inference.getparams(f.model, transition_inner)
+    new_parameters = AbstractMCMC.getparams(f.model, state_inner)
     new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
+    new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Transition(f.model, new_vi, transition_inner), TuringState(state_inner, new_vi, f)
+        Turing.Inference.Transition(f.model, new_vi, new_stats),
+        TuringState(state_inner, new_vi, f),
     )
 end
+
+# Implementation of interface for AdvancedMH and AdvancedHMC. TODO: These should be
+# upstreamed to the respective packages, I'm just not doing it here to avoid having to run
+# CI against three separate PR branches.
+AbstractMCMC.getstats(state::AdvancedHMC.HMCState) = state.transition.stat
+# Note that for AdvancedMH, transition and state are equivalent (and both named Transition)
+AbstractMCMC.getstats(state::AdvancedMH.Transition) = (accepted=state.accepted,)

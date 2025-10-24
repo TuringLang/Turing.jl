@@ -3,9 +3,9 @@
 
 Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
-Defaults to `false` if no method has been defined for a particular algorithm type.
+Defaults to `true` if no method has been defined for a particular sampler.
 """
-isgibbscomponent(::AbstractSampler) = false
+isgibbscomponent(::AbstractSampler) = true
 
 isgibbscomponent(::ESS) = true
 isgibbscomponent(::HMC) = true
@@ -15,11 +15,7 @@ isgibbscomponent(::MH) = true
 isgibbscomponent(::PG) = true
 
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
-
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::AdvancedHMC.AbstractHMCSampler) = true
-isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
-isgibbscomponent(spl) = false
 
 function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
     return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
