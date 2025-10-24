@@ -129,7 +129,6 @@ end
 get_varinfo(state::TuringState) = state.varinfo
 get_varinfo(state::AbstractVarInfo) = state
 
-# TODO: Do we also support `resume`, etc?
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
