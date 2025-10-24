@@ -1,3 +1,67 @@
+# 0.42.0
+
+# 0.41.0
+
+## DynamicPPL 0.38
+
+Turing.jl v0.41 brings with it all the underlying changes in DynamicPPL 0.38.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/blob/main/HISTORY.md) for full details: in this section we only describe the changes that will directly affect end-users of Turing.jl.
+
+### Performance
+
+A number of functions such as `returned` and `predict` will have substantially better performance in this release.
+
+### `ProductNamedTupleDistribution`
+
+`Distributions.ProductNamedTupleDistribution` can now be used on the right-hand side of `~` in Turing models.
+
+### Initial parameters
+
+**Initial parameters for MCMC sampling must now be specified in a different form.**
+You still need to use the `initial_params` keyword argument to `sample`, but the allowed values are different.
+For almost all samplers in Turing.jl (except `Emcee`) this should now be a `DynamicPPL.AbstractInitStrategy`.
+
+There are three kinds of initialisation strategies provided out of the box with Turing.jl (they are exported so you can use these directly with `using Turing`):
+
+  - `InitFromPrior()`: Sample from the prior distribution. This is the default for most samplers in Turing.jl (if you don't specify `initial_params`).
+
+  - `InitFromUniform(a, b)`: Sample uniformly from `[a, b]` in linked space. This is the default for Hamiltonian samplers. If `a` and `b` are not specified it defaults to `[-2, 2]`, which preserves the behaviour in previous versions (and mimics that of Stan).
+  - `InitFromParams(p)`: Explicitly provide a set of initial parameters. **Note: `p` must be either a `NamedTuple` or an `AbstractDict{<:VarName}`; it can no longer be a `Vector`.** Parameters must be provided in unlinked space, even if the sampler later performs linking.
+    
+      + For this release of Turing.jl, you can also provide a `NamedTuple` or `AbstractDict{<:VarName}` and this will be automatically wrapped in `InitFromParams` for you. This is an intermediate measure for backwards compatibility, and will eventually be removed.
+
+This change is made because Vectors are semantically ambiguous.
+It is not clear which element of the vector corresponds to which variable in the model, nor is it clear whether the parameters are in linked or unlinked space.
+Previously, both of these would depend on the internal structure of the VarInfo, which is an implementation detail.
+In contrast, the behaviour of `AbstractDict`s and `NamedTuple`s is invariant to the ordering of variables and it is also easier for readers to understand which variable is being set to which value.
+
+If you were previously using `varinfo[:]` to extract a vector of initial parameters, you can now use `Dict(k => varinfo[k] for k in keys(varinfo)` to extract a Dict of initial parameters.
+
+For more details about initialisation you can also refer to [the main TuringLang docs](https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters), and/or the [DynamicPPL API docs](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.InitFromPrior).
+
+### `resume_from` and `loadstate`
+
+The `resume_from` keyword argument to `sample` is now removed.
+Instead of `sample(...; resume_from=chain)` you can use `sample(...; initial_state=loadstate(chain))` which is entirely equivalent.
+`loadstate` is exported from Turing now instead of in DynamicPPL.
+
+Note that `loadstate` only works for `MCMCChains.Chains`.
+For FlexiChains users please consult the FlexiChains docs directly where this functionality is described in detail.
+
+### `pointwise_logdensities`
+
+`pointwise_logdensities(model, chn)`, `pointwise_loglikelihoods(...)`, and `pointwise_prior_logdensities(...)` now return an `MCMCChains.Chains` object if `chn` is itself an `MCMCChains.Chains` object.
+The old behaviour of returning an `OrderedDict` is still available: you just need to pass `OrderedDict` as the third argument, i.e., `pointwise_logdensities(model, chn, OrderedDict)`.
+
+## Initial step in MCMC sampling
+
+HMC and NUTS samplers no longer take an extra single step before starting the chain.
+This means that if you do not discard any samples at the start, the first sample will be the initial parameters (which may be user-provided).
+
+Note that if the initial sample is included, the corresponding sampler statistics will be `missing`.
+Due to a technical limitation of MCMCChains.jl, this causes all indexing into MCMCChains to return `Union{Float64, Missing}` or similar.
+If you want the old behaviour, you can discard the first sample (e.g. using `discard_initial=1`).
+
 # 0.40.5
 
 Bump Optimization.jl compatibility to include v5.
