@@ -51,14 +51,8 @@ using Turing.Variational
     end
 
     @testset "custom algorithm $name" for (name, algorithm) in [
-        (
-            "KLMinRepGradProxDescent",
-            KLMinRepGradProxDescent(AutoReverseDiff(); n_samples=10),
-        ),
-        (
-            "KLMinRepGradDescent",
-            KLMinRepGradDescent(AutoReverseDiff(); operator, n_samples=10),
-        ),
+        ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
+        ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
     ]
         T = 1000
         q, _, _ = vi(
@@ -74,14 +68,8 @@ using Turing.Variational
     end
 
     @testset "inference $name" for (name, algorithm) in [
-        (
-            "KLMinRepGradProxDescent",
-            KLMinRepGradProxDescent(AutoReverseDiff(); n_samples=10),
-        ),
-        (
-            "KLMinRepGradDescent",
-            KLMinRepGradDescent(AutoReverseDiff(); operator, n_samples=10),
-        ),
+        ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
+        ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
     ]
         rng = StableRNG(0x517e1d9bf89bf94f)
 
