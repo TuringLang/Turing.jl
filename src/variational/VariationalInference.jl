@@ -254,14 +254,17 @@ end
         model::DynamicPPL.Model,
         q,
         max_iter::Int;
-        algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(DEFAULT_ADTYPE; n_samples=10),
+        adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
+        algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(
+            adtype; n_samples=10
+        ),
         show_progress::Bool = Turing.PROGRESS[],
         kwargs...
     )
 
 Approximate the target `model` via the variational inference algorithm `algorithm` by starting from the initial variational approximation `q`.
 This is a thin wrapper around `AdvancedVI.optimize`.
-The default `algorithm` assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
+The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
 For other variational families, refer to `AdvancedVI` to determine the best algorithm and options.
 
 # Arguments
@@ -270,9 +273,9 @@ For other variational families, refer to `AdvancedVI` to determine the best algo
 - `max_iter`: Maximum number of steps.
 
 # Keyword Arguments
+- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiation the variational objective.
 - `algorithm`: Variational inference algorithm.
 - `show_progress`: Whether to show the progress bar.
-- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiation the variational objective.
 
 See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
@@ -288,7 +291,9 @@ function vi(
     max_iter::Int,
     args...;
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
-    algorithm=KLMinRepGradProxDescent(adtype; n_samples=10),
+    algorithm::AdvancedVI.AbstractVariationalAlgorithm=KLMinRepGradProxDescent(
+        adtype; n_samples=10
+    ),
     show_progress::Bool=PROGRESS[],
     kwargs...,
 )
