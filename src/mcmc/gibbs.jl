@@ -7,15 +7,15 @@ Defaults to `true` if no method has been defined for a particular sampler.
 """
 isgibbscomponent(::AbstractSampler) = true
 
-isgibbscomponent(::ESS) = true
-isgibbscomponent(::HMC) = true
-isgibbscomponent(::HMCDA) = true
-isgibbscomponent(::NUTS) = true
-isgibbscomponent(::MH) = true
-isgibbscomponent(::PG) = true
-
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
+
+isgibbscomponent(::IS) = false
+isgibbscomponent(::Prior) = false
+isgibbscomponent(::Emcee) = false
+isgibbscomponent(::SGLD) = false
+isgibbscomponent(::SGHMC) = false
+isgibbscomponent(::SMC) = false
 
 function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
     return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
