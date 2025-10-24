@@ -96,7 +96,11 @@ struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADTy
 end
 
 """
-    externalsampler(sampler::AbstractSampler; adtype=AutoForwardDiff(), unconstrained=true)
+    externalsampler(
+        sampler::AbstractSampler;
+        adtype=AutoForwardDiff(),
+        unconstrained=AbstractMCMC.requires_unconstrained_space(sampler),
+    )
 
 Wrap a sampler so it can be used as an inference algorithm.
 
@@ -104,13 +108,17 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `sampler::AbstractSampler`: The sampler to wrap.
 
 # Keyword Arguments
-- `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation (AD) backend to use.
-- `unconstrained::Bool=true`: Whether the sampler requires unconstrained space.
+- `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation
+  (AD) backend to use.
+- `unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler)`: Whether the
+  sampler requires unconstrained space.
 """
-function externalsampler(sampler::AbstractSampler; adtype=Turing.DEFAULT_ADTYPE)
-    return ExternalSampler(
-        sampler, adtype, Val(AbstractMCMC.requires_unconstrained_space(sampler))
-    )
+function externalsampler(
+    sampler::AbstractSampler;
+    adtype=Turing.DEFAULT_ADTYPE,
+    unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler),
+)
+    return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
 # TODO(penelopeysm): Can't we clean this up somehow?
