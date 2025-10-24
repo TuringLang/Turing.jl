@@ -65,7 +65,7 @@ of success in an individual trial, with the distribution
 P(X = k) = {n \\choose k}{(\\text{logistic}(logitp))}^k (1 - \\text{logistic}(logitp))^{n-k}, \\quad \\text{ for } k = 0,1,2, \\ldots, n.
 ```
 
-See also: [`Binomial`](@ref)
+See also: [`Distributions.Binomial`](@extref)
 """
 struct BinomialLogit{T<:Real,S<:Real} <: DiscreteUnivariateDistribution
     n::Int
@@ -188,7 +188,7 @@ The distribution has the probability mass function
 P(X = k) = \\frac{e^{k \\cdot \\log\\lambda}}{k!} e^{-e^{\\log\\lambda}}, \\quad \\text{ for } k = 0,1,2,\\ldots.
 ```
 
-See also: [`Poisson`](@ref)
+See also: [`Distributions.Poisson`](@extref)
 """
 struct LogPoisson{T<:Real,S} <: DiscreteUnivariateDistribution
     logλ::T

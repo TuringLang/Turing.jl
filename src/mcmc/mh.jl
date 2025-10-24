@@ -104,7 +104,7 @@ mean(chain)
 ```
 
 """
-struct MH{P} <: InferenceAlgorithm
+struct MH{P} <: AbstractSampler
     proposals::P
 
     function MH(proposals...)
@@ -178,8 +178,6 @@ get_varinfo(s::MHState) = s.varinfo
 # Utility functions #
 #####################
 
-# TODO(DPPL0.38/penelopeysm): This function should no longer be needed
-# once InitContext is merged.
 """
     set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 
@@ -207,15 +205,24 @@ end
 # NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
 # interface in that it gets evaluated with a NamedTuple. Hence we need this
 # method just to deal with MH.
-# TODO(DPPL0.38/penelopeysm): Check the extent to which this method is actually
-# needed. If it's still needed, replace this with `init!!(f.model, f.varinfo,
-# ParamsInit(x))`. Much less hacky than `set_namedtuple!` (hopefully...).
-# In general, we should much prefer to either (1) conform to the
-# LogDensityProblems interface or (2) use VarNames anyway.
 function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
     vi = deepcopy(f.varinfo)
+    # Note that the NamedTuple `x` does NOT conform to the structure required for
+    # `InitFromParams`. In particular, for models that look like this:
+    #
+    # @model function f()
+    #     v = Vector{Vector{Float64}}
+    #     v[1] ~ MvNormal(zeros(2), I)
+    # end
+    #
+    # `InitFromParams` will expect Dict(@varname(v[1]) => [x1, x2]), but `x` will have the
+    # format `(v = [x1, x2])`. Hence we still need this `set_namedtuple!` function.
+    #
+    # In general `init!!(f.model, vi, InitFromParams(x))` will work iff the model only
+    # contains 'basic' varnames.
     set_namedtuple!(vi, x)
-    vi_new = last(DynamicPPL.evaluate!!(f.model, vi))
+    # Update log probability.
+    _, vi_new = DynamicPPL.evaluate!!(f.model, vi)
     lj = f.getlogdensity(vi_new)
     return lj
 end
@@ -240,16 +247,16 @@ function reconstruct(dist::AbstractVector{<:MultivariateDistribution}, val::Abst
 end
 
 """
-    dist_val_tuple(spl::Sampler{<:MH}, vi::VarInfo)
+    dist_val_tuple(spl::MH, vi::VarInfo)
 
 Return two `NamedTuples`.
 
 The first `NamedTuple` has symbols as keys and distributions as values.
 The second `NamedTuple` has model symbols as keys and their stored values as values.
 """
-function dist_val_tuple(spl::Sampler{<:MH}, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
+function dist_val_tuple(spl::MH, vi::DynamicPPL.VarInfoOrThreadSafeVarInfo)
     vns = all_varnames_grouped_by_symbol(vi)
-    dt = _dist_tuple(spl.alg.proposals, vi, vns)
+    dt = _dist_tuple(spl.proposals, vi, vns)
     vt = _val_tuple(vi, vns)
     return dt, vt
 end
@@ -317,9 +324,7 @@ function maybe_link!!(varinfo, sampler, proposal, model)
 end
 
 # Make a proposal if we don't have a covariance proposal matrix (the default).
-function propose!!(
-    rng::AbstractRNG, prev_state::MHState, model::Model, spl::Sampler{<:MH}, proposal
-)
+function propose!!(rng::AbstractRNG, prev_state::MHState, model::Model, spl::MH, proposal)
     vi = prev_state.varinfo
     # Retrieve distribution and value NamedTuples.
     dt, vt = dist_val_tuple(spl, vi)
@@ -329,13 +334,11 @@ function propose!!(
     prev_trans = AMH.Transition(vt, prev_state.logjoint_internal, false)
 
     # Make a new transition.
-    spl_model = DynamicPPL.contextualize(
-        model, DynamicPPL.SamplingContext(rng, spl, model.context)
-    )
+    model = DynamicPPL.setleafcontext(model, MHContext(rng))
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
@@ -353,7 +356,7 @@ function propose!!(
     rng::AbstractRNG,
     prev_state::MHState,
     model::Model,
-    spl::Sampler{<:MH},
+    spl::MH,
     proposal::AdvancedMH.RandomWalkProposal,
 )
     vi = prev_state.varinfo
@@ -362,17 +365,15 @@ function propose!!(
     vals = vi[:]
 
     # Create a sampler and the previous transition.
-    mh_sampler = AMH.MetropolisHastings(spl.alg.proposals)
+    mh_sampler = AMH.MetropolisHastings(spl.proposals)
     prev_trans = AMH.Transition(vals, prev_state.logjoint_internal, false)
 
     # Make a new transition.
-    spl_model = DynamicPPL.contextualize(
-        model, DynamicPPL.SamplingContext(rng, spl, model.context)
-    )
+    model = DynamicPPL.setleafcontext(model, MHContext(rng))
     densitymodel = AMH.DensityModel(
         Base.Fix1(
             LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(spl_model, DynamicPPL.getlogjoint_internal, vi),
+            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
         ),
     )
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
@@ -385,38 +386,46 @@ function propose!!(
     return MHState(vi, trans.lp)
 end
 
-function DynamicPPL.initialstep(
-    rng::AbstractRNG,
-    model::AbstractModel,
-    spl::Sampler{<:MH},
-    vi::AbstractVarInfo;
-    kwargs...,
+function Turing.Inference.initialstep(
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, vi::AbstractVarInfo; kwargs...
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
-    vi = maybe_link!!(vi, spl, spl.alg.proposals, model)
+    vi = maybe_link!!(vi, spl, spl.proposals, model)
 
     return Transition(model, vi, nothing), MHState(vi, DynamicPPL.getlogjoint_internal(vi))
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Sampler{<:MH}, state::MHState; kwargs...
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, state::MHState; kwargs...
 )
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
-    new_state = propose!!(rng, state, model, spl, spl.alg.proposals)
+    new_state = propose!!(rng, state, model, spl, spl.proposals)
 
     return Transition(model, new_state.varinfo, nothing), new_state
 end
 
-####
-#### Compiler interface, i.e. tilde operators.
-####
-function DynamicPPL.assume(
-    rng::Random.AbstractRNG, spl::Sampler{<:MH}, dist::Distribution, vn::VarName, vi
+struct MHContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
+    rng::R
+end
+DynamicPPL.NodeTrait(::MHContext) = DynamicPPL.IsLeaf()
+
+function DynamicPPL.tilde_assume!!(
+    context::MHContext, right::Distribution, vn::VarName, vi::AbstractVarInfo
 )
-    # Just defer to `SampleFromPrior`.
-    retval = DynamicPPL.assume(rng, SampleFromPrior(), dist, vn, vi)
-    return retval
+    # Allow MH to sample new variables from the prior if it's not already present in the
+    # VarInfo.
+    dispatch_ctx = if haskey(vi, vn)
+        DynamicPPL.DefaultContext()
+    else
+        DynamicPPL.InitContext(context.rng, DynamicPPL.InitFromPrior())
+    end
+    return DynamicPPL.tilde_assume!!(dispatch_ctx, right, vn, vi)
+end
+function DynamicPPL.tilde_observe!!(
+    ::MHContext, right::Distribution, left, vn::Union{VarName,Nothing}, vi::AbstractVarInfo
+)
+    return DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
 end

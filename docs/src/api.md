@@ -31,7 +31,7 @@ DynamicPPL.@model function my_model() end
 sample(my_model(), Turing.Inference.Prior(), 100)
 ```
 
-even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` module and [`@model`](@ref) in the `DynamicPPL` package.
+even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` module and [`@model`](@extref `DynamicPPL.@model`) in the `DynamicPPL` package.
 
 ### Modelling
 
@@ -46,12 +46,13 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Inference
 
-| Exported symbol   | Documentation                                                                                    | Description                        |
-|:----------------- |:------------------------------------------------------------------------------------------------ |:---------------------------------- |
-| `sample`          | [`StatsBase.sample`](https://turinglang.org/AbstractMCMC.jl/stable/api/#Sampling-a-single-chain) | Sample from a model                |
-| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                                            | Run MCMC using multiple threads    |
-| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                                        | Run MCMC using multiple processes  |
-| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                                             | Run MCMC using without parallelism |
+| Exported symbol   | Documentation                                                             | Description                               |
+|:----------------- |:------------------------------------------------------------------------- |:----------------------------------------- |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/docs/usage/sampling-options/) | Sample from a model                       |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                     | Run MCMC using multiple threads           |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                 | Run MCMC using multiple processes         |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                      | Run MCMC using without parallelism        |
+| `loadstate`       | [`Turing.Inference.loadstate`](@ref)                                      | Load saved state from `MCMCChains.Chains` |
 
 ### Samplers
 
@@ -74,6 +75,34 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
 | `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
 | `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
+
+### DynamicPPL utilities
+
+Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
+
+| Exported symbol            | Documentation                                                                                                                | Description                                             |
+|:-------------------------- |:---------------------------------------------------------------------------------------------------------------------------- |:------------------------------------------------------- |
+| `returned`                 | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple%7BModel,%20NamedTuple%7D) | Calculate additional quantities defined in a model      |
+| `predict`                  | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting)                                            | Generate samples from posterior predictive distribution |
+| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                             | Compute log likelihoods for each sample in a chain      |
+| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                             | Compute log prior probability                           |
+| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                             | Compute log joint probability                           |
+| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                           | Condition a model on data                               |
+| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                         | Remove conditioning on data                             |
+| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model                |
+| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                             |
+| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                           |
+| `OrderedDict`              | [`OrderedCollections.OrderedDict`](@extref)                                                                                  | An ordered dictionary                                   |
+
+### Initialisation strategies
+
+Turing.jl provides several strategies to initialise parameters for models.
+
+| Exported symbol   | Documentation                           | Description                                                     |
+|:----------------- |:--------------------------------------- |:--------------------------------------------------------------- |
+| `InitFromPrior`   | [`DynamicPPL.InitFromPrior`](@extref)   | Obtain initial parameters from the prior distribution           |
+| `InitFromUniform` | [`DynamicPPL.InitFromUniform`](@extref) | Obtain initial parameters by sampling uniformly in linked space |
+| `InitFromParams`  | [`DynamicPPL.InitFromParams`](@extref)  | Manually specify (possibly a subset of) initial parameters      |
 
 ### Variational inference
 
@@ -124,29 +153,6 @@ LogPoisson
 | `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
 | `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
 | `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |
-
-### Predictions
-
-| Exported symbol | Documentation                                                                     | Description                                             |
-|:--------------- |:--------------------------------------------------------------------------------- |:------------------------------------------------------- |
-| `predict`       | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting) | Generate samples from posterior predictive distribution |
-
-### Querying model probabilities and quantities
-
-Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
-
-| Exported symbol            | Documentation                                                                                                                | Description                                        |
-|:-------------------------- |:---------------------------------------------------------------------------------------------------------------------------- |:-------------------------------------------------- |
-| `returned`                 | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple%7BModel,%20NamedTuple%7D) | Calculate additional quantities defined in a model |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                             | Compute log likelihoods for each sample in a chain |
-| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                             | Compute log prior probability                      |
-| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                             | Compute log joint probability                      |
-| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                           | Condition a model on data                          |
-| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                         | Remove conditioning on data                        |
-| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model           |
-| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                        |
-| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                      |
-| `OrderedDict`              | [`OrderedCollections.OrderedDict`](@extref)                                                                                  | An ordered dictionary                              |
 
 ### Point estimates
 
