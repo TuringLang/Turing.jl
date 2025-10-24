@@ -16,6 +16,8 @@ In particular, you now only need to define the following functions:
 This means that you only need to depend on AbstractMCMC.jl.
 As long as the above functions are defined correctly, Turing will be able to use your external sampler.
 
+The `Turing.Inference.isgibbscomponent(::MySampler)` interface function still exists, but in this version the default has been changed to `true`, so you should not need to overload this.
+
 # 0.41.0
 
 ## DynamicPPL 0.38
