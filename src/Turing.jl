@@ -116,7 +116,6 @@ export
     externalsampler,
     # Variational inference - AdvancedVI
     vi,
-    ADVI,
     q_locationscale,
     q_meanfield_gaussian,
     q_fullrank_gaussian,
