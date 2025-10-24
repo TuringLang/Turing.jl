@@ -10,18 +10,17 @@ using Test
 using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff
 
-# Detect if prerelease version, if so, we skip some tests
-const IS_PRERELEASE = !isempty(VERSION.prerelease)
-const INCLUDE_MOONCAKE = !IS_PRERELEASE
+# Detect if 1.12, if so, we skip some tests
+const IS_112 = VERSION >= v"1.12.0"
 
+const INCLUDE_MOONCAKE = !IS_112
 if INCLUDE_MOONCAKE
     import Pkg
     Pkg.add("Mooncake")
     using Mooncake: Mooncake
 end
 
-const INCLUDE_ENZYME = !IS_PRERELEASE
-
+const INCLUDE_ENZYME = !IS_112
 if INCLUDE_ENZYME
     import Pkg
     Pkg.add("Enzyme")
