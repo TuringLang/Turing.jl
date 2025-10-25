@@ -75,7 +75,7 @@ Note that if the initial sample is included, the corresponding sampler statistic
 Due to a technical limitation of MCMCChains.jl, this causes all indexing into MCMCChains to return `Union{Float64, Missing}` or similar.
 If you want the old behaviour, you can discard the first sample (e.g. using `discard_initial=1`).
 
-# 0.4# 0.40.5
+# 0.40.5
 
 Bump Optimization.jl compatibility to include v5.
 
