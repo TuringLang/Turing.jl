@@ -1,5 +1,55 @@
 # 0.42.0
 
+## Breaking Changes
+
+**AdvancedVI 0.5**
+
+Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.5.
+Most of the changes introduced in `AdvancedVI.jl@0.5` are structural, with some changes spilling out into the interface.
+The summary of the changes below are the things that affect the end-users of Turing.
+For a more comprehensive list of changes, please refer to the [changelogs](https://github.com/TuringLang/AdvancedVI.jl/blob/main/HISTORY.md) in `AdvancedVI`.
+
+A new level of interface for defining different variational algorithms has been introduced in `AdvancedVI` v0.5. As a result, the function `Turing.vi` now receives a keyword argument `algorithm`. The object `algorithm <: AdvancedVI.AbstractVariationalAlgorithm` should now contain all the algorithm-specific configurations. Therefore, keyword arguments of `vi` that were algorithm-specific such as `objective`, `operator`, `averager` and so on, have been moved as fields of the relevant `<: AdvancedVI.AbstractVariationalAlgorithm` structs.
+For example,
+
+```julia
+vi(model, q, n_iters; objective=RepGradELBO(10), operator=AdvancedVI.ClipScale())
+```
+
+is now
+
+```julia
+vi(
+    model,
+    q,
+    n_iters;
+    algorithm=KLMinRepGradDescent(adtype; n_samples=10, operator=AdvancedVI.ClipScale()),
+)
+```
+
+Similarly,
+
+```julia
+vi(
+    model,
+    q,
+    n_iters;
+    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    operator=AdvancedVI.ProximalLocationScaleEntropy(),
+)
+```
+
+is now
+
+```julia
+vi(model, q, n_iters; algorithm=KLMinRepGradProxDescent(adtype; n_samples=10))
+```
+
+Additionally,
+
+  - The default hyperparameters of `DoG`and `DoWG` have been altered.
+  - The deprecated `AdvancedVI@0.2`-era interface is now removed.
+
 # 0.41.0
 
 ## DynamicPPL 0.38
