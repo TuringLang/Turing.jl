@@ -11,7 +11,7 @@ using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff
 
 # Skip Mooncake on 1.12 as it is not compatible yet
-const INCLUDE_MOONCAKE = VERSION >= v"1.12"
+const INCLUDE_MOONCAKE = VERSION < v"1.12"
 if INCLUDE_MOONCAKE
     import Pkg
     Pkg.add("Mooncake")
