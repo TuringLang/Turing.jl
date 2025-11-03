@@ -76,6 +76,3 @@ StatsBase = "0.33, 0.34"
 StatsFuns = "0.9.5, 1"
 TimerOutputs = "0.5"
 julia = "1.10"
-
-[sources]
-AbstractMCMC = {url = "https://github.com/TuringLang/AbstractMCMC.jl", rev = "py/getstats"}
