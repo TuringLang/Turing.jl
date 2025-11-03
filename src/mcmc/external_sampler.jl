@@ -218,10 +218,3 @@ function AbstractMCMC.step(
         TuringState(state_inner, new_vi, f),
     )
 end
-
-# Implementation of interface for AdvancedMH and AdvancedHMC. TODO: These should be
-# upstreamed to the respective packages, I'm just not doing it here to avoid having to run
-# CI against three separate PR branches.
-AbstractMCMC.getstats(state::AdvancedHMC.HMCState) = state.transition.stat
-# Note that for AdvancedMH, transition and state are equivalent (and both named Transition)
-AbstractMCMC.getstats(state::AdvancedMH.Transition) = (accepted=state.accepted,)
