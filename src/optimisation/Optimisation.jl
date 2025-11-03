@@ -44,79 +44,35 @@ Concrete type for maximum a posteriori estimation.
 struct MAP <: ModeEstimator end
 
 """
-    OptimLogDensity{
-        M<:DynamicPPL.Model,
-        F<:Function,
-        V<:DynamicPPL.AbstractVarInfo,
-        AD<:ADTypes.AbstractADType,
-    }
+    OptimLogDensity{L<:DynamicPPL.LogDensityFunction}
 
-A struct that wraps a single LogDensityFunction. Can be invoked either using
+A struct that represents a log-density function, which can be used with Optimization.jl.
+This is a thin wrapper around `DynamicPPL.LogDensityFunction`: the main difference is that
+the log-density is negated (because Optimization.jl performs minimisation, and we usually
+want to maximise the log-density).
 
-```julia
-OptimLogDensity(model, varinfo; adtype=adtype)
-```
+An `OptimLogDensity` does not, in itself, obey the LogDensityProblems.jl interface. Thus, if
+you want to calculate the log density of its contents at the point `z`, you should manually
+call `LogDensityProblems.logdensity(f.ldf, z)`, instead of `LogDensityProblems.logdensity(f,
+z)`.
 
-or
-
-```julia
-OptimLogDensity(model; adtype=adtype)
-```
-
-If not specified, `adtype` defaults to `AutoForwardDiff()`.
-
-An OptimLogDensity does not, in itself, obey the LogDensityProblems interface.
-Thus, if you want to calculate the log density of its contents at the point
-`z`, you should manually call
-
-```julia
-LogDensityProblems.logdensity(f.ldf, z)
-```
-
-However, it is a callable object which returns the *negative* log density of
-the underlying LogDensityFunction at the point `z`. This is done to satisfy
-the Optim.jl interface.
-
-```julia
-optim_ld = OptimLogDensity(model, varinfo)
-optim_ld(z)  # returns -logp
-```
+However, because Optimization.jl requires the objective function to be callable, you can
+also call `f(z)` directly to get the negative log density at `z`.
 """
 struct OptimLogDensity{L<:DynamicPPL.LogDensityFunction}
     ldf::L
-
-    function OptimLogDensity(
-        model::DynamicPPL.Model,
-        getlogdensity::Function,
-        vi::DynamicPPL.AbstractVarInfo;
-        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-    )
-        ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
-        return new{typeof(ldf)}(ldf)
-    end
-    function OptimLogDensity(
-        model::DynamicPPL.Model,
-        getlogdensity::Function;
-        adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-    )
-        # No varinfo
-        return OptimLogDensity(
-            model,
-            getlogdensity,
-            DynamicPPL.ldf_default_varinfo(model, getlogdensity);
-            adtype=adtype,
-        )
-    end
 end
 
 """
     (f::OptimLogDensity)(z)
     (f::OptimLogDensity)(z, _)
 
-Evaluate the negative log joint or log likelihood at the array `z`. Which one is evaluated
-depends on the context of `f`.
+Evaluate the negative log probability density at the array `z`. Which kind of probability
+density is evaluated depends on the `getlogdensity` function used to construct the
+underlying `LogDensityFunction` (e.g., `DynamicPPL.getlogjoint` for MAP estimation, or
+`DynamicPPL.getloglikelihood` for MLE).
 
-Any second argument is ignored. The two-argument method only exists to match interface the
+Any second argument is ignored. The two-argument method only exists to match the interface
 required by Optimization.jl.
 """
 (f::OptimLogDensity)(z::AbstractVector) = -LogDensityProblems.logdensity(f.ldf, z)
@@ -540,7 +496,8 @@ function estimate_mode(
         vi = DynamicPPL.link(vi, model)
     end
 
-    log_density = OptimLogDensity(model, getlogdensity, vi)
+    ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+    log_density = OptimLogDensity(ldf)
 
     prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
     solution = Optimization.solve(prob, solver; kwargs...)
