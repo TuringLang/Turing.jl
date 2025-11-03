@@ -68,7 +68,6 @@ end
 
         @testset "mode estimation" verbose = true begin
             @timeit_include("optimisation/Optimisation.jl")
-            @timeit_include("ext/OptimInterface.jl")
         end
     end
 

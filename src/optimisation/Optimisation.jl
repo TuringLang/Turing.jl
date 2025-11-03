@@ -19,7 +19,7 @@ using StatsAPI: StatsAPI
 using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra
 
-export maximum_a_posteriori, maximum_likelihood
+export maximum_a_posteriori, maximum_likelihood, MAP, MLE
 
 """
     ModeEstimator
@@ -227,7 +227,9 @@ function StatsBase.informationmatrix(
     if linked
         new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
         new_f = OptimLogDensity(
-            old_ldf.model, old_ldf.getlogdensity, new_vi; adtype=old_ldf.adtype
+            DynamicPPL.LogDensityFunction(
+                old_ldf.model, old_ldf.getlogdensity, new_vi; adtype=old_ldf.adtype
+            ),
         )
         m = Accessors.@set m.f = new_f
     end
@@ -242,7 +244,12 @@ function StatsBase.informationmatrix(
         invlinked_ldf = m.f.ldf
         new_vi = DynamicPPL.link!!(invlinked_ldf.varinfo, invlinked_ldf.model)
         new_f = OptimLogDensity(
-            invlinked_ldf.model, old_ldf.getlogdensity, new_vi; adtype=invlinked_ldf.adtype
+            DynamicPPL.LogDensityFunction(
+                invlinked_ldf.model,
+                old_ldf.getlogdensity,
+                new_vi;
+                adtype=invlinked_ldf.adtype,
+            ),
         )
         m = Accessors.@set m.f = new_f
     end
