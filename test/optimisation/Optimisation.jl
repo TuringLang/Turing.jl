@@ -101,6 +101,13 @@ using Turing
                 @test result.optim_result.retcode == Optimization.ReturnCode.Success
             end
             @test isapprox(result.lp, true_logp, atol=0.01)
+            # check that the parameter dict matches the NamedArray
+            # NOTE: This test only works for models where all parameters are identity
+            # varnames AND real-valued. Thankfully, this is true for `gdemo`.
+            @test length(only(result.values.dicts)) == length(result.params)
+            for (k, index) in only(result.values.dicts)
+                @test result.params[AbstractPPL.VarName{k}()] == result.values.array[index]
+            end
         end
 
         @testset "MLE" begin
