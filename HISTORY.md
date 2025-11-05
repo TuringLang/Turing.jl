@@ -1,5 +1,23 @@
 # 0.42.0
 
+## External sampler interface
+
+The interface for defining an external sampler has been reworked.
+In general, implementations of external samplers should now no longer need to depend on Turing.
+This is because the interface functions required have been shifted upstream to AbstractMCMC.jl.
+
+In particular, you now only need to define the following functions:
+
+  - AbstractMCMC.step(rng::Random.AbstractRNG, model::AbstractMCMC.LogDensityModel, ::MySampler; kwargs...) (and also a method with `state`, and the corresponding `step_warmup` methods if needed)
+  - AbstractMCMC.getparams(::MySamplerState)               -> Vector{<:Real}
+  - AbstractMCMC.getstats(::MySamplerState)                -> NamedTuple
+  - AbstractMCMC.requires_unconstrained_space(::MySampler) -> Bool (default `true`)
+
+This means that you only need to depend on AbstractMCMC.jl.
+As long as the above functions are defined correctly, Turing will be able to use your external sampler.
+
+The `Turing.Inference.isgibbscomponent(::MySampler)` interface function still exists, but in this version the default has been changed to `true`, so you should not need to overload this.
+
 # 0.41.0
 
 ## DynamicPPL 0.38
