@@ -4,6 +4,7 @@ using ..Turing
 using NamedArrays: NamedArrays
 using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
+using DocStringExtensions: TYPEDFIELDS
 using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
 using OptimizationOptimJL: OptimizationOptimJL
@@ -159,6 +160,10 @@ end
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
+
+## Fields
+
+$(TYPEDFIELDS)
 """
 struct ModeResult{
     V<:NamedArrays.NamedArray,
