@@ -192,7 +192,7 @@ function _optimize(
     varnames = map(Symbol ∘ first, vns_vals_iter)
     vals = map(last, vns_vals_iter)
     vmat = NamedArrays.NamedArray(vals, varnames)
-    return Optimisation.ModeResult(vmat, M, -M.minimum, logdensity_optimum)
+    return Optimisation.ModeResult(vmat, M, -M.minimum, logdensity_optimum, vals_dict)
 end
 
 end # module

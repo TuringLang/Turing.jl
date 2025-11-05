@@ -628,7 +628,13 @@ using Turing
         m = saddle_model()
         optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
         vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
-        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        m = Turing.Optimisation.ModeResult(
+            vals,
+            nothing,
+            0.0,
+            optim_ld,
+            Dict{VarName}(@varname(x) => 0.0, @varname(y) => 0.0),
+        )
         ct = coeftable(m)
         @assert isnan(ct.cols[2][1])
         @assert ct.colnms[end] == "Error notes"
