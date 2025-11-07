@@ -20,28 +20,26 @@ using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra
 
 export maximum_a_posteriori, maximum_likelihood
-# The MAP and MLE exports are only needed for the Optim.jl interface.
-export MAP, MLE
 
 """
     ModeEstimator
 
 An abstract type to mark whether mode estimation is to be done with maximum a posteriori
-(MAP) or maximum likelihood estimation (MLE). This is only needed for the Optim.jl interface.
+(MAP) or maximum likelihood estimation (MLE).
 """
 abstract type ModeEstimator end
 
 """
     MLE <: ModeEstimator
 
-Concrete type for maximum likelihood estimation. Only used for the Optim.jl interface.
+Concrete type for maximum likelihood estimation.
 """
 struct MLE <: ModeEstimator end
 
 """
     MAP <: ModeEstimator
 
-Concrete type for maximum a posteriori estimation. Only used for the Optim.jl interface.
+Concrete type for maximum a posteriori estimation.
 """
 struct MAP <: ModeEstimator end
 
@@ -123,32 +121,6 @@ required by Optimization.jl.
 """
 (f::OptimLogDensity)(z::AbstractVector) = -LogDensityProblems.logdensity(f.ldf, z)
 (f::OptimLogDensity)(z, _) = f(z)
-
-# NOTE: The format of this function is dictated by Optim. The first argument sets whether to
-# compute the function value, the second whether to compute the gradient (and stores the
-# gradient). The last one is the actual argument of the objective function.
-function (f::OptimLogDensity)(F, G, z)
-    if G !== nothing
-        # Calculate log joint and its gradient.
-        logp, ∇logp = LogDensityProblems.logdensity_and_gradient(f.ldf, z)
-
-        # Save the negative gradient to the pre-allocated array.
-        copyto!(G, -∇logp)
-
-        # If F is something, the negative log joint is requested as well.
-        # We have already computed it as a by-product above and hence return it directly.
-        if F !== nothing
-            return -logp
-        end
-    end
-
-    # Only negative log joint requested but no gradient.
-    if F !== nothing
-        return -LogDensityProblems.logdensity(f.ldf, z)
-    end
-
-    return nothing
-end
 
 """
     ModeResult{
