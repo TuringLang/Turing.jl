@@ -41,11 +41,9 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
-TuringOptimExt = ["Optim", "AbstractPPL"]
 
 [compat]
 ADTypes = "1.9"
@@ -72,7 +70,6 @@ LinearAlgebra = "1"
 LogDensityProblems = "2"
 MCMCChains = "5, 6, 7"
 NamedArrays = "0.9, 0.10"
-Optim = "1"
 Optimization = "3, 4, 5"
 OptimizationOptimJL = "0.1, 0.2, 0.3, 0.4"
 OrderedCollections = "1"
@@ -86,7 +83,3 @@ StatsAPI = "1.6"
 StatsBase = "0.32, 0.33, 0.34"
 StatsFuns = "0.8, 0.9, 1"
 julia = "1.10.8"
-
-[extras]
-DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
