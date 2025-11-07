@@ -1,7 +1,7 @@
 # 0.41.1
 
-The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` now has an additional field, `params`, which contains an `OrderedDict{VarName}` of the parameters found.
-This makes it easier to use the parameters in downstream code, e.g. when specifying initial parameters for MCMC sampling, or when using functions such as `returned`.
+The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` can now be wrapped in `InitFromParams()`.
+This makes it easier to use the parameters in downstream code, e.g. when specifying initial parameters for MCMC sampling.
 For example:
 
 ```julia
@@ -11,12 +11,10 @@ end
 model = f()
 opt_result = maximum_a_posteriori(model)
 
-sample(model, NUTS(), 1000; initial_params=InitFromParams(opt_result.params))
-returned(model, opt_result.params)
+sample(model, NUTS(), 1000; initial_params=InitFromParams(opt_result))
 ```
 
-Note that Turing's optimisation interface is slated for overhaul in the near future so this is only intended as a stopgap solution in v0.41.
-Breaking changes may or may not be introduced in future releases (but will always be documented fully in the changelog).
+If you need to access the dictionary of parameters, it is stored in `opt_result.params` but note that this field may change in future breaking releases as that Turing's optimisation interface is slated for overhaul in the near future.
 
 # 0.41.0
 
