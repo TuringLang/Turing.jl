@@ -156,7 +156,7 @@ end
         M<:NamedArrays.NamedArray,
         O<:Optim.MultivariateOptimizationResults,
         S<:NamedArrays.NamedArray,
-        P<:AbstractDict{VarName,Any}
+        P<:AbstractDict{<:VarName,<:Any}
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
@@ -169,7 +169,7 @@ struct ModeResult{
     V<:NamedArrays.NamedArray,
     O<:Any,
     M<:OptimLogDensity,
-    P<:AbstractDict{AbstractPPL.VarName,Any},
+    P<:AbstractDict{<:AbstractPPL.VarName,<:Any},
 } <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
