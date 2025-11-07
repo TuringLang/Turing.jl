@@ -633,7 +633,7 @@ using Turing
             nothing,
             0.0,
             optim_ld,
-            Dict{AbstractPPL.VarName}(@varname(x) => 0.0, @varname(y) => 0.0),
+            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
         )
         ct = coeftable(m)
         @assert isnan(ct.cols[2][1])
