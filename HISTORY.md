@@ -1,3 +1,21 @@
+# 0.41.1
+
+The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` can now be wrapped in `InitFromParams()`.
+This makes it easier to use the parameters in downstream code, e.g. when specifying initial parameters for MCMC sampling.
+For example:
+
+```julia
+@model function f()
+    # ...
+end
+model = f()
+opt_result = maximum_a_posteriori(model)
+
+sample(model, NUTS(), 1000; initial_params=InitFromParams(opt_result))
+```
+
+If you need to access the dictionary of parameters, it is stored in `opt_result.params` but note that this field may change in future breaking releases as that Turing's optimisation interface is slated for overhaul in the near future.
+
 # 0.41.0
 
 ## DynamicPPL 0.38

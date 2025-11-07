@@ -101,6 +101,13 @@ using Turing
                 @test result.optim_result.retcode == Optimization.ReturnCode.Success
             end
             @test isapprox(result.lp, true_logp, atol=0.01)
+            # check that the parameter dict matches the NamedArray
+            # NOTE: This test only works for models where all parameters are identity
+            # varnames AND real-valued. Thankfully, this is true for `gdemo`.
+            @test length(only(result.values.dicts)) == length(result.params)
+            for (k, index) in only(result.values.dicts)
+                @test result.params[AbstractPPL.VarName{k}()] == result.values.array[index]
+            end
         end
 
         @testset "MLE" begin
@@ -546,6 +553,26 @@ using Turing
         end
     end
 
+    @testset "using ModeResult to initialise MCMC" begin
+        @model function f(y)
+            μ ~ Normal(0, 1)
+            σ ~ Gamma(2, 1)
+            return y ~ Normal(μ, σ)
+        end
+        model = f(randn(10))
+        mle = maximum_likelihood(model)
+        # TODO(penelopeysm): This relies on the fact that HMC does indeed
+        # use the initial_params passed to it. We should use something
+        # like a StaticSampler (see test/mcmc/Inference) to make this more
+        # robust.
+        chain = sample(
+            model, HMC(0.1, 10), 2; initial_params=InitFromParams(mle), num_warmup=0
+        )
+        # Check that those parameters were indeed used as initial params
+        @test chain[:µ][1] == mle.params[@varname(µ)]
+        @test chain[:σ][1] == mle.params[@varname(σ)]
+    end
+
     # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910
     @testset "Optimization with different linked dimensionality" begin
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
@@ -621,7 +648,13 @@ using Turing
         m = saddle_model()
         optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
         vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
-        m = Turing.Optimisation.ModeResult(vals, nothing, 0.0, optim_ld)
+        m = Turing.Optimisation.ModeResult(
+            vals,
+            nothing,
+            0.0,
+            optim_ld,
+            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
+        )
         ct = coeftable(m)
         @assert isnan(ct.cols[2][1])
         @assert ct.colnms[end] == "Error notes"
