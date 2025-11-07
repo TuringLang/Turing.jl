@@ -553,6 +553,26 @@ using Turing
         end
     end
 
+    @testset "using ModeResult to initialise MCMC" begin
+        @model function f(y)
+            μ ~ Normal(0, 1)
+            σ ~ Gamma(2, 1)
+            return y ~ Normal(μ, σ)
+        end
+        model = f(randn(10))
+        mle = maximum_likelihood(model)
+        # TODO(penelopeysm): This relies on the fact that HMC does indeed
+        # use the initial_params passed to it. We should use something
+        # like a StaticSampler (see test/mcmc/Inference) to make this more
+        # robust.
+        chain = sample(
+            model, HMC(0.1, 10), 2; initial_params=InitFromParams(mle), num_warmup=0
+        )
+        # Check that those parameters were indeed used as initial params
+        @test chain[:µ][1] == mle.params[@varname(µ)]
+        @test chain[:σ][1] == mle.params[@varname(σ)]
+    end
+
     # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910
     @testset "Optimization with different linked dimensionality" begin
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))

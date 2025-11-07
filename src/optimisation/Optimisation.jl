@@ -194,6 +194,15 @@ function Base.show(io::IO, m::ModeResult)
     return show(io, m.values.array)
 end
 
+"""
+    InitFromParams(m::ModeResult)
+
+Initialize a model from the parameters stored in a `ModeResult`.
+"""
+function DynamicPPL.InitFromParams(m::ModeResult)
+    return DynamicPPL.InitFromParams(m.params)
+end
+
 # Various StatsBase methods for ModeResult
 
 """
