@@ -660,7 +660,9 @@ using Turing
             return nothing
         end
         m = saddle_model()
-        optim_ld = Turing.Optimisation.OptimLogDensity(m, DynamicPPL.getloglikelihood)
+        optim_ld = Turing.Optimisation.OptimLogDensity(
+            DynamicPPL.LogDensityFunction(m, DynamicPPL.getloglikelihood)
+        )
         vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
         m = Turing.Optimisation.ModeResult(
             vals,
