@@ -159,14 +159,14 @@ end
     # It is modified by the capture_targets_and_algs function.
     targets_and_algs = Any[]
 
-    function capture_targets_and_algs(sampler, context)
-        if DynamicPPL.NodeTrait(context) == DynamicPPL.IsLeaf()
-            return nothing
-        end
+    function capture_targets_and_algs(sampler, context::DynamicPPL.AbstractParentContext)
         if context isa Inference.GibbsContext
             push!(targets_and_algs, (context.target_varnames, sampler))
         end
         return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
+    end
+    function capture_targets_and_algs(sampler, ::DynamicPPL.AbstractContext)
+        return nothing  # Leaf context.
     end
 
     # The methods that capture testing information for us.
