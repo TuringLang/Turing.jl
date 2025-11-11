@@ -7,7 +7,6 @@
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
-DynamicPPL.NodeTrait(::ParticleMCMCContext) = DynamicPPL.IsLeaf()
 
 struct TracedModel{V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
     model::M

@@ -17,10 +17,9 @@ isgibbscomponent(::SGLD) = false
 isgibbscomponent(::SGHMC) = false
 isgibbscomponent(::SMC) = false
 
-function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
-    return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
-end
-can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
+can_be_wrapped(::DynamicPPL.AbstractContext) = true
+can_be_wrapped(::DynamicPPL.AbstractParentContext) = false
+can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(DynamicPPL.childcontext(ctx))
 
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
@@ -51,7 +50,7 @@ $(FIELDS)
 """
 struct GibbsContext{
     VNs<:Tuple{Vararg{VarName}},GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
-} <: DynamicPPL.AbstractContext
+} <: DynamicPPL.AbstractParentContext
     """
     the VarNames being sampled
     """
@@ -82,7 +81,6 @@ function GibbsContext(target_varnames, global_varinfo)
     return GibbsContext(target_varnames, global_varinfo, DynamicPPL.DefaultContext())
 end
 
-DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
 function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
     return GibbsContext(

@@ -196,7 +196,7 @@ function Turing.Inference.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
+    ldf = DynamicPPL.Experimental.FastLDF(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
@@ -278,7 +278,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ldf = DynamicPPL.LogDensityFunction(
+    ldf = DynamicPPL.Experimental.FastLDF(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)

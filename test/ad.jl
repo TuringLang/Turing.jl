@@ -94,7 +94,7 @@ encountered.
 
 """
 struct ADTypeCheckContext{ADType,ChildContext<:DynamicPPL.AbstractContext} <:
-       DynamicPPL.AbstractContext
+       DynamicPPL.AbstractParentContext
     child::ChildContext
 
     function ADTypeCheckContext(adbackend, child)
@@ -108,7 +108,6 @@ end
 
 adtype(_::ADTypeCheckContext{ADType}) where {ADType} = ADType
 
-DynamicPPL.NodeTrait(::ADTypeCheckContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(c::ADTypeCheckContext) = c.child
 function DynamicPPL.setchildcontext(c::ADTypeCheckContext, child)
     return ADTypeCheckContext(adtype(c), child)
