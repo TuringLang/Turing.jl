@@ -22,15 +22,22 @@ You can define models using the `@model` macro, and then perform Markov chain Mo
 ```julia
 julia> using Turing
 
-julia> @model function my_first_model(data)
-           mean ~ Normal(0, 1)
-           sd ~ truncated(Cauchy(0, 3); lower=0)
-           data ~ Normal(mean, sd)
+julia> @model function linear_regression(x)
+           # Priors
+           α ~ Normal(0, 1)
+           β ~ Normal(0, 1)
+           σ² ~ truncated(Cauchy(0, 3); lower=0)
+
+           # Likelihood
+           μ = α .+ β .* x
+           y ~ MvNormal(μ, σ² * I)
        end
 
-julia> model = my_first_model(randn())
+julia> x, y = rand(10), rand(10)
 
-julia> chain = sample(model, NUTS(), 1000)
+julia> posterior = linear_regression(x) | (; y = y)
+
+julia> chain = sample(posterior, NUTS(), 1000)
 ```
 
 You can find the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org), which contains general information about Turing.jl's features, as well as a variety of tutorials with examples of Turing.jl models.
