@@ -1,4 +1,9 @@
-<p align="center"><img src="https://turinglang.org/assets/logo/turing-logo-light.svg" alt="Turing.jl logo" width="300" /></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://turinglang.org/assets/logo/turing-logo-dark.svg">
+    <img src="https://turinglang.org/assets/logo/turing-logo-light.svg" alt="Turing.jl logo" width="300">
+  </picture>
+</p>
 <p align="center"><i>Bayesian inference with probabilistic programming</i></p>
 <p align="center">
 <a href="https://turinglang.org/"><img src="https://img.shields.io/badge/docs-tutorials-blue.svg" alt="Tutorials" /></a>
