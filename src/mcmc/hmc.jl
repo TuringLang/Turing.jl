@@ -12,6 +12,7 @@ struct HMCState{
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
+    L<:DynamicPPL.Experimental.FastLDF,
 }
     vi::TV
     i::Int
@@ -19,6 +20,7 @@ struct HMCState{
     hamiltonian::THam
     z::PhType
     adaptor::TAdapt
+    ldf::L
 end
 
 ###
@@ -196,7 +198,7 @@ function Turing.Inference.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
+    ldf = DynamicPPL.Experimental.FastLDF(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
@@ -225,8 +227,8 @@ function Turing.Inference.initialstep(
     kernel = make_ahmc_kernel(spl, ϵ)
     adaptor = AHMCAdaptor(spl, hamiltonian.metric; ϵ=ϵ)
 
-    transition = Transition(model, vi, NamedTuple())
-    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
+    transition = DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
+    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
 end
@@ -270,15 +272,15 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = Transition(model, vi, t)
-    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
+    transition = DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
+    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
 
     return transition, newstate
 end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ldf = DynamicPPL.LogDensityFunction(
+    ldf = DynamicPPL.Experimental.FastLDF(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)

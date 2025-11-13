@@ -410,7 +410,6 @@ end
 struct MHContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
-DynamicPPL.NodeTrait(::MHContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume!!(
     context::MHContext, right::Distribution, vn::VarName, vi::AbstractVarInfo

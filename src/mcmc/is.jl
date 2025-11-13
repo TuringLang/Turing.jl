@@ -49,7 +49,6 @@ end
 struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
-DynamicPPL.NodeTrait(::ISContext) = DynamicPPL.IsLeaf()
 
 function DynamicPPL.tilde_assume!!(
     ctx::ISContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo

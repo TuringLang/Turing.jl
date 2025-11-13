@@ -64,7 +64,7 @@ Distributions = "0.25.77"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.38"
+DynamicPPL = "0.39"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3, 1"
 Libtask = "0.9.3"
@@ -90,3 +90,6 @@ julia = "1.10.8"
 [extras]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+
+[sources]
+DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/ldf"}
