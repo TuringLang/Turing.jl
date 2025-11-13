@@ -22,12 +22,9 @@ using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
-function check_transition_varnames(transition::Turing.Inference.Transition, parent_varnames)
-    transition_varnames = mapreduce(vcat, transition.θ) do vn_and_val
-        [first(vn_and_val)]
-    end
+function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
     # Varnames in `transition` should be subsumed by those in `parent_varnames`.
-    for vn in transition_varnames
+    for vn in keys(transition.params)
         @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
     end
 end
@@ -306,7 +303,7 @@ end
     )
         spl.non_warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
-        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
+        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
     end
 
     function AbstractMCMC.step_warmup(
@@ -314,7 +311,7 @@ end
     )
         spl.warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
-        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
+        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
     end
 
     function AbstractMCMC.step(
@@ -325,7 +322,7 @@ end
         kwargs...,
     )
         spl.non_warmup_count += 1
-        return Turing.Inference.Transition(model, s.vi, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model, nothing), s
     end
 
     function AbstractMCMC.step_warmup(
@@ -336,7 +333,7 @@ end
         kwargs...,
     )
         spl.warmup_count += 1
-        return Turing.Inference.Transition(model, s.vi, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model, nothing), s
     end
 
     @model f() = x ~ Normal()
@@ -481,12 +478,13 @@ end
             ::Type{MCMCChains.Chains};
             kwargs...,
         )
-            samples isa Vector{<:Inference.Transition} || error("incorrect transitions")
+            samples isa Vector{<:DynamicPPL.ParamsWithStats} ||
+                error("incorrect transitions")
             return nothing
         end
 
         function callback(rng, model, sampler, sample, state, i; kwargs...)
-            sample isa Inference.Transition || error("incorrect sample")
+            sample isa DynamicPPL.ParamsWithStats || error("incorrect sample")
             return nothing
         end
 

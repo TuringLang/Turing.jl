@@ -12,7 +12,7 @@ struct HMCState{
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
-    L<:DynamicPPL.Experimental.FastLDF,
+    L<:DynamicPPL.LogDensityFunction,
 }
     vi::TV
     i::Int
@@ -198,7 +198,7 @@ function Turing.Inference.initialstep(
     # Create a Hamiltonian.
     metricT = getmetricT(spl)
     metric = metricT(length(theta))
-    ldf = DynamicPPL.Experimental.FastLDF(
+    ldf = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
@@ -280,7 +280,7 @@ end
 
 function get_hamiltonian(model, spl, vi, state, n)
     metric = gen_metric(n, spl, state)
-    ldf = DynamicPPL.Experimental.FastLDF(
+    ldf = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)

@@ -127,8 +127,6 @@ struct TuringState{S,V1,M,V}
     # Note that this varinfo must have the correct parameters set; but logp
     # does not matter as it will be re-evaluated
     varinfo::V1
-    # Note that in general the VarInfo inside this LogDensityFunction will have
-    # junk parameters and logp. It only exists to provide structure
     ldf::DynamicPPL.LogDensityFunction{M,V}
 end
 
@@ -190,7 +188,7 @@ function AbstractMCMC.step(
     new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
+        DynamicPPL.ParamsWithStats(new_vi, f.model, new_stats),
         TuringState(state_inner, new_vi, f),
     )
 end
@@ -214,7 +212,7 @@ function AbstractMCMC.step(
     new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
+        DynamicPPL.ParamsWithStats(new_vi, f.model, new_stats),
         TuringState(state_inner, new_vi, f),
     )
 end

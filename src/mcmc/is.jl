@@ -29,7 +29,7 @@ struct IS <: AbstractSampler end
 function Turing.Inference.initialstep(
     rng::AbstractRNG, model::Model, spl::IS, vi::AbstractVarInfo; kwargs...
 )
-    return Transition(model, vi, nothing), nothing
+    return DynamicPPL.ParamsWithStats(vi, model), nothing
 end
 
 function AbstractMCMC.step(
@@ -38,12 +38,7 @@ function AbstractMCMC.step(
     model = DynamicPPL.setleafcontext(model, ISContext(rng))
     _, vi = DynamicPPL.evaluate!!(model, DynamicPPL.VarInfo())
     vi = DynamicPPL.typed_varinfo(vi)
-    return Transition(model, vi, nothing), nothing
-end
-
-# Calculate evidence.
-function getlogevidence(samples::Vector{<:Transition}, ::IS, state)
-    return logsumexp(map(x -> x.loglikelihood, samples)) - log(length(samples))
+    return DynamicPPL.ParamsWithStats(vi, model), nothing
 end
 
 struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext

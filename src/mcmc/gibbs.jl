@@ -329,7 +329,7 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -353,7 +353,7 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 """
@@ -433,7 +433,7 @@ function AbstractMCMC.step(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -452,7 +452,7 @@ function AbstractMCMC.step_warmup(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 """

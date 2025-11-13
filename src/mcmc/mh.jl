@@ -393,7 +393,8 @@ function Turing.Inference.initialstep(
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.proposals, model)
 
-    return Transition(model, vi, nothing), MHState(vi, DynamicPPL.getlogjoint_internal(vi))
+    return DynamicPPL.ParamsWithStats(vi, model),
+    MHState(vi, DynamicPPL.getlogjoint_internal(vi))
 end
 
 function AbstractMCMC.step(
@@ -404,7 +405,7 @@ function AbstractMCMC.step(
     # 2. A bunch of NamedTuples that specify the proposal space
     new_state = propose!!(rng, state, model, spl, spl.proposals)
 
-    return Transition(model, new_state.varinfo, nothing), new_state
+    return DynamicPPL.ParamsWithStats(new_state.varinfo, model), new_state
 end
 
 struct MHContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext

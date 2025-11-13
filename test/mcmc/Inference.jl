@@ -71,12 +71,12 @@ using Turing
     @testset "save/resume correctly reloads state" begin
         struct StaticSampler <: AbstractMCMC.AbstractSampler end
         function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
-            return Turing.Inference.Transition(model, vi, nothing), vi
+            return DynamicPPL.ParamsWithStats(vi, model), vi
         end
         function AbstractMCMC.step(
             rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
         )
-            return Turing.Inference.Transition(model, vi, nothing), vi
+            return DynamicPPL.ParamsWithStats(vi, model), vi
         end
 
         @model demo() = x ~ Normal()
@@ -188,10 +188,9 @@ using Turing
         end
 
         @testset "accumulators are set correctly" begin
-            # Prior() uses `reevaluate=false` when constructing a
-            # `Turing.Inference.Transition`, so we had better make sure that it
-            # does capture colon-eq statements, as we can't rely on the default
-            # `Transition` constructor to do this for us.
+            # Prior() does not reevaluate the model when constructing a
+            # `DynamicPPL.ParamsWithStats`, so we had better make sure that it does capture
+            # colon-eq statements, and that the logp components are correctly calculated.
             @model function coloneq()
                 x ~ Normal()
                 10.0 ~ Normal(x)
