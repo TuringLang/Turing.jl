@@ -17,6 +17,6 @@ function AbstractMCMC.step(
         DynamicPPL.LogPriorAccumulator(),
         DynamicPPL.LogLikelihoodAccumulator(),
     ))
-    _, vi = DynamicPPL.fast_evaluate!!(rng, model, InitFromPrior(), accs)
+    _, vi = DynamicPPL.fast_evaluate!!(rng, model, DynamicPPL.InitFromPrior(), accs)
     return DynamicPPL.ParamsWithStats(vi), nothing
 end

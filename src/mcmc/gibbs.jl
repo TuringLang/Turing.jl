@@ -488,18 +488,12 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::ExternalSampler,
-    state::TuringState,
-    params::AbstractVarInfo,
+    ::DynamicPPL.Model, ::ExternalSampler, state::TuringState, params::AbstractVarInfo
 )
-    logdensity = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.adtype
-    )
     new_inner_state = AbstractMCMC.setparams!!(
-        AbstractMCMC.LogDensityModel(logdensity), state.state, params[:]
+        AbstractMCMC.LogDensityModel(state.ldf), state.state, params[:]
     )
-    return TuringState(new_inner_state, params, logdensity)
+    return TuringState(new_inner_state, params, state.ldf)
 end
 
 function setparams_varinfo!!(
@@ -513,11 +507,11 @@ function setparams_varinfo!!(
     z = state.z
     resize!(z.θ, length(θ_new))
     z.θ .= θ_new
-    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor)
+    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor, state.ldf)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::PG, state::PGState, params::AbstractVarInfo
+    ::DynamicPPL.Model, ::PG, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
 end

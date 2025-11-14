@@ -31,7 +31,7 @@ function Turing.Inference.initialstep(
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    return Transition(model, vi, nothing), vi
+    return DynamicPPL.ParamsWithStats(vi, model), vi
 end
 
 function AbstractMCMC.step(
@@ -56,7 +56,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.unflatten(vi, sample)
     vi = DynamicPPL.setloglikelihood!!(vi, state.loglikelihood)
 
-    return Transition(model, vi, nothing), vi
+    return DynamicPPL.ParamsWithStats(vi, model), vi
 end
 
 # Prior distribution of considered random variable
