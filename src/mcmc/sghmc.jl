@@ -45,9 +45,9 @@ function SGHMC(;
     return SGHMC(_learning_rate, _momentum_decay, adtype)
 end
 
-struct SGHMCState{L,V<:AbstractVarInfo,T<:AbstractVector{<:Real}}
+struct SGHMCState{L,V<:AbstractVector{<:Real},T<:AbstractVector{<:Real}}
     logdensity::L
-    vi::V
+    params::V
     velocity::T
 end
 
@@ -60,11 +60,12 @@ function Turing.Inference.initialstep(
     end
 
     # Compute initial sample and state.
-    sample = Transition(model, vi, nothing)
     ℓ = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
-    state = SGHMCState(ℓ, vi, zero(vi[:]))
+    initial_params = vi[:]
+    sample = DynamicPPL.ParamsWithStats(initial_params, ℓ)
+    state = SGHMCState(ℓ, initial_params, zero(vi[:]))
 
     return sample, state
 end
@@ -74,8 +75,7 @@ function AbstractMCMC.step(
 )
     # Compute gradient of log density.
     ℓ = state.logdensity
-    vi = state.vi
-    θ = vi[:]
+    θ = state.params
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
 
     # Update latent variables and velocity according to
@@ -86,12 +86,9 @@ function AbstractMCMC.step(
     α = spl.momentum_decay
     newv = (1 - α) .* v .+ η .* grad .+ sqrt(2 * η * α) .* randn(rng, eltype(v), length(v))
 
-    # Save new variables.
-    vi = DynamicPPL.unflatten(vi, θ)
-
     # Compute next sample and state.
-    sample = Transition(model, vi, nothing)
-    newstate = SGHMCState(ℓ, vi, newv)
+    sample = DynamicPPL.ParamsWithStats(θ, ℓ)
+    newstate = SGHMCState(ℓ, θ, newv)
 
     return sample, newstate
 end
@@ -176,9 +173,9 @@ function SGLD(;
     return SGLD(stepsize, adtype)
 end
 
-struct SGLDState{L,V<:AbstractVarInfo}
+struct SGLDState{L,V<:AbstractVector{<:Real}}
     logdensity::L
-    vi::V
+    params::V
     step::Int
 end
 
@@ -191,11 +188,13 @@ function Turing.Inference.initialstep(
     end
 
     # Create first sample and state.
-    transition = Transition(model, vi, (; SGLD_stepsize=zero(spl.stepsize(0))))
     ℓ = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
-    state = SGLDState(ℓ, vi, 1)
+    initial_params = vi[:]
+    stats = (; SGLD_stepsize=zero(spl.stepsize(0)))
+    transition = DynamicPPL.ParamsWithStats(initial_params, ℓ, stats)
+    state = SGLDState(ℓ, initial_params, 1)
 
     return transition, state
 end
@@ -205,19 +204,16 @@ function AbstractMCMC.step(
 )
     # Perform gradient step.
     ℓ = state.logdensity
-    vi = state.vi
-    θ = vi[:]
+    θ = state.params
     grad = last(LogDensityProblems.logdensity_and_gradient(ℓ, θ))
     step = state.step
     stepsize = spl.stepsize(step)
     θ .+= (stepsize / 2) .* grad .+ sqrt(stepsize) .* randn(rng, eltype(θ), length(θ))
 
-    # Save new variables.
-    vi = DynamicPPL.unflatten(vi, θ)
-
     # Compute next sample and state.
-    transition = Transition(model, vi, (; SGLD_stepsize=stepsize))
-    newstate = SGLDState(ℓ, vi, state.step + 1)
+    stats = (; SGLD_stepsize=stepsize)
+    transition = DynamicPPL.ParamsWithStats(θ, ℓ, stats)
+    newstate = SGLDState(ℓ, θ, state.step + 1)
 
     return transition, newstate
 end

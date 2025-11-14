@@ -122,14 +122,12 @@ function externalsampler(
 end
 
 # TODO(penelopeysm): Can't we clean this up somehow?
-struct TuringState{S,V1,M,V}
+struct TuringState{S,V,L<:DynamicPPL.LogDensityFunction}
     state::S
-    # Note that this varinfo must have the correct parameters set; but logp
-    # does not matter as it will be re-evaluated
-    varinfo::V1
-    # Note that in general the VarInfo inside this LogDensityFunction will have
-    # junk parameters and logp. It only exists to provide structure
-    ldf::DynamicPPL.LogDensityFunction{M,V}
+    # Note that this varinfo is used only for structure. Its parameters and other info do
+    # not need to be accurate
+    varinfo::V
+    ldf::L
 end
 
 # get_varinfo should return something from which the correct parameters can be
@@ -187,11 +185,10 @@ function AbstractMCMC.step(
     end
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
-        TuringState(state_inner, new_vi, f),
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
+        TuringState(state_inner, varinfo, f),
     )
 end
 
@@ -211,10 +208,9 @@ function AbstractMCMC.step(
     )
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
-        TuringState(state_inner, new_vi, f),
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
+        TuringState(state_inner, state.varinfo, f),
     )
 end
