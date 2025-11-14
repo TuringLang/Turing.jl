@@ -86,11 +86,13 @@ function AbstractMCMC.step(
     densitymodel = AMH.DensityModel(Base.Fix1(LogDensityProblems.logdensity, state.ldf))
 
     # Compute the next states.
-    t, states = AbstractMCMC.step(rng, densitymodel, spl.ensemble, state.states)
+    _, states = AbstractMCMC.step(rng, densitymodel, spl.ensemble, state.states)
 
     # Compute the next transition and state.
     transition = map(states) do _state
-        return DynamicPPL.ParamsWithStats(_state.params, state.ldf, t)
+        return DynamicPPL.ParamsWithStats(
+            _state.params, state.ldf, AbstractMCMC.getstats(_state)
+        )
     end
     newstate = EmceeState(state.ldf, states)
 

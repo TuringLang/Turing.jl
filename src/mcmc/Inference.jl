@@ -6,7 +6,6 @@ using DynamicPPL:
     Metadata,
     VarInfo,
     LogDensityFunction,
-    SimpleVarInfo,
     AbstractVarInfo,
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
     # implemented for NTVarInfo. It is used by mh.jl. Either refactor mh.jl to not use it
@@ -91,9 +90,6 @@ include("external_sampler.jl")
 function DynamicPPL.unflatten(vi::DynamicPPL.NTVarInfo, θ::NamedTuple)
     set_namedtuple!(deepcopy(vi), θ)
     return vi
-end
-function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
-    return SimpleVarInfo(θ, vi.logp, vi.transformation)
 end
 
 """

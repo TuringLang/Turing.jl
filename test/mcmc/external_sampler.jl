@@ -187,8 +187,8 @@ function test_initial_params(model, sampler; kwargs...)
     transition2, _ = AbstractMCMC.step(
         rng2, model, sampler; initial_params=init_strategy, kwargs...
     )
-    vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
-    vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
+    vn_to_val1 = transition1.params
+    vn_to_val2 = transition2.params
     for vn in union(keys(vn_to_val1), keys(vn_to_val2))
         @test vn_to_val1[vn] ≈ vn_to_val2[vn]
     end

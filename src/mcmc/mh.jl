@@ -179,6 +179,54 @@ get_varinfo(s::MHState) = s.varinfo
 #####################
 
 """
+    OldLogDensityFunction
+
+This is a clone of pre-0.39 DynamicPPL.LogDensityFunction. It is needed for MH because MH
+doesn't actually obey the LogDensityProblems.jl interface: it evaluates
+'LogDensityFunctions' with a NamedTuple(!!)
+
+This means that we can't _really_ use DynamicPPL's LogDensityFunction, since that only
+promises to obey the interface of being called with a vector.
+
+In particular, because `set_namedtuple!` acts on a VarInfo, we need to store the VarInfo
+inside this struct (which DynamicPPL's LogDensityFunction no longer does).
+
+This SHOULD really be refactored to remove this requirement.
+"""
+struct OldLogDensityFunction{M<:DynamicPPL.Model,V<:DynamicPPL.AbstractVarInfo}
+    model::M
+    varinfo::V
+end
+function (f::OldLogDensityFunction)(x::AbstractVector)
+    vi = DynamicPPL.unflatten(f.varinfo, x)
+    _, vi = DynamicPPL.evaluate!!(f.model, vi)
+    return DynamicPPL.getlogjoint_internal(vi)
+end
+# NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
+# interface in that it gets evaluated with a NamedTuple. Hence we need this
+# method just to deal with MH.
+function (f::OldLogDensityFunction)(x::NamedTuple)
+    vi = deepcopy(f.varinfo)
+    # Note that the NamedTuple `x` does NOT conform to the structure required for
+    # `InitFromParams`. In particular, for models that look like this:
+    #
+    # @model function f()
+    #     v = Vector{Vector{Float64}}
+    #     v[1] ~ MvNormal(zeros(2), I)
+    # end
+    #
+    # `InitFromParams` will expect Dict(@varname(v[1]) => [x1, x2]), but `x` will have the
+    # format `(v = [x1, x2])`. Hence we still need this `set_namedtuple!` function.
+    #
+    # In general `init!!(f.model, vi, InitFromParams(x))` will work iff the model only
+    # contains 'basic' varnames.
+    set_namedtuple!(vi, x)
+    # Update log probability.
+    _, vi_new = DynamicPPL.evaluate!!(f.model, vi)
+    return DynamicPPL.getlogjoint_internal(vi_new)
+end
+
+"""
     set_namedtuple!(vi::VarInfo, nt::NamedTuple)
 
 Places the values of a `NamedTuple` into the relevant places of a `VarInfo`.
@@ -200,31 +248,6 @@ function set_namedtuple!(vi::DynamicPPL.VarInfoOrThreadSafeVarInfo, nt::NamedTup
             end
         end
     end
-end
-
-# NOTE(penelopeysm): MH does not conform to the usual LogDensityProblems
-# interface in that it gets evaluated with a NamedTuple. Hence we need this
-# method just to deal with MH.
-function LogDensityProblems.logdensity(f::LogDensityFunction, x::NamedTuple)
-    vi = deepcopy(f.varinfo)
-    # Note that the NamedTuple `x` does NOT conform to the structure required for
-    # `InitFromParams`. In particular, for models that look like this:
-    #
-    # @model function f()
-    #     v = Vector{Vector{Float64}}
-    #     v[1] ~ MvNormal(zeros(2), I)
-    # end
-    #
-    # `InitFromParams` will expect Dict(@varname(v[1]) => [x1, x2]), but `x` will have the
-    # format `(v = [x1, x2])`. Hence we still need this `set_namedtuple!` function.
-    #
-    # In general `init!!(f.model, vi, InitFromParams(x))` will work iff the model only
-    # contains 'basic' varnames.
-    set_namedtuple!(vi, x)
-    # Update log probability.
-    _, vi_new = DynamicPPL.evaluate!!(f.model, vi)
-    lj = f.getlogdensity(vi_new)
-    return lj
 end
 
 # unpack a vector if possible
@@ -335,12 +358,7 @@ function propose!!(rng::AbstractRNG, prev_state::MHState, model::Model, spl::MH,
 
     # Make a new transition.
     model = DynamicPPL.setleafcontext(model, MHContext(rng))
-    densitymodel = AMH.DensityModel(
-        Base.Fix1(
-            LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
-        ),
-    )
+    densitymodel = AMH.DensityModel(OldLogDensityFunction(model, vi))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
     # trans.params isa NamedTuple
     set_namedtuple!(vi, trans.params)
@@ -370,12 +388,7 @@ function propose!!(
 
     # Make a new transition.
     model = DynamicPPL.setleafcontext(model, MHContext(rng))
-    densitymodel = AMH.DensityModel(
-        Base.Fix1(
-            LogDensityProblems.logdensity,
-            DynamicPPL.LogDensityFunction(model, DynamicPPL.getlogjoint_internal, vi),
-        ),
-    )
+    densitymodel = AMH.DensityModel(OldLogDensityFunction(model, vi))
     trans, _ = AbstractMCMC.step(rng, densitymodel, mh_sampler, prev_trans)
     # trans.params isa AbstractVector
     vi = DynamicPPL.unflatten(vi, trans.params)

@@ -174,19 +174,6 @@ using Turing
             @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
-        @testset "Vector chain_type" begin
-            chains = sample(
-                StableRNG(seed), gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple}
-            )
-            @test chains isa Vector{<:NamedTuple}
-            @test length(chains) == N
-            @test all(haskey(x, :lp) for x in chains)
-            @test all(haskey(x, :logprior) for x in chains)
-            @test all(haskey(x, :loglikelihood) for x in chains)
-            @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.11
-            @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
-        end
-
         @testset "accumulators are set correctly" begin
             # Prior() does not reevaluate the model when constructing a
             # `DynamicPPL.ParamsWithStats`, so we had better make sure that it does capture
@@ -636,32 +623,6 @@ using Turing
         @test_throws ErrorException sample(
             StableRNG(seed), demo_incorrect_missing([missing]), NUTS(), 10; check_model=true
         )
-    end
-
-    @testset "getparams" begin
-        @model function e(x=1.0)
-            return x ~ Normal()
-        end
-        evi = DynamicPPL.VarInfo(e())
-        @test isempty(Turing.Inference.getparams(e(), evi))
-
-        @model function f()
-            return x ~ Normal()
-        end
-        fvi = DynamicPPL.VarInfo(f())
-        fparams = Turing.Inference.getparams(f(), fvi)
-        @test fparams[@varname(x)] == fvi[@varname(x)]
-        @test length(fparams) == 1
-
-        @model function g()
-            x ~ Normal()
-            return y ~ Poisson()
-        end
-        gvi = DynamicPPL.VarInfo(g())
-        gparams = Turing.Inference.getparams(g(), gvi)
-        @test gparams[@varname(x)] == gvi[@varname(x)]
-        @test gparams[@varname(y)] == gvi[@varname(y)]
-        @test length(gparams) == 2
     end
 
     @testset "empty model" begin
