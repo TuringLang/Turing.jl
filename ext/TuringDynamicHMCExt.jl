@@ -44,26 +44,22 @@ struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
     stepsize::S
 end
 
-function DynamicPPL.initialsampler(::DynamicPPL.Sampler{<:DynamicNUTS})
-    return DynamicPPL.SampleFromUniform()
-end
-
-function DynamicPPL.initialstep(
+function Turing.Inference.initialstep(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS},
+    spl::DynamicNUTS,
     vi::DynamicPPL.AbstractVarInfo;
     kwargs...,
 )
     # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.islinked(vi)
+    if !DynamicPPL.is_transformed(vi)
         vi = DynamicPPL.link!!(vi, model)
         vi = last(DynamicPPL.evaluate!!(model, vi))
     end
 
     # Define log-density function.
     ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.alg.adtype
+        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )
 
     # Perform initial step.
@@ -84,14 +80,14 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicPPL.Sampler{<:DynamicNUTS},
+    spl::DynamicNUTS,
     state::DynamicNUTSState;
     kwargs...,
 )
     # Compute next sample.
     vi = state.vi
     ℓ = state.logdensity
-    steps = DynamicHMC.mcmc_steps(rng, spl.alg.sampler, state.metric, ℓ, state.stepsize)
+    steps = DynamicHMC.mcmc_steps(rng, spl.sampler, state.metric, ℓ, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Create next sample and state.

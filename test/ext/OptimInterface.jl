@@ -2,6 +2,7 @@ module OptimInterfaceTests
 
 using ..Models: gdemo_default
 using Distributions.FillArrays: Zeros
+using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Optim: Optim
@@ -124,7 +125,7 @@ using Turing
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
                     @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
                 end
             end
@@ -134,7 +135,7 @@ using Turing
     # Some of the models have one variance parameter per observation, and so
     # the MLE should have the variances set to 0. Since we're working in
     # transformed space, this corresponds to `-Inf`, which is of course not achievable.
-    # In particular, it can result in "early termniation" of the optimization process
+    # In particular, it can result in "early termination" of the optimization process
     # because we hit NaNs, etc. To avoid this, we set the `g_tol` and the `f_tol` to
     # something larger than the default.
     allowed_incorrect_mle = [
@@ -159,7 +160,7 @@ using Turing
             vals = result.values
 
             for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in DynamicPPL.TestUtils.varname_leaves(vn, get(result_true, vn))
+                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
                     if model.f in allowed_incorrect_mle
                         @test isfinite(get(result_true, vn_leaf))
                     else

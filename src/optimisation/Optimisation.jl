@@ -2,7 +2,9 @@ module Optimisation
 
 using ..Turing
 using NamedArrays: NamedArrays
+using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
+using DocStringExtensions: TYPEDFIELDS
 using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
 using OptimizationOptimJL: OptimizationOptimJL
@@ -153,13 +155,22 @@ end
         V<:NamedArrays.NamedArray,
         M<:NamedArrays.NamedArray,
         O<:Optim.MultivariateOptimizationResults,
-        S<:NamedArrays.NamedArray
+        S<:NamedArrays.NamedArray,
+        P<:AbstractDict{<:VarName,<:Any}
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
+
+## Fields
+
+$(TYPEDFIELDS)
 """
-struct ModeResult{V<:NamedArrays.NamedArray,O<:Any,M<:OptimLogDensity} <:
-       StatsBase.StatisticalModel
+struct ModeResult{
+    V<:NamedArrays.NamedArray,
+    O<:Any,
+    M<:OptimLogDensity,
+    P<:AbstractDict{<:AbstractPPL.VarName,<:Any},
+} <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
     "The stored optimiser results."
@@ -168,6 +179,8 @@ struct ModeResult{V<:NamedArrays.NamedArray,O<:Any,M<:OptimLogDensity} <:
     lp::Float64
     "The evaluation function used to calculate the output."
     f::M
+    "Dictionary of parameter values"
+    params::P
 end
 
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
@@ -179,6 +192,15 @@ end
 
 function Base.show(io::IO, m::ModeResult)
     return show(io, m.values.array)
+end
+
+"""
+    InitFromParams(m::ModeResult)
+
+Initialize a model from the parameters stored in a `ModeResult`.
+"""
+function DynamicPPL.InitFromParams(m::ModeResult)
+    return DynamicPPL.InitFromParams(m.params)
 end
 
 # Various StatsBase methods for ModeResult
@@ -273,7 +295,7 @@ function StatsBase.informationmatrix(
     # Convert the values to their unconstrained states to make sure the
     # Hessian is computed with respect to the untransformed parameters.
     old_ldf = m.f.ldf
-    linked = DynamicPPL.istrans(old_ldf.varinfo)
+    linked = DynamicPPL.is_transformed(old_ldf.varinfo)
     if linked
         new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
         new_f = OptimLogDensity(
@@ -320,7 +342,7 @@ function Base.get(m::ModeResult, var_symbols::AbstractVector{Symbol})
     # m.values, but they are more convenient to filter when they are VarNames rather than
     # Symbols.
     vals_dict = Turing.Inference.getparams(log_density.model, log_density.varinfo)
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
+    iters = map(AbstractPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
     vns_and_vals = mapreduce(collect, vcat, iters)
     varnames = collect(map(first, vns_and_vals))
     # For each symbol s in var_symbols, pick all the values from m.values for which the
@@ -351,12 +373,16 @@ function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.Optimizati
     varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
     # `getparams` performs invlinking if needed
     vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
-    iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+    iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
     vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
-    vals = map(last, vns_vals_iter)
+    split_vals = map(last, vns_vals_iter)
     return ModeResult(
-        NamedArrays.NamedArray(vals, syms), solution, -solution.objective, log_density
+        NamedArrays.NamedArray(split_vals, syms),
+        solution,
+        -solution.objective,
+        log_density,
+        vals,
     )
 end
 
@@ -507,10 +533,8 @@ function estimate_mode(
     kwargs...,
 )
     if check_model
-        spl_model = DynamicPPL.contextualize(
-            model, DynamicPPL.SamplingContext(model.context)
-        )
-        DynamicPPL.check_model(spl_model, DynamicPPL.VarInfo(); error_on_failure=true)
+        new_model = DynamicPPL.setleafcontext(model, DynamicPPL.InitContext())
+        DynamicPPL.check_model(new_model, DynamicPPL.VarInfo(); error_on_failure=true)
     end
 
     constraints = ModeEstimationConstraints(lb, ub, cons, lcons, ucons)

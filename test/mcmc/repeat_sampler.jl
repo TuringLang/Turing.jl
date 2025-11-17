@@ -1,8 +1,8 @@
 module RepeatSamplerTests
 
 using ..Models: gdemo_default
-using DynamicPPL: Sampler
-using StableRNGs: StableRNG
+using MCMCChains: MCMCChains
+using Random: Xoshiro
 using Test: @test, @testset
 using Turing
 
@@ -13,10 +13,12 @@ using Turing
     num_samples = 10
     num_chains = 2
 
-    rng = StableRNG(0)
-    for sampler in [MH(), Sampler(HMC(0.01, 4))]
+    # Use Xoshiro instead of StableRNGs as the output should always be
+    # similar regardless of what kind of random seed is used (as long
+    # as there is a random seed).
+    for sampler in [MH(), HMC(0.01, 4)]
         chn1 = sample(
-            copy(rng),
+            Xoshiro(0),
             gdemo_default,
             sampler,
             MCMCThreads(),
@@ -26,9 +28,17 @@ using Turing
         )
         repeat_sampler = RepeatSampler(sampler, num_repeats)
         chn2 = sample(
-            copy(rng), gdemo_default, repeat_sampler, MCMCThreads(), num_samples, num_chains
+            Xoshiro(0),
+            gdemo_default,
+            repeat_sampler,
+            MCMCThreads(),
+            num_samples,
+            num_chains,
         )
-        @test chn1.value == chn2.value
+        # isequal to avoid comparing `missing`s in chain stats
+        @test chn1 isa MCMCChains.Chains
+        @test chn2 isa MCMCChains.Chains
+        @test isequal(chn1.value, chn2.value)
     end
 end
 

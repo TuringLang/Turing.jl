@@ -10,10 +10,8 @@ using Test
 using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff
 
-# Detect if prerelease version, if so, we skip some tests
-const IS_PRERELEASE = !isempty(VERSION.prerelease)
-const INCLUDE_MOONCAKE = !IS_PRERELEASE
-
+# Skip Mooncake on 1.12 as it is not compatible yet
+const INCLUDE_MOONCAKE = VERSION < v"1.12"
 if INCLUDE_MOONCAKE
     import Pkg
     Pkg.add("Mooncake")
@@ -154,31 +152,23 @@ end
 # context, and then call check_adtype on the result before returning the results from the
 # child context.
 
-function DynamicPPL.tilde_assume(context::ADTypeCheckContext, right, vn, vi)
-    value, vi = DynamicPPL.tilde_assume(DynamicPPL.childcontext(context), right, vn, vi)
-    check_adtype(context, vi)
-    return value, vi
-end
-
-function DynamicPPL.tilde_assume(
-    rng::Random.AbstractRNG, context::ADTypeCheckContext, sampler, right, vn, vi
+function DynamicPPL.tilde_assume!!(
+    context::ADTypeCheckContext, right::Distribution, vn::VarName, vi::AbstractVarInfo
 )
-    value, vi = DynamicPPL.tilde_assume(
-        rng, DynamicPPL.childcontext(context), sampler, right, vn, vi
-    )
+    value, vi = DynamicPPL.tilde_assume!!(DynamicPPL.childcontext(context), right, vn, vi)
     check_adtype(context, vi)
     return value, vi
 end
 
-function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, right, left, vi)
-    left, vi = DynamicPPL.tilde_observe!!(DynamicPPL.childcontext(context), right, left, vi)
-    check_adtype(context, vi)
-    return left, vi
-end
-
-function DynamicPPL.tilde_observe!!(context::ADTypeCheckContext, sampler, right, left, vi)
+function DynamicPPL.tilde_observe!!(
+    context::ADTypeCheckContext,
+    right::Distribution,
+    left,
+    vn::Union{VarName,Nothing},
+    vi::AbstractVarInfo,
+)
     left, vi = DynamicPPL.tilde_observe!!(
-        DynamicPPL.childcontext(context), sampler, right, left, vi
+        DynamicPPL.childcontext(context), right, left, vn, vi
     )
     check_adtype(context, vi)
     return left, vi

@@ -13,7 +13,6 @@ using DynamicPPL:
     # or implement it for other VarInfo types and export it from DPPL.
     all_varnames_grouped_by_symbol,
     syms,
-    islinked,
     setindex!!,
     push!!,
     setlogp!!,
@@ -23,12 +22,7 @@ using DynamicPPL:
     getsym,
     getdist,
     Model,
-    Sampler,
-    SampleFromPrior,
-    SampleFromUniform,
-    DefaultContext,
-    set_flag!,
-    unset_flag!
+    DefaultContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
@@ -55,12 +49,9 @@ import Random
 import MCMCChains
 import StatsBase: predict
 
-export InferenceAlgorithm,
-    Hamiltonian,
+export Hamiltonian,
     StaticHamiltonian,
     AdaptiveHamiltonian,
-    SampleFromUniform,
-    SampleFromPrior,
     MH,
     ESS,
     Emcee,
@@ -79,13 +70,16 @@ export InferenceAlgorithm,
     RepeatSampler,
     Prior,
     predict,
-    externalsampler
+    externalsampler,
+    init_strategy,
+    loadstate
 
-###############################################
-# Abstract inferface for inference algorithms #
-###############################################
+#########################################
+# Generic AbstractMCMC methods dispatch #
+#########################################
 
-include("algorithm.jl")
+const DEFAULT_CHAIN_TYPE = MCMCChains.Chains
+include("abstractmcmc.jl")
 
 ####################
 # Sampler wrappers #
@@ -263,13 +257,13 @@ function _params_to_array(model::DynamicPPL.Model, ts::Vector)
     dicts = map(ts) do t
         # In general getparams returns a dict of VarName => values. We need to also
         # split it up into constituent elements using
-        # `DynamicPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
+        # `AbstractPPL.varname_and_value_leaves` because otherwise MCMCChains.jl
         # won't understand it.
         vals = getparams(model, t)
         nms_and_vs = if isempty(vals)
             Tuple{VarName,Any}[]
         else
-            iters = map(DynamicPPL.varname_and_value_leaves, keys(vals), values(vals))
+            iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
             mapreduce(collect, vcat, iters)
         end
         nms = map(first, nms_and_vs)
@@ -316,11 +310,10 @@ end
 getlogevidence(transitions, sampler, state) = missing
 
 # Default MCMCChains.Chains constructor.
-# This is type piracy (at least for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    ts::Vector{<:Transition},
+    model::DynamicPPL.Model,
+    spl::AbstractSampler,
     state,
     chain_type::Type{MCMCChains.Chains};
     save_state=false,
@@ -379,11 +372,10 @@ function AbstractMCMC.bundle_samples(
     return sort_chain ? sort(chain) : chain
 end
 
-# This is type piracy (for SampleFromPrior).
 function AbstractMCMC.bundle_samples(
-    ts::Vector{<:Union{Transition,AbstractVarInfo}},
-    model::AbstractModel,
-    spl::Union{Sampler{<:InferenceAlgorithm},SampleFromPrior,RepeatSampler},
+    ts::Vector{<:Transition},
+    model::DynamicPPL.Model,
+    spl::AbstractSampler,
     state,
     chain_type::Type{Vector{NamedTuple}};
     kwargs...,
@@ -424,7 +416,7 @@ function group_varnames_by_symbol(vns)
     return d
 end
 
-function save(c::MCMCChains.Chains, spl::Sampler, model, vi, samples)
+function save(c::MCMCChains.Chains, spl::AbstractSampler, model, vi, samples)
     nt = NamedTuple{(:sampler, :model, :vi, :samples)}((spl, model, deepcopy(vi), samples))
     return setinfo(c, merge(nt, c.info))
 end
@@ -444,18 +436,12 @@ include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
 
-#################################################
-# Generic AbstractMCMC methods dispatch #
-#################################################
-
-include("abstractmcmc.jl")
-
 ################
 # Typing tools #
 ################
 
 function DynamicPPL.get_matching_type(
-    spl::Sampler{<:Union{PG,SMC}}, vi, ::Type{TV}
+    spl::Union{PG,SMC}, vi, ::Type{TV}
 ) where {T,N,TV<:Array{T,N}}
     return Array{T,N}
 end

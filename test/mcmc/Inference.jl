@@ -4,8 +4,8 @@ using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
 using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
+using AbstractMCMC: AbstractMCMC
 import DynamicPPL
-using DynamicPPL: Sampler
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
@@ -40,7 +40,9 @@ using Turing
                 Random.seed!(5)
                 chain2 = sample(model, sampler, MCMCThreads(), 10, 4)
 
-                @test chain1.value == chain2.value
+                # For HMC, the first step does not have stats, so we need to use isequal to
+                # avoid comparing `missing`s
+                @test isequal(chain1.value, chain2.value)
             end
 
             # Should also be stable with an explicit RNG
@@ -53,7 +55,7 @@ using Turing
                 Random.seed!(rng, local_seed)
                 chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
-                @test chain1.value == chain2.value
+                @test isequal(chain1.value, chain2.value)
             end
         end
 
@@ -63,16 +65,50 @@ using Turing
                 StableRNG(seed), gdemo_default, HMC(0.1, 7), MCMCThreads(), 1_000, 4
             )
             check_gdemo(chain)
-
-            # run sampler: progress logging should be disabled and
-            # it should return a Chains object
-            sampler = Sampler(HMC(0.1, 7))
-            chains = sample(StableRNG(seed), gdemo_default, sampler, MCMCThreads(), 10, 4)
-            @test chains isa MCMCChains.Chains
         end
     end
 
-    @testset "chain save/resume" begin
+    @testset "save/resume correctly reloads state" begin
+        struct StaticSampler <: AbstractMCMC.AbstractSampler end
+        function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
+            return Turing.Inference.Transition(model, vi, nothing), vi
+        end
+        function AbstractMCMC.step(
+            rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
+        )
+            return Turing.Inference.Transition(model, vi, nothing), vi
+        end
+
+        @model demo() = x ~ Normal()
+
+        @testset "single-chain" begin
+            chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
+            @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
+            chn2 = sample(demo(), StaticSampler(), 10; initial_state=loadstate(chn1))
+            xval = chn1[:x][1]
+            @test all(chn2[:x] .== xval)
+        end
+
+        @testset "multiple-chain" for nchains in [1, 3]
+            chn1 = sample(
+                demo(), StaticSampler(), MCMCThreads(), 10, nchains; save_state=true
+            )
+            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test length(chn1.info.samplerstate) == nchains
+            chn2 = sample(
+                demo(),
+                StaticSampler(),
+                MCMCThreads(),
+                10,
+                nchains;
+                initial_state=loadstate(chn1),
+            )
+            xval = chn1[:x][1, :]
+            @test all(i -> chn2[:x][i, :] == xval, 1:10)
+        end
+    end
+
+    @testset "single-chain save/resume numerical accuracy" begin
         alg1 = HMCDA(1000, 0.65, 0.15)
         alg2 = PG(20)
         alg3 = Gibbs(:s => PG(30), :m => HMC(0.2, 4))
@@ -80,10 +116,14 @@ using Turing
         chn1 = sample(StableRNG(seed), gdemo_default, alg1, 10_000; save_state=true)
         check_gdemo(chn1)
 
-        chn1_contd = sample(StableRNG(seed), gdemo_default, alg1, 2_000; resume_from=chn1)
+        chn1_contd = sample(
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
+        )
         check_gdemo(chn1_contd)
 
-        chn1_contd2 = sample(StableRNG(seed), gdemo_default, alg1, 2_000; resume_from=chn1)
+        chn1_contd2 = sample(
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
+        )
         check_gdemo(chn1_contd2)
 
         chn2 = sample(
@@ -96,7 +136,9 @@ using Turing
         )
         check_gdemo(chn2)
 
-        chn2_contd = sample(StableRNG(seed), gdemo_default, alg2, 2_000; resume_from=chn2)
+        chn2_contd = sample(
+            StableRNG(seed), gdemo_default, alg2, 2_000; initial_state=loadstate(chn2)
+        )
         check_gdemo(chn2_contd)
 
         chn3 = sample(
@@ -109,7 +151,9 @@ using Turing
         )
         check_gdemo(chn3)
 
-        chn3_contd = sample(StableRNG(seed), gdemo_default, alg3, 5_000; resume_from=chn3)
+        chn3_contd = sample(
+            StableRNG(seed), gdemo_default, alg3, 5_000; initial_state=loadstate(chn3)
+        )
         check_gdemo(chn3_contd)
     end
 
@@ -566,8 +610,8 @@ using Turing
 
     @testset "names_values" begin
         ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
-        @test all(xs[:, 1] .=== [1, missing, 3])
-        @test all(xs[:, 2] .=== [missing, 2, 4])
+        @test isequal(xs[:, 1], [1, missing, 3])
+        @test isequal(xs[:, 2], [missing, 2, 4])
     end
 
     @testset "check model" begin

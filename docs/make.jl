@@ -4,14 +4,15 @@ using Turing
 using DocumenterInterLinks
 
 links = InterLinks(
-    "DynamicPPL" => "https://turinglang.org/DynamicPPL.jl/stable/objects.inv",
-    "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/stable/objects.inv",
-    "LinearAlgebra" => "https://docs.julialang.org/en/v1/objects.inv",
-    "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/objects.inv",
-    "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/objects.inv",
-    "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/stable/objects.inv",
-    "DistributionsAD" => "https://turinglang.org/DistributionsAD.jl/stable/objects.inv",
-    "OrderedCollections" => "https://juliacollections.github.io/OrderedCollections.jl/stable/objects.inv",
+    "DynamicPPL" => "https://turinglang.org/DynamicPPL.jl/stable/",
+    "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/stable/",
+    "LinearAlgebra" => "https://docs.julialang.org/en/v1/",
+    "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/",
+    "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/",
+    "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/stable/",
+    "DistributionsAD" => "https://turinglang.org/DistributionsAD.jl/stable/",
+    "OrderedCollections" => "https://juliacollections.github.io/OrderedCollections.jl/stable/",
+    "Distributions" => "https://juliastats.org/Distributions.jl/stable/",
 )
 
 # Doctest setup
@@ -27,6 +28,7 @@ makedocs(;
             "Inference" => "api/Inference.md",
             "Optimisation" => "api/Optimisation.md",
             "Variational " => "api/Variational.md",
+            "RandomMeasures " => "api/RandomMeasures.md",
         ],
     ],
     checkdocs=:exports,
