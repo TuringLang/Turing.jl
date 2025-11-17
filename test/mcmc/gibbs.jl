@@ -496,7 +496,7 @@ end
 
     @testset "dynamic model with analytical posterior" begin
         # A dynamic model where b ~ Bernoulli determines the dimensionality
-        # When b=0: single parameter θ₁ 
+        # When b=0: single parameter θ₁
         # When b=1: two parameters θ₁, θ₂ where we observe their sum
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
@@ -575,7 +575,7 @@ end
         #       end
         #   end
         #   sample(f(), Gibbs(:a => PG(10), :x => MH()), 1000)
-        # 
+        #
         # because the number of observations in each particle depends on the value
         # of `a`.
         #
@@ -925,20 +925,20 @@ end
         end
 
         # Define analytical conditionals
-        function cond_λ(c::NamedTuple)
+        function cond_λ(c)
             a = 2.0
             b = inv(3)
-            m = c.m
-            x = c.x
+            m = c[@varname(m)]
+            x = c[@varname(x)]
             n = length(x)
             a_new = a + (n + 1) / 2
             b_new = b + sum((x[i] - m)^2 for i in 1:n) / 2 + m^2 / 2
             return Gamma(a_new, 1 / b_new)
         end
 
-        function cond_m(c::NamedTuple)
-            λ = c.λ
-            x = c.x
+        function cond_m(c)
+            λ = c[@varname(λ)]
+            x = c[@varname(x)]
             n = length(x)
             m_mean = sum(x) / (n + 1)
             m_var = 1 / (λ * (n + 1))
@@ -952,7 +952,7 @@ end
             model = inverse_gdemo(x_obs)
 
             # Test that GibbsConditional works
-            sampler = Gibbs(GibbsConditional(:λ, cond_λ), GibbsConditional(:m, cond_m))
+            sampler = Gibbs(:λ => GibbsConditional(cond_λ), :m => GibbsConditional(cond_m))
             chain = sample(model, sampler, 1000)
 
             # Check that we got the expected variables
@@ -971,12 +971,11 @@ end
 
         # Test mixing with other samplers
         @testset "mixed samplers" begin
-            Random.seed!(42)
             x_obs = [1.0, 2.0, 3.0]
             model = inverse_gdemo(x_obs)
 
             # Mix GibbsConditional with standard samplers
-            sampler = Gibbs(GibbsConditional(:λ, cond_λ), :m => MH())
+            sampler = Gibbs(:λ => GibbsConditional(cond_λ), :m => MH())
             chain = sample(model, sampler, 500)
 
             @test :λ in names(chain)
@@ -986,44 +985,41 @@ end
 
         # Test with a simpler model
         @testset "simple normal model" begin
-            @model function simple_normal(x)
+            @model function simple_normal(dim)
                 μ ~ Normal(0, 10)
-                σ ~ truncated(Normal(1, 1); lower=0.01)
-                for i in 1:length(x)
-                    x[i] ~ Normal(μ, σ)
-                end
+                σ2 ~ truncated(Normal(1, 1); lower=0.01)
+                return x ~ MvNormal(fill(μ, dim), I * σ2)
             end
 
             # Conditional for μ given σ and x
-            function cond_μ(c::NamedTuple)
-                σ = c.σ
-                x = c.x
+            function cond_μ(c)
+                σ2 = c[@varname(σ2)]
+                x = c[@varname(x)]
                 n = length(x)
                 # Prior: μ ~ Normal(0, 10)
                 # Likelihood: x[i] ~ Normal(μ, σ)
                 # Posterior: μ ~ Normal(μ_post, σ_post)
                 prior_var = 100.0  # 10^2
-                likelihood_var = σ^2 / n
-                post_var = 1 / (1 / prior_var + n / σ^2)
-                post_mean = post_var * (0 / prior_var + sum(x) / σ^2)
+                post_var = 1 / (1 / prior_var + n / σ2)
+                post_mean = post_var * (0 / prior_var + sum(x) / σ2)
                 return Normal(post_mean, sqrt(post_var))
             end
 
-            Random.seed!(42)
-            x_obs = randn(10) .+ 2.0  # Data centered around 2
-            model = simple_normal(x_obs)
-
-            sampler = Gibbs(GibbsConditional(:μ, cond_μ), :σ => MH())
-
-            chain = sample(model, sampler, 1000)
-
-            μ_samples = vec(chain[:μ])
-            @test abs(mean(μ_samples) - 2.0) < 0.5  # Should be close to true mean
+            rng = StableRNG(23)
+            dim = 10_000
+            true_mean = 2.0
+            x_obs = randn(rng, dim) .+ true_mean
+            model = simple_normal(dim) | (; x=x_obs)
+            sampler = Gibbs(:μ => GibbsConditional(cond_μ), :σ2 => MH())
+            chain = sample(rng, model, sampler, 1_000)
+            # The correct posterior mean isn't true_mean, but it is very close, because we
+            # have a lot of data.
+            @test mean(chain, :μ) ≈ true_mean atol = 0.02
         end
 
         # Test that GibbsConditional is marked as a valid component
         @testset "isgibbscomponent" begin
-            gc = GibbsConditional(:x, c -> Normal(0, 1))
+            gc = GibbsConditional(c -> Normal(0, 1))
             @test Turing.Inference.isgibbscomponent(gc)
         end
     end

@@ -2,16 +2,22 @@ using DynamicPPL: VarName
 using Random: Random
 import AbstractMCMC
 
-# These functions provide specialized methods for GibbsConditional that extend the generic implementations in gibbs.jl
-
 """
-    GibbsConditional(sym::Symbol, conditional)
+    GibbsConditional(conditional)
 
-A Gibbs sampler component that samples a variable according to a user-provided
-analytical conditional distribution.
+A Gibbs component sampler that samples variables according to user-provided
+analytical conditional distributions.
 
-The `conditional` function should take a `NamedTuple` of conditioned variables and return
-a `Distribution` from which to sample the variable `sym`.
+`conditional` should be a function that takes a `Dict{<:VarName}` of conditioned variables
+and their values, and returns one of the following:
+- A single `Distribution`, if only one variable is being sampled.
+- An `AbstractDict{<:VarName,<:Distribution}` that maps the variables being sampled to their
+  `Distribution`s.
+- A `NamedTuple` of `Distribution`s, which is like the `AbstractDict` case but can be used
+  if all the variable names are single `Symbol`s, and may be more performant.
+
+If a Gibbs component is created with `(:var1, :var2) => GibbsConditional(conditional)`, then
+`var1` and `var2` should be in the keys of the return value of `conditional`.
 
 # Examples
 
@@ -26,20 +32,20 @@ a `Distribution` from which to sample the variable `sym`.
 end
 
 # Define analytical conditionals
-function cond_λ(c::NamedTuple)
+function cond_λ(c)
     a = 2.0
     b = inv(3)
-    m = c.m
-    x = c.x
+    m = c[@varname(m)]
+    x = c[@varname(x)]
     n = length(x)
     a_new = a + (n + 1) / 2
     b_new = b + sum((x[i] - m)^2 for i in 1:n) / 2 + m^2 / 2
     return Gamma(a_new, 1 / b_new)
 end
 
-function cond_m(c::NamedTuple)  
-    λ = c.λ
-    x = c.x
+function cond_m(c)
+    λ = c[@varname(λ)]
+    x = c[@varname(x)]
     n = length(x)
     m_mean = sum(x) / (n + 1)
     m_var = 1 / (λ * (n + 1))
@@ -49,88 +55,52 @@ end
 # Sample using GibbsConditional
 model = inverse_gdemo([1.0, 2.0, 3.0])
 chain = sample(model, Gibbs(
-    :λ => GibbsConditional(:λ, cond_λ),
-    :m => GibbsConditional(:m, cond_m)
+    :λ => GibbsConditional(cond_λ),
+    :m => GibbsConditional(cond_m)
 ), 1000)
 ```
 """
-struct GibbsConditional{C} <: InferenceAlgorithm
+struct GibbsConditional{C} <: AbstractSampler
     conditional::C
-
-    function GibbsConditional(sym::Symbol, conditional::C) where {C}
-        return new{C}(conditional)
-    end
 end
 
 # Mark GibbsConditional as a valid Gibbs component
 isgibbscomponent(::GibbsConditional) = true
 
-# Required methods for Gibbs constructor
-Base.length(::GibbsConditional) = 1  # Each GibbsConditional handles one variable
-
 """
-    find_global_varinfo(context, fallback_vi)
+    build_variable_dict(model::DynamicPPL.Model)
 
-Traverse the context stack to find global variable information from
-GibbsContext, ConditionContext, FixedContext, etc.
+Traverse the context stack of `model` and build a `Dict` of all the variable values that are
+set in GibbsContext, ConditionContext, or FixedContext.
 """
-function find_global_varinfo(context, fallback_vi)
-    # Traverse the entire context stack to find relevant contexts
-    current_context = context
-    gibbs_context = nothing
-    condition_context = nothing
-    fixed_context = nothing
+function build_variable_dict(model::DynamicPPL.Model)
+    context = model.context
+    cond_nt = DynamicPPL.conditioned(context)
+    fixed_nt = DynamicPPL.fixed(context)
+    # TODO(mhauru) Can we avoid invlinking all the time?
+    global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
+    # TODO(mhauru) Double-check that the ordered of precedence here is correct. Should we
+    # in fact error if there is any overlap in the keys?
+    return merge(
+        DynamicPPL.values_as(global_vi, Dict),
+        Dict(
+            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(cond_nt))...,
+            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(fixed_nt))...,
+            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(model.args))...,
+        ),
+    )
+end
 
-    # Safety check: avoid infinite loops with a maximum depth
-    max_depth = 20
-    depth = 0
-
-    while current_context !== nothing && depth < max_depth
-        depth += 1
-
-        try
-            # Use NodeTrait for robust context checking
-            if DynamicPPL.NodeTrait(current_context) isa DynamicPPL.IsParent
-                if current_context isa GibbsContext
-                    gibbs_context = current_context
-                elseif current_context isa DynamicPPL.ConditionContext
-                    condition_context = current_context
-                elseif current_context isa DynamicPPL.FixedContext
-                    fixed_context = current_context
-                end
-                # Move to child context
-                current_context = DynamicPPL.childcontext(current_context)
-            else
-                break
-            end
-        catch e
-            # If there's an error traversing contexts, break and use fallback
-            @debug "Error traversing context at depth $depth: $e"
-            break
-        end
+function get_gibbs_global_varinfo(context::DynamicPPL.AbstractContext)
+    return if context isa GibbsContext
+        get_global_varinfo(context)
+    elseif DynamicPPL.NodeTrait(context) isa DynamicPPL.IsParent
+        get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
+    else
+        throw(ArgumentError("""No GibbsContext found in context stack. \
+                            Are you trying to use GibbsConditional outside of Gibbs?
+                            """))
     end
-
-    # Return the most relevant context's varinfo with error handling
-    try
-        if gibbs_context !== nothing
-            return get_global_varinfo(gibbs_context)
-        elseif condition_context !== nothing
-            # Check if getvarinfo method exists for ConditionContext
-            if hasmethod(DynamicPPL.getvarinfo, (typeof(condition_context),))
-                return DynamicPPL.getvarinfo(condition_context)
-            end
-        elseif fixed_context !== nothing
-            # Check if getvarinfo method exists for FixedContext
-            if hasmethod(DynamicPPL.getvarinfo, (typeof(fixed_context),))
-                return DynamicPPL.getvarinfo(fixed_context)
-            end
-        end
-    catch e
-        @debug "Error accessing varinfo from context: $e"
-    end
-
-    # Fall back to the provided fallback_vi
-    return fallback_vi
 end
 
 """
@@ -138,16 +108,17 @@ end
 
 Initialize the GibbsConditional sampler.
 """
-function DynamicPPL.initialstep(
-    rng::Random.AbstractRNG,
+function initialstep(
+    ::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:GibbsConditional},
+    ::GibbsConditional,
     vi::DynamicPPL.AbstractVarInfo;
     kwargs...,
 )
-    # GibbsConditional doesn't need any special initialization
-    # Just return the initial state
-    return nothing, vi
+    state = DynamicPPL.is_transformed(vi) ? DynamicPPL.invlink(vi, model) : vi
+    # Since GibbsConditional is only used within Gibbs, it does not need to return a
+    # transition.
+    return nothing, state
 end
 
 """
@@ -158,82 +129,44 @@ Perform a step of GibbsConditional sampling.
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:GibbsConditional},
+    sampler::GibbsConditional,
     state::DynamicPPL.AbstractVarInfo;
     kwargs...,
 )
-    alg = sampler.alg
+    # Get all the conditioned variable values from the model context. This is assumed to
+    # include a GibbsContext as part of the context stack.
+    condvals = build_variable_dict(model)
 
-    try
-        # For GibbsConditional within Gibbs, we need to get all variable values
-        # Model always has a context field, so we can traverse it directly
-        global_vi = find_global_varinfo(model.context, state)
+    # Get the conditional distributions
+    conddists = sampler.conditional(condvals)
 
-        # Extract conditioned values as a NamedTuple
-        # Include both random variables and observed data
-        # Use a safe approach for invlink to avoid linking conflicts
-        invlinked_global_vi = try
-            DynamicPPL.invlink(global_vi, model)
-        catch e
-            @debug "Failed to invlink global_vi, using as-is: $e"
-            global_vi
+    # We support three different kinds of return values for `sample.conditional`, to make
+    # life easier for the user.
+    if conddists isa AbstractDict
+        for (vn, dist) in conddists
+            state = setindex!!(state, rand(rng, dist), vn)
         end
-
-        condvals_vars = DynamicPPL.values_as(invlinked_global_vi, NamedTuple)
-        condvals_obs = NamedTuple{keys(model.args)}(model.args)
-        condvals = merge(condvals_vars, condvals_obs)
-
-        # Get the conditional distribution
-        conddist = alg.conditional(condvals)
-
-        # Sample from the conditional distribution
-        updated = rand(rng, conddist)
-
-        # Update the variable in state, handling linking properly
-        # The Gibbs sampler ensures that state only contains one variable
-        state_is_linked = try
-            DynamicPPL.islinked(state, model)
-        catch e
-            @debug "Error checking if state is linked: $e"
-            false
+    elseif conddists isa NamedTuple
+        for (vn_sym => dist) in pairs(conddists)
+            vn = VarName{vn_sym}()
+            state = setindex!!(state, rand(rng, dist), vn)
         end
-
-        if state_is_linked
-            # If state is linked, we need to unlink, update, then relink
-            try
-                unlinked_state = DynamicPPL.invlink(state, model)
-                updated_state = DynamicPPL.unflatten(unlinked_state, [updated])
-                new_vi = DynamicPPL.link(updated_state, model)
-            catch e
-                @debug "Error in linked state update path: $e, falling back to direct update"
-                new_vi = DynamicPPL.unflatten(state, [updated])
-            end
-        else
-            # State is not linked, we can update directly
-            new_vi = DynamicPPL.unflatten(state, [updated])
-        end
-
-        return nothing, new_vi
-
-    catch e
-        # If there's any error in the step, log it and rethrow
-        @error "Error in GibbsConditional step: $e"
-        rethrow(e)
+    else
+        # Single variable case
+        vn = first(keys(state))
+        state = setindex!!(state, rand(rng, conddists), vn)
     end
+
+    # Since GibbsConditional is only used within Gibbs, it does not need to return a
+    # transition.
+    return nothing, state
 end
 
-"""
-    setparams_varinfo!!(model, sampler::GibbsConditional, state, params::AbstractVarInfo)
-
-Update the variable info with new parameters for GibbsConditional.
-"""
 function setparams_varinfo!!(
     model::DynamicPPL.Model,
-    sampler::DynamicPPL.Sampler{<:GibbsConditional},
+    sampler::GibbsConditional,
     state,
     params::DynamicPPL.AbstractVarInfo,
 )
-    # For GibbsConditional, we just return the params as-is since 
-    # the state is nothing and we don't need to update anything
     return params
 end
