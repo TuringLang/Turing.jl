@@ -77,7 +77,8 @@ function build_variable_dict(model::DynamicPPL.Model)
     context = model.context
     cond_nt = DynamicPPL.conditioned(context)
     fixed_nt = DynamicPPL.fixed(context)
-    # TODO(mhauru) Can we avoid invlinking all the time?
+    # TODO(mhauru) Can we avoid invlinking all the time? Note that this causes a model
+    # evaluation, which may be expensive.
     global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
     # TODO(mhauru) Double-check that the ordered of precedence here is correct. Should we
     # in fact error if there is any overlap in the keys?
@@ -147,7 +148,7 @@ function AbstractMCMC.step(
             state = setindex!!(state, rand(rng, dist), vn)
         end
     elseif conddists isa NamedTuple
-        for (vn_sym => dist) in pairs(conddists)
+        for (vn_sym, dist) in pairs(conddists)
             vn = VarName{vn_sym}()
             state = setindex!!(state, rand(rng, dist), vn)
         end
