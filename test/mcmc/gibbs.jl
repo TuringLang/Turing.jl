@@ -19,7 +19,7 @@ using StableRNGs: StableRNG
 using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
 using Turing: Inference
-using Turing.Inference: AdvancedHMC, AdvancedMH, GibbsConditional
+using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 function check_transition_varnames(transition::Turing.Inference.Transition, parent_varnames)
