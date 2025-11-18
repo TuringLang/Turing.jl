@@ -39,31 +39,30 @@ using Turing
             return Normal(m_mean, sqrt(m_var))
         end
 
-        rng = StableRNG(23)
         x_obs = [1.0, 2.0, 3.0, 2.5, 1.5]
         model = inverse_gdemo(x_obs)
 
         reference_sampler = NUTS()
-        reference_chain = sample(rng, model, reference_sampler, 10_000)
+        reference_chain = sample(StableRNG(23), model, reference_sampler, 10_000)
 
         # Use both conditionals, check results against reference sampler.
         sampler = Gibbs(
             :precision => GibbsConditional(cond_precision), :m => GibbsConditional(cond_m)
         )
-        chain = sample(rng, model, sampler, 1_000)
+        chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
         @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
         @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
 
         # Mix GibbsConditional with an MCMC sampler
         sampler = Gibbs(:precision => GibbsConditional(cond_precision), :m => MH())
-        chain = sample(rng, model, sampler, 1_000)
+        chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
         @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
         @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
 
         sampler = Gibbs(:m => GibbsConditional(cond_m), :precision => HMC(0.1, 10))
-        chain = sample(rng, model, sampler, 1_000)
+        chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
         @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
         @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
@@ -79,7 +78,7 @@ using Turing
             :m => GibbsConditional(cond_m),
             :m => PG(10),
         )
-        chain = sample(rng, model, sampler, 1_000)
+        chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
         @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
         @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
@@ -107,13 +106,12 @@ using Turing
             return Normal(post_mean, sqrt(post_var))
         end
 
-        rng = StableRNG(23)
         dim = 1_000
         true_mean = 2.0
-        x_obs = randn(rng, dim) .+ true_mean
+        x_obs = randn(StableRNG(23), dim) .+ true_mean
         model = simple_normal(dim) | (; x=x_obs)
         sampler = Gibbs(:mean => GibbsConditional(cond_mean), :var => MH())
-        chain = sample(rng, model, sampler, 1_000)
+        chain = sample(StableRNG(23), model, sampler, 1_000)
         # The correct posterior mean isn't true_mean, but it is very close, because we
         # have a lot of data.
         @test mean(chain, :mean) ≈ true_mean atol = 0.05
@@ -145,13 +143,12 @@ using Turing
             return Normal(post_mean, sqrt(post_var))
         end
 
-        rng = StableRNG(23)
         dim1 = 1_000
         true_mean1 = -10.0
-        x1_obs = randn(rng, dim1) .+ true_mean1
+        x1_obs = randn(StableRNG(23), dim1) .+ true_mean1
         dim2 = 2_000
         true_mean2 = -20.0
-        x2_obs = randn(rng, dim2) .+ true_mean2
+        x2_obs = randn(StableRNG(24), dim2) .+ true_mean2
         base_model = double_simple_normal(dim1, dim2)
 
         # Test different ways of returning values from the conditional function.
