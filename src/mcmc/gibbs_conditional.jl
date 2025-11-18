@@ -36,7 +36,7 @@ example. The return value of `get_cond_dists` should be one of the following:
     precision ~ Gamma(2, inv(3))
     std = sqrt(1 / precision)
     m ~ Normal(0, std)
-    for i in 1:length(x)
+    for i in eachindex(x)
         x[i] ~ Normal(m, std)
     end
 end
@@ -44,12 +44,12 @@ end
 # Define analytical conditionals
 function cond_precision(c)
     a = 2.0
-    b = inv(3)
+    b = 3.0
     m = c[@varname(m)]
     x = c[@varname(x)]
     n = length(x)
     a_new = a + (n + 1) / 2
-    b_new = b + sum((x[i] - m)^2 for i in 1:n) / 2 + m^2 / 2
+    b_new = b + sum(abs2, x .- m) / 2 + m^2 / 2
     return Gamma(a_new, 1 / b_new)
 end
 
