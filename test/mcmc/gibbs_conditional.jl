@@ -17,7 +17,8 @@ using Turing
             end
         end
 
-        # Define analytical conditionals
+        # Define analytical conditionals. See
+        # https://en.wikipedia.org/wiki/Conjugate_prior#When_likelihood_function_is_a_continuous_distribution
         function cond_precision(c)
             a = 2.0
             b = 3.0
@@ -91,7 +92,8 @@ using Turing
             return x ~ MvNormal(fill(mean, dim), I * var)
         end
 
-        # Conditional posterior for mean given var and x
+        # Conditional posterior for mean given var and x. See
+        # https://en.wikipedia.org/wiki/Conjugate_prior#When_likelihood_function_is_a_continuous_distribution
         function cond_mean(c)
             var = c[@varname(var)]
             x = c[@varname(x)]

@@ -41,7 +41,8 @@ example. The return value of `get_cond_dists` should be one of the following:
     end
 end
 
-# Define analytical conditionals
+# Define analytical conditionals. See
+# https://en.wikipedia.org/wiki/Conjugate_prior#When_likelihood_function_is_a_continuous_distribution
 function cond_precision(c)
     a = 2.0
     b = 3.0
