@@ -87,8 +87,7 @@ function build_variable_dict(model::DynamicPPL.Model)
     context = model.context
     cond_nt = DynamicPPL.conditioned(context)
     fixed_nt = DynamicPPL.fixed(context)
-    # TODO(mhauru) Can we avoid invlinking all the time? Note that this causes a model
-    # evaluation, which may be expensive.
+    # TODO(mhauru) Can we avoid invlinking all the time?
     global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
     return merge(
         DynamicPPL.values_as(global_vi, Dict),
