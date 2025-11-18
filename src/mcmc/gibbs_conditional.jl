@@ -1,38 +1,48 @@
-using DynamicPPL: VarName
-using Random: Random
-import AbstractMCMC
-
 """
-    GibbsConditional(conditional)
+    GibbsConditional(get_cond_dists)
 
-A Gibbs component sampler that samples variables according to user-provided
-analytical conditional distributions.
+A Gibbs component sampler that samples variables according to user-provided analytical
+conditional posterior distributions.
 
-`conditional` should be a function that takes a `Dict{<:VarName}` of conditioned variables
-and their values, and returns one of the following:
+When using Gibbs sampling, sometimes one may know the analytical form of the posterior for
+a given variable, given the conditioned values of the other variables. In such cases one can
+use `GibbsConditional` as a component sampler to to sample from these known conditionals
+directly, avoiding any MCMC methods. One does so with
+
+```julia
+sampler = Gibbs(
+    (@varname(var1), @varname(var2)) => GibbsConditional(get_cond_dists),
+    other samplers go here...
+)
+```
+
+Here `get_cond_dists(c::Dict{<:VarName})` should be a function that takes a `Dict` mapping
+the conditioned variables (anything other than `var1` and `var2`) to their values, and
+returns the conditional posterior distributions for `var1` and `var2`. You may, of course,
+have any number of variables being sampled as a block in this manner, we only use two as an
+example. The return value of `get_cond_dists` should be one of the following:
 - A single `Distribution`, if only one variable is being sampled.
 - An `AbstractDict{<:VarName,<:Distribution}` that maps the variables being sampled to their
-  `Distribution`s.
+  conditional posteriors E.g. `Dict(@varname(var1) => dist1, @varname(var2) => dist2)`.
 - A `NamedTuple` of `Distribution`s, which is like the `AbstractDict` case but can be used
-  if all the variable names are single `Symbol`s, and may be more performant.
-
-If a Gibbs component is created with `(:var1, :var2) => GibbsConditional(conditional)`, then
-`var1` and `var2` should be in the keys of the return value of `conditional`.
+  if all the variable names are single `Symbol`s, and may be more performant. E.g.
+  `(; var1=dist1, var2=dist2)`.
 
 # Examples
 
 ```julia
 # Define a model
 @model function inverse_gdemo(x)
-    λ ~ Gamma(2, inv(3))
-    m ~ Normal(0, sqrt(1 / λ))
+    precision ~ Gamma(2, inv(3))
+    std = sqrt(1 / precision)
+    m ~ Normal(0, std)
     for i in 1:length(x)
-        x[i] ~ Normal(m, sqrt(1 / λ))
+        x[i] ~ Normal(m, std)
     end
 end
 
 # Define analytical conditionals
-function cond_λ(c)
+function cond_precision(c)
     a = 2.0
     b = inv(3)
     m = c[@varname(m)]
@@ -44,27 +54,26 @@ function cond_λ(c)
 end
 
 function cond_m(c)
-    λ = c[@varname(λ)]
+    precision = c[@varname(precision)]
     x = c[@varname(x)]
     n = length(x)
     m_mean = sum(x) / (n + 1)
-    m_var = 1 / (λ * (n + 1))
+    m_var = 1 / (precision * (n + 1))
     return Normal(m_mean, sqrt(m_var))
 end
 
 # Sample using GibbsConditional
 model = inverse_gdemo([1.0, 2.0, 3.0])
 chain = sample(model, Gibbs(
-    :λ => GibbsConditional(cond_λ),
+    :precision => GibbsConditional(cond_precision),
     :m => GibbsConditional(cond_m)
 ), 1000)
 ```
 """
 struct GibbsConditional{C} <: AbstractSampler
-    conditional::C
+    get_cond_dists::C
 end
 
-# Mark GibbsConditional as a valid Gibbs component
 isgibbscomponent(::GibbsConditional) = true
 
 """
@@ -80,8 +89,6 @@ function build_variable_dict(model::DynamicPPL.Model)
     # TODO(mhauru) Can we avoid invlinking all the time? Note that this causes a model
     # evaluation, which may be expensive.
     global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
-    # TODO(mhauru) Double-check that the ordered of precedence here is correct. Should we
-    # in fact error if there is any overlap in the keys?
     return merge(
         DynamicPPL.values_as(global_vi, Dict),
         Dict(
@@ -98,17 +105,13 @@ function get_gibbs_global_varinfo(context::DynamicPPL.AbstractContext)
     elseif DynamicPPL.NodeTrait(context) isa DynamicPPL.IsParent
         get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
     else
-        throw(ArgumentError("""No GibbsContext found in context stack. \
-                            Are you trying to use GibbsConditional outside of Gibbs?
-                            """))
+        msg = """No GibbsContext found in context stack. Are you trying to use \
+            GibbsConditional outside of Gibbs?
+            """
+        throw(ArgumentError(msg))
     end
 end
 
-"""
-    DynamicPPL.initialstep(rng, model, sampler::GibbsConditional, vi)
-
-Initialize the GibbsConditional sampler.
-"""
 function initialstep(
     ::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -122,11 +125,6 @@ function initialstep(
     return nothing, state
 end
 
-"""
-    AbstractMCMC.step(rng, model, sampler::GibbsConditional, state)
-
-Perform a step of GibbsConditional sampling.
-"""
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -137,11 +135,9 @@ function AbstractMCMC.step(
     # Get all the conditioned variable values from the model context. This is assumed to
     # include a GibbsContext as part of the context stack.
     condvals = build_variable_dict(model)
+    conddists = sampler.get_cond_dists(condvals)
 
-    # Get the conditional distributions
-    conddists = sampler.conditional(condvals)
-
-    # We support three different kinds of return values for `sample.conditional`, to make
+    # We support three different kinds of return values for `sample.get_cond_dists`, to make
     # life easier for the user.
     if conddists isa AbstractDict
         for (vn, dist) in conddists
@@ -154,7 +150,7 @@ function AbstractMCMC.step(
         end
     else
         # Single variable case
-        vn = first(keys(state))
+        vn = only(keys(state))
         state = setindex!!(state, rand(rng, conddists), vn)
     end
 
@@ -164,10 +160,7 @@ function AbstractMCMC.step(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model,
-    sampler::GibbsConditional,
-    state,
-    params::DynamicPPL.AbstractVarInfo,
+    ::DynamicPPL.Model, ::GibbsConditional, ::Any, params::DynamicPPL.AbstractVarInfo
 )
     return params
 end
