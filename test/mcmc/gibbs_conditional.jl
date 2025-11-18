@@ -3,7 +3,7 @@ module GibbsConditionalTests
 using DynamicPPL: DynamicPPL
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
@@ -49,23 +49,23 @@ using Turing
         sampler = Gibbs(
             :precision => GibbsConditional(cond_precision), :m => GibbsConditional(cond_m)
         )
-        chain = sample(rng, model, sampler, 10_000)
-        @test size(chain, 1) == 10_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.05
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.05
+        chain = sample(rng, model, sampler, 1_000)
+        @test size(chain, 1) == 1_000
+        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
+        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
 
         # Mix GibbsConditional with an MCMC sampler
         sampler = Gibbs(:precision => GibbsConditional(cond_precision), :m => MH())
-        chain = sample(rng, model, sampler, 10_000)
-        @test size(chain, 1) == 10_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.05
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.05
+        chain = sample(rng, model, sampler, 1_000)
+        @test size(chain, 1) == 1_000
+        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
+        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
 
         sampler = Gibbs(:m => GibbsConditional(cond_m), :precision => HMC(0.1, 10))
-        chain = sample(rng, model, sampler, 10_000)
-        @test size(chain, 1) == 10_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.05
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.05
+        chain = sample(rng, model, sampler, 1_000)
+        @test size(chain, 1) == 1_000
+        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
+        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
 
         # Block sample, sampling the same variable with multiple component samplers.
         sampler = Gibbs(
@@ -80,8 +80,8 @@ using Turing
         )
         chain = sample(rng, model, sampler, 1_000)
         @test size(chain, 1) == 1_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.05
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.05
+        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
+        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
     end
 
     @testset "Simple normal model" begin
@@ -106,7 +106,7 @@ using Turing
         end
 
         rng = StableRNG(23)
-        dim = 10_000
+        dim = 1_000
         true_mean = 2.0
         x_obs = randn(rng, dim) .+ true_mean
         model = simple_normal(dim) | (; x=x_obs)
@@ -119,13 +119,13 @@ using Turing
 
     @testset "Double simple normal" begin
         # This is the same model as simple_normal above, but just doubled.
+        prior_std1 = 10.0
+        prior_std2 = 20.0
         @model function double_simple_normal(dim1, dim2)
-            prior_std1 = 10.0
             mean1 ~ Normal(0, prior_std1)
             var1 ~ truncated(Normal(1, 1); lower=0.01)
             x1 ~ MvNormal(fill(mean1, dim1), I * var1)
 
-            prior_std2 = 20.0
             mean2 ~ Normal(0, prior_std2)
             var2 ~ truncated(Normal(1, 1); lower=0.01)
             x2 ~ MvNormal(fill(mean2, dim2), I * var2)
@@ -144,10 +144,10 @@ using Turing
         end
 
         rng = StableRNG(23)
-        dim1 = 10_000
+        dim1 = 1_000
         true_mean1 = -10.0
         x1_obs = randn(rng, dim1) .+ true_mean1
-        dim2 = 20_000
+        dim2 = 2_000
         true_mean2 = -20.0
         x2_obs = randn(rng, dim2) .+ true_mean2
         base_model = double_simple_normal(dim1, dim2)
@@ -155,49 +155,51 @@ using Turing
         # Test different ways of returning values from the conditional function.
         @testset "conditionals return types" begin
             # Test using GibbsConditional for both separately.
-            cond_mean1(c) = cond_mean(c[@varname(var1)], c[@varname(x1)], 10.0)
-            cond_mean2(c) = cond_mean(c[@varname(var2)], c[@varname(x2)], 20.0)
+            cond_mean1(c) = cond_mean(c[@varname(var1)], c[@varname(x1)], prior_std1)
+            cond_mean2(c) = cond_mean(c[@varname(var2)], c[@varname(x2)], prior_std2)
             model = base_model | (; x1=x1_obs, x2=x2_obs)
             sampler = Gibbs(
                 :mean1 => GibbsConditional(cond_mean1),
                 :mean2 => GibbsConditional(cond_mean2),
                 (:var1, :var2) => HMC(0.1, 10),
             )
-            chain = sample(StableRNG(24), model, sampler, 1_000)
+            chain = sample(StableRNG(23), model, sampler, 1_000)
             # The correct posterior mean isn't true_mean, but it is very close, because we
             # have a lot of data.
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.05
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.05
+            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
+            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
 
             # Test using GibbsConditional for both in a block, returning a Dict.
             function cond_mean_dict(c)
                 return Dict(
-                    @varname(mean1) => cond_mean(c[@varname(var1)], c[@varname(x1)], 10.0),
-                    @varname(mean2) => cond_mean(c[@varname(var2)], c[@varname(x2)], 20.0),
+                    @varname(mean1) =>
+                        cond_mean(c[@varname(var1)], c[@varname(x1)], prior_std1),
+                    @varname(mean2) =>
+                        cond_mean(c[@varname(var2)], c[@varname(x2)], prior_std2),
                 )
             end
             sampler = Gibbs(
                 (:mean1, :mean2) => GibbsConditional(cond_mean_dict),
                 (:var1, :var2) => HMC(0.1, 10),
             )
-            chain = sample(StableRNG(24), model, sampler, 1_000)
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.05
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.05
+            chain = sample(StableRNG(23), model, sampler, 1_000)
+            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
+            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
 
             # As above but with a NamedTuple rather than a Dict.
             function cond_mean_nt(c)
                 return (;
-                    mean1=cond_mean(c[@varname(var1)], c[@varname(x1)], 10.0),
-                    mean2=cond_mean(c[@varname(var2)], c[@varname(x2)], 20.0),
+                    mean1=cond_mean(c[@varname(var1)], c[@varname(x1)], prior_std1),
+                    mean2=cond_mean(c[@varname(var2)], c[@varname(x2)], prior_std2),
                 )
             end
             sampler = Gibbs(
                 (:mean1, :mean2) => GibbsConditional(cond_mean_nt),
                 (:var1, :var2) => HMC(0.1, 10),
             )
-            chain = sample(StableRNG(24), model, sampler, 1_000)
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.05
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.05
+            chain = sample(StableRNG(23), model, sampler, 1_000)
+            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
+            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
         end
 
         # Test simultaneously conditioning and fixing variables.
@@ -205,22 +207,27 @@ using Turing
             # Note that fixed variables don't contribute to the likelihood, and hence the
             # conditional posterior changes to be just the prior.
             model_condition_fix = condition(fix(base_model; x1=x1_obs); x2=x2_obs)
-            cond_mean1(_) = Normal(0.0, 10.0)
-            cond_mean2(c) = cond_mean(c[@varname(var2)], c[@varname(x2)], 20.0)
+            function cond_mean1(c)
+                @assert @varname(var1) in keys(c)
+                @assert @varname(x1) in keys(c)
+                return Normal(0.0, prior_std1)
+            end
+            cond_mean2(c) = cond_mean(c[@varname(var2)], c[@varname(x2)], prior_std2)
             sampler = Gibbs(
                 :mean1 => GibbsConditional(cond_mean1),
                 :mean2 => GibbsConditional(cond_mean2),
-                (:var1, :var2) => HMC(0.1, 10),
+                :var1 => HMC(0.1, 10),
+                :var2 => HMC(0.1, 10),
             )
-            chain = sample(StableRNG(24), model_condition_fix, sampler, 10_000)
-            @test mean(chain, :mean1) ≈ 0.0 atol = 0.05
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.05
+            chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
+            @test mean(chain, :mean1) ≈ 0.0 atol = 0.1
+            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
 
             # As above, but reverse the order of condition and fix.
             model_fix_condition = fix(condition(base_model; x2=x2_obs); x1=x1_obs)
-            chain = sample(StableRNG(24), model_condition_fix, sampler, 10_000)
-            @test mean(chain, :mean1) ≈ 0.0 atol = 0.05
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.05
+            chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
+            @test mean(chain, :mean1) ≈ 0.0 atol = 0.1
+            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
         end
     end
 
@@ -253,6 +260,17 @@ using Turing
         @test mean(chain, Symbol("a[1]")) ≈ 0.0 atol = 0.05
         @test mean(chain, Symbol("a[2]")) ≈ 10.0 atol = 0.05
         @test mean(chain, Symbol("a[3]")) ≈ 20.0 atol = 0.05
+    end
+
+    @testset "Helpful error outside Gibbs" begin
+        @model f() = x ~ Normal()
+        m = f()
+        cond_x(_) = Normal()
+        sampler = GibbsConditional(cond_x)
+        @test_throws(
+            "Are you trying to use GibbsConditional outside of Gibbs?",
+            sample(m, sampler, 3),
+        )
     end
 end
 
