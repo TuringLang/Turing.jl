@@ -239,29 +239,47 @@ using Turing
         # `conditionals` are passed through correctly.
         @model function f()
             a = Vector{Float64}(undef, 3)
+            a[1] ~ Normal(0.0)
+            a[2] ~ Normal(10.0)
+            a[3] ~ Normal(20.0)
+            b = Vector{Float64}(undef, 3)
             # These priors will be completely ignored in the sampling.
-            a[1] ~ Normal()
-            a[2] ~ Normal()
-            a[3] ~ Normal()
+            b[1] ~ Normal()
+            b[2] ~ Normal()
+            b[3] ~ Normal()
             return nothing
         end
 
         m = f()
-        function conditionals(c)
-            d1 = Normal(0, 1)
-            d2 = Normal(c[@varname(a[1])] + 10, 1)
-            d3 = Normal(c[@varname(a[2])] + 10, 1)
-            return Dict(@varname(a[1]) => d1, @varname(a[2]) => d2, @varname(a[3]) => d3)
+        function conditionals_b(c)
+            d1 = Normal(c[@varname(a[1])], 1)
+            d2 = Normal(c[@varname(a[2])], 1)
+            d3 = Normal(c[@varname(a[3])], 1)
+            return Dict(@varname(b[1]) => d1, @varname(b[2]) => d2, @varname(b[3]) => d3)
         end
 
         sampler = Gibbs(
-            (@varname(a[1]), @varname(a[2]), @varname(a[3])) =>
-                GibbsConditional(conditionals),
+            (@varname(b[1]), @varname(b[2]), @varname(b[3])) =>
+                GibbsConditional(conditionals_b),
+            (@varname(a[1]), @varname(a[2]), @varname(a[3])) => ESS(),
         )
-        chain = sample(StableRNG(23), m, sampler, 1_000)
-        @test mean(chain, Symbol("a[1]")) ≈ 0.0 atol = 0.05
-        @test mean(chain, Symbol("a[2]")) ≈ 10.0 atol = 0.05
-        @test mean(chain, Symbol("a[3]")) ≈ 20.0 atol = 0.05
+        chain = sample(StableRNG(23), m, sampler, 10_000)
+        @test mean(chain, Symbol("b[1]")) ≈ 0.0 atol = 0.05
+        @test mean(chain, Symbol("b[2]")) ≈ 10.0 atol = 0.05
+        @test mean(chain, Symbol("b[3]")) ≈ 20.0 atol = 0.05
+
+        m_condfix = fix(
+            condition(m, Dict(@varname(a[1]) => 100.0)), Dict(@varname(a[2]) => 200.0)
+        )
+        sampler = Gibbs(
+            (@varname(b[1]), @varname(b[2]), @varname(b[3])) =>
+                GibbsConditional(conditionals_b),
+            @varname(a[3]) => ESS(),
+        )
+        chain = sample(StableRNG(23), m_condfix, sampler, 10_000)
+        @test mean(chain, Symbol("b[1]")) ≈ 100.0 atol = 0.05
+        @test mean(chain, Symbol("b[2]")) ≈ 200.0 atol = 0.05
+        @test mean(chain, Symbol("b[3]")) ≈ 20.0 atol = 0.05
     end
 
     @testset "Helpful error outside Gibbs" begin

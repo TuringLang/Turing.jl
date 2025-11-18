@@ -85,17 +85,18 @@ set in GibbsContext, ConditionContext, or FixedContext.
 """
 function build_variable_dict(model::DynamicPPL.Model)
     context = model.context
-    cond_nt = DynamicPPL.conditioned(context)
-    fixed_nt = DynamicPPL.fixed(context)
+    cond_vals = DynamicPPL.conditioned(context)
+    fixed_vals = DynamicPPL.fixed(context)
     # TODO(mhauru) Can we avoid invlinking all the time?
     global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
+    # TODO(mhauru) This creates a lot of Dicts, which are then immediately merged into one.
+    # Also, DynamicPPL.to_varname_dict is known to be inefficient. Make a more efficient
+    # implementation.
     return merge(
         DynamicPPL.values_as(global_vi, Dict),
-        Dict(
-            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(cond_nt))...,
-            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(fixed_nt))...,
-            (DynamicPPL.VarName{sym}() => val for (sym, val) in pairs(model.args))...,
-        ),
+        DynamicPPL.to_varname_dict(cond_vals),
+        DynamicPPL.to_varname_dict(fixed_vals),
+        DynamicPPL.to_varname_dict(model.args),
     )
 end
 
