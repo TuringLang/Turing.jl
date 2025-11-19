@@ -114,6 +114,12 @@ See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) fo
 | `q_locationscale`      | [`Turing.Variational.q_locationscale`](@ref)      | Find a numerically non-degenerate initialization for a location-scale variational family |
 | `q_meanfield_gaussian` | [`Turing.Variational.q_meanfield_gaussian`](@ref) | Find a numerically non-degenerate initialization for a mean-field Gaussian family        |
 | `q_fullrank_gaussian`  | [`Turing.Variational.q_fullrank_gaussian`](@ref)  | Find a numerically non-degenerate initialization for a full-rank Gaussian family         |
+| `KLMinRepGradDescent`  | [`Turing.Variational.KLMinRepGradDescent`](@ref)  | KL divergence minimization via stochastic gradient descent with the reparameterization gradient |
+| `KLMinRepGradProxDescent`  | [`Turing.Variational.KLMinRepGradProxDescent`](@ref)  | KL divergence minimization via stochastic proximal gradient descent with the reparameterization gradient over location-scale variational families  |
+| `KLMinScoreGradDescent`  | [`Turing.Variational.KLMinScoreGradDescent`](@ref)  | KL divergence minimization via stochastic gradient descent with the score gradient |
+| `KLMinWassFwdBwd`  | [`Turing.Variational.KLMinWassFwdBwd`](@ref)  | KL divergence minimization via Wasserstein proximal gradient descent |
+| `KLMinNaturalGradDescent`  | [`Turing.Variational.KLMinNaturalGradDescent`](@ref)  | KL divergence minimization via natural gradient descent  |
+| `KLMinSqrtNaturalGradDescent`  | [`Turing.Variational.KLMinSqrtNaturalGradDescent`](@ref)  | KL divergence minimization via natural gradient descent in the square-root parameterization |
 
 ### Automatic differentiation types
 
