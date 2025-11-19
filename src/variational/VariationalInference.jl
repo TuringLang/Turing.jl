@@ -2,13 +2,20 @@
 module Variational
 
 using AdvancedVI:
-    AdvancedVI, KLMinRepGradDescent, KLMinRepGradProxDescent, KLMinScoreGradDescent
+    AdvancedVI,
+    KLMinRepGradDescent,
+    KLMinRepGradProxDescent,
+    KLMinScoreGradDescent,
+    KLMinWassFwdBwd,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent
+
 using ADTypes
 using Bijectors: Bijectors
 using Distributions
-using DynamicPPL
+using DynamicPPL: DynamicPPL
 using LinearAlgebra
-using LogDensityProblems
+using LogDensityProblems: LogDensityProblems
 using Random
 using ..Turing: DEFAULT_ADTYPE, PROGRESS
 
@@ -18,7 +25,17 @@ export vi,
     q_fullrank_gaussian,
     KLMinRepGradProxDescent,
     KLMinRepGradDescent,
-    KLMinScoreGradDescent
+    KLMinScoreGradDescent,
+    KLMinWassFwdBwd,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent
+
+requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = false
+requires_unconstrained_space(::AdvancedVI.KLMinRepGradProxDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinRepGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinWassFwdBwd) = true
+requires_unconstrained_space(::AdvancedVI.KLMinNaturalGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinSqrtNaturalGradDescent) = true
 
 """
     q_initialize_scale(
@@ -65,7 +82,7 @@ function q_initialize_scale(
     num_max_trials::Int=10,
     reduce_factor::Real=one(eltype(scale)) / 2,
 )
-    prob = LogDensityFunction(model)
+    prob = DynamicPPL.LogDensityFunction(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
     varinfo = DynamicPPL.VarInfo(model)
 
@@ -264,8 +281,12 @@ end
 
 Approximate the target `model` via the variational inference algorithm `algorithm` by starting from the initial variational approximation `q`.
 This is a thin wrapper around `AdvancedVI.optimize`.
+
+If the chosen variational inference algorithm operates in an unconstrained space, then the provided initial variational approximation `q` must be a `Bijectors.TransformedDistribution` of an unconstrained distribution.
+For example, the initialization supplied by  `q_meanfield_gaussian`,`q_fullrank_gaussian`, `q_locationscale`.
+
 The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
-For other variational families, refer to `AdvancedVI` to determine the best algorithm and options.
+For other variational families, refer the documentation of `AdvancedVI` to determine the best algorithm and other options.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
@@ -294,19 +315,31 @@ function vi(
     algorithm::AdvancedVI.AbstractVariationalAlgorithm=KLMinRepGradProxDescent(
         adtype; n_samples=10
     ),
+    unconstrained::Bool=requires_unconstrained_space(algorithm),
     show_progress::Bool=PROGRESS[],
     kwargs...,
 )
-    return AdvancedVI.optimize(
-        rng,
-        algorithm,
-        max_iter,
-        LogDensityFunction(model; adtype),
-        q,
-        args...;
-        show_progress=show_progress,
-        kwargs...,
+    prob, q, trans = if unconstrained
+        @assert q isa Bijectors.TransformedDistribution "The algorithm $(algorithm) operates in an unconstrained space. Therefore, the initial variational approximation is expected to be a Bijectors.TransformedDistribution of an unconstrained distribution."
+        vi = DynamicPPL.ldf_default_varinfo(model, DynamicPPL.getlogjoint_internal)
+        vi = DynamicPPL.set_transformed!!(vi, true)
+        prob = DynamicPPL.LogDensityFunction(
+            model, DynamicPPL.getlogjoint_internal, vi; adtype
+        )
+        prob, q.dist, q.transform
+    else
+        prob = DynamicPPL.LogDensityFunction(model; adtype)
+        prob, q, nothing
+    end
+    q, info, state = AdvancedVI.optimize(
+        rng, algorithm, max_iter, prob, q, args...; show_progress=show_progress, kwargs...
     )
+    q = if unconstrained
+        Bijectors.TransformedDistribution(q, trans)
+    else
+        q
+    end
+    q, info, state
 end
 
 function vi(model::DynamicPPL.Model, q, max_iter::Int; kwargs...)

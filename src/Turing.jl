@@ -122,6 +122,9 @@ export
     KLMinRepGradProxDescent,
     KLMinRepGradDescent,
     KLMinScoreGradDescent,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent,
+    KLMinWassFwdBwd,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
