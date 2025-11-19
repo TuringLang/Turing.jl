@@ -53,7 +53,7 @@ using Turing.Variational
     @testset "custom algorithm $name" for (name, algorithm) in [
         ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
         ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
-        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(stepsize=1e-3, n_samples=10)),
+        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-3, n_samples=10)),
         (
             "KLMinSqrtNaturalGradDescent",
             KLMinSqrtNaturalGradDescent(stepsize=1e-3, n_samples=10),
