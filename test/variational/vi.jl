@@ -81,7 +81,7 @@ using Turing.Variational
             "KLMinSqrtNaturalGradDescent",
             KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
         ),
-        ("KLMinWassFwdBwd", KLMinWassFwdBwd(stepsize=1e-3, n_samples=10)),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
     ]
         rng = StableRNG(0x517e1d9bf89bf94f)
 
