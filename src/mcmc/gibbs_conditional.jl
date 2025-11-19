@@ -46,8 +46,12 @@ end
 function cond_precision(c)
     a = 2.0
     b = 3.0
-    m = c[@varname(m)]
-    x = c[@varname(x)]
+    # We use AbstractPPL.getvalue instead of indexing into `c` directly to guard against
+    # issues where e.g. you try to get `c[@varname(x[1])]` but only `@varname(x)` is present
+    # in `c`. `getvalue` handles that gracefully, `getindex` doesn't. In this case
+    # `getindex` would suffice, but `getvalue` is good practice.
+    m = AbstractPPL.getvalue(c, @varname(m))
+    x = AbstractPPL.getvalue(c, @varname(x))
     n = length(x)
     a_new = a + (n + 1) / 2
     b_new = b + sum(abs2, x .- m) / 2 + m^2 / 2
@@ -55,8 +59,8 @@ function cond_precision(c)
 end
 
 function cond_m(c)
-    precision = c[@varname(precision)]
-    x = c[@varname(x)]
+    precision = AbstractPPL.getvalue(c, @varname(precision))
+    x = AbstractPPL.getvalue(c, @varname(x))
     n = length(x)
     m_mean = sum(x) / (n + 1)
     m_var = 1 / (precision * (n + 1))
