@@ -339,7 +339,7 @@ function vi(
     else
         q
     end
-    q, info, state
+    return q, info, state
 end
 
 function vi(model::DynamicPPL.Model, q, max_iter::Int; kwargs...)
