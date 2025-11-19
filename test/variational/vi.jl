@@ -58,7 +58,7 @@ using Turing.Variational
             "KLMinSqrtNaturalGradDescent",
             KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
         ),
-        ("KLMinWassFwdBwd", KLMinWassFwdBwd(stepsize=1e-3, n_samples=10)),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
     ]
         T = 1000
         q, _, _ = vi(
