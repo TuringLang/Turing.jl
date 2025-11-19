@@ -68,6 +68,7 @@ Additionally,
   - The default hyperparameters of `DoG`and `DoWG` have been altered.
   - The deprecated `AdvancedVI@0.2`-era interface is now removed.
   - `estimate_objective` now returns the value to be minimized by the optimization algorithm. For example, for ELBO maximization algorithms, `estimate_objective` will return the *negative ELBO*. This is breaking change from the previous behavior where the ELBO was returns.
+  - When using algorithms that expect to operate in unconstrained spaces, the user is now explicitly expected to provide a `Bijectors.TransformedDistribution` wrapping an unconstrained distribution. (Refer to the docstring of `vi`.)
 
 ### New Features
 
