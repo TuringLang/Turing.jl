@@ -1,13 +1,13 @@
 # 0.42.0
 
-## Breaking Changes
+## **AdvancedVI 0.6**
 
-**AdvancedVI 0.5**
-
-Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.5.
-Most of the changes introduced in `AdvancedVI.jl@0.5` are structural, with some changes spilling out into the interface.
+Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.6 (we skipped the breaking 0.5 update as it does not introduce new features).
+`AdvancedVI.jl@0.6` introduces major structural changes including breaking changes to the interface and multiple new features.
 The summary of the changes below are the things that affect the end-users of Turing.
 For a more comprehensive list of changes, please refer to the [changelogs](https://github.com/TuringLang/AdvancedVI.jl/blob/main/HISTORY.md) in `AdvancedVI`.
+
+### Breaking Changes
 
 A new level of interface for defining different variational algorithms has been introduced in `AdvancedVI` v0.5. As a result, the function `Turing.vi` now receives a keyword argument `algorithm`. The object `algorithm <: AdvancedVI.AbstractVariationalAlgorithm` should now contain all the algorithm-specific configurations. Therefore, keyword arguments of `vi` that were algorithm-specific such as `objective`, `operator`, `averager` and so on, have been moved as fields of the relevant `<: AdvancedVI.AbstractVariationalAlgorithm` structs.
 For example,
@@ -49,6 +49,40 @@ Additionally,
 
   - The default hyperparameters of `DoG`and `DoWG` have been altered.
   - The deprecated `AdvancedVI@0.2`-era interface is now removed.
+  - `estimate_objective` now returns the value to be minimized by the optimization algorithm. For example, for ELBO maximization algorithms, `estimate_objective` will return the *negative ELBO*. This is breaking change from the previous behavior where the ELBO was returns.
+
+### New Features
+
+`AdvancedVI@0.6` adds numerous new features including the following new VI algorithms:
+
+  - `KLMinWassFwdBwd`: Also known as "Wasserstein variational inference," this algorithm minimizes the KL divergence under the Wasserstein-2 metric.
+  - `KLMinNaturalGradDescent`: This algorithm, also known as "online variational Newton," is the canonical "black-box" natural gradient variational inference algorithm, which minimizes the KL divergence via mirror descent under the KL divergence as the Bregman divergence.
+  - `KLMinSqrtNaturalGradDescent`: This is a recent variant of `KLMinNaturalGradDescent` that operates in the Cholesky-factor parameterization of Gaussians instead of precision matrices.
+  - `FisherMinBatchMatch`: This algorithm called "batch-and-match," minimizes the variation of the 2nd order fisher divergence via a proximal point-type algorithm.
+
+Any of the new algorithms above can readily be used by simply swappin the `algorithm` keyword argument of `vi`.
+For example, to use batch-and-match:
+```julia
+vi(model, q, n_iters; algorithm=FisherMinBatchMatch())
+```
+
+# 0.41.1
+
+The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` can now be wrapped in `InitFromParams()`.
+This makes it easier to use the parameters in downstream code, e.g. when specifying initial parameters for MCMC sampling.
+For example:
+
+```julia
+@model function f()
+    # ...
+end
+model = f()
+opt_result = maximum_a_posteriori(model)
+
+sample(model, NUTS(), 1000; initial_params=InitFromParams(opt_result))
+```
+
+If you need to access the dictionary of parameters, it is stored in `opt_result.params` but note that this field may change in future breaking releases as that Turing's optimisation interface is slated for overhaul in the near future.
 
 # 0.41.0
 

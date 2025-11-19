@@ -1,6 +1,10 @@
-<p align="center"><img src="https://raw.githubusercontent.com/TuringLang/turinglang.github.io/refs/heads/main/assets/logo/turing-logo.svg" alt="Turing.jl logo" width="200" /></p>
-<h1 align="center">Turing.jl</h1>
-<p align="center"><i>Probabilistic programming and Bayesian inference in Julia</i></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://turinglang.org/assets/logo/turing-logo-dark.svg">
+    <img src="https://turinglang.org/assets/logo/turing-logo-light.svg" alt="Turing.jl logo" width="300">
+  </picture>
+</p>
+<p align="center"><i>Bayesian inference with probabilistic programming</i></p>
 <p align="center">
 <a href="https://turinglang.org/"><img src="https://img.shields.io/badge/docs-tutorials-blue.svg" alt="Tutorials" /></a>
 <a href="https://turinglang.org/Turing.jl/stable"><img src="https://img.shields.io/badge/docs-API-blue.svg" alt="API docs" /></a>
@@ -9,7 +13,7 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
-## 🚀 Get started
+## Get started
 
 Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10 for the latest version of Turing.jl).
 Then, launch a Julia REPL and run:
@@ -23,22 +27,29 @@ You can define models using the `@model` macro, and then perform Markov chain Mo
 ```julia
 julia> using Turing
 
-julia> @model function my_first_model(data)
-           mean ~ Normal(0, 1)
-           sd ~ truncated(Cauchy(0, 3); lower=0)
-           data ~ Normal(mean, sd)
+julia> @model function linear_regression(x)
+           # Priors
+           α ~ Normal(0, 1)
+           β ~ Normal(0, 1)
+           σ² ~ truncated(Cauchy(0, 3); lower=0)
+
+           # Likelihood
+           μ = α .+ β .* x
+           y ~ MvNormal(μ, σ² * I)
        end
 
-julia> model = my_first_model(randn())
+julia> x, y = rand(10), rand(10)
 
-julia> chain = sample(model, NUTS(), 1000)
+julia> posterior = linear_regression(x) | (; y = y)
+
+julia> chain = sample(posterior, NUTS(), 1000)
 ```
 
 You can find the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org), which contains general information about Turing.jl's features, as well as a variety of tutorials with examples of Turing.jl models.
 
 API documentation for Turing.jl is specifically available at [**https://turinglang.org/Turing.jl/stable**](https://turinglang.org/Turing.jl/stable/).
 
-## 🛠️ Contributing
+## Contributing
 
 ### Issues
 
@@ -55,20 +66,20 @@ Breaking releases (minor version) should target the `breaking` branch.
 
 If you have not received any feedback on an issue or PR for a while, please feel free to ping `@TuringLang/maintainers` in a comment.
 
-## 💬 Other channels
+## Other channels
 
 The Turing.jl userbase tends to be most active on the [`#turing` channel of Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
 If you do not have an invitation to Julia's Slack, you can get one from [the official Julia website](https://julialang.org/slack/).
 
 There are also often threads on [Julia Discourse](https://discourse.julialang.org) (you can search using, e.g., [the `turing` tag](https://discourse.julialang.org/tag/turing)).
 
-## 🔄 What's changed recently?
+## What's changed recently?
 
 We publish a fortnightly newsletter summarising recent updates in the TuringLang ecosystem, which you can view on [our website](https://turinglang.org/news/), [GitHub](https://github.com/TuringLang/Turing.jl/issues/2498), or [Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
 
 For Turing.jl specifically, you can see a full changelog in [`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md) or [our GitHub releases](https://github.com/TuringLang/Turing.jl/releases).
 
-## 🧩 Where does Turing.jl sit in the TuringLang ecosystem?
+## Where does Turing.jl sit in the TuringLang ecosystem?
 
 Turing.jl is the main entry point for users, and seeks to provide a unified, convenient interface to all of the functionality in the TuringLang (and broader Julia) ecosystem.
 
@@ -125,5 +136,3 @@ month = feb,
 ```
 
 </details>
-
-You can see the full list of publications that have cited Turing.jl on [Google Scholar](https://scholar.google.com/scholar?cites=11803241473159708991).
