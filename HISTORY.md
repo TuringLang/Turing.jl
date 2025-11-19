@@ -81,6 +81,7 @@ Additionally,
 
 Any of the new algorithms above can readily be used by simply swappin the `algorithm` keyword argument of `vi`.
 For example, to use batch-and-match:
+
 ```julia
 vi(model, q, n_iters; algorithm=FisherMinBatchMatch())
 ```
