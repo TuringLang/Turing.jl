@@ -429,10 +429,10 @@ include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("particle_mcmc.jl")
-include("gibbs.jl")
 include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
+include("gibbs.jl")
 
 ################
 # Typing tools #

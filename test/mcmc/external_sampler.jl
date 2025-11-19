@@ -20,16 +20,11 @@ using Turing.Inference: AdvancedHMC
     # Turing declares an interface for external samplers (see docstring for
     # ExternalSampler). We should check that implementing this interface
     # and only this interface allows us to use the sampler in Turing.
-    struct MyTransition{V<:AbstractVector}
-        params::V
-    end
-    # Samplers need to implement `Turing.Inference.getparams`.
-    Turing.Inference.getparams(::DynamicPPL.Model, t::MyTransition) = t.params
-    # State doesn't matter (but we need to carry the params through to the next
-    # iteration).
     struct MyState{V<:AbstractVector}
         params::V
     end
+    AbstractMCMC.getparams(s::MyState) = s.params
+    AbstractMCMC.getstats(s::MyState) = (param_length=length(s.params),)
 
     # externalsamplers must accept LogDensityModel inside their step function.
     # By default Turing gives the externalsampler a LDF constructed with
@@ -58,7 +53,7 @@ using Turing.Inference: AdvancedHMC
         lp, grad = LogDensityProblems.logdensity_and_gradient(ldf, initial_params)
         @test lp isa Real
         @test grad isa AbstractVector{<:Real}
-        return MyTransition(initial_params), MyState(initial_params)
+        return nothing, MyState(initial_params)
     end
     function AbstractMCMC.step(
         rng::Random.AbstractRNG,
@@ -75,7 +70,7 @@ using Turing.Inference: AdvancedHMC
         lp, grad = LogDensityProblems.logdensity_and_gradient(ldf, params)
         @test lp isa Real
         @test grad isa AbstractVector{<:Real}
-        return MyTransition(params), MyState(params)
+        return nothing, MyState(params)
     end
 
     @model function test_external_sampler()
@@ -96,6 +91,7 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:lp] .== expected_logpdf)
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
+    @test all(chn[:param_length] .== 2)
 end
 
 function initialize_nuts(model::DynamicPPL.Model)

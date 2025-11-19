@@ -49,11 +49,11 @@ TuringOptimExt = ["Optim", "AbstractPPL"]
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.5"
+AbstractMCMC = "5.9"
 AbstractPPL = "0.11, 0.12, 0.13"
 Accessors = "0.1"
-AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6, 0.7, 0.8"
-AdvancedMH = "0.8"
+AdvancedHMC = "0.8.3"
+AdvancedMH = "0.8.9"
 AdvancedPS = "0.7"
 AdvancedVI = "0.6"
 BangBang = "0.4.2"
