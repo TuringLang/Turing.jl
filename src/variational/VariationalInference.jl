@@ -322,7 +322,7 @@ function vi(
     prob, q, trans = if unconstrained
         @assert q isa Bijectors.TransformedDistribution "The algorithm $(algorithm) operates in an unconstrained space. Therefore, the initial variational approximation is expected to be a Bijectors.TransformedDistribution of an unconstrained distribution."
         vi = DynamicPPL.ldf_default_varinfo(model, DynamicPPL.getlogjoint_internal)
-        vi = DynamicPPL.set_transformed!!(vi, true)
+        vi = DynamicPPL.link!!(vi, model)
         prob = DynamicPPL.LogDensityFunction(
             model, DynamicPPL.getlogjoint_internal, vi; adtype
         )
