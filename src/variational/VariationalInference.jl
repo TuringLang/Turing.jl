@@ -117,7 +117,9 @@ end
 Find a numerically non-degenerate variational distribution `q` for approximating the  target `model` within the location-scale variational family formed by the type of `scale` and `basedist`.
 
 The distribution can be manually specified by setting `location`, `scale`, and `basedist`.
-Otherwise, it chooses a standard Gaussian by default.
+Otherwise, it chooses a Gaussian with zero-mean and scale `0.6*I` (covariance of `0.6^2*I`) by default.
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+
 Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 If `meanfield` is set as `true`, the scale of `q` is restricted to be a diagonal matrix and only the diagonal of `scale` is used.
 
@@ -165,9 +167,11 @@ function q_locationscale(
 
     L = if isnothing(scale)
         if meanfield
-            q_initialize_scale(rng, model, μ, Diagonal(ones(num_params)), basedist; kwargs...)
+            q_initialize_scale(
+                rng, model, μ, Diagonal(fill(0.6, num_params)), basedist; kwargs...
+            )
         else
-            L0 = LowerTriangular(Matrix{Float64}(I, num_params, num_params))
+            L0 = LowerTriangular(Matrix{Float64}(0.6*I, num_params, num_params))
             q_initialize_scale(rng, model, μ, L0, basedist; kwargs...)
         end
     else
@@ -197,6 +201,10 @@ end
     )
 
 Find a numerically non-degenerate mean-field Gaussian `q` for approximating the  target `model`.
+
+If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `Diagonal` scale matrix (the "mean-field" approximation) no larger than `0.6*I` (covariance of `0.6^2*I`).
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
@@ -236,6 +244,10 @@ end
     )
 
 Find a numerically non-degenerate Gaussian `q` with a scale with full-rank factors (traditionally referred to as a "full-rank family") for approximating the target `model`.
+
+If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `LowerTriangular` scale matrix (resulting in a covariance with "full-rank" factors) no larger than `0.6*I` (covariance of `0.6^2*I`).
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.

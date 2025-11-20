@@ -68,6 +68,7 @@ Additionally,
   - The default hyperparameters of `DoG`and `DoWG` have been altered.
   - The deprecated `AdvancedVI@0.2`-era interface is now removed.
   - `estimate_objective` now returns the value to be minimized by the optimization algorithm. For example, for ELBO maximization algorithms, `estimate_objective` will return the *negative ELBO*. This is breaking change from the previous behavior where the ELBO was returns.
+  - The initial value for the `q_meanfield_gaussian`, `q_fullrank_gaussian`, and `q_locationscale` have changed. Specificially, the default initial value for the scale matrix has been changed from `I` to `0.6*I`.
   - When using algorithms that expect to operate in unconstrained spaces, the user is now explicitly expected to provide a `Bijectors.TransformedDistribution` wrapping an unconstrained distribution. (Refer to the docstring of `vi`.)
 
 ### New Features
