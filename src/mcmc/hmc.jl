@@ -223,7 +223,7 @@ function Turing.Inference.initialstep(
     end
     # Generate a kernel and adaptor.
     kernel = make_ahmc_kernel(spl, ϵ)
-    adaptor = AHMCAdaptor(spl, hamiltonian.metric; ϵ=ϵ)
+    adaptor = AHMCAdaptor(spl, hamiltonian.metric, nadapts; ϵ=ϵ)
 
     transition = Transition(model, vi, NamedTuple())
     state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
@@ -480,7 +480,9 @@ end
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
+function AHMCAdaptor(
+    alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric, nadapts::Int; ϵ=alg.ϵ
+)
     pc = AHMC.MassMatrixAdaptor(metric)
     da = AHMC.StepSizeAdaptor(alg.δ, ϵ)
 
@@ -491,7 +493,7 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=a
             adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
         else
             adaptor = AHMC.StanHMCAdaptor(pc, da)
-            AHMC.initialize!(adaptor, alg.n_adapts)
+            AHMC.initialize!(adaptor, nadapts)
         end
     end
 
