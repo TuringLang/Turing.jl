@@ -4,6 +4,7 @@ using ..Turing
 using NamedArrays: NamedArrays
 using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
+using DocStringExtensions: TYPEDFIELDS
 using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
 using OptimizationOptimJL: OptimizationOptimJL
@@ -154,13 +155,22 @@ end
         V<:NamedArrays.NamedArray,
         M<:NamedArrays.NamedArray,
         O<:Optim.MultivariateOptimizationResults,
-        S<:NamedArrays.NamedArray
+        S<:NamedArrays.NamedArray,
+        P<:AbstractDict{<:VarName,<:Any}
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
+
+## Fields
+
+$(TYPEDFIELDS)
 """
-struct ModeResult{V<:NamedArrays.NamedArray,O<:Any,M<:OptimLogDensity} <:
-       StatsBase.StatisticalModel
+struct ModeResult{
+    V<:NamedArrays.NamedArray,
+    O<:Any,
+    M<:OptimLogDensity,
+    P<:AbstractDict{<:AbstractPPL.VarName,<:Any},
+} <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
     "The stored optimiser results."
@@ -169,6 +179,8 @@ struct ModeResult{V<:NamedArrays.NamedArray,O<:Any,M<:OptimLogDensity} <:
     lp::Float64
     "The evaluation function used to calculate the output."
     f::M
+    "Dictionary of parameter values"
+    params::P
 end
 
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
@@ -180,6 +192,15 @@ end
 
 function Base.show(io::IO, m::ModeResult)
     return show(io, m.values.array)
+end
+
+"""
+    InitFromParams(m::ModeResult)
+
+Initialize a model from the parameters stored in a `ModeResult`.
+"""
+function DynamicPPL.InitFromParams(m::ModeResult)
+    return DynamicPPL.InitFromParams(m.params)
 end
 
 # Various StatsBase methods for ModeResult
@@ -355,9 +376,13 @@ function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.Optimizati
     iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
     vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
-    vals = map(last, vns_vals_iter)
+    split_vals = map(last, vns_vals_iter)
     return ModeResult(
-        NamedArrays.NamedArray(vals, syms), solution, -solution.objective, log_density
+        NamedArrays.NamedArray(split_vals, syms),
+        solution,
+        -solution.objective,
+        log_density,
+        vals,
     )
 end
 
