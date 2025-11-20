@@ -500,6 +500,6 @@ function AHMCAdaptor(
     return adaptor
 end
 
-function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...)
+function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
 end
