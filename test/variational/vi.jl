@@ -53,12 +53,12 @@ begin
     @testset "custom algorithm $name" for (name, algorithm) in [
         ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
         ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
-        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-3, n_samples=10)),
+        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-2, n_samples=10)),
         (
             "KLMinSqrtNaturalGradDescent",
-            KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
+            KLMinSqrtNaturalGradDescent(; stepsize=1e-2, n_samples=10),
         ),
-        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-2, n_samples=10)),
         ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         T = 1000
@@ -67,7 +67,6 @@ begin
             q_fullrank_gaussian(gdemo_default),
             T;
             algorithm,
-            adtype,
             show_progress=Turing.PROGRESS[],
         )
         N = 1000
@@ -77,12 +76,12 @@ begin
     @testset "inference $name" for (name, algorithm) in [
         ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
         ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
-        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-3, n_samples=10)),
+        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-2, n_samples=10)),
         (
             "KLMinSqrtNaturalGradDescent",
-            KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
+            KLMinSqrtNaturalGradDescent(; stepsize=1e-2, n_samples=10),
         ),
-        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-2, n_samples=10)),
         ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         rng = StableRNG(0x517e1d9bf89bf94f)
@@ -94,7 +93,6 @@ begin
             q_fullrank_gaussian(gdemo_default),
             T;
             algorithm,
-            adtype,
             show_progress=Turing.PROGRESS[],
         )
 
@@ -125,7 +123,7 @@ begin
         @test all(x0 .≈ x0_inv)
 
         # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
-        q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000; adtype)
+        q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000)
         x = rand(rng, q, 1000)
         @test mean(eachcol(x)) ≈ [0.5, 0.5] atol = 0.1
     end
@@ -140,7 +138,7 @@ begin
         end
 
         model = demo_issue2205() | (y=1.0,)
-        q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000; adtype)
+        q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000)
         # True mean.
         mean_true = 1 / 2
         var_true = 1 / 2
