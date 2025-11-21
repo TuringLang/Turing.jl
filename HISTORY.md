@@ -1,3 +1,7 @@
+# 0.41.3
+
+Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!`.
+
 # 0.41.2
 
 Add `GibbsConditional`, a "sampler" that can be used to provide analytically known conditional posteriors in a Gibbs sampler.
