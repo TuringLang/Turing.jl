@@ -8,7 +8,8 @@ using AdvancedVI:
     KLMinScoreGradDescent,
     KLMinWassFwdBwd,
     KLMinNaturalGradDescent,
-    KLMinSqrtNaturalGradDescent
+    KLMinSqrtNaturalGradDescent,
+    FisherMinBatchMatch
 
 using ADTypes
 using Bijectors: Bijectors
@@ -28,14 +29,17 @@ export vi,
     KLMinScoreGradDescent,
     KLMinWassFwdBwd,
     KLMinNaturalGradDescent,
-    KLMinSqrtNaturalGradDescent
+    KLMinSqrtNaturalGradDescent,
+    FisherMinBatchMatch
 
 requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = false
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradProxDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinScoreGradDescent) = false
 requires_unconstrained_space(::AdvancedVI.KLMinWassFwdBwd) = true
 requires_unconstrained_space(::AdvancedVI.KLMinNaturalGradDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinSqrtNaturalGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.FisherMinBatchMatch) = true
 
 """
     q_initialize_scale(

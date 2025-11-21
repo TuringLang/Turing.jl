@@ -16,7 +16,7 @@ using Test: @test, @testset
 using Turing
 using Turing.Variational
 
-@testset "ADVI" begin
+begin
     adtype = AutoReverseDiff()
     operator = AdvancedVI.ClipScale()
 
@@ -59,6 +59,7 @@ using Turing.Variational
             KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
         ),
         ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
+        ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         T = 1000
         q, _, _ = vi(
@@ -82,6 +83,7 @@ using Turing.Variational
             KLMinSqrtNaturalGradDescent(; stepsize=1e-3, n_samples=10),
         ),
         ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-3, n_samples=10)),
+        ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         rng = StableRNG(0x517e1d9bf89bf94f)
 

@@ -120,6 +120,7 @@ See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) fo
 | `KLMinWassFwdBwd`  | [`Turing.Variational.KLMinWassFwdBwd`](@ref)  | KL divergence minimization via Wasserstein proximal gradient descent |
 | `KLMinNaturalGradDescent`  | [`Turing.Variational.KLMinNaturalGradDescent`](@ref)  | KL divergence minimization via natural gradient descent  |
 | `KLMinSqrtNaturalGradDescent`  | [`Turing.Variational.KLMinSqrtNaturalGradDescent`](@ref)  | KL divergence minimization via natural gradient descent in the square-root parameterization |
+| `FisherMinBatchMatch`  | [`Turing.Variational.FisherMinBatchMatch`](@ref)  | Covariance-weighted Fisher divergence minimization via the batch-and-match algorithm |
 
 ### Automatic differentiation types
 

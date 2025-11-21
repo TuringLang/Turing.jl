@@ -125,6 +125,7 @@ export
     KLMinNaturalGradDescent,
     KLMinSqrtNaturalGradDescent,
     KLMinWassFwdBwd,
+    FisherMinBatchMatch,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,
