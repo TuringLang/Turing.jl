@@ -1,6 +1,6 @@
 # 0.41.3
 
-Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!`.
+Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!` (this bug led to mass matrix adaptation not actually happening).
 
 # 0.41.2
 
