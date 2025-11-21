@@ -171,7 +171,7 @@ function q_locationscale(
                 rng, model, μ, Diagonal(fill(0.6, num_params)), basedist; kwargs...
             )
         else
-            L0 = LowerTriangular(Matrix{Float64}(0.6*I, num_params, num_params))
+            L0 = LowerTriangular(Matrix{Float64}(0.6 * I, num_params, num_params))
             q_initialize_scale(rng, model, μ, L0, basedist; kwargs...)
         end
     else
