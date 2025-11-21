@@ -64,7 +64,7 @@ begin
         T = 1000
         q, _, _ = vi(
             gdemo_default,
-            q_meanfield_gaussian(gdemo_default),
+            q_fullrank_gaussian(gdemo_default),
             T;
             algorithm,
             adtype,
@@ -91,7 +91,7 @@ begin
         q, _, _ = vi(
             rng,
             gdemo_default,
-            q_meanfield_gaussian(gdemo_default),
+            q_fullrank_gaussian(gdemo_default),
             T;
             algorithm,
             adtype,
