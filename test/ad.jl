@@ -10,19 +10,28 @@ using Test
 using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff
 
-# Skip Mooncake on 1.12 as it is not compatible yet
-const INCLUDE_MOONCAKE = VERSION < v"1.12"
+# Detect if 1.12, if so, we skip some tests
+const IS_112 = VERSION >= v"1.12.0"
+
+const INCLUDE_MOONCAKE = !IS_112
 if INCLUDE_MOONCAKE
     import Pkg
     Pkg.add("Mooncake")
     using Mooncake: Mooncake
 end
 
+const INCLUDE_ENZYME = !IS_112
+if INCLUDE_ENZYME
+    import Pkg
+    Pkg.add("Enzyme")
+    using Enzyme: Enzyme
+end
+
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
 """A dictionary mapping ADTypes to the element types they use."""
-eltypes_by_adtype = Dict(
+eltypes_by_adtype = Dict{Type,Tuple}(
     AutoForwardDiff => (ForwardDiff.Dual,),
     AutoReverseDiff => (
         ReverseDiff.TrackedArray,
@@ -36,6 +45,9 @@ eltypes_by_adtype = Dict(
 )
 if INCLUDE_MOONCAKE
     eltypes_by_adtype[AutoMooncake] = (Mooncake.CoDual,)
+end
+if INCLUDE_ENZYME
+    eltypes_by_adtype[AutoEnzyme] = ()
 end
 
 """
@@ -180,6 +192,22 @@ All the ADTypes on which we want to run the tests.
 ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false)]
 if INCLUDE_MOONCAKE
     push!(ADTYPES, AutoMooncake(; config=nothing))
+end
+if INCLUDE_ENZYME
+    push!(
+        ADTYPES,
+        AutoEnzyme(;
+            mode=Enzyme.set_runtime_activity(Enzyme.Forward),
+            function_annotation=Enzyme.Const,
+        ),
+    )
+    push!(
+        ADTYPES,
+        AutoEnzyme(;
+            mode=Enzyme.set_runtime_activity(Enzyme.Reverse),
+            function_annotation=Enzyme.Const,
+        ),
+    )
 end
 
 # Check that ADTypeCheckContext itself works as expected.
