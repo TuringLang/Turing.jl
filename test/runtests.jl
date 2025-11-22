@@ -63,7 +63,7 @@ end
         end
 
         @testset "variational algorithms" begin
-            @timeit_include("variational/advi.jl")
+            @timeit_include("variational/vi.jl")
         end
 
         @testset "mode estimation" verbose = true begin

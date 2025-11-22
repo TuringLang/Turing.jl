@@ -18,6 +18,75 @@ As long as the above functions are defined correctly, Turing will be able to use
 
 The `Turing.Inference.isgibbscomponent(::MySampler)` interface function still exists, but in this version the default has been changed to `true`, so you should not need to overload this.
 
+## **AdvancedVI 0.6**
+
+Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.6 (we skipped the breaking 0.5 update as it does not introduce new features).
+`AdvancedVI.jl@0.6` introduces major structural changes including breaking changes to the interface and multiple new features.
+The summary of the changes below are the things that affect the end-users of Turing.
+For a more comprehensive list of changes, please refer to the [changelogs](https://github.com/TuringLang/AdvancedVI.jl/blob/main/HISTORY.md) in `AdvancedVI`.
+
+### Breaking Changes
+
+A new level of interface for defining different variational algorithms has been introduced in `AdvancedVI` v0.5. As a result, the function `Turing.vi` now receives a keyword argument `algorithm`. The object `algorithm <: AdvancedVI.AbstractVariationalAlgorithm` should now contain all the algorithm-specific configurations. Therefore, keyword arguments of `vi` that were algorithm-specific such as `objective`, `operator`, `averager` and so on, have been moved as fields of the relevant `<: AdvancedVI.AbstractVariationalAlgorithm` structs.
+For example,
+
+```julia
+vi(model, q, n_iters; objective=RepGradELBO(10), operator=AdvancedVI.ClipScale())
+```
+
+is now
+
+```julia
+vi(
+    model,
+    q,
+    n_iters;
+    algorithm=KLMinRepGradDescent(adtype; n_samples=10, operator=AdvancedVI.ClipScale()),
+)
+```
+
+Similarly,
+
+```julia
+vi(
+    model,
+    q,
+    n_iters;
+    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    operator=AdvancedVI.ProximalLocationScaleEntropy(),
+)
+```
+
+is now
+
+```julia
+vi(model, q, n_iters; algorithm=KLMinRepGradProxDescent(adtype; n_samples=10))
+```
+
+Additionally,
+
+  - The default hyperparameters of `DoG`and `DoWG` have been altered.
+  - The deprecated `AdvancedVI@0.2`-era interface is now removed.
+  - `estimate_objective` now returns the value to be minimized by the optimization algorithm. For example, for ELBO maximization algorithms, `estimate_objective` will return the *negative ELBO*. This is breaking change from the previous behavior where the ELBO was returns.
+  - The initial value for the `q_meanfield_gaussian`, `q_fullrank_gaussian`, and `q_locationscale` have changed. Specificially, the default initial value for the scale matrix has been changed from `I` to `0.6*I`.
+  - When using algorithms that expect to operate in unconstrained spaces, the user is now explicitly expected to provide a `Bijectors.TransformedDistribution` wrapping an unconstrained distribution. (Refer to the docstring of `vi`.)
+
+### New Features
+
+`AdvancedVI@0.6` adds numerous new features including the following new VI algorithms:
+
+  - `KLMinWassFwdBwd`: Also known as "Wasserstein variational inference," this algorithm minimizes the KL divergence under the Wasserstein-2 metric.
+  - `KLMinNaturalGradDescent`: This algorithm, also known as "online variational Newton," is the canonical "black-box" natural gradient variational inference algorithm, which minimizes the KL divergence via mirror descent under the KL divergence as the Bregman divergence.
+  - `KLMinSqrtNaturalGradDescent`: This is a recent variant of `KLMinNaturalGradDescent` that operates in the Cholesky-factor parameterization of Gaussians instead of precision matrices.
+  - `FisherMinBatchMatch`: This algorithm called "batch-and-match," minimizes the variation of the 2nd order fisher divergence via a proximal point-type algorithm.
+
+Any of the new algorithms above can readily be used by simply swappin the `algorithm` keyword argument of `vi`.
+For example, to use batch-and-match:
+
+```julia
+vi(model, q, n_iters; algorithm=FisherMinBatchMatch())
+```
+
 # 0.41.1
 
 The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` can now be wrapped in `InitFromParams()`.
