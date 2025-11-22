@@ -32,7 +32,7 @@ export vi,
     KLMinSqrtNaturalGradDescent,
     FisherMinBatchMatch
 
-requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = false
+requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = true
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradProxDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinScoreGradDescent) = false

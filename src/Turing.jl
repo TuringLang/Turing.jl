@@ -47,7 +47,7 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
-include("variational/VariationalInference.jl")
+include("variational/Variational.jl")
 using .Variational
 
 include("optimisation/Optimisation.jl")
