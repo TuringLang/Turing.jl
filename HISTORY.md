@@ -1,3 +1,7 @@
+# 0.41.4
+
+Fixed a bug where the `check_model=false` keyword argument would not be respected when sampling with multiple threads or cores.
+
 # 0.41.3
 
 Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!` (this bug led to mass matrix adaptation not actually happening).
