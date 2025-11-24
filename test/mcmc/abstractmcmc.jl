@@ -6,6 +6,23 @@ using Random: AbstractRNG
 using Test: @test, @testset, @test_throws
 using Turing
 
+@testset "Disabling check_model" begin
+    # Set up a model for which check_model errors.
+    @model f() = x ~ Normal()
+    model = f()
+    Turing.Inference._check_model(::typeof(model)) = error("nope")
+    # Make sure that default sampling does throw the error.
+    @test_throws "nope" sample(model, NUTS(), 100)
+    @test_throws "nope" sample(model, NUTS(), MCMCThreads(), 100, 2)
+    @test_throws "nope" sample(model, NUTS(), MCMCSerial(), 100, 2)
+    @test_throws "nope" sample(model, NUTS(), MCMCDistributed(), 100, 2)
+    # Now disable the check and make sure sampling works.
+    @test sample(model, NUTS(), 100; check_model=false) isa Any
+    @test sample(model, NUTS(), MCMCThreads(), 100, 2; check_model=false) isa Any
+    @test sample(model, NUTS(), MCMCSerial(), 100, 2; check_model=false) isa Any
+    @test sample(model, NUTS(), MCMCDistributed(), 100, 2; check_model=false) isa Any
+end
+
 @testset "Initial parameters" begin
     # Dummy algorithm that just returns initial value and does not perform any sampling
     abstract type OnlyInit <: AbstractMCMC.AbstractSampler end
