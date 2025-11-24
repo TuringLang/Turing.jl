@@ -131,6 +131,7 @@ function AbstractMCMC.sample(
         N,
         n_chains;
         chain_type,
+        check_model=false, # no need to check again
         initial_params=map(_convert_initial_params, initial_params),
         kwargs...,
     )
