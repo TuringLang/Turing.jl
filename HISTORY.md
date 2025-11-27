@@ -68,7 +68,7 @@ is now
 vi(model, q, n_iters; algorithm=KLMinRepGradProxDescent(adtype; n_samples=10))
 ```
 
-Lastly, to obtain the last-iterate `q` of `KLMinRepGradDescent`, which is not returned in the new interface, simply select the averaging strategy to be `AdvancedVI.NoAveraging()`. That is, 
+Lastly, to obtain the last-iterate `q` of `KLMinRepGradDescent`, which is not returned in the new interface, simply select the averaging strategy to be `AdvancedVI.NoAveraging()`. That is,
 
 ```julia
 q, info, state = vi(
