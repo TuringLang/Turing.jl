@@ -314,6 +314,8 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 - `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiating the variational objective.
 - `algorithm`: Variational inference algorithm. The default is `KLMinRepGradProxDescent`, please refer to [AdvancedVI docs](https://turinglang.org/AdvancedVI.jl/stable/) for all the options.
 - `show_progress`: Whether to show the progress bar.
+- Any additional keyword arguments are passed on to `AdvancedVI.optimize`.
+
 
 See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
