@@ -34,7 +34,9 @@ In addition, the outputs also changed. Previously, `vi` returned both the last-i
 For example,
 
 ```julia
-q, q_avg, info, state = vi(model, q, n_iters; objective=RepGradELBO(10), operator=AdvancedVI.ClipScale())
+q, q_avg, info, state = vi(
+    model, q, n_iters; objective=RepGradELBO(10), operator=AdvancedVI.ClipScale()
+)
 ```
 
 is now
