@@ -302,7 +302,7 @@ If the chosen variational inference algorithm operates in an unconstrained space
 For example, the initialization supplied by  `q_meanfield_gaussian`,`q_fullrank_gaussian`, `q_locationscale`.
 
 The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
-For other variational families, refer the documentation of `AdvancedVI` to determine the best algorithm and other options.
+For other variational families, refer to the documentation of `AdvancedVI` to determine the best algorithm and other options.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
