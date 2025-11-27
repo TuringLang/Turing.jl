@@ -78,7 +78,7 @@ Additionally,
   - `KLMinWassFwdBwd`: Also known as "Wasserstein variational inference," this algorithm minimizes the KL divergence under the Wasserstein-2 metric.
   - `KLMinNaturalGradDescent`: This algorithm, also known as "online variational Newton," is the canonical "black-box" natural gradient variational inference algorithm, which minimizes the KL divergence via mirror descent under the KL divergence as the Bregman divergence.
   - `KLMinSqrtNaturalGradDescent`: This is a recent variant of `KLMinNaturalGradDescent` that operates in the Cholesky-factor parameterization of Gaussians instead of precision matrices.
-  - `FisherMinBatchMatch`: This algorithm called "batch-and-match," minimizes the variation of the 2nd order fisher divergence via a proximal point-type algorithm.
+  - `FisherMinBatchMatch`: This algorithm called "batch-and-match," minimizes the variation of the 2nd order Fisher divergence via a proximal point-type algorithm.
 
 Any of the new algorithms above can readily be used by simply swappin the `algorithm` keyword argument of `vi`.
 For example, to use batch-and-match:
