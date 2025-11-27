@@ -310,7 +310,7 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 - `max_iter`: Maximum number of steps.
 
 # Keyword Arguments
-- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiation the variational objective.
+- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiating the variational objective.
 - `algorithm`: Variational inference algorithm.
 - `show_progress`: Whether to show the progress bar.
 
