@@ -76,10 +76,7 @@ q, info, state = vi(
     q,
     n_iters;
     algorithm=KLMinRepGradDescent(
-        adtype; 
-        n_samples=10, 
-        operator=AdvancedVI.ClipScale(),
-        averager=NoAveraging(), 
+        adtype; n_samples=10, operator=AdvancedVI.ClipScale(), averager=NoAveraging()
     ),
 )
 ```
