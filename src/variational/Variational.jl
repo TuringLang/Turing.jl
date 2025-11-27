@@ -308,6 +308,7 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 - `model`: The target `DynamicPPL.Model`.
 - `q`: The initial variational approximation.
 - `max_iter`: Maximum number of steps.
+- Any additional arguments are passed on to `AdvancedVI.optimize`.
 
 # Keyword Arguments
 - `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiating the variational objective.
