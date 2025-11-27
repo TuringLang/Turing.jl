@@ -48,6 +48,10 @@ begin
             q, _, _ = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
             c1 = rand(q, 10)
         end
+        
+        @test_throws "unconstrained" begin
+            q, _, _ = vi(gdemo_default, Normal(), 1; adtype)
+        end
     end
 
     @testset "custom algorithm $name" for (name, algorithm) in [
