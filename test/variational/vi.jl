@@ -12,7 +12,7 @@ using MCMCChains: Chains
 using Random
 using ReverseDiff
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Variational
 
