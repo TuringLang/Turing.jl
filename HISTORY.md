@@ -8,10 +8,10 @@ This is because the interface functions required have been shifted upstream to A
 
 In particular, you now only need to define the following functions:
 
-  - AbstractMCMC.step(rng::Random.AbstractRNG, model::AbstractMCMC.LogDensityModel, ::MySampler; kwargs...) (and also a method with `state`, and the corresponding `step_warmup` methods if needed)
-  - AbstractMCMC.getparams(::MySamplerState)               -> Vector{<:Real}
-  - AbstractMCMC.getstats(::MySamplerState)                -> NamedTuple
-  - AbstractMCMC.requires_unconstrained_space(::MySampler) -> Bool (default `true`)
+  - `AbstractMCMC.step(rng::Random.AbstractRNG, model::AbstractMCMC.LogDensityModel, ::MySampler; kwargs...)` (and also a method with `state`, and the corresponding `step_warmup` methods if needed)
+  - `AbstractMCMC.getparams(::MySamplerState)`               -> Vector{<:Real}
+  - `AbstractMCMC.getstats(::MySamplerState)`                -> NamedTuple
+  - `AbstractMCMC.requires_unconstrained_space(::MySampler)` -> Bool (default `true`)
 
 This means that you only need to depend on AbstractMCMC.jl.
 As long as the above functions are defined correctly, Turing will be able to use your external sampler.
@@ -107,6 +107,22 @@ For example, to use batch-and-match:
 ```julia
 vi(model, q, n_iters; algorithm=FisherMinBatchMatch())
 ```
+
+# 0.41.4
+
+Fixed a bug where the `check_model=false` keyword argument would not be respected when sampling with multiple threads or cores.
+
+# 0.41.3
+
+Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!` (this bug led to mass matrix adaptation not actually happening).
+
+# 0.41.2
+
+Add `GibbsConditional`, a "sampler" that can be used to provide analytically known conditional posteriors in a Gibbs sampler.
+
+In Gibbs sampling, some variables are sampled with a component sampler, while holding other variables conditioned to their current values. Usually one e.g. takes turns sampling one variable with HMC and the other with a particle sampler. However, sometimes the posterior distribution of one variable is known analytically, given the conditioned values of other variables. `GibbsConditional` provides a way to implement these analytically known conditional posteriors and use them as component samplers for Gibbs. See the docstring of `GibbsConditional` for details.
+
+Note that `GibbsConditional` used to exist in Turing.jl until v0.36, at which it was removed when the whole Gibbs sampler was rewritten. This reintroduces the same functionality, though with a slightly different interface.
 
 # 0.41.1
 

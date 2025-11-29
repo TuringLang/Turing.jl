@@ -496,7 +496,7 @@ end
 
     @testset "dynamic model with analytical posterior" begin
         # A dynamic model where b ~ Bernoulli determines the dimensionality
-        # When b=0: single parameter θ₁ 
+        # When b=0: single parameter θ₁
         # When b=1: two parameters θ₁, θ₂ where we observe their sum
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
@@ -575,7 +575,7 @@ end
         #       end
         #   end
         #   sample(f(), Gibbs(:a => PG(10), :x => MH()), 1000)
-        # 
+        #
         # because the number of observations in each particle depends on the value
         # of `a`.
         #

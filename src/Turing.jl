@@ -102,6 +102,7 @@ export
     Emcee,
     ESS,
     Gibbs,
+    GibbsConditional,
     HMC,
     SGLD,
     SGHMC,
