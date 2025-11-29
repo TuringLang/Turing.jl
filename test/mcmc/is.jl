@@ -3,7 +3,6 @@ module ISTests
 using DynamicPPL: logpdf
 using Random: Random
 using StableRNGs: StableRNG
-using StatsFuns: logsumexp
 using Test: @test, @testset
 using Turing
 
@@ -47,7 +46,6 @@ using Turing
             return logpdf.(Normal.(as, 2), 3) .+ logpdf.(Normal.(bs, 2), 1.5)
         end
         @test isapprox(chain[:loglikelihood], expected_loglikelihoods(chain[:a], chain[:b]))
-        @test isapprox(chain.logevidence, logsumexp(chain[:loglikelihood]) - log(N))
     end
 
     @testset "logevidence" begin
@@ -64,7 +62,8 @@ using Turing
         chains = sample(test(), IS(), 1_000)
 
         @test all(isone, chains[:x])
-        @test chains.logevidence ≈ -2 * log(2)
+        logevidence = log(mean(exp.(chains[:loglikelihood])))
+        @test logevidence ≈ -2 * log(2)
     end
 end
 
