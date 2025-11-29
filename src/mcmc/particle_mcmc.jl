@@ -2,6 +2,17 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+function error_if_threadsafe_eval(model::DynamicPPL.Model)
+    if DynamicPPL._requires_threadsafe(model)
+        throw(
+            ArgumentError(
+                "Particle sampling methods do not currently support models that need threadsafe evaluation.",
+            ),
+        )
+    end
+    return nothing
+end
+
 ### AdvancedPS models and interface
 
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
@@ -112,6 +123,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, sampler)
+    error_if_threadsafe_eval(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
@@ -241,6 +253,7 @@ get_varinfo(state::PGState) = state.vi
 function Turing.Inference.initialstep(
     rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, vi::AbstractVarInfo; kwargs...
 )
+    error_if_threadsafe_eval(model)
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create a new set of particles
@@ -308,8 +321,6 @@ function AbstractMCMC.step(
 
     return transition, PGState(_vi, newreference.rng)
 end
-
-DynamicPPL.use_threadsafe_eval(::ParticleMCMCContext, ::AbstractVarInfo) = false
 
 """
 get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
@@ -506,14 +517,5 @@ Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
-)
-    return true
-end
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.init!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true

@@ -398,11 +398,17 @@ using Turing
         res_smc = sample(StableRNG(seed), test(), smc, 1_000)
         res_pg = sample(StableRNG(seed), test(), pg, 100)
 
+        # For IS, we need to calculate the logevidence ourselves
         @test all(isone, res_is[:x])
-        @test res_is.logevidence ≈ 2 * log(0.5)
+        is_logevidence = log(mean(exp.(res_is[:loglikelihood])))
+        @test is_logevidence ≈ 2 * log(0.5)
 
+        # For SMC, the chain stores the collective logevidence of the sampled trajectories
+        # as a statistic (which is the same for all 'iterations'). So we can just pick the
+        # first one.
         @test all(isone, res_smc[:x])
-        @test res_smc.logevidence ≈ 2 * log(0.5)
+        smc_logevidence = first(res_smc[:logevidence])
+        @test smc_logevidence ≈ 2 * log(0.5)
 
         @test all(isone, res_pg[:x])
     end
