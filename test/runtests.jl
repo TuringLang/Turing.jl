@@ -53,6 +53,7 @@ end
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" verbose = true begin
             @timeit_include("mcmc/gibbs.jl")
+            @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
             @timeit_include("mcmc/Inference.jl")
             @timeit_include("mcmc/sghmc.jl")

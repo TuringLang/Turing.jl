@@ -8,15 +8,7 @@ using Random: Random
 using StableRNGs: StableRNG
 using Test
 using ..Models: gdemo_default
-import ForwardDiff, ReverseDiff
-
-# Skip Mooncake on 1.12 as it is not compatible yet
-const INCLUDE_MOONCAKE = VERSION < v"1.12"
-if INCLUDE_MOONCAKE
-    import Pkg
-    Pkg.add("Mooncake")
-    using Mooncake: Mooncake
-end
+import ForwardDiff, ReverseDiff, Mooncake
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -33,10 +25,8 @@ eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
+    AutoMooncake => (Mooncake.CoDual,),
 )
-if INCLUDE_MOONCAKE
-    eltypes_by_adtype[AutoMooncake] = (Mooncake.CoDual,)
-end
 
 """
     AbstractWrongADBackendError
@@ -177,10 +167,7 @@ end
 """
 All the ADTypes on which we want to run the tests.
 """
-ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false)]
-if INCLUDE_MOONCAKE
-    push!(ADTYPES, AutoMooncake(; config=nothing))
-end
+ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false), AutoMooncake()]
 
 # Check that ADTypeCheckContext itself works as expected.
 @testset "ADTypeCheckContext" begin

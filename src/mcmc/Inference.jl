@@ -56,6 +56,7 @@ export Hamiltonian,
     ESS,
     Emcee,
     Gibbs,      # classic sampling
+    GibbsConditional,  # conditional sampling
     HMC,
     SGLD,
     PolynomialStepsize,
@@ -433,6 +434,7 @@ include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
 include("gibbs.jl")
+include("gibbs_conditional.jl")
 
 ################
 # Typing tools #
