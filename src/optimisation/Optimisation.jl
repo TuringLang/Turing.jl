@@ -503,7 +503,9 @@ function estimate_mode(
         vi = DynamicPPL.link(vi, model)
     end
 
-    ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi; adtype=adtype)
+    # Note that we don't need adtype here, because it's specified inside the
+    # OptimizationProblem
+    ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi)
     log_density = OptimLogDensity(ldf)
 
     prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
