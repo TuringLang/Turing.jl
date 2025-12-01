@@ -3,7 +3,7 @@
 ###
 
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
-    if DynamicPPL._requires_threadsafe(model)
+    if DynamicPPL.requires_threadsafe(model)
         throw(
             ArgumentError(
                 "Particle sampling methods do not currently support models that need threadsafe evaluation.",
