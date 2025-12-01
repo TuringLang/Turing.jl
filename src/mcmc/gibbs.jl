@@ -456,14 +456,11 @@ function AbstractMCMC.step_warmup(
 end
 
 """
-    setparams_varinfo!!(model, sampler::AbstractSampler, state, params::AbstractVarInfo)
+    setparams_varinfo!!(model::DynamicPPL.Model, sampler::AbstractSampler, state, params::AbstractVarInfo)
 
 A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
 `AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
 `AbstractMCMC.setparams!!(model, state, params[:])`.
-
-`model` is typically a `DynamicPPL.Model`, but can also be e.g. an
-`AbstractMCMC.LogDensityModel`.
 """
 function setparams_varinfo!!(
     model::DynamicPPL.Model, ::AbstractSampler, state, params::AbstractVarInfo
@@ -488,12 +485,18 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::ExternalSampler, state::TuringState, params::AbstractVarInfo
+    model::DynamicPPL.Model,
+    sampler::ExternalSampler,
+    state::TuringState,
+    params::AbstractVarInfo,
 )
-    new_inner_state = AbstractMCMC.setparams!!(
-        AbstractMCMC.LogDensityModel(state.ldf), state.state, params[:]
+    new_ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
     )
-    return TuringState(new_inner_state, params, state.ldf)
+    new_inner_state = AbstractMCMC.setparams!!(
+        AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
+    )
+    return TuringState(new_inner_state, params, params[:], new_ldf)
 end
 
 function setparams_varinfo!!(

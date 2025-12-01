@@ -122,17 +122,20 @@ function externalsampler(
 end
 
 # TODO(penelopeysm): Can't we clean this up somehow?
-struct TuringState{S,V,L<:DynamicPPL.LogDensityFunction}
+struct TuringState{S,V,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
     state::S
     # Note that this varinfo is used only for structure. Its parameters and other info do
     # not need to be accurate
     varinfo::V
+    # These are the actual parameters that this state is at
+    params::P
     ldf::L
 end
 
-# get_varinfo should return something from which the correct parameters can be
-# obtained, hence we use state.varinfo rather than state.ldf.varinfo
-get_varinfo(state::TuringState) = state.varinfo
+# get_varinfo must return something from which the correct parameters can be obtained
+function get_varinfo(state::TuringState)
+    return DynamicPPL.unflatten(state.varinfo, state.params)
+end
 get_varinfo(state::AbstractVarInfo) = state
 
 function AbstractMCMC.step(
@@ -188,7 +191,7 @@ function AbstractMCMC.step(
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
-        TuringState(state_inner, varinfo, f),
+        TuringState(state_inner, varinfo, new_parameters, f),
     )
 end
 
@@ -211,6 +214,6 @@ function AbstractMCMC.step(
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
-        TuringState(state_inner, state.varinfo, f),
+        TuringState(state_inner, state.varinfo, new_parameters, f),
     )
 end
