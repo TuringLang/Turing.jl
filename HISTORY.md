@@ -18,6 +18,15 @@ As long as the above functions are defined correctly, Turing will be able to use
 
 The `Turing.Inference.isgibbscomponent(::MySampler)` interface function still exists, but in this version the default has been changed to `true`, so you should not need to overload this.
 
+## Optimisation interface
+
+The Optim.jl interface has been removed (so you cannot call `Optim.optimize` directly on Turing models).
+You can use the `maximum_likelihood` or `maximum_a_posteriori` functions with an Optim.jl solver instead (via Optimization.jl: see https://docs.sciml.ai/Optimization/stable/optimization_packages/optim/ for documentation of the available solvers).
+
+## Internal changes
+
+The constructors of `OptimLogDensity` have been replaced with a single constructor, `OptimLogDensity(::DynamicPPL.LogDensityFunction)`.
+
 # 0.41.4
 
 Fixed a bug where the `check_model=false` keyword argument would not be respected when sampling with multiple threads or cores.
