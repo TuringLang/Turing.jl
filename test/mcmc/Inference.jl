@@ -191,7 +191,7 @@ using Turing
             # components are correctly calculated.
             @test isapprox(chain[:logprior], logpdf.(Normal(), chain[:x]))
             @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 10.0))
-            @test isapprox(chain[:lp], chain[:logprior] .+ chain[:loglikelihood])
+            @test isapprox(chain[:logjoint], chain[:logprior] .+ chain[:loglikelihood])
             # And that the outcome is not influenced by the likelihood
             @test mean(chain, :x) ≈ 0.0 atol = 0.1
         end

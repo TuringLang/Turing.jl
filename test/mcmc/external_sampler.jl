@@ -88,7 +88,7 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
     expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
-    @test all(chn[:lp] .== expected_logpdf)
+    @test all(chn[:logjoint] .== expected_logpdf)
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
     @test all(chn[:param_length] .== 2)
@@ -237,7 +237,7 @@ end
                 sampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained=true
             )
             chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
         end
     end
 
@@ -270,7 +270,7 @@ end
                 sampler = initialize_mh_rw(model)
                 sampler_ext = externalsampler(sampler; unconstrained=true)
                 chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
             end
         end
 

@@ -858,7 +858,7 @@ end
                 chn = sample(
                     logp_check(), Gibbs(@varname(x) => sampler), 100; progress=false
                 )
-                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
             end
         end
 
