@@ -1,5 +1,14 @@
 # 0.42.0
 
+## DynamicPPL 0.39
+
+TODO: Expand
+
+  - Faster performance
+  - Threaded observe statements work with `predict`
+  - Threadsafe is now opt-in
+  - MCMCChains now returns `:logjoint` instead of `:lp`
+
 ## External sampler interface
 
 The interface for defining an external sampler has been reworked.
