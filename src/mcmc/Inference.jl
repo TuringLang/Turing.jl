@@ -5,6 +5,7 @@ using DynamicPPL:
     @model,
     Metadata,
     VarInfo,
+    SimpleVarInfo,
     LogDensityFunction,
     AbstractVarInfo,
     # TODO(mhauru) all_varnames_grouped_by_symbol isn't exported by DPPL, because it is only
