@@ -78,6 +78,19 @@ using Turing
         # Check that they're all equal.
         @test chains_smc[:logevidence] ≈ fill(smc_logevidence, 100)
     end
+
+    @testset "refuses to run threadsafe eval" begin
+        # SMC can't run models that have nondeterministic evaluation order,
+        # so it should refuse to run models marked as threadsafe.
+        @model function f(y)
+            x ~ Normal()
+            Threads.@threads for i in eachindex(y)
+                y[i] ~ Normal(x)
+            end
+        end
+        model = DynamicPPL.setthreadsafe(f(randn(10)), true)
+        @test_throws ArgumentError sample(model, SMC(), 100)
+    end
 end
 
 @testset "PG" begin
@@ -152,6 +165,19 @@ end
     @testset "keyword arguments not supported" begin
         @model kwarg_demo(; x=2) = return x
         @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
+    end
+
+    @testset "refuses to run threadsafe eval" begin
+        # PG can't run models that have nondeterministic evaluation order,
+        # so it should refuse to run models marked as threadsafe.
+        @model function f(y)
+            x ~ Normal()
+            Threads.@threads for i in eachindex(y)
+                y[i] ~ Normal(x)
+            end
+        end
+        model = DynamicPPL.setthreadsafe(f(randn(10)), true)
+        @test_throws ArgumentError sample(model, PG(10), 100)
     end
 end
 
