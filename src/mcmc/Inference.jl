@@ -92,6 +92,9 @@ function DynamicPPL.unflatten(vi::DynamicPPL.NTVarInfo, θ::NamedTuple)
     set_namedtuple!(deepcopy(vi), θ)
     return vi
 end
+function DynamicPPL.unflatten(vi::SimpleVarInfo, θ::NamedTuple)
+    return SimpleVarInfo(θ, vi.logp, vi.transformation)
+end
 
 """
     mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::Real)
