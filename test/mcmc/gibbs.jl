@@ -322,7 +322,7 @@ end
         kwargs...,
     )
         spl.non_warmup_count += 1
-        return DynamicPPL.ParamsWithStats(s.vi, model, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model), s
     end
 
     function AbstractMCMC.step_warmup(
@@ -333,7 +333,7 @@ end
         kwargs...,
     )
         spl.warmup_count += 1
-        return DynamicPPL.ParamsWithStats(s.vi, model, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model), s
     end
 
     @model f() = x ~ Normal()
