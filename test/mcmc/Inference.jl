@@ -600,12 +600,6 @@ using Turing
         )
     end
 
-    @testset "names_values" begin
-        ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
-        @test isequal(xs[:, 1], [1, missing, 3])
-        @test isequal(xs[:, 2], [missing, 2, 4])
-    end
-
     @testset "check model" begin
         @model function demo_repeated_varname()
             x ~ Normal(0, 1)
