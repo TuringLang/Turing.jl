@@ -490,7 +490,7 @@ function estimate_mode(
     # (using `LogDensityProblems.logdensity(ldf, x)`) the parameters in the
     # varinfo are completely ignored. The parameters only matter if you are calling evaluate!!
     # directly on the fields of the LogDensityFunction
-    vi = DynamicPPL.ldf_default_varinfo(model, getlogdensity)
+    vi = DynamicPPL.VarInfo(model)
     vi = DynamicPPL.unflatten(vi, initial_params)
 
     # Link the varinfo if needed.
