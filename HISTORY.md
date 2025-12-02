@@ -64,6 +64,12 @@ predictions = predict(pdn_model, chain) # generate new predictions in parallel
 When sampling from a Turing model, the resulting `MCMCChains.Chains` object now contains the log-joint, log-prior, and log-likelihood under the names `:logjoint`, `:logprior`, and `:loglikelihood` respectively.
 Previously, `:logjoint` would be stored under the name `:lp`.
 
+### Log-evidence in chains
+
+When sampling using MCMCChains, the chain object will no longer have its `chain.logevidence` field set.
+Instead, you can calculate this yourself from the log-likelihoods stored in the chain.
+For SMC samplers, the log-evidence of the entire trajectory is stored in `chain[:logevidence]` (which is the same for every particle in the 'chain').
+
 ## External sampler interface
 
 The interface for defining an external sampler has been reworked.
