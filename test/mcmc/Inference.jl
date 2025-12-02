@@ -12,6 +12,7 @@ import MCMCChains
 import Random
 import ReverseDiff
 using StableRNGs: StableRNG
+using StatsFuns: logsumexp
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -394,22 +395,24 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res_is = sample(StableRNG(seed), test(), is, 1_000)
-        res_smc = sample(StableRNG(seed), test(), smc, 1_000)
-        res_pg = sample(StableRNG(seed), test(), pg, 100)
+        N = 1_000
 
         # For IS, we need to calculate the logevidence ourselves
+        res_is = sample(StableRNG(seed), test(), is, N)
         @test all(isone, res_is[:x])
-        is_logevidence = log(mean(exp.(res_is[:loglikelihood])))
+        # below is more numerically stable than log(mean(exp.(res_is[:loglikelihood])))
+        is_logevidence = logsumexp(res_is[:loglikelihood]) - log(N)
         @test is_logevidence ≈ 2 * log(0.5)
 
         # For SMC, the chain stores the collective logevidence of the sampled trajectories
         # as a statistic (which is the same for all 'iterations'). So we can just pick the
         # first one.
+        res_smc = sample(StableRNG(seed), test(), smc, N)
         @test all(isone, res_smc[:x])
         smc_logevidence = first(res_smc[:logevidence])
         @test smc_logevidence ≈ 2 * log(0.5)
 
+        res_pg = sample(StableRNG(seed), test(), pg, 100)
         @test all(isone, res_pg[:x])
     end
 
