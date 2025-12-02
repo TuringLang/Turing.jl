@@ -35,7 +35,7 @@ State of the [`DynamicNUTS`](@ref) sampler.
 # Fields
 $(TYPEDFIELDS)
 """
-struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
+struct DynamicNUTSState{L,C,M,S}
     logdensity::L
     "Cache of sample, log density, and gradient of log density evaluation."
     cache::C
