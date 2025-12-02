@@ -212,6 +212,10 @@ end
     # This testset ensures that samplers or optimisers don't accidentally
     # override the AD backend set in it.
     @testset "adtype=$adtype" for adtype in ADTYPES
+        # Mooncake fails on 1.12 due to a missing rrule
+        if VERSION >= v"1.12-" && adtype isa AutoMooncake
+            continue
+        end
         seed = 123
         alg = HMC(0.1, 10; adtype=adtype)
         m = DynamicPPL.contextualize(
