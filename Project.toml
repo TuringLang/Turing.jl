@@ -86,7 +86,6 @@ julia = "1.10.8"
 
 [extras]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [sources]
 DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "breaking"}
