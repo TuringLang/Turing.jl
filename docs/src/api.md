@@ -43,6 +43,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `prefix`             | [`DynamicPPL.prefix`](@extref)             | Prefix all variable names in a model with a given VarName                                    |
 | `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
 | `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
+| `setthreadsafe`      | [`DynamicPPL.setthreadsafe`](@extref)      | Mark a model as requiring threadsafe evaluation                                              |
 
 ### Inference
 

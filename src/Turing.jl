@@ -76,7 +76,8 @@ using DynamicPPL:
     @addlogprob!,
     InitFromPrior,
     InitFromUniform,
-    InitFromParams
+    InitFromParams,
+    setthreadsafe
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
@@ -91,6 +92,7 @@ export
     prefix,
     LogDensityFunction,
     @addlogprob!,
+    setthreadsafe,
     # Sampling - AbstractMCMC
     sample,
     MCMCThreads,

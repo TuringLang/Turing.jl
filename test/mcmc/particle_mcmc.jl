@@ -88,7 +88,7 @@ using Turing
                 y[i] ~ Normal(x)
             end
         end
-        model = DynamicPPL.setthreadsafe(f(randn(10)), true)
+        model = setthreadsafe(f(randn(10)), true)
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 end
@@ -176,7 +176,7 @@ end
                 y[i] ~ Normal(x)
             end
         end
-        model = DynamicPPL.setthreadsafe(f(randn(10)), true)
+        model = setthreadsafe(f(randn(10)), true)
         @test_throws ArgumentError sample(model, PG(10), 100)
     end
 end
