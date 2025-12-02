@@ -2,12 +2,67 @@
 
 ## DynamicPPL 0.39
 
-TODO: Expand
+Turing.jl v0.42 brings with it all the underlying changes in DynamicPPL 0.39.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.39.0) for full details; in here we summarise only the changes that are most pertinent to end-users of Turing.jl.
 
-  - Faster performance
-  - Threaded observe statements work with `predict`
-  - Threadsafe is now opt-in
-  - MCMCChains now returns `:logjoint` instead of `:lp`
+### Thread safety opt-in
+
+Turing.jl has supported threaded tilde-statements for a while now, as long as said tilde-statements are **observations** (i.e., likelihood terms).
+For example:
+
+```julia
+@model function f(y)
+    x ~ Normal()
+    Threads.@threads for i in eachindex(y)
+        y[i] ~ Normal(x)
+    end
+end
+```
+
+**Models where tilde-statements or `@addlogprob!` are used in parallel require what we call 'threadsafe evaluation'.**
+In previous releases of Turing.jl, threadsafe evaluation was enabled whenever Julia was launched with more than one thread.
+However, this is an imprecise way of determining whether threadsafe evaluation is really needed.
+It causes performance degradation for models that do _not_ actually need threadsafe evaluation, and generally led to ill-defined behaviour in various parts of the Turing codebase.
+
+In Turing.jl v0.42, **threadsafe evaluation is now opt-in.**
+To enable threadsafe evaluation, after defining a model, you now need to call `setthreadsafe(model, true)` (note that this is not a mutating function, it returns a new model):
+
+```julia
+y = randn(100)
+model = f(y)
+model = setthreadsafe(model, true)
+```
+
+You *only* need to do this if your model uses tilde-statements or `@addlogprob!` in parallel.
+You do *not* need to do this if:
+
+  - your model has other kinds of parallelism but does not include tilde-statements inside;
+  - or you are using `MCMCThreads()` or `MCMCDistributed()` to sample multiple chains in parallel, but your model itself does not use parallelism.
+
+### Faster performance
+
+Many operations in DynamicPPL have been substantially sped up.
+You should find that anything that uses LogDensityFunction (i.e., HMC/NUTS samplers, optimisation) is faster in this release.
+Prior sampling should also be much faster than before.
+
+### `predict` improvements
+
+If you have a model that requires threadsafe evaluation (i.e., parallel observations), you can now use this with `predict`.
+Carrying on from the previous example, you can do:
+
+```julia
+model = setthreadsafe(f(y), true)
+chain = sample(model, NUTS(), 1000)
+
+pdn_model = f(fill(missing, length(y)))
+pdn_model = setthreadsafe(pdn_model, true)  # set threadsafe
+predictions = predict(pdn_model, chain) # generate new predictions in parallel
+```
+
+### Log-density names in chains
+
+When sampling from a Turing model, the resulting `MCMCChains.Chains` object now contains the log-joint, log-prior, and log-likelihood under the names `:logjoint`, `:logprior`, and `:loglikelihood` respectively.
+Previously, `:logjoint` would be stored under the name `:lp`.
 
 ## External sampler interface
 
