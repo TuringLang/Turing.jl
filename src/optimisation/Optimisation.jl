@@ -81,10 +81,10 @@ required by Optimization.jl.
 """
     ModeResult{
         V<:NamedArrays.NamedArray,
-        M<:NamedArrays.NamedArray,
-        O<:Optim.MultivariateOptimizationResults,
-        S<:NamedArrays.NamedArray,
+        O<:Any,
+        M<:OptimLogDensity,
         P<:AbstractDict{<:VarName,<:Any}
+        E<:ModeEstimator,
     }
 
 A wrapper struct to store various results from a MAP or MLE estimation.
@@ -98,6 +98,7 @@ struct ModeResult{
     O<:Any,
     M<:OptimLogDensity,
     P<:AbstractDict{<:AbstractPPL.VarName,<:Any},
+    E<:ModeEstimator,
 } <: StatsBase.StatisticalModel
     "A vector with the resulting point estimates."
     values::V
@@ -109,6 +110,10 @@ struct ModeResult{
     f::M
     "Dictionary of parameter values"
     params::P
+    "Whether the optimization was done in a transformed space."
+    linked::Bool
+    "The type of mode estimation (MAP or MLE)."
+    estimator::E
 end
 
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
@@ -218,42 +223,16 @@ end
 function StatsBase.informationmatrix(
     m::ModeResult; hessian_function=ForwardDiff.hessian, kwargs...
 )
-    # Calculate Hessian and information matrix.
-
-    # Convert the values to their unconstrained states to make sure the
-    # Hessian is computed with respect to the untransformed parameters.
-    old_ldf = m.f.ldf
-    linked = DynamicPPL.is_transformed(old_ldf.varinfo)
-    if linked
-        new_vi = DynamicPPL.invlink!!(old_ldf.varinfo, old_ldf.model)
-        new_f = OptimLogDensity(
-            DynamicPPL.LogDensityFunction(
-                old_ldf.model, old_ldf.getlogdensity, new_vi; adtype=old_ldf.adtype
-            ),
-        )
-        m = Accessors.@set m.f = new_f
-    end
+    # This needs to be calculated in unlinked space
+    model = m.f.ldf.model
+    vi = DynamicPPL.VarInfo(model)
+    getlogdensity = _choose_getlogdensity(m.estimator)
+    new_optimld = OptimLogDensity(DynamicPPL.LogDensityFunction(model, getlogdensity, vi))
 
     # Calculate the Hessian, which is the information matrix because the negative of the log
     # likelihood was optimized
     varnames = StatsBase.coefnames(m)
-    info = hessian_function(m.f, m.values.array[:, 1])
-
-    # Link it back if we invlinked it.
-    if linked
-        invlinked_ldf = m.f.ldf
-        new_vi = DynamicPPL.link!!(invlinked_ldf.varinfo, invlinked_ldf.model)
-        new_f = OptimLogDensity(
-            DynamicPPL.LogDensityFunction(
-                invlinked_ldf.model,
-                old_ldf.getlogdensity,
-                new_vi;
-                adtype=invlinked_ldf.adtype,
-            ),
-        )
-        m = Accessors.@set m.f = new_f
-    end
-
+    info = hessian_function(new_optimld, m.values.array[:, 1])
     return NamedArrays.NamedArray(info, (varnames, varnames))
 end
 
@@ -272,11 +251,7 @@ Return the values of all the variables with the symbol(s) `var_symbol` in the mo
 argument should be either a `Symbol` or a vector of `Symbol`s.
 """
 function Base.get(m::ModeResult, var_symbols::AbstractVector{Symbol})
-    log_density = m.f.ldf
-    # Get all the variable names in the model. This is the same as the list of keys in
-    # m.values, but they are more convenient to filter when they are VarNames rather than
-    # Symbols.
-    vals_dict = Turing.Inference.getparams(log_density.model, log_density.varinfo)
+    vals_dict = m.params
     iters = map(AbstractPPL.varname_and_value_leaves, keys(vals_dict), values(vals_dict))
     vns_and_vals = mapreduce(collect, vcat, iters)
     varnames = collect(map(first, vns_and_vals))
@@ -296,18 +271,27 @@ end
 Base.get(m::ModeResult, var_symbol::Symbol) = get(m, [var_symbol])
 
 """
-    ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
+    ModeResult(
+        log_density::OptimLogDensity,
+        solution::SciMLBase.OptimizationSolution,
+        linked::Bool,
+        estimator::ModeEstimator,
+    )
 
 Create a `ModeResult` for a given `log_density` objective and a `solution` given by `solve`.
+The `linked` argument indicates whether the optimization was done in a transformed space.
 
 `Optimization.solve` returns its own result type. This function converts that into the
 richer format of `ModeResult`. It also takes care of transforming them back to the original
 parameter space in case the optimization was done in a transformed space.
 """
-function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.OptimizationSolution)
-    varinfo_new = DynamicPPL.unflatten(log_density.ldf.varinfo, solution.u)
-    # `getparams` performs invlinking if needed
-    vals = Turing.Inference.getparams(log_density.ldf.model, varinfo_new)
+function ModeResult(
+    log_density::OptimLogDensity,
+    solution::SciMLBase.OptimizationSolution,
+    linked::Bool,
+    estimator::ModeEstimator,
+)
+    vals = DynamicPPL.ParamsWithStats(solution.u, log_density.ldf).params
     iters = map(AbstractPPL.varname_and_value_leaves, keys(vals), values(vals))
     vns_vals_iter = mapreduce(collect, vcat, iters)
     syms = map(Symbol ∘ first, vns_vals_iter)
@@ -318,6 +302,8 @@ function ModeResult(log_density::OptimLogDensity, solution::SciMLBase.Optimizati
         -solution.objective,
         log_density,
         vals,
+        linked,
+        estimator,
     )
 end
 
@@ -394,18 +380,19 @@ function default_solver(constraints::ModeEstimationConstraints)
 end
 
 """
-    OptimizationProblem(log_density::OptimLogDensity, adtype, constraints)
+    OptimizationProblem(log_density::OptimLogDensity, initial_params::AbstractVector, adtype, constraints)
 
 Create an `OptimizationProblem` for the objective function defined by `log_density`.
 
 Note that the adtype parameter here overrides any adtype parameter the
 OptimLogDensity was constructed with.
 """
-function Optimization.OptimizationProblem(log_density::OptimLogDensity, adtype, constraints)
+function Optimization.OptimizationProblem(
+    log_density::OptimLogDensity, initial_params::AbstractVector, adtype, constraints
+)
     # Note that OptimLogDensity is a callable that evaluates the model with given
     # parameters. Hence we can use it in the objective function as below.
     f = Optimization.OptimizationFunction(log_density, adtype; cons=constraints.cons)
-    initial_params = log_density.ldf.varinfo[:]
     prob = if !has_constraints(constraints)
         Optimization.OptimizationProblem(f, initial_params)
     else
@@ -420,6 +407,12 @@ function Optimization.OptimizationProblem(log_density::OptimLogDensity, adtype, 
     end
     return prob
 end
+
+# Note that we use `getlogjoint` rather than `getlogjoint_internal`: this is intentional,
+# because even though the VarInfo may be linked, the optimisation target should not take the
+# Jacobian term into account.
+_choose_getlogdensity(::MAP) = DynamicPPL.getlogjoint
+_choose_getlogdensity(::MLE) = DynamicPPL.getloglikelihood
 
 """
     estimate_mode(
@@ -478,19 +471,12 @@ function estimate_mode(
         solver = default_solver(constraints)
     end
 
-    # Create an OptimLogDensity object that can be used to evaluate the objective function,
-    # i.e. the negative log density.
-    # Note that we use `getlogjoint` rather than `getlogjoint_internal`: this
-    # is intentional, because even though the VarInfo may be linked, the
-    # optimisation target should not take the Jacobian term into account.
-    getlogdensity = estimator isa MAP ? DynamicPPL.getlogjoint : DynamicPPL.getloglikelihood
-
     # Set its VarInfo to the initial parameters.
     # TODO(penelopeysm): Unclear if this is really needed? Any time that logp is calculated
     # (using `LogDensityProblems.logdensity(ldf, x)`) the parameters in the
     # varinfo are completely ignored. The parameters only matter if you are calling evaluate!!
     # directly on the fields of the LogDensityFunction
-    vi = DynamicPPL.ldf_default_varinfo(model, getlogdensity)
+    vi = DynamicPPL.VarInfo(model)
     vi = DynamicPPL.unflatten(vi, initial_params)
 
     # Link the varinfo if needed.
@@ -502,17 +488,24 @@ function estimate_mode(
     if optimise_in_unconstrained_space
         vi = DynamicPPL.link(vi, model)
     end
+    # Re-extract initial parameters (which may now be linked).
+    initial_params = vi[:]
 
     # Note that we don't need adtype here, because it's specified inside the
     # OptimizationProblem
+    getlogdensity = _choose_getlogdensity(estimator)
     ldf = DynamicPPL.LogDensityFunction(model, getlogdensity, vi)
+    # Create an OptimLogDensity object that can be used to evaluate the objective function,
+    # i.e. the negative log density.
     log_density = OptimLogDensity(ldf)
 
-    prob = Optimization.OptimizationProblem(log_density, adtype, constraints)
+    prob = Optimization.OptimizationProblem(
+        log_density, initial_params, adtype, constraints
+    )
     solution = Optimization.solve(prob, solver; kwargs...)
     # TODO(mhauru) We return a ModeResult for compatibility with the older Optim.jl
     # interface. Might we want to break that and develop a better return type?
-    return ModeResult(log_density, solution)
+    return ModeResult(log_density, solution, optimise_in_unconstrained_space, estimator)
 end
 
 """

@@ -104,17 +104,17 @@ function build_variable_dict(model::DynamicPPL.Model)
     )
 end
 
-function get_gibbs_global_varinfo(context::DynamicPPL.AbstractContext)
-    return if context isa GibbsContext
-        get_global_varinfo(context)
-    elseif DynamicPPL.NodeTrait(context) isa DynamicPPL.IsParent
-        get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
-    else
-        msg = """No GibbsContext found in context stack. Are you trying to use \
-            GibbsConditional outside of Gibbs?
-            """
-        throw(ArgumentError(msg))
-    end
+function get_gibbs_global_varinfo(context::GibbsContext)
+    return get_global_varinfo(context)
+end
+function get_gibbs_global_varinfo(context::DynamicPPL.AbstractParentContext)
+    return get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
+end
+function get_gibbs_global_varinfo(::DynamicPPL.AbstractContext)
+    msg = """No GibbsContext found in context stack. Are you trying to use \
+        GibbsConditional outside of Gibbs?
+        """
+    throw(ArgumentError(msg))
 end
 
 function initialstep(

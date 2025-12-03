@@ -70,10 +70,26 @@ using Turing
         chains_smc = sample(test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
-        # the chain itself has a logevidence field
-        @test chains_smc.logevidence ≈ -2 * log(2)
-        # but each transition also contains the logevidence
-        @test chains_smc[:logevidence] ≈ fill(chains_smc.logevidence, 100)
+        # For SMC, the chain stores the collective logevidence of the sampled trajectories
+        # as a statistic (which is the same for all 'iterations'). So we can just pick the
+        # first one.
+        smc_logevidence = first(chains_smc[:logevidence])
+        @test smc_logevidence ≈ -2 * log(2)
+        # Check that they're all equal.
+        @test chains_smc[:logevidence] ≈ fill(smc_logevidence, 100)
+    end
+
+    @testset "refuses to run threadsafe eval" begin
+        # SMC can't run models that have nondeterministic evaluation order,
+        # so it should refuse to run models marked as threadsafe.
+        @model function f(y)
+            x ~ Normal()
+            Threads.@threads for i in eachindex(y)
+                y[i] ~ Normal(x)
+            end
+        end
+        model = setthreadsafe(f(randn(10)), true)
+        @test_throws ArgumentError sample(model, SMC(), 100)
     end
 end
 
@@ -101,8 +117,6 @@ end
     end
 
     @testset "logevidence" begin
-        Random.seed!(100)
-
         @model function test()
             a ~ Normal(0, 1)
             x ~ Bernoulli(1)
@@ -113,11 +127,13 @@ end
             return x
         end
 
-        chains_pg = sample(test(), PG(10), 100)
+        chains_pg = sample(StableRNG(468), test(), PG(10), 100)
 
         @test all(isone, chains_pg[:x])
-        @test chains_pg.logevidence ≈ -2 * log(2) atol = 0.01
-        @test chains_pg[:logevidence] ≈ fill(chains_pg.logevidence, 100)
+        pg_logevidence = mean(chains_pg[:logevidence])
+        @test pg_logevidence ≈ -2 * log(2) atol = 0.01
+        # Should be the same for all iterations.
+        @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
@@ -149,6 +165,19 @@ end
     @testset "keyword arguments not supported" begin
         @model kwarg_demo(; x=2) = return x
         @test_throws ErrorException sample(kwarg_demo(), PG(1), 10)
+    end
+
+    @testset "refuses to run threadsafe eval" begin
+        # PG can't run models that have nondeterministic evaluation order,
+        # so it should refuse to run models marked as threadsafe.
+        @model function f(y)
+            x ~ Normal()
+            Threads.@threads for i in eachindex(y)
+                y[i] ~ Normal(x)
+            end
+        end
+        model = setthreadsafe(f(randn(10)), true)
+        @test_throws ArgumentError sample(model, PG(10), 100)
     end
 end
 

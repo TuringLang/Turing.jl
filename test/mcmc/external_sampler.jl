@@ -88,7 +88,7 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:a] .== a)
     @test all(chn[:b] .== b)
     expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
-    @test all(chn[:lp] .== expected_logpdf)
+    @test all(chn[:logjoint] .== expected_logpdf)
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
     @test all(chn[:param_length] .== 2)
@@ -187,8 +187,8 @@ function test_initial_params(model, sampler; kwargs...)
     transition2, _ = AbstractMCMC.step(
         rng2, model, sampler; initial_params=init_strategy, kwargs...
     )
-    vn_to_val1 = DynamicPPL.OrderedDict(transition1.θ)
-    vn_to_val2 = DynamicPPL.OrderedDict(transition2.θ)
+    vn_to_val1 = transition1.params
+    vn_to_val2 = transition2.params
     for vn in union(keys(vn_to_val1), keys(vn_to_val2))
         @test vn_to_val1[vn] ≈ vn_to_val2[vn]
     end
@@ -237,7 +237,7 @@ end
                 sampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained=true
             )
             chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
         end
     end
 
@@ -270,7 +270,7 @@ end
                 sampler = initialize_mh_rw(model)
                 sampler_ext = externalsampler(sampler; unconstrained=true)
                 chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
             end
         end
 

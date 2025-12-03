@@ -122,19 +122,20 @@ function externalsampler(
 end
 
 # TODO(penelopeysm): Can't we clean this up somehow?
-struct TuringState{S,V1,M,V}
+struct TuringState{S,V,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
     state::S
-    # Note that this varinfo must have the correct parameters set; but logp
-    # does not matter as it will be re-evaluated
-    varinfo::V1
-    # Note that in general the VarInfo inside this LogDensityFunction will have
-    # junk parameters and logp. It only exists to provide structure
-    ldf::DynamicPPL.LogDensityFunction{M,V}
+    # Note that this varinfo is used only for structure. Its parameters and other info do
+    # not need to be accurate
+    varinfo::V
+    # These are the actual parameters that this state is at
+    params::P
+    ldf::L
 end
 
-# get_varinfo should return something from which the correct parameters can be
-# obtained, hence we use state.varinfo rather than state.ldf.varinfo
-get_varinfo(state::TuringState) = state.varinfo
+# get_varinfo must return something from which the correct parameters can be obtained
+function get_varinfo(state::TuringState)
+    return DynamicPPL.unflatten(state.varinfo, state.params)
+end
 get_varinfo(state::AbstractVarInfo) = state
 
 function AbstractMCMC.step(
@@ -187,11 +188,10 @@ function AbstractMCMC.step(
     end
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
-        TuringState(state_inner, new_vi, f),
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
+        TuringState(state_inner, varinfo, new_parameters, f),
     )
 end
 
@@ -211,10 +211,9 @@ function AbstractMCMC.step(
     )
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_vi = DynamicPPL.unflatten(f.varinfo, new_parameters)
     new_stats = AbstractMCMC.getstats(state_inner)
     return (
-        Turing.Inference.Transition(f.model, new_vi, new_stats),
-        TuringState(state_inner, new_vi, f),
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
+        TuringState(state_inner, state.varinfo, new_parameters, f),
     )
 end

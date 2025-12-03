@@ -47,7 +47,6 @@ using Turing
             return logpdf.(Normal.(as, 2), 3) .+ logpdf.(Normal.(bs, 2), 1.5)
         end
         @test isapprox(chain[:loglikelihood], expected_loglikelihoods(chain[:a], chain[:b]))
-        @test isapprox(chain.logevidence, logsumexp(chain[:loglikelihood]) - log(N))
     end
 
     @testset "logevidence" begin
@@ -61,10 +60,14 @@ using Turing
             return x
         end
 
-        chains = sample(test(), IS(), 1_000)
+        N = 1_000
+        chains = sample(test(), IS(), N)
 
         @test all(isone, chains[:x])
-        @test chains.logevidence ≈ -2 * log(2)
+        # The below is equivalent to log(mean(exp.(chains[:loglikelihood]))), but more
+        # numerically stable
+        logevidence = logsumexp(chains[:loglikelihood]) - log(N)
+        @test logevidence ≈ -2 * log(2)
     end
 end
 

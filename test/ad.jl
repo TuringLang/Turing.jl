@@ -84,7 +84,7 @@ encountered.
 
 """
 struct ADTypeCheckContext{ADType,ChildContext<:DynamicPPL.AbstractContext} <:
-       DynamicPPL.AbstractContext
+       DynamicPPL.AbstractParentContext
     child::ChildContext
 
     function ADTypeCheckContext(adbackend, child)
@@ -98,7 +98,6 @@ end
 
 adtype(_::ADTypeCheckContext{ADType}) where {ADType} = ADType
 
-DynamicPPL.NodeTrait(::ADTypeCheckContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(c::ADTypeCheckContext) = c.child
 function DynamicPPL.setchildcontext(c::ADTypeCheckContext, child)
     return ADTypeCheckContext(adtype(c), child)
@@ -128,14 +127,25 @@ Check that the element types in `vi` are compatible with the ADType of `context`
 Throw an `IncompatibleADTypeError` if an incompatible element type is encountered.
 """
 function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInfo)
-    valids = valid_eltypes(context)
-    for val in vi[:]
-        valtype = typeof(val)
-        if !any(valtype .<: valids)
-            throw(IncompatibleADTypeError(valtype, adtype(context)))
-        end
+    # If we are using InitFromPrior or InitFromUniform to generate new values,
+    # then the parameter type will be Any, so we should skip the check.
+    lc = DynamicPPL.leafcontext(context)
+    if lc isa DynamicPPL.InitContext{
+        <:Any,<:Union{DynamicPPL.InitFromPrior,DynamicPPL.InitFromUniform}
+    }
+        return nothing
     end
-    return nothing
+    # Note that `get_param_eltype` will return `Any` with e.g. InitFromPrior or
+    # InitFromUniform, so this will fail. But on the bright side, you would never _really_
+    # use AD with those strategies, so that's fine. The cases where you do want to
+    # use this are DefaultContext (i.e., old, slow, LogDensityFunction) and
+    # InitFromParams{<:VectorWithRanges} (i.e., new, fast, LogDensityFunction), and
+    # both of those give you sensible results for `get_param_eltype`.
+    param_eltype = DynamicPPL.get_param_eltype(vi, context)
+    valids = valid_eltypes(context)
+    if !(any(param_eltype .<: valids))
+        throw(IncompatibleADTypeError(param_eltype, adtype(context)))
+    end
 end
 
 # A bunch of tilde_assume/tilde_observe methods that just call the same method on the child
@@ -187,10 +197,10 @@ ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false), AutoMooncake()]
             @testset "Expected: $expected_adtype, Actual: $actual_adtype" begin
                 if actual_adtype == expected_adtype
                     # Check that this does not throw an error.
-                    sample(contextualised_tm, sampler, 2)
+                    sample(contextualised_tm, sampler, 2; check_model=false)
                 else
                     @test_throws AbstractWrongADBackendError sample(
-                        contextualised_tm, sampler, 2
+                        contextualised_tm, sampler, 2; check_model=false
                     )
                 end
             end

@@ -22,12 +22,9 @@ using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
-function check_transition_varnames(transition::Turing.Inference.Transition, parent_varnames)
-    transition_varnames = mapreduce(vcat, transition.θ) do vn_and_val
-        [first(vn_and_val)]
-    end
+function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
     # Varnames in `transition` should be subsumed by those in `parent_varnames`.
-    for vn in transition_varnames
+    for vn in keys(transition.params)
         @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
     end
 end
@@ -159,14 +156,14 @@ end
     # It is modified by the capture_targets_and_algs function.
     targets_and_algs = Any[]
 
-    function capture_targets_and_algs(sampler, context)
-        if DynamicPPL.NodeTrait(context) == DynamicPPL.IsLeaf()
-            return nothing
-        end
+    function capture_targets_and_algs(sampler, context::DynamicPPL.AbstractParentContext)
         if context isa Inference.GibbsContext
             push!(targets_and_algs, (context.target_varnames, sampler))
         end
         return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
+    end
+    function capture_targets_and_algs(sampler, ::DynamicPPL.AbstractContext)
+        return nothing  # Leaf context.
     end
 
     # The methods that capture testing information for us.
@@ -306,7 +303,7 @@ end
     )
         spl.non_warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
-        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
+        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
     end
 
     function AbstractMCMC.step_warmup(
@@ -314,7 +311,7 @@ end
     )
         spl.warmup_init_count += 1
         vi = DynamicPPL.VarInfo(model)
-        return (Turing.Inference.Transition(model, vi, nothing), VarInfoState(vi))
+        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
     end
 
     function AbstractMCMC.step(
@@ -325,7 +322,7 @@ end
         kwargs...,
     )
         spl.non_warmup_count += 1
-        return Turing.Inference.Transition(model, s.vi, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model), s
     end
 
     function AbstractMCMC.step_warmup(
@@ -336,7 +333,7 @@ end
         kwargs...,
     )
         spl.warmup_count += 1
-        return Turing.Inference.Transition(model, s.vi, nothing), s
+        return DynamicPPL.ParamsWithStats(s.vi, model), s
     end
 
     @model f() = x ~ Normal()
@@ -481,12 +478,13 @@ end
             ::Type{MCMCChains.Chains};
             kwargs...,
         )
-            samples isa Vector{<:Inference.Transition} || error("incorrect transitions")
+            samples isa Vector{<:DynamicPPL.ParamsWithStats} ||
+                error("incorrect transitions")
             return nothing
         end
 
         function callback(rng, model, sampler, sample, state, i; kwargs...)
-            sample isa Inference.Transition || error("incorrect sample")
+            sample isa DynamicPPL.ParamsWithStats || error("incorrect sample")
             return nothing
         end
 
@@ -860,7 +858,7 @@ end
                 chn = sample(
                     logp_check(), Gibbs(@varname(x) => sampler), 100; progress=false
                 )
-                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:lp])
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
             end
         end
 

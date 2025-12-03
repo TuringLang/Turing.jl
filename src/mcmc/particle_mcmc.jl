@@ -2,12 +2,22 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+function error_if_threadsafe_eval(model::DynamicPPL.Model)
+    if DynamicPPL.requires_threadsafe(model)
+        throw(
+            ArgumentError(
+                "Particle sampling methods do not currently support models that need threadsafe evaluation.",
+            ),
+        )
+    end
+    return nothing
+end
+
 ### AdvancedPS models and interface
 
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
-DynamicPPL.NodeTrait(::ParticleMCMCContext) = DynamicPPL.IsLeaf()
 
 struct TracedModel{V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
     model::M
@@ -101,10 +111,6 @@ struct SMCState{P,F<:AbstractFloat}
     average_logevidence::F
 end
 
-function getlogevidence(samples, ::SMC, state::SMCState)
-    return state.average_logevidence
-end
-
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -117,6 +123,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && _check_model(model, sampler)
+    error_if_threadsafe_eval(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
@@ -159,7 +166,9 @@ function Turing.Inference.initialstep(
 
     # Compute the first transition and the first state.
     stats = (; weight=weight, logevidence=logevidence)
-    transition = Transition(model, particle.model.f.varinfo, stats)
+    transition = DynamicPPL.ParamsWithStats(
+        deepcopy(particle.model.f.varinfo), model, stats
+    )
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
@@ -178,7 +187,9 @@ function AbstractMCMC.step(
 
     # Compute the transition and the next state.
     stats = (; weight=weight, logevidence=state.average_logevidence)
-    transition = Transition(model, particle.model.f.varinfo, stats)
+    transition = DynamicPPL.ParamsWithStats(
+        deepcopy(particle.model.f.varinfo), model, stats
+    )
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -239,24 +250,10 @@ end
 
 get_varinfo(state::PGState) = state.vi
 
-function getlogevidence(
-    transitions::AbstractVector{<:Turing.Inference.Transition}, ::PG, ::PGState
-)
-    logevidences = map(transitions) do t
-        if haskey(t.stat, :logevidence)
-            return t.stat.logevidence
-        else
-            # This should not really happen, but if it does we can handle it
-            # gracefully
-            return missing
-        end
-    end
-    return mean(logevidences)
-end
-
 function Turing.Inference.initialstep(
     rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, vi::AbstractVarInfo; kwargs...
 )
+    error_if_threadsafe_eval(model)
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create a new set of particles
@@ -280,7 +277,9 @@ function Turing.Inference.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = Transition(model, _vi, (; logevidence=logevidence))
+    transition = DynamicPPL.ParamsWithStats(
+        deepcopy(_vi), model, (; logevidence=logevidence)
+    )
 
     return transition, PGState(_vi, reference.rng)
 end
@@ -316,12 +315,12 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = Transition(model, _vi, (; logevidence=logevidence))
+    transition = DynamicPPL.ParamsWithStats(
+        deepcopy(_vi), model, (; logevidence=logevidence)
+    )
 
     return transition, PGState(_vi, newreference.rng)
 end
-
-DynamicPPL.use_threadsafe_eval(::ParticleMCMCContext, ::AbstractVarInfo) = false
 
 """
 get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
@@ -518,14 +517,5 @@ Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadsafe!!),Vararg}}
-)
-    return true
-end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.evaluate_threadunsafe!!),Vararg}}
-)
-    return true
-end
+Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.init!!),Vararg}}) = true
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true

@@ -12,6 +12,7 @@ import MCMCChains
 import Random
 import ReverseDiff
 using StableRNGs: StableRNG
+using StatsFuns: logsumexp
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -71,12 +72,12 @@ using Turing
     @testset "save/resume correctly reloads state" begin
         struct StaticSampler <: AbstractMCMC.AbstractSampler end
         function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
-            return Turing.Inference.Transition(model, vi, nothing), vi
+            return DynamicPPL.ParamsWithStats(vi, model), vi
         end
         function AbstractMCMC.step(
             rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
         )
-            return Turing.Inference.Transition(model, vi, nothing), vi
+            return DynamicPPL.ParamsWithStats(vi, model), vi
         end
 
         @model demo() = x ~ Normal()
@@ -174,24 +175,10 @@ using Turing
             @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
-        @testset "Vector chain_type" begin
-            chains = sample(
-                StableRNG(seed), gdemo_d(), Prior(), N; chain_type=Vector{NamedTuple}
-            )
-            @test chains isa Vector{<:NamedTuple}
-            @test length(chains) == N
-            @test all(haskey(x, :lp) for x in chains)
-            @test all(haskey(x, :logprior) for x in chains)
-            @test all(haskey(x, :loglikelihood) for x in chains)
-            @test mean(x[:s][1] for x in chains) ≈ 3 atol = 0.11
-            @test mean(x[:m][1] for x in chains) ≈ 0 atol = 0.1
-        end
-
         @testset "accumulators are set correctly" begin
-            # Prior() uses `reevaluate=false` when constructing a
-            # `Turing.Inference.Transition`, so we had better make sure that it
-            # does capture colon-eq statements, as we can't rely on the default
-            # `Transition` constructor to do this for us.
+            # Prior() does not reevaluate the model when constructing a
+            # `DynamicPPL.ParamsWithStats`, so we had better make sure that it does capture
+            # colon-eq statements, and that the logp components are correctly calculated.
             @model function coloneq()
                 x ~ Normal()
                 10.0 ~ Normal(x)
@@ -205,7 +192,7 @@ using Turing
             # components are correctly calculated.
             @test isapprox(chain[:logprior], logpdf.(Normal(), chain[:x]))
             @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 10.0))
-            @test isapprox(chain[:lp], chain[:logprior] .+ chain[:loglikelihood])
+            @test isapprox(chain[:logjoint], chain[:logprior] .+ chain[:loglikelihood])
             # And that the outcome is not influenced by the likelihood
             @test mean(chain, :x) ≈ 0.0 atol = 0.1
         end
@@ -408,16 +395,24 @@ using Turing
         smc = SMC()
         pg = PG(10)
 
-        res_is = sample(StableRNG(seed), test(), is, 1_000)
-        res_smc = sample(StableRNG(seed), test(), smc, 1_000)
-        res_pg = sample(StableRNG(seed), test(), pg, 100)
+        N = 1_000
 
+        # For IS, we need to calculate the logevidence ourselves
+        res_is = sample(StableRNG(seed), test(), is, N)
         @test all(isone, res_is[:x])
-        @test res_is.logevidence ≈ 2 * log(0.5)
+        # below is more numerically stable than log(mean(exp.(res_is[:loglikelihood])))
+        is_logevidence = logsumexp(res_is[:loglikelihood]) - log(N)
+        @test is_logevidence ≈ 2 * log(0.5)
 
+        # For SMC, the chain stores the collective logevidence of the sampled trajectories
+        # as a statistic (which is the same for all 'iterations'). So we can just pick the
+        # first one.
+        res_smc = sample(StableRNG(seed), test(), smc, N)
         @test all(isone, res_smc[:x])
-        @test res_smc.logevidence ≈ 2 * log(0.5)
+        smc_logevidence = first(res_smc[:logevidence])
+        @test smc_logevidence ≈ 2 * log(0.5)
 
+        res_pg = sample(StableRNG(seed), test(), pg, 100)
         @test all(isone, res_pg[:x])
     end
 
@@ -608,12 +603,6 @@ using Turing
         )
     end
 
-    @testset "names_values" begin
-        ks, xs = Turing.Inference.names_values([(a=1,), (b=2,), (a=3, b=4)])
-        @test isequal(xs[:, 1], [1, missing, 3])
-        @test isequal(xs[:, 2], [missing, 2, 4])
-    end
-
     @testset "check model" begin
         @model function demo_repeated_varname()
             x ~ Normal(0, 1)
@@ -637,32 +626,6 @@ using Turing
         @test_throws ErrorException sample(
             StableRNG(seed), demo_incorrect_missing([missing]), NUTS(), 10; check_model=true
         )
-    end
-
-    @testset "getparams" begin
-        @model function e(x=1.0)
-            return x ~ Normal()
-        end
-        evi = DynamicPPL.VarInfo(e())
-        @test isempty(Turing.Inference.getparams(e(), evi))
-
-        @model function f()
-            return x ~ Normal()
-        end
-        fvi = DynamicPPL.VarInfo(f())
-        fparams = Turing.Inference.getparams(f(), fvi)
-        @test fparams[@varname(x)] == fvi[@varname(x)]
-        @test length(fparams) == 1
-
-        @model function g()
-            x ~ Normal()
-            return y ~ Poisson()
-        end
-        gvi = DynamicPPL.VarInfo(g())
-        gparams = Turing.Inference.getparams(g(), gvi)
-        @test gparams[@varname(x)] == gvi[@varname(x)]
-        @test gparams[@varname(y)] == gvi[@varname(y)]
-        @test length(gparams) == 2
     end
 
     @testset "empty model" begin

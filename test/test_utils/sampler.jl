@@ -25,7 +25,7 @@ function test_chain_logp_metadata(spl)
     @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
     # This should always be true, but it also indirectly checks that the 
     # log-joint is also calculated in unlinked space.
-    @test chn[:lp] ≈ chn[:logprior] + chn[:loglikelihood]
+    @test chn[:logjoint] ≈ chn[:logprior] + chn[:loglikelihood]
 end
 
 """
