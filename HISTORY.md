@@ -39,6 +39,8 @@ You do *not* need to do this if:
   - your model has other kinds of parallelism but does not include tilde-statements inside;
   - or you are using `MCMCThreads()` or `MCMCDistributed()` to sample multiple chains in parallel, but your model itself does not use parallelism.
 
+If your model does include parallelised tilde-statements or `@addlogprob!` calls, and you evaluate it/sample from it without setting `setthreadsafe(model, true)`, then you may get statistically incorrect results without any warnings or errors.
+
 ### Faster performance
 
 Many operations in DynamicPPL have been substantially sped up.
