@@ -347,7 +347,7 @@ function vi(
                 ),
             )
         end
-        vi = DynamicPPL.ldf_default_varinfo(model, DynamicPPL.getlogjoint_internal)
+        vi = DynamicPPL.VarInfo(model)
         vi = DynamicPPL.link!!(vi, model)
         prob = DynamicPPL.LogDensityFunction(
             model, DynamicPPL.getlogjoint_internal, vi; adtype
