@@ -47,7 +47,7 @@ include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
-include("variational/VariationalInference.jl")
+include("variational/Variational.jl")
 using .Variational
 
 include("optimisation/Optimisation.jl")
@@ -76,7 +76,8 @@ using DynamicPPL:
     @addlogprob!,
     InitFromPrior,
     InitFromUniform,
-    InitFromParams
+    InitFromParams,
+    setthreadsafe
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 
@@ -91,6 +92,7 @@ export
     prefix,
     LogDensityFunction,
     @addlogprob!,
+    setthreadsafe,
     # Sampling - AbstractMCMC
     sample,
     MCMCThreads,
@@ -117,10 +119,16 @@ export
     externalsampler,
     # Variational inference - AdvancedVI
     vi,
-    ADVI,
     q_locationscale,
     q_meanfield_gaussian,
     q_fullrank_gaussian,
+    KLMinRepGradProxDescent,
+    KLMinRepGradDescent,
+    KLMinScoreGradDescent,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent,
+    KLMinWassFwdBwd,
+    FisherMinBatchMatch,
     # ADTypes
     AutoForwardDiff,
     AutoReverseDiff,

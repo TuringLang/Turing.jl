@@ -10,12 +10,16 @@ using Distributions: Dirichlet, Normal
 using LinearAlgebra
 using MCMCChains: Chains
 using Random
+using ReverseDiff
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Variational
 
-@testset "ADVI" begin
+begin
+    adtype = AutoReverseDiff()
+    operator = AdvancedVI.ClipScale()
+
     @testset "q initialization" begin
         m = gdemo_default
         d = length(Turing.DynamicPPL.VarInfo(m)[:])
@@ -41,86 +45,68 @@ using Turing.Variational
 
     @testset "default interface" begin
         for q0 in [q_meanfield_gaussian(gdemo_default), q_fullrank_gaussian(gdemo_default)]
-            _, q, _, _ = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[])
+            q, _, _ = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
             c1 = rand(q, 10)
+        end
+        @test_throws "unconstrained" begin
+            q, _, _ = vi(gdemo_default, Normal(), 1; adtype)
         end
     end
 
-    @testset "custom interface $name" for (name, objective, operator, optimizer) in [
+    @testset "custom algorithm $name" for (name, algorithm) in [
+        ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
+        ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=10)),
+        ("KLMinNaturalGradDescent", KLMinNaturalGradDescent(; stepsize=1e-2, n_samples=10)),
         (
-            "ADVI with closed-form entropy",
-            AdvancedVI.RepGradELBO(10),
-            AdvancedVI.ProximalLocationScaleEntropy(),
-            AdvancedVI.DoG(),
+            "KLMinSqrtNaturalGradDescent",
+            KLMinSqrtNaturalGradDescent(; stepsize=1e-2, n_samples=10),
         ),
-        (
-            "ADVI with proximal entropy",
-            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
-            AdvancedVI.ClipScale(),
-            AdvancedVI.DoG(),
-        ),
-        (
-            "ADVI with STL entropy",
-            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
-            AdvancedVI.ClipScale(),
-            AdvancedVI.DoG(),
-        ),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-2, n_samples=10)),
+        ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         T = 1000
-        q, q_avg, _, _ = vi(
+        q, _, _ = vi(
             gdemo_default,
-            q_meanfield_gaussian(gdemo_default),
+            q_fullrank_gaussian(gdemo_default),
             T;
-            objective,
-            optimizer,
-            operator,
+            algorithm,
             show_progress=Turing.PROGRESS[],
         )
-
         N = 1000
-        c1 = rand(q_avg, N)
         c2 = rand(q, N)
     end
 
-    @testset "inference $name" for (name, objective, operator, optimizer) in [
+    @testset "inference $name" for (name, algorithm) in [
+        ("KLMinRepGradProxDescent", KLMinRepGradProxDescent(adtype; n_samples=10)),
+        ("KLMinRepGradDescent", KLMinRepGradDescent(adtype; operator, n_samples=100)),
         (
-            "ADVI with closed-form entropy",
-            AdvancedVI.RepGradELBO(10),
-            AdvancedVI.ProximalLocationScaleEntropy(),
-            AdvancedVI.DoG(),
+            "KLMinNaturalGradDescent",
+            KLMinNaturalGradDescent(; stepsize=1e-2, n_samples=100),
         ),
         (
-            "ADVI with proximal entropy",
-            RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
-            AdvancedVI.ClipScale(),
-            AdvancedVI.DoG(),
+            "KLMinSqrtNaturalGradDescent",
+            KLMinSqrtNaturalGradDescent(; stepsize=1e-2, n_samples=100),
         ),
-        (
-            "ADVI with STL entropy",
-            AdvancedVI.RepGradELBO(10; entropy=AdvancedVI.StickingTheLandingEntropy()),
-            AdvancedVI.ClipScale(),
-            AdvancedVI.DoG(),
-        ),
+        ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-2, n_samples=10)),
+        ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         rng = StableRNG(0x517e1d9bf89bf94f)
 
         T = 1000
-        q, q_avg, _, _ = vi(
+        q, _, _ = vi(
             rng,
             gdemo_default,
-            q_meanfield_gaussian(gdemo_default),
+            q_fullrank_gaussian(gdemo_default),
             T;
-            optimizer,
+            algorithm,
             show_progress=Turing.PROGRESS[],
         )
 
         N = 1000
-        for q_out in [q_avg, q]
-            samples = transpose(rand(rng, q_out, N))
-            chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
+        samples = transpose(rand(rng, q, N))
+        chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
 
-            check_gdemo(chn; atol=0.5)
-        end
+        check_gdemo(chn; atol=0.5)
     end
 
     # regression test for:
@@ -143,7 +129,7 @@ using Turing.Variational
         @test all(x0 .≈ x0_inv)
 
         # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
-        _, q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000)
+        q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000)
         x = rand(rng, q, 1000)
         @test mean(eachcol(x)) ≈ [0.5, 0.5] atol = 0.1
     end
@@ -158,7 +144,7 @@ using Turing.Variational
         end
 
         model = demo_issue2205() | (y=1.0,)
-        _, q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000)
+        q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000)
         # True mean.
         mean_true = 1 / 2
         var_true = 1 / 2

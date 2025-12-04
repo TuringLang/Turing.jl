@@ -64,12 +64,11 @@ end
         end
 
         @testset "variational algorithms" begin
-            @timeit_include("variational/advi.jl")
+            @timeit_include("variational/vi.jl")
         end
 
         @testset "mode estimation" verbose = true begin
             @timeit_include("optimisation/Optimisation.jl")
-            @timeit_include("ext/OptimInterface.jl")
         end
     end
 

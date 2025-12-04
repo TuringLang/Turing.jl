@@ -1,21 +1,45 @@
 
 module Variational
 
-using DynamicPPL
+using AdvancedVI:
+    AdvancedVI,
+    KLMinRepGradDescent,
+    KLMinRepGradProxDescent,
+    KLMinScoreGradDescent,
+    KLMinWassFwdBwd,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent,
+    FisherMinBatchMatch
+
 using ADTypes
+using Bijectors: Bijectors
 using Distributions
+using DynamicPPL: DynamicPPL
 using LinearAlgebra
-using LogDensityProblems
+using LogDensityProblems: LogDensityProblems
 using Random
+using ..Turing: DEFAULT_ADTYPE, PROGRESS
 
-import ..Turing: DEFAULT_ADTYPE, PROGRESS
+export vi,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
+    KLMinRepGradProxDescent,
+    KLMinRepGradDescent,
+    KLMinScoreGradDescent,
+    KLMinWassFwdBwd,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent,
+    FisherMinBatchMatch
 
-import AdvancedVI
-import Bijectors
-
-export vi, q_locationscale, q_meanfield_gaussian, q_fullrank_gaussian
-
-include("deprecated.jl")
+requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = true
+requires_unconstrained_space(::AdvancedVI.KLMinRepGradProxDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinRepGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinScoreGradDescent) = false
+requires_unconstrained_space(::AdvancedVI.KLMinWassFwdBwd) = true
+requires_unconstrained_space(::AdvancedVI.KLMinNaturalGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.KLMinSqrtNaturalGradDescent) = true
+requires_unconstrained_space(::AdvancedVI.FisherMinBatchMatch) = true
 
 """
     q_initialize_scale(
@@ -62,7 +86,7 @@ function q_initialize_scale(
     num_max_trials::Int=10,
     reduce_factor::Real=one(eltype(scale)) / 2,
 )
-    prob = LogDensityFunction(model)
+    prob = DynamicPPL.LogDensityFunction(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
     varinfo = DynamicPPL.VarInfo(model)
 
@@ -97,7 +121,9 @@ end
 Find a numerically non-degenerate variational distribution `q` for approximating the  target `model` within the location-scale variational family formed by the type of `scale` and `basedist`.
 
 The distribution can be manually specified by setting `location`, `scale`, and `basedist`.
-Otherwise, it chooses a standard Gaussian by default.
+Otherwise, it chooses a Gaussian with zero-mean and scale `0.6*I` (covariance of `0.6^2*I`) by default.
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+
 Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 If `meanfield` is set as `true`, the scale of `q` is restricted to be a diagonal matrix and only the diagonal of `scale` is used.
 
@@ -145,9 +171,11 @@ function q_locationscale(
 
     L = if isnothing(scale)
         if meanfield
-            q_initialize_scale(rng, model, μ, Diagonal(ones(num_params)), basedist; kwargs...)
+            q_initialize_scale(
+                rng, model, μ, Diagonal(fill(0.6, num_params)), basedist; kwargs...
+            )
         else
-            L0 = LowerTriangular(Matrix{Float64}(I, num_params, num_params))
+            L0 = LowerTriangular(Matrix{Float64}(0.6 * I, num_params, num_params))
             q_initialize_scale(rng, model, μ, L0, basedist; kwargs...)
         end
     else
@@ -177,6 +205,10 @@ end
     )
 
 Find a numerically non-degenerate mean-field Gaussian `q` for approximating the  target `model`.
+
+If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `Diagonal` scale matrix (the "mean-field" approximation) no larger than `0.6*I` (covariance of `0.6^2*I`).
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
@@ -217,6 +249,10 @@ end
 
 Find a numerically non-degenerate Gaussian `q` with a scale with full-rank factors (traditionally referred to as a "full-rank family") for approximating the target `model`.
 
+If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `LowerTriangular` scale matrix (resulting in a covariance with "full-rank" factors) no larger than `0.6*I` (covariance of `0.6^2*I`).
+This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
+Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
+
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
 
@@ -248,76 +284,92 @@ end
 """
     vi(
         [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model;
+        model::DynamicPPL.Model,
         q,
-        n_iterations::Int;
-        objective::AdvancedVI.AbstractVariationalObjective = AdvancedVI.RepGradELBO(
-            10; entropy = AdvancedVI.ClosedFormEntropyZeroGradient()
+        max_iter::Int;
+        adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
+        algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(
+            adtype; n_samples=10
         ),
         show_progress::Bool = Turing.PROGRESS[],
-        optimizer::Optimisers.AbstractRule = AdvancedVI.DoWG(),
-        averager::AdvancedVI.AbstractAverager = AdvancedVI.PolynomialAveraging(),
-        operator::AdvancedVI.AbstractOperator = AdvancedVI.ProximalLocationScaleEntropy(),
-        adtype::ADTypes.AbstractADType = Turing.DEFAULT_ADTYPE,
         kwargs...
     )
 
-Approximating the target `model` via variational inference by optimizing `objective` with the initialization `q`.
+Approximate the target `model` via the variational inference algorithm `algorithm` by starting from the initial variational approximation `q`.
 This is a thin wrapper around `AdvancedVI.optimize`.
+
+If the chosen variational inference algorithm operates in an unconstrained space, then the provided initial variational approximation `q` must be a `Bijectors.TransformedDistribution` of an unconstrained distribution.
+For example, the initialization supplied by  `q_meanfield_gaussian`,`q_fullrank_gaussian`, `q_locationscale`.
+
+The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
+For other variational families, refer to the documentation of `AdvancedVI` to determine the best algorithm and other options.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
 - `q`: The initial variational approximation.
-- `n_iterations`: Number of optimization steps.
+- `max_iter`: Maximum number of steps.
+- Any additional arguments are passed on to `AdvancedVI.optimize`.
 
 # Keyword Arguments
-- `objective`: Variational objective to be optimized.
+- `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiating the variational objective.
+- `algorithm`: Variational inference algorithm. The default is `KLMinRepGradProxDescent`, please refer to [AdvancedVI docs](https://turinglang.org/AdvancedVI.jl/stable/) for all the options.
 - `show_progress`: Whether to show the progress bar.
-- `optimizer`: Optimization algorithm.
-- `averager`: Parameter averaging strategy.
-- `operator`: Operator applied after each optimization step.
-- `adtype`: Automatic differentiation backend.
+- `unconstrained`: Whether to transform the posterior to be unconstrained for running the variational inference algorithm. If `true`, then the output `q` will be wrapped into a `Bijectors.TransformedDistribution` with the transformation matching the support of the posterior. The default value depends on the chosen `algorithm`.
+- Any additional keyword arguments are passed on to `AdvancedVI.optimize`.
+
 
 See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
 # Returns 
-- `q`: Variational distribution formed by the last iterate of the optimization run.
-- `q_avg`: Variational distribution formed by the averaged iterates according to `averager`.
-- `state`: Collection of states used for optimization. This can be used to resume from a past call to `vi`.
-- `info`: Information generated during the optimization run.
+- `q`: Output variational distribution of `algorithm`.
+- `state`: Collection of states used by `algorithm`. This can be used to resume from a past call to `vi`.
+- `info`: Information generated while executing `algorithm`.
 """
 function vi(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     q,
-    n_iterations::Int;
-    objective=AdvancedVI.RepGradELBO(
-        10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()
-    ),
-    show_progress::Bool=PROGRESS[],
-    optimizer=AdvancedVI.DoWG(),
-    averager=AdvancedVI.PolynomialAveraging(),
-    operator=AdvancedVI.ProximalLocationScaleEntropy(),
+    max_iter::Int,
+    args...;
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
+    algorithm::AdvancedVI.AbstractVariationalAlgorithm=KLMinRepGradProxDescent(
+        adtype; n_samples=10
+    ),
+    unconstrained::Bool=requires_unconstrained_space(algorithm),
+    show_progress::Bool=PROGRESS[],
     kwargs...,
 )
-    return AdvancedVI.optimize(
-        rng,
-        LogDensityFunction(model),
-        objective,
-        q,
-        n_iterations;
-        show_progress=show_progress,
-        adtype,
-        optimizer,
-        averager,
-        operator,
-        kwargs...,
+    prob, q, trans = if unconstrained
+        if !(q isa Bijectors.TransformedDistribution)
+            throw(
+                ArgumentError(
+                    "The algorithm $(algorithm) operates in an unconstrained space. Therefore, the initial variational approximation is expected to be a Bijectors.TransformedDistribution of an unconstrained distribution.",
+                ),
+            )
+        end
+        vi = DynamicPPL.VarInfo(model)
+        vi = DynamicPPL.link!!(vi, model)
+        prob = DynamicPPL.LogDensityFunction(
+            model, DynamicPPL.getlogjoint_internal, vi; adtype
+        )
+        prob, q.dist, q.transform
+    else
+        prob = DynamicPPL.LogDensityFunction(model; adtype)
+        prob, q, nothing
+    end
+    q, info, state = AdvancedVI.optimize(
+        rng, algorithm, max_iter, prob, q, args...; show_progress=show_progress, kwargs...
     )
+    q = if unconstrained
+        Bijectors.TransformedDistribution(q, trans)
+    else
+        q
+    end
+    return q, info, state
 end
 
-function vi(model::DynamicPPL.Model, q, n_iterations::Int; kwargs...)
-    return vi(Random.default_rng(), model, q, n_iterations; kwargs...)
+function vi(model::DynamicPPL.Model, q, max_iter::Int; kwargs...)
+    return vi(Random.default_rng(), model, q, max_iter; kwargs...)
 end
 
 end
