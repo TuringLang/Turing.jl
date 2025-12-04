@@ -72,6 +72,10 @@ When sampling using MCMCChains, the chain object will no longer have its `chain.
 Instead, you can calculate this yourself from the log-likelihoods stored in the chain.
 For SMC samplers, the log-evidence of the entire trajectory is stored in `chain[:logevidence]` (which is the same for every particle in the 'chain').
 
+### `Turing.Inference.Transition`
+
+`Turing.Inference.Transition(model, vi[, stats])` has been removed; you can directly replace this with `DynamicPPL.ParamsWithStats(vi, model[, stats])`.
+
 ## AdvancedVI 0.6
 
 Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.6 (we skipped the breaking 0.5 update as it does not introduce new features).
