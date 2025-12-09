@@ -128,12 +128,14 @@ function Base.show(io::IO, m::ModeResult)
 end
 
 """
-    InitFromParams(m::ModeResult)
+    InitFromParams(m::ModeResult, fallback::AbstractInitStrategy=InitFromPrior())
 
 Initialize a model from the parameters stored in a `ModeResult`.
 """
-function DynamicPPL.InitFromParams(m::ModeResult)
-    return DynamicPPL.InitFromParams(m.params)
+function DynamicPPL.InitFromParams(
+    m::ModeResult, fallback::DynamicPPL.AbstractInitStrategy=InitFromPrior()
+)
+    return DynamicPPL.InitFromParams(m.params, fallback)
 end
 
 # Various StatsBase methods for ModeResult
