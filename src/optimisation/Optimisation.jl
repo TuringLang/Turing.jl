@@ -128,12 +128,16 @@ function Base.show(io::IO, m::ModeResult)
 end
 
 """
-    InitFromParams(m::ModeResult, fallback::AbstractInitStrategy=InitFromPrior())
+    InitFromParams(
+        m::ModeResult,
+        fallback::Union{AbstractInitStrategy,Nothing}=InitFromPrior()
+    )
 
-Initialize a model from the parameters stored in a `ModeResult`.
+Initialize a model from the parameters stored in a `ModeResult`. The `fallback` is used if
+some parameters are missing from the `ModeResult`.
 """
 function DynamicPPL.InitFromParams(
-    m::ModeResult, fallback::DynamicPPL.AbstractInitStrategy=InitFromPrior()
+    m::ModeResult, fallback::Union{DynamicPPL.AbstractInitStrategy,Nothing}=InitFromPrior()
 )
     return DynamicPPL.InitFromParams(m.params, fallback)
 end
