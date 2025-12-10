@@ -2,6 +2,8 @@
 
 `InitFromParams(mode_estimate)`, where `mode_estimate` was obtained from an optimisation on a Turing model, now accepts a second optional argument which provides a fallback initialisation strategy if some parameters are missing from `mode_estimate`.
 
+This also means that you can now invoke `returned(model, mode_estimate)` to calculate a model's return values given the parameters in `mode_estimate`.
+
 # 0.42.0
 
 ## DynamicPPL 0.39
