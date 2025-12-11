@@ -587,6 +587,19 @@ using Turing
         @test chain[:σ][1] == mle.params[@varname(σ)]
     end
 
+    @testset "returned on ModeResult" begin
+        @model function f()
+            x ~ Normal()
+            2.0 ~ Normal(x)
+            return x + 1.0
+        end
+        model = f()
+        result = maximum_a_posteriori(model)
+        @test returned(model, result) == result.params[@varname(x)] + 1.0
+        result = maximum_likelihood(model)
+        @test returned(model, result) == result.params[@varname(x)] + 1.0
+    end
+
     # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910
     @testset "Optimization with different linked dimensionality" begin
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
