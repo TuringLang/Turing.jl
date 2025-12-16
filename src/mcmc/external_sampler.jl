@@ -160,6 +160,42 @@ function AbstractMCMC.step(
     # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
     # to be a vector.
     initial_params_vector = varinfo[:]
+    # NEW CODE (with retry logic):
+    # Try to find valid initial parameters (finite logp and gradient)
+    max_attempts = 10
+    initial_params_vector = nothing
+
+    for attempt in 1:max_attempts
+        # Get candidate initial parameters
+        candidate_params = varinfo[:]
+        # Check if logdensity and gradient are finite
+        logp_and_grad = try
+            LogDensityProblems.logdensity_and_gradient(f, candidate_params)
+        catch e
+            # If evaluation fails, treat as invalid
+            (NaN, fill(NaN, length(candidate_params)))
+        end
+        
+        logp, grad = logp_and_grad
+        
+        if isfinite(logp) && all(isfinite, grad)
+            # Found valid initial parameters!
+            initial_params_vector = candidate_params
+            break
+        end
+        
+        # Regenerate parameters for next attempt
+        if attempt < max_attempts
+            varinfo = DynamicPPL.VarInfo(model)
+            _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
+            if unconstrained
+                varinfo = DynamicPPL.link(varinfo, model)
+            end
+        else
+            error("Failed to find valid initial parameters after $max_attempts attempts. " *
+                "Last logp: $logp, Last gradient: $grad")
+        end
+    end
 
     # Construct LogDensityFunction
     f = DynamicPPL.LogDensityFunction(
