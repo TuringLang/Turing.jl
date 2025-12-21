@@ -157,24 +157,25 @@ function find_initial_params(
     init_strategy::DynamicPPL.AbstractInitStrategy;
     max_attempts::Int=1000,
 )
-    varinfo = deepcopy(varinfo)  # Don't mutate
-
-    for attempts in 1:max_attempts
-        theta = varinfo[:]
-        z = AHMC.phasepoint(rng, theta, hamiltonian)
-        isfinite(z) && return varinfo, z
-
-        attempts == 10 &&
-            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
-
-        # Resample and try again.
-        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
+    # Create validator function for HMC
+    validator = vi -> begin
+        θ = vi[:]
+        z = AHMC.phasepoint(rng, θ, hamiltonian)
+        is_valid = isfinite(z)
+        diagnostics = "phasepoint finite: $(isfinite(z))"
+        return (is_valid, diagnostics)
     end
-
-    # if we failed to find valid initial parameters, error
-    return error(
-        "failed to find valid initial parameters in $(max_attempts) tries. See https://turinglang.org/docs/uri/initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+    
+    # Use shared function from initial_params.jl
+    varinfo = Turing.Inference.find_initial_params(
+        rng, model, varinfo, init_strategy, validator; max_attempts=max_attempts
     )
+    
+    # Construct the final phasepoint
+    θ = varinfo[:]
+    z = AHMC.phasepoint(rng, θ, hamiltonian)
+    
+    return varinfo, z
 end
 
 function Turing.Inference.initialstep(

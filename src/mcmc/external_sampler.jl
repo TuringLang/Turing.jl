@@ -156,51 +156,31 @@ function AbstractMCMC.step(
         varinfo = DynamicPPL.link(varinfo, model)
     end
 
-    # We need to extract the vectorised initial_params, because the later call to
-    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
-    # to be a vector.
-    initial_params_vector = varinfo[:]
-    # NEW CODE (with retry logic):
-    # Try to find valid initial parameters (finite logp and gradient)
-    max_attempts = 10
-    initial_params_vector = nothing
 
-    for attempt in 1:max_attempts
-        # Get candidate initial parameters
-        candidate_params = varinfo[:]
-        # Check if logdensity and gradient are finite
-        logp_and_grad = try
-            LogDensityProblems.logdensity_and_gradient(f, candidate_params)
-        catch e
-            # If evaluation fails, treat as invalid
-            (NaN, fill(NaN, length(candidate_params)))
-        end
-        
-        logp, grad = logp_and_grad
-        
-        if isfinite(logp) && all(isfinite, grad)
-            # Found valid initial parameters!
-            initial_params_vector = candidate_params
-            break
-        end
-        
-        # Regenerate parameters for next attempt
-        if attempt < max_attempts
-            varinfo = DynamicPPL.VarInfo(model)
-            _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
-            if unconstrained
-                varinfo = DynamicPPL.link(varinfo, model)
-            end
-        else
-            error("Failed to find valid initial parameters after $max_attempts attempts. " *
-                "Last logp: $logp, Last gradient: $grad")
-        end
-    end
-
-    # Construct LogDensityFunction
+    # Construct LogDensityFunction FIRST (we need this for validation)
     f = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
     )
+
+    # Use shared function to find valid initial parameters with gradient checking
+    validator = vi -> begin
+        θ = vi[:]
+        try
+            logp, grad = LogDensityProblems.logdensity_and_gradient(f, θ)
+            is_valid = isfinite(logp) && all(isfinite, grad)
+            diagnostics = "logp=$logp, grad_finite=$(all(isfinite, grad))"
+            return (is_valid, diagnostics)
+        catch e
+            return (false, "evaluation failed: $e")
+        end
+    end
+    
+    varinfo = Turing.Inference.find_initial_params(
+        rng, model, varinfo, initial_params, validator; max_attempts=10
+    )
+    
+    initial_params_vector = varinfo[:]
+
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     _, state_inner = if initial_state === nothing
