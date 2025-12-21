@@ -1,3 +1,7 @@
+# 0.42.1
+
+Avoid passing a full VarInfo to `check_model`, which allows more models to be checked safely for validity.
+
 # 0.42.0
 
 ## DynamicPPL 0.39
