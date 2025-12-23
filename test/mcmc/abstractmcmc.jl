@@ -207,18 +207,6 @@ end
             
             # Should throw an error with informative message
             @test_throws ErrorException sample(model, NUTS(), 10)
-<<<<<<< Updated upstream
-            
-            # Check that error message is informative
-            try
-                sample(model, NUTS(), 10)
-            catch e
-                error_msg = sprint(showerror, e)
-                @test occursin("Failed to find valid initial parameters", error_msg)
-                @test occursin("attempts", error_msg)
-            end
-=======
->>>>>>> Stashed changes
         end
         
         # Model that requires many attempts
