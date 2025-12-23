@@ -156,8 +156,7 @@ function AbstractMCMC.step(
         varinfo = DynamicPPL.link(varinfo, model)
     end
 
-
-    # Construct LogDensityFunction FIRST (we need this for validation)
+    # Construct LogDensityFunction first (we need this for validation)
     f = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
     )

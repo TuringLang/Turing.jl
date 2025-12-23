@@ -29,17 +29,15 @@ function find_initial_params(
     model::Model,
     varinfo::AbstractVarInfo,
     init_strategy::DynamicPPL.AbstractInitStrategy,
-    validator::Function;
+    validator::Any;
     max_attempts::Int=1000,
 )
     varinfo = deepcopy(varinfo)  # Don't mutate the input
     
     for attempt in 1:max_attempts
-        # Validate current parameters
-        is_valid = validator(varinfo)
         
-        if is_valid
-            return varinfo  # Success!
+        if validator(varinfo)
+            return varinfo
         end
         
         # Warn at attempt 10

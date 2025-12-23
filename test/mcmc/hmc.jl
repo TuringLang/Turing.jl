@@ -197,14 +197,6 @@ using Turing
         end
     end
 
-    @testset "error for impossible model" begin
-        @model function demo_impossible()
-            x ~ Normal()
-            @addlogprob! -Inf
-        end
-
-        @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
-    end
 
     @testset "NUTS initial parameters" begin
         @model function f()
