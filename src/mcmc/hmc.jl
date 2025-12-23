@@ -161,13 +161,10 @@ function find_initial_params(
     validator = vi -> begin
         θ = vi[:]
         z = AHMC.phasepoint(rng, θ, hamiltonian)
-        is_valid = isfinite(z)
-        diagnostics = "phasepoint finite: $(isfinite(z))"
-        return (is_valid, diagnostics)
+        return (isfinite(z))
     end
     
-    # Use shared function from initial_params.jl
-    varinfo = Turing.Inference.find_initial_params(
+    varinfo = find_initial_params(
         rng, model, varinfo, init_strategy, validator; max_attempts=max_attempts
     )
     

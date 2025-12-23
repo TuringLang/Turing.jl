@@ -18,6 +18,50 @@ parameters for sampling are chosen if not specified by the user. By default, thi
 init_strategy(::AbstractSampler) = DynamicPPL.InitFromPrior()
 
 """
+    find_initial_params(rng, model, varinfo, init_strategy, validator; max_attempts=1000)
+
+Attempt to find valid initial parameters for MCMC sampling, using the provided `init_strategy` up to `max_attempts` times.
+
+The function `validator` should take the (updated) VarInfo with new parameters, and return a Bool indicating whether the parameters are valid.
+"""
+function find_initial_params(
+    rng::AbstractRNG,
+    model::Model,
+    varinfo::AbstractVarInfo,
+    init_strategy::DynamicPPL.AbstractInitStrategy,
+    validator::Function;
+    max_attempts::Int=1000,
+)
+    varinfo = deepcopy(varinfo)  # Don't mutate the input
+    
+    for attempt in 1:max_attempts
+        # Validate current parameters
+        is_valid = validator(varinfo)
+        
+        if is_valid
+            return varinfo  # Success!
+        end
+        
+        # Warn at attempt 10
+        if attempt == 10
+            @warn "failed to find valid initial parameters in $(attempt) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
+        end
+        
+        # If this is the last attempt, throw informative error
+        if attempt == max_attempts
+            error(
+                "Failed to find valid initial parameters after $max_attempts attempts. " *
+                "See https://turinglang.org/docs/uri/initial-parameters for common causes and solutions. " *
+                "If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues"
+            )
+        end
+        
+        # Regenerate parameters for next attempt
+        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
+    end
+end
+
+"""
     _convert_initial_params(initial_params)
 
 Convert `initial_params` to a `DynamicPPl.AbstractInitStrategy` if it is not already one, or

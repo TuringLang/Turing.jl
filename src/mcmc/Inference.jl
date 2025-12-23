@@ -86,7 +86,6 @@ include("abstractmcmc.jl")
 ####################
 
 include("repeat_sampler.jl")
-include("initial_params.jl")
 include("external_sampler.jl")
 
 # TODO: make a nicer `set_namedtuple!` and move these functions to DynamicPPL.

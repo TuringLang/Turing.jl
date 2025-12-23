@@ -55,7 +55,6 @@ end
             @timeit_include("mcmc/gibbs.jl")
             @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
-		@timeit_include("mcmc/initial_params.jl")
             @timeit_include("mcmc/Inference.jl")
             @timeit_include("mcmc/sghmc.jl")
             @timeit_include("mcmc/external_sampler.jl")

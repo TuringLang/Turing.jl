@@ -165,17 +165,12 @@ function AbstractMCMC.step(
     # Use shared function to find valid initial parameters with gradient checking
     validator = vi -> begin
         θ = vi[:]
-        try
-            logp, grad = LogDensityProblems.logdensity_and_gradient(f, θ)
-            is_valid = isfinite(logp) && all(isfinite, grad)
-            diagnostics = "logp=$logp, grad_finite=$(all(isfinite, grad))"
-            return (is_valid, diagnostics)
-        catch e
-            return (false, "evaluation failed: $e")
-        end
+        logp, grad = LogDensityProblems.logdensity_and_gradient(f, θ)
+        return isfinite(logp) && all(isfinite, grad)
+
     end
     
-    varinfo = Turing.Inference.find_initial_params(
+    varinfo = find_initial_params(
         rng, model, varinfo, initial_params, validator; max_attempts=10
     )
     

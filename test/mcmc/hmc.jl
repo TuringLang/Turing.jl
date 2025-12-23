@@ -197,22 +197,6 @@ using Turing
         end
     end
 
-    @testset "warning for difficult init params" begin
-        attempt = 0
-        @model function demo_warn_initial_params()
-            x ~ Normal()
-            if (attempt += 1) < 30
-                @addlogprob! -Inf
-            end
-        end
-
-        # verbose=false to suppress the initial step size notification, which messes with
-        # the test
-        @test_logs (:warn, r"consider providing a different initialisation strategy") sample(
-            demo_warn_initial_params(), NUTS(), 5; verbose=false
-        )
-    end
-
     @testset "error for impossible model" begin
         @model function demo_impossible()
             x ~ Normal()

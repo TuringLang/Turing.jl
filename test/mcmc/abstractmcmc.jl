@@ -2,7 +2,7 @@ module TuringAbstractMCMCTests
 
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL
-using Random: AbstractRNG
+using Random: AbstractRNG, Random
 using Test: @test, @testset, @test_throws
 using Turing
 
@@ -148,6 +148,131 @@ end
             end
         end
     end
+end
+
+@testset "Initial parameter retry logic" begin
+        # Model that produces -Inf logp for most parameter values
+        # Only valid when x is in narrow range [-0.3, 0.3]
+        @model function bad_init_model()
+            x ~ Normal(0, 10)  # Prior is wide, so most samples will be outside valid range
+            # Add log probability that's -Inf outside narrow range
+            Turing.@addlogprob! (abs(x) < 0.3) ? 0.0 : -Inf
+        end
+        
+        # This should succeed with retry logic (might take a few attempts)
+        model = bad_init_model()
+        
+        # Test with NUTS (internal HMC sampler with retry logic)
+        @testset "NUTS sampler" begin
+            chain = sample(model, NUTS(), 10)
+            @test size(chain, 1) == 10
+            # Check that samples are in valid range
+            x_samples = chain[:x]
+            @test all(abs.(x_samples) .< 0.3)
+        end
+        
+        # Test with HMC (should also work with retry logic)
+        @testset "HMC sampler" begin
+            chain = sample(model, HMC(0.1, 5), 10)
+            @test size(chain, 1) == 10
+            x_samples = chain[:x]
+            @test all(abs.(x_samples) .< 0.3)
+        end
+        
+        # Model with very narrow valid region
+        @model function very_bad_init_model()
+            x ~ Normal(0, 100)  # Very wide prior
+            # Valid only in range [-0.1, 0.1]
+            Turing.@addlogprob! (abs(x) < 0.1) ? 0.0 : -Inf
+        end
+        
+        @testset "Very narrow valid region" begin
+            model = very_bad_init_model()
+            
+            # Should eventually find valid parameters
+            chain = sample(model, NUTS(), 10)
+            @test size(chain, 1) == 10
+            x_samples = chain[:x]
+            @test all(abs.(x_samples) .< 0.1)
+        end
+        
+        # Model that's impossible to initialize (always -Inf)
+        @model function impossible_model()
+            x ~ Normal(0, 1)
+            Turing.@addlogprob! -Inf  # Always invalid
+        end
+        
+        @testset "Impossible initialization" begin
+            model = impossible_model()
+            
+            # Should throw an error with informative message
+            @test_throws ErrorException sample(model, NUTS(), 10)
+            
+            # Check that error message is informative
+            try
+                sample(model, NUTS(), 10)
+            catch e
+                error_msg = sprint(showerror, e)
+                @test occursin("Failed to find valid initial parameters", error_msg)
+                @test occursin("attempts", error_msg)
+            end
+        end
+        
+        # Model that requires many attempts
+        @model function difficult_model()
+            x ~ Normal(0, 50)
+            # Valid only in tiny range, should trigger warning
+            Turing.@addlogprob! (abs(x) < 0.05) ? 0.0 : -Inf
+        end
+        
+        @testset "Warning at attempt 10" begin
+            # Use a counter to ensure model fails exactly 30 times then succeeds
+            attempt_counter = Ref(0)
+            
+            @model function counter_model()
+                attempt_counter[] += 1
+                x ~ Normal(0, 1)
+                # Fail for first 30 attempts, then succeed
+                Turing.@addlogprob! (attempt_counter[] > 30) ? 0.0 : -Inf
+            end
+            
+            model = counter_model()
+            
+            # Should see warning at attempt 10
+            @test_logs(
+                (:warn, r"failed to find valid initial parameters in 10 tries"),
+                match_mode=:any,
+                sample(model, NUTS(), 10)
+            )
+            
+            # Verify it actually tried more than 30 times
+            @test attempt_counter[] > 30
+        end
+        
+        @testset "Direct find_initial_params test" begin
+            @model function simple_model()
+                x ~ Normal(0, 1)
+            end
+            
+            model = simple_model()
+            vi = DynamicPPL.VarInfo(model)
+            _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior())
+            
+            # Validator that always succeeds
+            validator_success = vi -> true
+            result_vi = Turing.Inference.find_initial_params(
+                Random.default_rng(), model, vi, DynamicPPL.InitFromPrior(), validator_success
+            )
+            @test result_vi isa DynamicPPL.AbstractVarInfo
+            
+            # Validator that succeeds after a few tries
+            counter = Ref(0)
+            validator_counter = vi -> (counter[] += 1; counter[] > 3)
+            result_vi = Turing.Inference.find_initial_params(
+                Random.default_rng(), model, vi, DynamicPPL.InitFromPrior(), validator_counter
+            )
+            @test counter[] > 3
+        end
 end
 
 end # module
