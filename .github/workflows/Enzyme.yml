@@ -1,0 +1,35 @@
+name: Enzyme AD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
+
+# Cancel existing tests on the same PR if a new commit is added to a pull request
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
+jobs:
+  enzyme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.11"
+
+      - uses: julia-actions/cache@v2
+
+      - name: Run Gibbs AD tests with Enzyme
+        working-directory: test/integration/enzyme
+        run: |
+          julia --project=. --color=yes -e 'using Pkg; Pkg.instantiate()'
+          julia --project=. --color=yes main.jl
