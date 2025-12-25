@@ -28,8 +28,9 @@ MODELS = DynamicPPL.TestUtils.DEMO_MODELS
                 conditioned_model = Turing.Inference.make_conditional(
                     model, varnames, deepcopy(global_vi)
                 )
-                rng = StableRNG(123)
-                @test run_ad(model, adtype; test=true, benchmark=false) isa Any
+                @test run_ad(
+                    model, adtype; rng=StableRNG(468), test=true, benchmark=false
+                ) isa Any
             end
         end
     end
@@ -43,7 +44,7 @@ end
         )
         @testset "model=$(model.f)" for model in MODELS
             @info "Testing Gibbs sampling with adtype=$adtype_name, model=$(model.f)"
-            @test sample(model, spl, 2; progress=false) isa Any
+            @test sample(StableRNG(468), model, spl, 2; progress=false) isa Any
         end
     end
 end
