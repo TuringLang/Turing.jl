@@ -32,12 +32,7 @@ eltypes_by_adtype = Dict{Type,Tuple}(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
-    AutoMooncake => (Mooncake.CoDual,),
 )
-
-if INCLUDE_ENZYME
-    eltypes_by_adtype[AutoEnzyme] = ()
-end
 
 """
     AbstractWrongADBackendError
