@@ -12,14 +12,12 @@ function AbstractMCMC.step(
     state=nothing;
     kwargs...,
 )
-    vi = DynamicPPL.setaccs!!(
-        DynamicPPL.VarInfo(),
-        (
-            DynamicPPL.ValuesAsInModelAccumulator(true),
-            DynamicPPL.LogPriorAccumulator(),
-            DynamicPPL.LogLikelihoodAccumulator(),
-        ),
-    )
-    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior())
-    return Transition(model, vi, nothing; reevaluate=false), nothing
+    accs = DynamicPPL.AccumulatorTuple((
+        DynamicPPL.ValuesAsInModelAccumulator(true),
+        DynamicPPL.LogPriorAccumulator(),
+        DynamicPPL.LogLikelihoodAccumulator(),
+    ))
+    vi = DynamicPPL.OnlyAccsVarInfo(accs)
+    _, vi = DynamicPPL.init!!(rng, model, vi, DynamicPPL.InitFromPrior())
+    return DynamicPPL.ParamsWithStats(vi), nothing
 end

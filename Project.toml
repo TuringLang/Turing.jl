@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.41.1"
+version = "0.42.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -41,21 +41,19 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
-TuringOptimExt = ["Optim", "AbstractPPL"]
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.5"
+AbstractMCMC = "5.9"
 AbstractPPL = "0.11, 0.12, 0.13"
 Accessors = "0.1"
-AdvancedHMC = "0.3.0, 0.4.0, 0.5.2, 0.6, 0.7, 0.8"
-AdvancedMH = "0.8"
+AdvancedHMC = "0.8.3"
+AdvancedMH = "0.8.9"
 AdvancedPS = "0.7"
-AdvancedVI = "0.4"
+AdvancedVI = "0.6"
 BangBang = "0.4.2"
 Bijectors = "0.14, 0.15"
 Compat = "4.15.0"
@@ -64,7 +62,7 @@ Distributions = "0.25.77"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.38"
+DynamicPPL = "0.39.1"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3, 1"
 Libtask = "0.9.3"
@@ -72,7 +70,6 @@ LinearAlgebra = "1"
 LogDensityProblems = "2"
 MCMCChains = "5, 6, 7"
 NamedArrays = "0.9, 0.10"
-Optim = "1"
 Optimization = "3, 4, 5"
 OptimizationOptimJL = "0.1, 0.2, 0.3, 0.4"
 OrderedCollections = "1"
@@ -89,4 +86,3 @@ julia = "1.10.8"
 
 [extras]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"

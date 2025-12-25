@@ -43,6 +43,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `prefix`             | [`DynamicPPL.prefix`](@extref)             | Prefix all variable names in a model with a given VarName                                    |
 | `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
 | `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
+| `setthreadsafe`      | [`DynamicPPL.setthreadsafe`](@extref)      | Mark a model as requiring threadsafe evaluation                                              |
 
 ### Inference
 
@@ -63,6 +64,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                   |
 | `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                           |
 | `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                      |
+| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | Gibbs sampling with analytical conditional posterior distributions  |
 | `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                             |
 | `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                               |
 | `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                         |
@@ -108,12 +110,19 @@ Turing.jl provides several strategies to initialise parameters for models.
 
 See the [docs of AdvancedVI.jl](https://turinglang.org/AdvancedVI.jl/stable/) for detailed usage and the [variational inference tutorial](https://turinglang.org/docs/tutorials/09-variational-inference/) for a basic walkthrough.
 
-| Exported symbol        | Documentation                                     | Description                                                                              |
-|:---------------------- |:------------------------------------------------- |:---------------------------------------------------------------------------------------- |
-| `vi`                   | [`Turing.vi`](@ref)                               | Perform variational inference                                                            |
-| `q_locationscale`      | [`Turing.Variational.q_locationscale`](@ref)      | Find a numerically non-degenerate initialization for a location-scale variational family |
-| `q_meanfield_gaussian` | [`Turing.Variational.q_meanfield_gaussian`](@ref) | Find a numerically non-degenerate initialization for a mean-field Gaussian family        |
-| `q_fullrank_gaussian`  | [`Turing.Variational.q_fullrank_gaussian`](@ref)  | Find a numerically non-degenerate initialization for a full-rank Gaussian family         |
+| Exported symbol               | Documentation                                            | Description                                                                                                                                       |
+|:----------------------------- |:-------------------------------------------------------- |:------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vi`                          | [`Turing.vi`](@ref)                                      | Perform variational inference                                                                                                                     |
+| `q_locationscale`             | [`Turing.Variational.q_locationscale`](@ref)             | Find a numerically non-degenerate initialization for a location-scale variational family                                                          |
+| `q_meanfield_gaussian`        | [`Turing.Variational.q_meanfield_gaussian`](@ref)        | Find a numerically non-degenerate initialization for a mean-field Gaussian family                                                                 |
+| `q_fullrank_gaussian`         | [`Turing.Variational.q_fullrank_gaussian`](@ref)         | Find a numerically non-degenerate initialization for a full-rank Gaussian family                                                                  |
+| `KLMinRepGradDescent`         | [`Turing.Variational.KLMinRepGradDescent`](@ref)         | KL divergence minimization via stochastic gradient descent with the reparameterization gradient                                                   |
+| `KLMinRepGradProxDescent`     | [`Turing.Variational.KLMinRepGradProxDescent`](@ref)     | KL divergence minimization via stochastic proximal gradient descent with the reparameterization gradient over location-scale variational families |
+| `KLMinScoreGradDescent`       | [`Turing.Variational.KLMinScoreGradDescent`](@ref)       | KL divergence minimization via stochastic gradient descent with the score gradient                                                                |
+| `KLMinWassFwdBwd`             | [`Turing.Variational.KLMinWassFwdBwd`](@ref)             | KL divergence minimization via Wasserstein proximal gradient descent                                                                              |
+| `KLMinNaturalGradDescent`     | [`Turing.Variational.KLMinNaturalGradDescent`](@ref)     | KL divergence minimization via natural gradient descent                                                                                           |
+| `KLMinSqrtNaturalGradDescent` | [`Turing.Variational.KLMinSqrtNaturalGradDescent`](@ref) | KL divergence minimization via natural gradient descent in the square-root parameterization                                                       |
+| `FisherMinBatchMatch`         | [`Turing.Variational.FisherMinBatchMatch`](@ref)         | Covariance-weighted Fisher divergence minimization via the batch-and-match algorithm                                                              |
 
 ### Automatic differentiation types
 

@@ -35,9 +35,8 @@ State of the [`DynamicNUTS`](@ref) sampler.
 # Fields
 $(TYPEDFIELDS)
 """
-struct DynamicNUTSState{L,V<:DynamicPPL.AbstractVarInfo,C,M,S}
+struct DynamicNUTSState{L,C,M,S}
     logdensity::L
-    vi::V
     "Cache of sample, log density, and gradient of log density evaluation."
     cache::C
     metric::M
@@ -70,9 +69,8 @@ function Turing.Inference.initialstep(
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
 
     # Create first sample and state.
-    vi = DynamicPPL.unflatten(vi, Q.q)
-    sample = Turing.Inference.Transition(model, vi, nothing)
-    state = DynamicNUTSState(ℓ, vi, Q, steps.H.κ, steps.ϵ)
+    sample = DynamicPPL.ParamsWithStats(Q.q, ℓ)
+    state = DynamicNUTSState(ℓ, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
 end
@@ -85,15 +83,13 @@ function AbstractMCMC.step(
     kwargs...,
 )
     # Compute next sample.
-    vi = state.vi
     ℓ = state.logdensity
     steps = DynamicHMC.mcmc_steps(rng, spl.sampler, state.metric, ℓ, state.stepsize)
     Q, _ = DynamicHMC.mcmc_next_step(steps, state.cache)
 
     # Create next sample and state.
-    vi = DynamicPPL.unflatten(vi, Q.q)
-    sample = Turing.Inference.Transition(model, vi, nothing)
-    newstate = DynamicNUTSState(ℓ, vi, Q, state.metric, state.stepsize)
+    sample = DynamicPPL.ParamsWithStats(Q.q, ℓ)
+    newstate = DynamicNUTSState(ℓ, Q, state.metric, state.stepsize)
 
     return sample, newstate
 end

@@ -1,3 +1,218 @@
+# 0.42.1
+
+Avoid passing a full VarInfo to `check_model`, which allows more models to be checked safely for validity.
+
+# 0.42.0
+
+## DynamicPPL 0.39
+
+Turing.jl v0.42 brings with it all the underlying changes in DynamicPPL 0.39.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.39.0) for full details; in here we summarise only the changes that are most pertinent to end-users of Turing.jl.
+
+### Thread safety opt-in
+
+Turing.jl has supported threaded tilde-statements for a while now, as long as said tilde-statements are **observations** (i.e., likelihood terms).
+For example:
+
+```julia
+@model function f(y)
+    x ~ Normal()
+    Threads.@threads for i in eachindex(y)
+        y[i] ~ Normal(x)
+    end
+end
+```
+
+**Models where tilde-statements or `@addlogprob!` are used in parallel require what we call 'threadsafe evaluation'.**
+In previous releases of Turing.jl, threadsafe evaluation was enabled whenever Julia was launched with more than one thread.
+However, this is an imprecise way of determining whether threadsafe evaluation is really needed.
+It causes performance degradation for models that do _not_ actually need threadsafe evaluation, and generally led to ill-defined behaviour in various parts of the Turing codebase.
+
+In Turing.jl v0.42, **threadsafe evaluation is now opt-in.**
+To enable threadsafe evaluation, after defining a model, you now need to call `setthreadsafe(model, true)` (note that this is not a mutating function, it returns a new model):
+
+```julia
+y = randn(100)
+model = f(y)
+model = setthreadsafe(model, true)
+```
+
+You *only* need to do this if your model uses tilde-statements or `@addlogprob!` in parallel.
+You do *not* need to do this if:
+
+  - your model has other kinds of parallelism but does not include tilde-statements inside;
+  - or you are using `MCMCThreads()` or `MCMCDistributed()` to sample multiple chains in parallel, but your model itself does not use parallelism.
+
+If your model does include parallelised tilde-statements or `@addlogprob!` calls, and you evaluate it/sample from it without setting `setthreadsafe(model, true)`, then you may get statistically incorrect results without any warnings or errors.
+
+### Faster performance
+
+Many operations in DynamicPPL have been substantially sped up.
+You should find that anything that uses LogDensityFunction (i.e., HMC/NUTS samplers, optimisation) is faster in this release.
+Prior sampling should also be much faster than before.
+
+### `predict` improvements
+
+If you have a model that requires threadsafe evaluation (i.e., parallel observations), you can now use this with `predict`.
+Carrying on from the previous example, you can do:
+
+```julia
+model = setthreadsafe(f(y), true)
+chain = sample(model, NUTS(), 1000)
+
+pdn_model = f(fill(missing, length(y)))
+pdn_model = setthreadsafe(pdn_model, true)  # set threadsafe
+predictions = predict(pdn_model, chain) # generate new predictions in parallel
+```
+
+### Log-density names in chains
+
+When sampling from a Turing model, the resulting `MCMCChains.Chains` object now contains the log-joint, log-prior, and log-likelihood under the names `:logjoint`, `:logprior`, and `:loglikelihood` respectively.
+Previously, `:logjoint` would be stored under the name `:lp`.
+
+### Log-evidence in chains
+
+When sampling using MCMCChains, the chain object will no longer have its `chain.logevidence` field set.
+Instead, you can calculate this yourself from the log-likelihoods stored in the chain.
+For SMC samplers, the log-evidence of the entire trajectory is stored in `chain[:logevidence]` (which is the same for every particle in the 'chain').
+
+### `Turing.Inference.Transition`
+
+`Turing.Inference.Transition(model, vi[, stats])` has been removed; you can directly replace this with `DynamicPPL.ParamsWithStats(vi, model[, stats])`.
+
+## AdvancedVI 0.6
+
+Turing.jl v0.42 updates `AdvancedVI.jl` compatibility to 0.6 (we skipped the breaking 0.5 update as it does not introduce new features).
+`AdvancedVI.jl@0.6` introduces major structural changes including breaking changes to the interface and multiple new features.
+The summary of the changes below are the things that affect the end-users of Turing.
+For a more comprehensive list of changes, please refer to the [changelogs](https://github.com/TuringLang/AdvancedVI.jl/blob/main/HISTORY.md) in `AdvancedVI`.
+
+### Breaking changes
+
+A new level of interface for defining different variational algorithms has been introduced in `AdvancedVI` v0.5. As a result, the function `Turing.vi` now receives a keyword argument `algorithm`. The object `algorithm <: AdvancedVI.AbstractVariationalAlgorithm` should now contain all the algorithm-specific configurations. Therefore, keyword arguments of `vi` that were algorithm-specific such as `objective`, `operator`, `averager` and so on, have been moved as fields of the relevant `<: AdvancedVI.AbstractVariationalAlgorithm` structs.
+
+In addition, the outputs also changed. Previously, `vi` returned both the last-iterate of the algorithm `q` and the iterate average `q_avg`. Now, for the algorithms running parameter averaging, only `q_avg` is returned. As a result, the number of returned values reduced from 4 to 3.
+
+For example,
+
+```julia
+q, q_avg, info, state = vi(
+    model, q, n_iters; objective=RepGradELBO(10), operator=AdvancedVI.ClipScale()
+)
+```
+
+is now
+
+```julia
+q_avg, info, state = vi(
+    model,
+    q,
+    n_iters;
+    algorithm=KLMinRepGradDescent(adtype; n_samples=10, operator=AdvancedVI.ClipScale()),
+)
+```
+
+Similarly,
+
+```julia
+vi(
+    model,
+    q,
+    n_iters;
+    objective=RepGradELBO(10; entropy=AdvancedVI.ClosedFormEntropyZeroGradient()),
+    operator=AdvancedVI.ProximalLocationScaleEntropy(),
+)
+```
+
+is now
+
+```julia
+vi(model, q, n_iters; algorithm=KLMinRepGradProxDescent(adtype; n_samples=10))
+```
+
+Lastly, to obtain the last-iterate `q` of `KLMinRepGradDescent`, which is not returned in the new interface, simply select the averaging strategy to be `AdvancedVI.NoAveraging()`. That is,
+
+```julia
+q, info, state = vi(
+    model,
+    q,
+    n_iters;
+    algorithm=KLMinRepGradDescent(
+        adtype;
+        n_samples=10,
+        operator=AdvancedVI.ClipScale(),
+        averager=AdvancedVI.NoAveraging(),
+    ),
+)
+```
+
+Additionally,
+
+  - The default hyperparameters of `DoG`and `DoWG` have been altered.
+  - The deprecated `AdvancedVI@0.2`-era interface is now removed.
+  - `estimate_objective` now always returns the value to be minimized by the optimization algorithm. For example, for ELBO maximization algorithms, `estimate_objective` will return the *negative ELBO*. This is breaking change from the previous behavior where the ELBO was returned.
+  - The initial value for the `q_meanfield_gaussian`, `q_fullrank_gaussian`, and `q_locationscale` have changed. Specificially, the default initial value for the scale matrix has been changed from `I` to `0.6*I`.
+  - When using algorithms that expect to operate in unconstrained spaces, the user is now explicitly expected to provide a `Bijectors.TransformedDistribution` wrapping an unconstrained distribution. (Refer to the docstring of `vi`.)
+
+### New Features
+
+`AdvancedVI@0.6` adds numerous new features including the following new VI algorithms:
+
+  - `KLMinWassFwdBwd`: Also known as "Wasserstein variational inference," this algorithm minimizes the KL divergence under the Wasserstein-2 metric.
+  - `KLMinNaturalGradDescent`: This algorithm, also known as "online variational Newton," is the canonical "black-box" natural gradient variational inference algorithm, which minimizes the KL divergence via mirror descent under the KL divergence as the Bregman divergence.
+  - `KLMinSqrtNaturalGradDescent`: This is a recent variant of `KLMinNaturalGradDescent` that operates in the Cholesky-factor parameterization of Gaussians instead of precision matrices.
+  - `FisherMinBatchMatch`: This algorithm called "batch-and-match," minimizes the variation of the 2nd order Fisher divergence via a proximal point-type algorithm.
+
+Any of the new algorithms above can readily be used by simply swappin the `algorithm` keyword argument of `vi`.
+For example, to use batch-and-match:
+
+```julia
+vi(model, q, n_iters; algorithm=FisherMinBatchMatch())
+```
+
+## External sampler interface
+
+The interface for defining an external sampler has been reworked.
+In general, implementations of external samplers should now no longer need to depend on Turing.
+This is because the interface functions required have been shifted upstream to AbstractMCMC.jl.
+
+In particular, you now only need to define the following functions:
+
+  - `AbstractMCMC.step(rng::Random.AbstractRNG, model::AbstractMCMC.LogDensityModel, ::MySampler; kwargs...)` (and also a method with `state`, and the corresponding `step_warmup` methods if needed)
+  - `AbstractMCMC.getparams(::MySamplerState)`               -> Vector{<:Real}
+  - `AbstractMCMC.getstats(::MySamplerState)`                -> NamedTuple
+  - `AbstractMCMC.requires_unconstrained_space(::MySampler)` -> Bool (default `true`)
+
+This means that you only need to depend on AbstractMCMC.jl.
+As long as the above functions are defined correctly, Turing will be able to use your external sampler.
+
+The `Turing.Inference.isgibbscomponent(::MySampler)` interface function still exists, but in this version the default has been changed to `true`, so you should not need to overload this.
+
+## Optimisation interface
+
+The Optim.jl interface has been removed (so you cannot call `Optim.optimize` directly on Turing models).
+You can use the `maximum_likelihood` or `maximum_a_posteriori` functions with an Optim.jl solver instead (via Optimization.jl: see https://docs.sciml.ai/Optimization/stable/optimization_packages/optim/ for documentation of the available solvers).
+
+## Internal changes
+
+The constructors of `OptimLogDensity` have been replaced with a single constructor, `OptimLogDensity(::DynamicPPL.LogDensityFunction)`.
+
+# 0.41.4
+
+Fixed a bug where the `check_model=false` keyword argument would not be respected when sampling with multiple threads or cores.
+
+# 0.41.3
+
+Fixed NUTS not correctly specifying the number of adaptation steps when calling `AdvancedHMC.initialize!` (this bug led to mass matrix adaptation not actually happening).
+
+# 0.41.2
+
+Add `GibbsConditional`, a "sampler" that can be used to provide analytically known conditional posteriors in a Gibbs sampler.
+
+In Gibbs sampling, some variables are sampled with a component sampler, while holding other variables conditioned to their current values. Usually one e.g. takes turns sampling one variable with HMC and the other with a particle sampler. However, sometimes the posterior distribution of one variable is known analytically, given the conditioned values of other variables. `GibbsConditional` provides a way to implement these analytically known conditional posteriors and use them as component samplers for Gibbs. See the docstring of `GibbsConditional` for details.
+
+Note that `GibbsConditional` used to exist in Turing.jl until v0.36, at which it was removed when the whole Gibbs sampler was rewritten. This reintroduces the same functionality, though with a slightly different interface.
+
 # 0.41.1
 
 The `ModeResult` struct returned by `maximum_a_posteriori` and `maximum_likelihood` can now be wrapped in `InitFromParams()`.

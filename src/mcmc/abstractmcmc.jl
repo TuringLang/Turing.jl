@@ -2,7 +2,9 @@
 # HMC not supporting discrete parameters.
 function _check_model(model::DynamicPPL.Model)
     new_model = DynamicPPL.setleafcontext(model, DynamicPPL.InitContext())
-    return DynamicPPL.check_model(new_model, VarInfo(); error_on_failure=true)
+    return DynamicPPL.check_model(
+        new_model, DynamicPPL.OnlyAccsVarInfo(); error_on_failure=true
+    )
 end
 function _check_model(model::DynamicPPL.Model, ::AbstractSampler)
     return _check_model(model)
@@ -131,6 +133,7 @@ function AbstractMCMC.sample(
         N,
         n_chains;
         chain_type,
+        check_model=false, # no need to check again
         initial_params=map(_convert_initial_params, initial_params),
         kwargs...,
     )

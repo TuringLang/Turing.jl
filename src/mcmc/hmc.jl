@@ -12,6 +12,7 @@ struct HMCState{
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
+    L<:DynamicPPL.LogDensityFunction,
 }
     vi::TV
     i::Int
@@ -19,6 +20,7 @@ struct HMCState{
     hamiltonian::THam
     z::PhType
     adaptor::TAdapt
+    ldf::L
 end
 
 ###
@@ -223,10 +225,10 @@ function Turing.Inference.initialstep(
     end
     # Generate a kernel and adaptor.
     kernel = make_ahmc_kernel(spl, ϵ)
-    adaptor = AHMCAdaptor(spl, hamiltonian.metric; ϵ=ϵ)
+    adaptor = AHMCAdaptor(spl, hamiltonian.metric, nadapts; ϵ=ϵ)
 
-    transition = Transition(model, vi, NamedTuple())
-    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor)
+    transition = DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
+    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
 end
@@ -270,8 +272,8 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = Transition(model, vi, t)
-    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor)
+    transition = DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
+    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
 
     return transition, newstate
 end
@@ -480,7 +482,9 @@ end
 #### Default HMC stepsize and mass matrix adaptor
 ####
 
-function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=alg.ϵ)
+function AHMCAdaptor(
+    alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric, nadapts::Int; ϵ=alg.ϵ
+)
     pc = AHMC.MassMatrixAdaptor(metric)
     da = AHMC.StepSizeAdaptor(alg.δ, ϵ)
 
@@ -491,13 +495,13 @@ function AHMCAdaptor(alg::AdaptiveHamiltonian, metric::AHMC.AbstractMetric; ϵ=a
             adaptor = AHMC.NaiveHMCAdaptor(pc, da)  # there is actually no adaptation for mass matrix
         else
             adaptor = AHMC.StanHMCAdaptor(pc, da)
-            AHMC.initialize!(adaptor, alg.n_adapts)
+            AHMC.initialize!(adaptor, nadapts)
         end
     end
 
     return adaptor
 end
 
-function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric; kwargs...)
+function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
 end

@@ -53,6 +53,7 @@ end
     @timeit TIMEROUTPUT "inference" begin
         @testset "inference with samplers" verbose = true begin
             @timeit_include("mcmc/gibbs.jl")
+            @timeit_include("mcmc/gibbs_conditional.jl")
             @timeit_include("mcmc/hmc.jl")
             @timeit_include("mcmc/Inference.jl")
             @timeit_include("mcmc/sghmc.jl")
@@ -63,12 +64,11 @@ end
         end
 
         @testset "variational algorithms" begin
-            @timeit_include("variational/advi.jl")
+            @timeit_include("variational/vi.jl")
         end
 
         @testset "mode estimation" verbose = true begin
             @timeit_include("optimisation/Optimisation.jl")
-            @timeit_include("ext/OptimInterface.jl")
         end
     end
 

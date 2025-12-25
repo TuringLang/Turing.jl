@@ -3,28 +3,23 @@
 
 Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
-Defaults to `false` if no method has been defined for a particular algorithm type.
+Defaults to `true` if no method has been defined for a particular sampler.
 """
-isgibbscomponent(::AbstractSampler) = false
-
-isgibbscomponent(::ESS) = true
-isgibbscomponent(::HMC) = true
-isgibbscomponent(::HMCDA) = true
-isgibbscomponent(::NUTS) = true
-isgibbscomponent(::MH) = true
-isgibbscomponent(::PG) = true
+isgibbscomponent(::AbstractSampler) = true
 
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
-
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::AdvancedHMC.AbstractHMCSampler) = true
-isgibbscomponent(::AdvancedMH.MetropolisHastings) = true
-isgibbscomponent(spl) = false
 
-function can_be_wrapped(ctx::DynamicPPL.AbstractContext)
-    return DynamicPPL.NodeTrait(ctx) isa DynamicPPL.IsLeaf
-end
-can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(ctx.context)
+isgibbscomponent(::IS) = false
+isgibbscomponent(::Prior) = false
+isgibbscomponent(::Emcee) = false
+isgibbscomponent(::SGLD) = false
+isgibbscomponent(::SGHMC) = false
+isgibbscomponent(::SMC) = false
+
+can_be_wrapped(::DynamicPPL.AbstractContext) = true
+can_be_wrapped(::DynamicPPL.AbstractParentContext) = false
+can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(DynamicPPL.childcontext(ctx))
 
 # Basically like a `DynamicPPL.FixedContext` but
 # 1. Hijacks the tilde pipeline to fix variables.
@@ -55,7 +50,7 @@ $(FIELDS)
 """
 struct GibbsContext{
     VNs<:Tuple{Vararg{VarName}},GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
-} <: DynamicPPL.AbstractContext
+} <: DynamicPPL.AbstractParentContext
     """
     the VarNames being sampled
     """
@@ -86,7 +81,6 @@ function GibbsContext(target_varnames, global_varinfo)
     return GibbsContext(target_varnames, global_varinfo, DynamicPPL.DefaultContext())
 end
 
-DynamicPPL.NodeTrait(::GibbsContext) = DynamicPPL.IsParent()
 DynamicPPL.childcontext(context::GibbsContext) = context.context
 function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
     return GibbsContext(
@@ -335,7 +329,7 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -359,7 +353,7 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 """
@@ -439,7 +433,7 @@ function AbstractMCMC.step(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -458,18 +452,15 @@ function AbstractMCMC.step_warmup(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
     )
-    return Transition(model, vi, nothing), GibbsState(vi, states)
+    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
 end
 
 """
-    setparams_varinfo!!(model, sampler::AbstractSampler, state, params::AbstractVarInfo)
+    setparams_varinfo!!(model::DynamicPPL.Model, sampler::AbstractSampler, state, params::AbstractVarInfo)
 
 A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
 `AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
 `AbstractMCMC.setparams!!(model, state, params[:])`.
-
-`model` is typically a `DynamicPPL.Model`, but can also be e.g. an
-`AbstractMCMC.LogDensityModel`.
 """
 function setparams_varinfo!!(
     model::DynamicPPL.Model, ::AbstractSampler, state, params::AbstractVarInfo
@@ -499,13 +490,13 @@ function setparams_varinfo!!(
     state::TuringState,
     params::AbstractVarInfo,
 )
-    logdensity = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, state.ldf.varinfo; adtype=sampler.adtype
+    new_ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
     )
     new_inner_state = AbstractMCMC.setparams!!(
-        AbstractMCMC.LogDensityModel(logdensity), state.state, params[:]
+        AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
     )
-    return TuringState(new_inner_state, params, logdensity)
+    return TuringState(new_inner_state, params, params[:], new_ldf)
 end
 
 function setparams_varinfo!!(
@@ -519,11 +510,11 @@ function setparams_varinfo!!(
     z = state.z
     resize!(z.θ, length(θ_new))
     z.θ .= θ_new
-    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor)
+    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor, state.ldf)
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::PG, state::PGState, params::AbstractVarInfo
+    ::DynamicPPL.Model, ::PG, state::PGState, params::AbstractVarInfo
 )
     return PGState(params, state.rng)
 end
