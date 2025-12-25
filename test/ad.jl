@@ -207,16 +207,13 @@ if INCLUDE_ENZYME
     )
 end
 
-# Check that ADTypeCheckContext itself works as expected.
+# Check that ADTypeCheckContext itself works as expected. We only test ForwardDiff and
+# ReverseDiff here because they are the ones which use tracer types.
+ADTYPECHECKCONTEXT_ADTYPES = (AutoForwardDiff(), AutoReverseDiff())
 @testset "ADTypeCheckContext" begin
     @model test_model() = x ~ Normal(0, 1)
     tm = test_model()
-    adtypes = (
-        AutoForwardDiff(),
-        AutoReverseDiff(),
-        # Don't need to test Mooncake as it doesn't use tracer types
-    )
-    for actual_adtype in adtypes
+    for actual_adtype in ADTYPECHECKCONTEXT_ADTYPES
         sampler = HMC(0.1, 5; adtype=actual_adtype)
         for expected_adtype in adtypes
             contextualised_tm = DynamicPPL.contextualize(
@@ -239,7 +236,7 @@ end
 @testset verbose = true "AD / ADTypeCheckContext" begin
     # This testset ensures that samplers or optimisers don't accidentally
     # override the AD backend set in it.
-    @testset "adtype=$adtype" for adtype in ADTYPES
+    @testset "adtype=$adtype" for adtype in ADTYPECHECKCONTEXT_ADTYPES
         seed = 123
         alg = HMC(0.1, 10; adtype=adtype)
         m = DynamicPPL.contextualize(
