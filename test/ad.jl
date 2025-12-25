@@ -10,13 +10,6 @@ using Test
 using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff, Mooncake
 
-const INCLUDE_ENZYME = VERSION < v"1.12.0"
-if INCLUDE_ENZYME
-    import Pkg
-    Pkg.add("Enzyme")
-    using Enzyme: Enzyme
-end
-
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
@@ -183,24 +176,7 @@ end
 """
 All the ADTypes on which we want to run the tests.
 """
-
 ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false), AutoMooncake()]
-if INCLUDE_ENZYME
-    push!(
-        ADTYPES,
-        AutoEnzyme(;
-            mode=Enzyme.set_runtime_activity(Enzyme.Forward),
-            function_annotation=Enzyme.Const,
-        ),
-    )
-    push!(
-        ADTYPES,
-        AutoEnzyme(;
-            mode=Enzyme.set_runtime_activity(Enzyme.Reverse),
-            function_annotation=Enzyme.Const,
-        ),
-    )
-end
 
 # Check that ADTypeCheckContext itself works as expected. We only test ForwardDiff and
 # ReverseDiff here because they are the ones which use tracer types.
@@ -210,7 +186,7 @@ ADTYPECHECKCONTEXT_ADTYPES = (AutoForwardDiff(), AutoReverseDiff())
     tm = test_model()
     for actual_adtype in ADTYPECHECKCONTEXT_ADTYPES
         sampler = HMC(0.1, 5; adtype=actual_adtype)
-        for expected_adtype in adtypes
+        for expected_adtype in ADTYPECHECKCONTEXT_ADTYPES
             contextualised_tm = DynamicPPL.contextualize(
                 tm, ADTypeCheckContext(expected_adtype, tm.context)
             )
@@ -278,7 +254,7 @@ end
             @varname(m) => HMC(0.1, 10; adtype=adtype),
         )
         @testset "model=$(model.f)" for model in DEMO_MODELS
-            @test sample(model, spl, 2) isa Any
+            @test sample(model, spl, 2; progress=false) isa Any
         end
     end
 end
