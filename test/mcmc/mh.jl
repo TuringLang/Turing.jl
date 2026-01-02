@@ -222,8 +222,8 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         chn_big = sample(StableRNG(seed), mod, alg_big, 1_000)
 
         # Test that the small variance version is actually smaller.
-        variance_small = var(diff(Array(chn_small["μ[1]"]); dims=1))
-        variance_big = var(diff(Array(chn_big["μ[1]"]); dims=1))
+        variance_small = var(diff(chn_small[@varname(μ[1])]; dims=1))
+        variance_big = var(diff(chn_big[@varname(μ[1])]; dims=1))
         @test variance_small < variance_big / 100.0
     end
 
@@ -237,12 +237,12 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
 
         chain = sample(StableRNG(seed), test(1), MH(), 5_000)
         for i in 1:5
-            @test mean(chain, "T[1][$i]") ≈ 0.2 atol = 0.01
+            @test mean(chain[@varname(T[1][i])]) ≈ 0.2 atol = 0.01
         end
 
         chain = sample(StableRNG(seed), test(10), MH(), 5_000)
         for j in 1:10, i in 1:5
-            @test mean(chain, "T[$j][$i]") ≈ 0.2 atol = 0.01
+            @test mean(chain[@varname(T[j][i])]) ≈ 0.2 atol = 0.01
         end
     end
 
@@ -252,11 +252,12 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             chain = sample(StableRNG(seed), f(), MH(), 5_000)
             indices = [(1, 1), (2, 1), (2, 2)]
             values = [1, 0, 0.785]
+            uplo_sym = uplo == 'U' ? :U : :L
             for ((i, j), v) in zip(indices, values)
                 if uplo == 'U'  # Transpose
-                    @test mean(chain, "x.$uplo[$j, $i]") ≈ v atol = 0.01
+                    @test mean(chain[@varname(x.$uplo_sym[j, i])]) ≈ v atol = 0.01
                 else
-                    @test mean(chain, "x.$uplo[$i, $j]") ≈ v atol = 0.01
+                    @test mean(chain[@varname(x.$uplo_sym[i, j])]) ≈ v atol = 0.01
                 end
             end
         end

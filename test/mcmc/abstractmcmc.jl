@@ -37,7 +37,7 @@ end
         vi::DynamicPPL.VarInfo=DynamicPPL.VarInfo(rng, model);
         kwargs...,
     )
-        return vi, nothing
+        return DynamicPPL.ParamsWithStats(vi, model), nothing
     end
 
     @testset "init_strategy" begin
@@ -61,7 +61,7 @@ end
             @test DynamicPPL.getlogjoint(varinfo) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -105,7 +105,7 @@ end
             @test DynamicPPL.getlogjoint(varinfo) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -139,7 +139,7 @@ end
             @test varinfo[@varname(m)] == -1
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
