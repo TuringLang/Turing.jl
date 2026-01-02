@@ -99,20 +99,27 @@ function AbstractMCMC.step(
     return transition, newstate
 end
 
-function AbstractMCMC.bundle_samples(
-    samples::Vector{<:Vector},
-    model::AbstractModel,
-    spl::Emcee,
-    state::EmceeState,
-    chain_type::Type{MCMCChains.Chains};
-    kwargs...,
-)
-    n_walkers = _get_n_walkers(spl)
-    chains = map(1:n_walkers) do i
-        this_walker_samples = [s[i] for s in samples]
-        AbstractMCMC.bundle_samples(
-            this_walker_samples, model, spl, state, chain_type; kwargs...
+# Have to define methods for both to avoid method ambiguities (as opposed to a single
+# `::Type{T<:AbstractMCMC.AbstractChains})` since default `bundle_samples` takes
+# `samples::AbstractVector`.
+for Tchain in (:(MCMCChains.Chains), :(FlexiChains.VNChain))
+    @eval begin
+        function AbstractMCMC.bundle_samples(
+            samples::Vector{<:Vector},
+            model::DynamicPPL.Model,
+            spl::Emcee,
+            state::EmceeState,
+            ::Type{$Tchain};
+            kwargs...,
         )
+            n_walkers = _get_n_walkers(spl)
+            chains = map(1:n_walkers) do i
+                this_walker_samples = [s[i] for s in samples]
+                AbstractMCMC.bundle_samples(
+                    this_walker_samples, model, spl, state, $Tchain; kwargs...
+                )
+            end
+            return AbstractMCMC.chainscat(chains...)
+        end
     end
-    return AbstractMCMC.chainscat(chains...)
 end

@@ -2,12 +2,8 @@
 
 ## Module-wide re-exports
 
-Turing.jl directly re-exports the entire public API of the following packages:
-
-  - [Distributions.jl](https://juliastats.org/Distributions.jl)
-  - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
-
-Please see the individual packages for their documentation.
+Turing.jl directly re-exports the entire public API of [Distributions.jl](https://juliastats.org/Distributions.jl).
+Please see its documentation for more details.
 
 ## Individual exports and re-exports
 
@@ -47,13 +43,14 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Inference
 
-| Exported symbol   | Documentation                                                             | Description                               |
-|:----------------- |:------------------------------------------------------------------------- |:----------------------------------------- |
-| `sample`          | [`StatsBase.sample`](https://turinglang.org/docs/usage/sampling-options/) | Sample from a model                       |
-| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                     | Run MCMC using multiple threads           |
-| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                 | Run MCMC using multiple processes         |
-| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                      | Run MCMC using without parallelism        |
-| `loadstate`       | [`Turing.Inference.loadstate`](@ref)                                      | Load saved state from `MCMCChains.Chains` |
+| Exported symbol   | Documentation                                                             | Description                         |
+|:----------------- |:------------------------------------------------------------------------- |:----------------------------------- |
+| `sample`          | [`StatsBase.sample`](https://turinglang.org/docs/usage/sampling-options/) | Sample from a model                 |
+| `MCMCThreads`     | [`AbstractMCMC.MCMCThreads`](@extref)                                     | Run MCMC using multiple threads     |
+| `MCMCDistributed` | [`AbstractMCMC.MCMCDistributed`](@extref)                                 | Run MCMC using multiple processes   |
+| `MCMCSerial`      | [`AbstractMCMC.MCMCSerial`](@extref)                                      | Run MCMC using without parallelism  |
+| `loadstate`       | [`Turing.Inference.loadstate`](@ref)                                      | Load saved state from an MCMC chain |
+| `VNChain`         | n/a                                                                       | Alias for `FlexiChain{VarName}`     |
 
 ### Samplers
 

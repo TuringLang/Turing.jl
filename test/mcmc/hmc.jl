@@ -5,6 +5,7 @@ using ..NumericalTests: check_gdemo, check_numerical
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL
+using FlexiChains: FlexiChains
 import ForwardDiff
 using HypothesisTests: ApproximateTwoSampleKSTest, pvalue
 import ReverseDiff
@@ -54,7 +55,9 @@ using Turing
 
         chain = sample(StableRNG(seed), constrained_simplex_test(obs12), HMC(0.75, 2), 1000)
 
-        check_numerical(chain, ["ps[1]", "ps[2]"], [5 / 16, 11 / 16]; atol=0.015)
+        check_numerical(
+            chain, [@varname(ps[1]), @varname(ps[2])], [5 / 16, 11 / 16]; atol=0.015
+        )
     end
 
     # Test the sampling of a matrix-value distribution.
@@ -65,12 +68,7 @@ using Turing
         n_samples = 1_000
 
         chain = sample(StableRNG(24), model_f, HMC(0.15, 7), n_samples)
-        # Reshape the chain into an array of 2x2 matrices, one per sample. Then compute
-        # the average of the samples, as a matrix
-        r = reshape(Array(chain), n_samples, 2, 2)
-        r_mean = dropdims(mean(r; dims=1); dims=1)
-
-        @test isapprox(r_mean, mean(dist); atol=0.2)
+        @test isapprox(mean(chain[@varname(v)]), mean(dist); atol=0.2)
     end
 
     @testset "multivariate support" begin
@@ -157,9 +155,9 @@ using Turing
         alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65))
         alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3))
         alg3 = Gibbs(:m => PG(10), :s => HMCDA(100, 0.65, 0.3))
-        @test sample(StableRNG(seed), gdemo_default, alg1, 10) isa Chains
-        @test sample(StableRNG(seed), gdemo_default, alg2, 10) isa Chains
-        @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa Chains
+        @test sample(StableRNG(seed), gdemo_default, alg1, 10) isa VNChain
+        @test sample(StableRNG(seed), gdemo_default, alg2, 10) isa VNChain
+        @test sample(StableRNG(seed), gdemo_default, alg3, 10) isa VNChain
     end
 
     # issue #1923
@@ -168,7 +166,8 @@ using Turing
         res1 = sample(StableRNG(seed), gdemo_default, alg, 10)
         res2 = sample(StableRNG(seed), gdemo_default, alg, 10)
         res3 = sample(StableRNG(seed), gdemo_default, alg, 10)
-        @test Array(res1) == Array(res2) == Array(res3)
+        @test FlexiChains.has_same_data(res1, res2)
+        @test FlexiChains.has_same_data(res1, res3)
     end
 
     @testset "initial params are respected" begin
@@ -236,7 +235,7 @@ using Turing
             10;
             nadapts=0,
             discard_adapt=false,
-            initial_state=loadstate(chn1),
+            initial_state=only(loadstate(chn1)),
         )
         # if chn2 uses initial_state, its first sample should be somewhere around 5. if
         # initial_state isn't used, it will be sampled from [-2, 2] so this test should fail
@@ -251,7 +250,8 @@ using Turing
         end
         model = vector_of_dirichlet()
         chain = sample(model, NUTS(), 1_000)
-        @test mean(Array(chain)) ≈ 0.2
+        xs = vcat(stack(chain[@varname(xs[1])]), stack(chain[@varname(xs[2])]))
+        @test mean(xs) ≈ 0.2
     end
 
     @testset "issue: #2195" begin

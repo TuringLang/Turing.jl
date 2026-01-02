@@ -36,7 +36,7 @@ end
         vi::DynamicPPL.VarInfo=DynamicPPL.VarInfo(rng, model);
         kwargs...,
     )
-        return vi, nothing
+        return DynamicPPL.ParamsWithStats(vi, model), nothing
     end
 
     @testset "init_strategy" begin
@@ -55,11 +55,11 @@ end
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test chain[1].metadata.p.vals == [0.2]
-            @test DynamicPPL.getlogjoint(chain[1]) == lptrue
+            @test only(chain[@varname(p)]) == 0.2
+            @test only(chain[:logjoint]) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -68,10 +68,8 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                @test c[1].metadata.p.vals == [0.2]
-                @test DynamicPPL.getlogjoint(c[1]) == lptrue
-            end
+            @test all(c[@varname(p)] .== 0.2)
+            @test all(c[:logjoint] .== lptrue)
         end
 
         # check that Vector no longer works
@@ -96,12 +94,12 @@ end
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test chain[1].metadata.s.vals == [4]
-            @test chain[1].metadata.m.vals == [-1]
-            @test DynamicPPL.getlogjoint(chain[1]) == lptrue
+            @test only(chain[@varname(s)]) == 4
+            @test only(chain[@varname(m)]) == -1
+            @test only(chain[:logjoint]) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -110,11 +108,9 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                @test c[1].metadata.s.vals == [4]
-                @test c[1].metadata.m.vals == [-1]
-                @test DynamicPPL.getlogjoint(c[1]) == lptrue
-            end
+            @test all(c[@varname(s)] .== 4)
+            @test all(c[@varname(m)] .== -1)
+            @test all(c[:logjoint] .== lptrue)
         end
 
         # set only m = -1
@@ -129,11 +125,12 @@ end
             Dict(@varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test !ismissing(chain[1].metadata.s.vals[1])
-            @test chain[1].metadata.m.vals == [-1]
+            @test haskey(chain, @varname(s))
+            @test only(chain[@varname(s)]) isa Real
+            @test only(chain[@varname(m)]) == -1
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -142,10 +139,9 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                @test !ismissing(c[1].metadata.s.vals[1])
-                @test c[1].metadata.m.vals == [-1]
-            end
+            @test haskey(c, @varname(s))
+            @test all(x -> x isa Real, c[@varname(s)])
+            @test all(c[@varname(m)] .== -1)
         end
     end
 end
