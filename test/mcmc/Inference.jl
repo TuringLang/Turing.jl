@@ -6,9 +6,9 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 using AbstractMCMC: AbstractMCMC
 import DynamicPPL
-import FlexiChains
 import ForwardDiff
 using LinearAlgebra: I
+import MCMCChains
 import Random
 import ReverseDiff
 using StableRNGs: StableRNG
@@ -41,7 +41,9 @@ using Turing
                 Random.seed!(5)
                 chain2 = sample(model, sampler, MCMCThreads(), 10, 4)
 
-                @test FlexiChains.has_same_data(chain1, chain2)
+                # For HMC, the first step does not have stats, so we need to use isequal to
+                # avoid comparing `missing`s
+                @test isequal(chain1.value, chain2.value)
             end
 
             # Should also be stable with an explicit RNG
@@ -54,7 +56,7 @@ using Turing
                 Random.seed!(rng, local_seed)
                 chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
-                @test FlexiChains.has_same_data(chain1, chain2)
+                @test isequal(chain1.value, chain2.value)
             end
         end
 
@@ -161,16 +163,16 @@ using Turing
 
         @testset "Single-threaded vanilla" begin
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), N)
-            @test chains isa VNChain
-            @test mean(chains)[@varname(s)] ≈ 3 atol = 0.11
-            @test mean(chains)[@varname(m)] ≈ 0 atol = 0.1
+            @test chains isa MCMCChains.Chains
+            @test mean(chains, :s) ≈ 3 atol = 0.11
+            @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
         @testset "Multi-threaded" begin
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), MCMCThreads(), N, 4)
-            @test chains isa VNChain
-            @test mean(chains)[@varname(s)] ≈ 3 atol = 0.11
-            @test mean(chains)[@varname(m)] ≈ 0 atol = 0.1
+            @test chains isa MCMCChains.Chains
+            @test mean(chains, :s) ≈ 3 atol = 0.11
+            @test mean(chains, :m) ≈ 0 atol = 0.1
         end
 
         @testset "accumulators are set correctly" begin
@@ -184,7 +186,7 @@ using Turing
                 return nothing
             end
             chain = sample(coloneq(), Prior(), N)
-            @test chain isa VNChain
+            @test chain isa MCMCChains.Chains
             @test all(x -> x == 1.0, chain[:z])
             # And for the same reason we should also make sure that the logp
             # components are correctly calculated.
@@ -193,6 +195,18 @@ using Turing
             @test isapprox(chain[:logjoint], chain[:logprior] .+ chain[:loglikelihood])
             # And that the outcome is not influenced by the likelihood
             @test mean(chain, :x) ≈ 0.0 atol = 0.1
+        end
+    end
+
+    @testset "chain ordering" begin
+        for alg in (Prior(), Emcee(10, 2.0))
+            chain_sorted = sample(StableRNG(seed), gdemo_default, alg, 1; sort_chain=true)
+            @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
+
+            chain_unsorted = sample(
+                StableRNG(seed), gdemo_default, alg, 1; sort_chain=false
+            )
+            @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
         end
     end
 
@@ -620,7 +634,7 @@ using Turing
         end
         # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
-        @test sample(e(), IS(), 100) isa VNChain
+        @test sample(e(), IS(), 100) isa MCMCChains.Chains
     end
 end
 

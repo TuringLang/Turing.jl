@@ -1,7 +1,7 @@
 module RepeatSamplerTests
 
-import FlexiChains
 using ..Models: gdemo_default
+using MCMCChains: MCMCChains
 using Random: Xoshiro
 using Test: @test, @testset
 using Turing
@@ -35,9 +35,10 @@ using Turing
             num_samples,
             num_chains,
         )
-        @test chn1 isa VNChain
-        @test chn2 isa VNChain
-        @test FlexiChains.has_same_data(chn1, chn2)
+        # isequal to avoid comparing `missing`s in chain stats
+        @test chn1 isa MCMCChains.Chains
+        @test chn2 isa MCMCChains.Chains
+        @test isequal(chn1.value, chn2.value)
     end
 end
 

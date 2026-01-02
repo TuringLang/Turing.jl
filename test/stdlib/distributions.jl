@@ -1,5 +1,6 @@
 module DistributionsTests
 
+using ..NumericalTests: check_dist_numerical
 using Distributions
 using LinearAlgebra: I
 using Random: Random
@@ -7,33 +8,6 @@ using StableRNGs: StableRNG
 using StatsFuns: logistic
 using Test: @testset, @test
 using Turing
-
-function check_dist_numerical(
-    dist, chn; mean_atol=0.1, mean_rtol=0.1, var_atol=1.0, var_rtol=0.5
-)
-    @testset "numerical" begin
-        # Extract values.
-        chn_xs = chn[@varname(x)]
-
-        # Check means.
-        dist_mean = mean(dist)
-        if !all(isnan, dist_mean) && !all(isinf, dist_mean)
-            chn_mean = mean(chn_xs)
-            @test chn_mean ≈ dist_mean atol = mean_atol rtol = mean_rtol
-        end
-
-        # Check variances.
-        # var() for Distributions.MatrixDistribution is not defined
-        if !(dist isa Distributions.MatrixDistribution)
-            # Variance
-            dist_var = var(dist)
-            if !all(isnan, dist_var) && !all(isinf, dist_var)
-                chn_var = var(chn_xs)
-                @test chn_var ≈ chn_var atol = var_atol rtol = var_rtol
-            end
-        end
-    end
-end
 
 @testset "distributions.jl" begin
     rng = StableRNG(12345)
@@ -78,10 +52,9 @@ end
 
     @testset "single distribution correctness" begin
         n_samples = 10_000
-        mean_atol = 0.1
-        mean_rtol = 0.1
+        mean_tol = 0.1
         var_atol = 1.0
-        var_rtol = 0.5
+        var_tol = 0.5
         multi_dim = 4
         # 1. UnivariateDistribution
         # NOTE: Noncentral distributions are commented out because of
@@ -164,18 +137,15 @@ end
                             else
                                 StableRNG(468)
                             end
-                            chn = sample(
-                                seed, m(), HMC(0.05, 20), n_samples; progress=false
-                            )
+                            chn = sample(seed, m(), HMC(0.05, 20), n_samples)
 
                             # Numerical tests.
                             check_dist_numerical(
                                 dist,
                                 chn;
-                                mean_atol=mean_atol,
-                                mean_rtol=mean_rtol,
+                                mean_tol=mean_tol,
                                 var_atol=var_atol,
-                                var_rtol=var_rtol,
+                                var_tol=var_tol,
                             )
                         end
                     end

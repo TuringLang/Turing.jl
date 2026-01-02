@@ -84,9 +84,9 @@ using Turing.Inference: AdvancedHMC
     chn = sample(
         model, externalsampler(MySampler()), 10; initial_params=InitFromParams((a=a, b=b))
     )
-    @test chn isa VNChain
-    @test all(chn[@varname(a)] .== a)
-    @test all(chn[@varname(b)] .== b)
+    @test chn isa MCMCChains.Chains
+    @test all(chn[:a] .== a)
+    @test all(chn[:b] .== b)
     expected_logpdf = logpdf(Beta(2, 2), a) + logpdf(Normal(a), b)
     @test all(chn[:logjoint] .== expected_logpdf)
     @test all(chn[:logprior] .== expected_logpdf)
@@ -237,7 +237,7 @@ end
                 sampler; adtype=Turing.DEFAULT_ADTYPE, unconstrained=true
             )
             chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-            @test isapprox(logpdf.(Normal(), chn[@varname(x)]), chn[:logjoint])
+            @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
         end
     end
 
@@ -270,7 +270,7 @@ end
                 sampler = initialize_mh_rw(model)
                 sampler_ext = externalsampler(sampler; unconstrained=true)
                 chn = sample(logp_check(), Gibbs(@varname(x) => sampler_ext), 100)
-                @test isapprox(logpdf.(Normal(), chn[@varname(x)]), chn[:logjoint])
+                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
             end
         end
 

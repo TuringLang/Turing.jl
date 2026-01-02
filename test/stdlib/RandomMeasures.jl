@@ -60,7 +60,8 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
         model_fun = infiniteGMM(data)
         chain = sample(model_fun, SMC(), iterations)
 
-        @test chain isa FlexiChain.VNChain
+        @test chain isa MCMCChains.Chains
+        @test eltype(chain.value) === Union{Float64,Missing}
     end
     # partitions = [
     #     [[1, 2, 3, 4]],

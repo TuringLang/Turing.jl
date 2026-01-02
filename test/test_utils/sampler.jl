@@ -21,8 +21,8 @@ function test_chain_logp_metadata(spl)
     end
     chn = sample(f(), spl, 100)
     # Check that the log-prior term is calculated in unlinked space.
-    @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[@varname(x)])
-    @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[@varname(x)]), 1.0)
+    @test chn[:logprior] ≈ logpdf.(LogNormal(), chn[:x])
+    @test chn[:loglikelihood] ≈ logpdf.(Normal.(chn[:x]), 1.0)
     # This should always be true, but it also indirectly checks that the 
     # log-joint is also calculated in unlinked space.
     @test chn[:logjoint] ≈ chn[:logprior] + chn[:loglikelihood]
@@ -88,7 +88,7 @@ function test_sampler_analytical(
             # extracting the leaves of the `VarName` and the corresponding value.
             for vn_leaf in AbstractPPL.varname_leaves(vn, get(target_values, vn))
                 target_value = get(target_values, vn_leaf)
-                chain_mean_value = mean(chain[vn_leaf])
+                chain_mean_value = mean(chain[Symbol(vn_leaf)])
                 @test chain_mean_value ≈ target_value atol = atol rtol = rtol
             end
         end

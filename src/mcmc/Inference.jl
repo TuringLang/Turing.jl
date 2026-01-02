@@ -25,7 +25,6 @@ using DynamicPPL:
     DefaultContext
 using Distributions, Libtask, Bijectors
 using DistributionsAD: VectorOfMultivariate
-using FlexiChains: FlexiChain
 using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp
@@ -47,6 +46,7 @@ import Accessors
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
+import MCMCChains
 import StatsBase: predict
 
 export Hamiltonian,
@@ -78,7 +78,7 @@ export Hamiltonian,
 # Generic AbstractMCMC methods dispatch #
 #########################################
 
-const DEFAULT_CHAIN_TYPE = FlexiChain{VarName}
+const DEFAULT_CHAIN_TYPE = MCMCChains.Chains
 include("abstractmcmc.jl")
 
 ####################

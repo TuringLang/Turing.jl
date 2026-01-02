@@ -1,5 +1,3 @@
-using MCMCChains: MCMCChains
-
 # TODO: Implement additional checks for certain samplers, e.g.
 # HMC not supporting discrete parameters.
 function _check_model(model::DynamicPPL.Model)
