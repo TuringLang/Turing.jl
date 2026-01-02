@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Distributions: sample
 using DynamicPPL: DynamicPPL
+using FlexiChains: FlexiChains
 using Random: Random
 using Test: @test, @test_throws, @testset
 using Turing
@@ -37,7 +38,7 @@ using Turing
         chain1 = sample(gdemo_default, spl, 1)
         Random.seed!(1234)
         chain2 = sample(gdemo_default, spl, 1)
-        @test Array(chain1) == Array(chain2)
+        @test FlexiChains.has_same_data(chain1, chain2)
 
         initial_nt = DynamicPPL.InitFromParams((s=2.0, m=1.0))
         # Initial parameters have to be specified for every walker
