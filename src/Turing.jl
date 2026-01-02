@@ -4,12 +4,14 @@ using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains
+@reexport using Distributions
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
+# TODO(penelopeysm): Don't do this.
+@reexport using FlexiChains
 using LogDensityProblems: LogDensityProblems
 using NamedArrays: NamedArrays
 using Accessors: Accessors

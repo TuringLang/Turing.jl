@@ -5,7 +5,7 @@
 Turing.jl directly re-exports the entire public API of the following packages:
 
   - [Distributions.jl](https://juliastats.org/Distributions.jl)
-  - [MCMCChains.jl](https://turinglang.org/MCMCChains.jl)
+  - [FlexiChains.jl](https://pysm.dev/FlexiChains.jl/)
 
 Please see the individual packages for their documentation.
 

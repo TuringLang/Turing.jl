@@ -50,18 +50,18 @@ using Turing
 
         @testset "demo_default" begin
             chain = sample(StableRNG(seed), demo_default, ESS(), 5_000)
-            check_numerical(chain, [:m], [0.8]; atol=0.1)
+            check_numerical(chain, [@varname(m)], [0.8]; atol=0.1)
         end
 
         @testset "demodot_default" begin
             chain = sample(StableRNG(seed), demodot_default, ESS(), 5_000)
-            check_numerical(chain, ["m[1]", "m[2]"], [0.0, 0.8]; atol=0.1)
+            check_numerical(chain, [@varname(m[1]), @varname(m[2])], [0.0, 0.8]; atol=0.1)
         end
 
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
             chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 3_000)
-            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+            check_gdemo(chain; atol=0.1)
         end
 
         @testset "MoGtest_default with CSMC + ESS" begin
@@ -97,17 +97,20 @@ using Turing
     # Test that ESS can sample multiple variables regardless of whether they are under the
     # same symbol or not.
     @testset "Multiple variables" begin
+        zdist = Beta(2.0, 2.0)
+        ydist = Normal(-3.0, 3.0)
+
         @model function xy()
-            z ~ Beta(2.0, 2.0)
+            z ~ zdist
             x ~ Normal(z, 2.0)
-            return y ~ Normal(-3.0, 3.0)
+            return y ~ ydist
         end
 
         @model function x12()
-            z ~ Beta(2.0, 2.0)
+            z ~ zdist
             x = Vector{Float64}(undef, 2)
             x[1] ~ Normal(z, 2.0)
-            return x[2] ~ Normal(-3.0, 3.0)
+            return x[2] ~ ydist
         end
 
         num_samples = 10_000
@@ -117,9 +120,11 @@ using Turing
         chn1 = sample(StableRNG(23), xy(), spl_xy, num_samples)
         chn2 = sample(StableRNG(23), x12(), spl_x, num_samples)
 
-        @test chn1.value ≈ chn2.value
-        @test mean(chn1[:z]) ≈ mean(Beta(2.0, 2.0)) atol = 0.05
-        @test mean(chn1[:y]) ≈ -3.0 atol = 0.05
+        @test chn1[@varname(z)] == chn2[@varname(z)]
+        @test chn1[@varname(x)] == chn2[@varname(x[1])]
+        @test chn1[@varname(y)] == chn2[@varname(x[2])]
+        @test mean(chn1[@varname(z)]) ≈ mean(zdist) atol = 0.05
+        @test mean(chn1[@varname(y)]) ≈ mean(ydist) atol = 0.05
     end
 end
 

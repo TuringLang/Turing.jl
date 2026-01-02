@@ -131,7 +131,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
         chain = sample(model, MH(), 10)
 
-        @test chain isa MCMCChains.Chains
+        @test chain isa VNChain
     end
 
     @testset "proposal matrix" begin
