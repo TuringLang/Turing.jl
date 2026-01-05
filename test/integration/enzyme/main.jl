@@ -8,14 +8,8 @@ import Enzyme: set_runtime_activity, Forward, Reverse, Const
 import ForwardDiff  # needed for AD correctness checking
 
 ADTYPES = (
-    (
-        "EnzymeForward",
-        AutoEnzyme(; mode=set_runtime_activity(Forward), function_annotation=Const),
-    ),
-    (
-        "EnzymeReverse",
-        AutoEnzyme(; mode=set_runtime_activity(Reverse), function_annotation=Const),
-    ),
+    ("EnzymeForward", AutoEnzyme(; mode=set_runtime_activity(Forward))),
+    ("EnzymeReverse", AutoEnzyme(; mode=set_runtime_activity(Reverse))),
 )
 MODELS = DynamicPPL.TestUtils.DEMO_MODELS
 
