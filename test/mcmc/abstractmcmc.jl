@@ -154,9 +154,9 @@ end
         # Model that produces -Inf logp for most parameter values
         # Only valid when x is in narrow range [-0.3, 0.3]
         @model function bad_init_model()
-            x ~ Normal(0, 10)  # Prior is wide, so most samples will be outside valid range
-            # Add log probability that's -Inf outside narrow range
-            Turing.@addlogprob! (abs(x) < 0.3) ? 0.0 : -Inf
+            init_counter_1[] += 1
+            x ~ Normal(0, 1)
+            Turing.@addlogprob! (init_counter_1[] > 5) ? 0.0 : -Inf
         end
         
         # This should succeed with retry logic (might take a few attempts)
