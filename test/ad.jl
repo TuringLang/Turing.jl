@@ -14,7 +14,7 @@ import ForwardDiff, ReverseDiff, Mooncake
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
 
 """A dictionary mapping ADTypes to the element types they use."""
-eltypes_by_adtype = Dict(
+eltypes_by_adtype = Dict{Type,Tuple}(
     AutoForwardDiff => (ForwardDiff.Dual,),
     AutoReverseDiff => (
         ReverseDiff.TrackedArray,
@@ -25,7 +25,6 @@ eltypes_by_adtype = Dict(
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
-    AutoMooncake => (Mooncake.CoDual,),
 )
 
 """
@@ -179,18 +178,15 @@ All the ADTypes on which we want to run the tests.
 """
 ADTYPES = [AutoForwardDiff(), AutoReverseDiff(; compile=false), AutoMooncake()]
 
-# Check that ADTypeCheckContext itself works as expected.
+# Check that ADTypeCheckContext itself works as expected. We only test ForwardDiff and
+# ReverseDiff here because they are the ones which use tracer types.
+ADTYPECHECKCONTEXT_ADTYPES = (AutoForwardDiff(), AutoReverseDiff())
 @testset "ADTypeCheckContext" begin
     @model test_model() = x ~ Normal(0, 1)
     tm = test_model()
-    adtypes = (
-        AutoForwardDiff(),
-        AutoReverseDiff(),
-        # Don't need to test Mooncake as it doesn't use tracer types
-    )
-    for actual_adtype in adtypes
+    for actual_adtype in ADTYPECHECKCONTEXT_ADTYPES
         sampler = HMC(0.1, 5; adtype=actual_adtype)
-        for expected_adtype in adtypes
+        for expected_adtype in ADTYPECHECKCONTEXT_ADTYPES
             contextualised_tm = DynamicPPL.contextualize(
                 tm, ADTypeCheckContext(expected_adtype, tm.context)
             )
@@ -211,7 +207,7 @@ end
 @testset verbose = true "AD / ADTypeCheckContext" begin
     # This testset ensures that samplers or optimisers don't accidentally
     # override the AD backend set in it.
-    @testset "adtype=$adtype" for adtype in ADTYPES
+    @testset "adtype=$adtype" for adtype in ADTYPECHECKCONTEXT_ADTYPES
         seed = 123
         alg = HMC(0.1, 10; adtype=adtype)
         m = DynamicPPL.contextualize(
@@ -258,7 +254,7 @@ end
             @varname(m) => HMC(0.1, 10; adtype=adtype),
         )
         @testset "model=$(model.f)" for model in DEMO_MODELS
-            @test sample(model, spl, 2) isa Any
+            @test sample(model, spl, 2; progress=false) isa Any
         end
     end
 end
