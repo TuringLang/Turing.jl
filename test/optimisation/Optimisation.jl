@@ -552,16 +552,25 @@ using Turing
             OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
         ]
         @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
-            result = maximum_likelihood(model, optimizer; reltol=1e-3)
-            vals = result.values
+            try
+                result = maximum_likelihood(model, optimizer; reltol=1e-3)
+                vals = result.values
 
-            for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
-                    if model.f in allowed_incorrect_mle
-                        @test isfinite(get(result_true, vn_leaf))
-                    else
-                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
+                for vn in DynamicPPL.TestUtils.varnames(model)
+                    for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
+                        if model.f in allowed_incorrect_mle
+                            @test isfinite(get(result_true, vn_leaf))
+                        else
+                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol =
+                                0.05
+                        end
                     end
+                end
+            catch e
+                if model.f in allowed_incorrect_mle
+                    @info "MLE test for $(model.f) errored, but this is expected due to variance MLE being zero"
+                else
+                    rethrow(e)
                 end
             end
         end
