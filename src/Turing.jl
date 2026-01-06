@@ -4,7 +4,7 @@ using Reexport, ForwardDiff
 using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains
+@reexport using Distributions
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
@@ -16,6 +16,7 @@ using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
+using FlexiChains
 
 using Accessors: Accessors
 
@@ -172,6 +173,8 @@ export
     MAP,
     MLE,
     # Chain save/resume
-    loadstate
+    loadstate,
+    # FlexiChains re-export
+    VNChain
 
 end

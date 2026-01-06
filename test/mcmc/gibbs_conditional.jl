@@ -51,21 +51,24 @@ using Turing
         )
         chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
+        @test mean(chain[@varname(precision)]) ≈ mean(reference_chain[@varname(precision)]) atol =
+            0.1
+        @test mean(chain[@varname(m)]) ≈ mean(reference_chain[@varname(m)]) atol = 0.1
 
         # Mix GibbsConditional with an MCMC sampler
         sampler = Gibbs(:precision => GibbsConditional(cond_precision), :m => MH())
         chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
+        @test mean(chain[@varname(precision)]) ≈ mean(reference_chain[@varname(precision)]) atol =
+            0.1
+        @test mean(chain[@varname(m)]) ≈ mean(reference_chain[@varname(m)]) atol = 0.1
 
         sampler = Gibbs(:m => GibbsConditional(cond_m), :precision => HMC(0.1, 10))
         chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
+        @test mean(chain[@varname(precision)]) ≈ mean(reference_chain[@varname(precision)]) atol =
+            0.1
+        @test mean(chain[@varname(m)]) ≈ mean(reference_chain[@varname(m)]) atol = 0.1
 
         # Block sample, sampling the same variable with multiple component samplers.
         sampler = Gibbs(
@@ -80,8 +83,9 @@ using Turing
         )
         chain = sample(StableRNG(23), model, sampler, 1_000)
         @test size(chain, 1) == 1_000
-        @test mean(chain, :precision) ≈ mean(reference_chain, :precision) atol = 0.1
-        @test mean(chain, :m) ≈ mean(reference_chain, :m) atol = 0.1
+        @test mean(chain[@varname(precision)]) ≈ mean(reference_chain[@varname(precision)]) atol =
+            0.1
+        @test mean(chain[@varname(m)]) ≈ mean(reference_chain[@varname(m)]) atol = 0.1
     end
 
     @testset "Simple normal model" begin
@@ -114,7 +118,7 @@ using Turing
         chain = sample(StableRNG(23), model, sampler, 1_000)
         # The correct posterior mean isn't true_mean, but it is very close, because we
         # have a lot of data.
-        @test mean(chain, :mean) ≈ true_mean atol = 0.05
+        @test mean(chain[@varname(mean)]) ≈ true_mean atol = 0.05
     end
 
     @testset "Double simple normal" begin
@@ -165,8 +169,8 @@ using Turing
             chain = sample(StableRNG(23), model, sampler, 1_000)
             # The correct posterior mean isn't true_mean, but it is very close, because we
             # have a lot of data.
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
+            @test mean(chain[@varname(mean1)]) ≈ true_mean1 atol = 0.1
+            @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
 
             # Test using GibbsConditional for both in a block, returning a Dict.
             function cond_mean_dict(c)
@@ -182,8 +186,8 @@ using Turing
                 (:var1, :var2) => HMC(0.1, 10),
             )
             chain = sample(StableRNG(23), model, sampler, 1_000)
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
+            @test mean(chain[@varname(mean1)]) ≈ true_mean1 atol = 0.1
+            @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
 
             # As above but with a NamedTuple rather than a Dict.
             function cond_mean_nt(c)
@@ -197,8 +201,8 @@ using Turing
                 (:var1, :var2) => HMC(0.1, 10),
             )
             chain = sample(StableRNG(23), model, sampler, 1_000)
-            @test mean(chain, :mean1) ≈ true_mean1 atol = 0.1
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
+            @test mean(chain[@varname(mean1)]) ≈ true_mean1 atol = 0.1
+            @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
         end
 
         # Test simultaneously conditioning and fixing variables.
@@ -219,14 +223,14 @@ using Turing
                 :var2 => HMC(0.1, 10),
             )
             chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
-            @test mean(chain, :mean1) ≈ 0.0 atol = 0.1
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
+            @test mean(chain[@varname(mean1)]) ≈ 0.0 atol = 0.1
+            @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
 
             # As above, but reverse the order of condition and fix.
             model_fix_condition = fix(condition(base_model; x2=x2_obs); x1=x1_obs)
             chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
-            @test mean(chain, :mean1) ≈ 0.0 atol = 0.1
-            @test mean(chain, :mean2) ≈ true_mean2 atol = 0.1
+            @test mean(chain[@varname(mean1)]) ≈ 0.0 atol = 0.1
+            @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
         end
     end
 
@@ -261,9 +265,9 @@ using Turing
             (@varname(a[1]), @varname(a[2]), @varname(a[3])) => ESS(),
         )
         chain = sample(StableRNG(23), m, sampler, 10_000)
-        @test mean(chain, Symbol("b[1]")) ≈ 0.0 atol = 0.05
-        @test mean(chain, Symbol("b[2]")) ≈ 10.0 atol = 0.05
-        @test mean(chain, Symbol("b[3]")) ≈ 20.0 atol = 0.05
+        @test mean(chain[@varname(b[1])]) ≈ 0.0 atol = 0.05
+        @test mean(chain[@varname(b[2])]) ≈ 10.0 atol = 0.05
+        @test mean(chain[@varname(b[3])]) ≈ 20.0 atol = 0.05
 
         m_condfix = fix(
             condition(m, Dict(@varname(a[1]) => 100.0)), Dict(@varname(a[2]) => 200.0)
@@ -274,9 +278,9 @@ using Turing
             @varname(a[3]) => ESS(),
         )
         chain = sample(StableRNG(23), m_condfix, sampler, 10_000)
-        @test mean(chain, Symbol("b[1]")) ≈ 100.0 atol = 0.05
-        @test mean(chain, Symbol("b[2]")) ≈ 200.0 atol = 0.05
-        @test mean(chain, Symbol("b[3]")) ≈ 20.0 atol = 0.05
+        @test mean(chain[@varname(b[1])]) ≈ 100.0 atol = 0.05
+        @test mean(chain[@varname(b[2])]) ≈ 200.0 atol = 0.05
+        @test mean(chain[@varname(b[3])]) ≈ 20.0 atol = 0.05
     end
 
     @testset "Helpful error outside Gibbs" begin
