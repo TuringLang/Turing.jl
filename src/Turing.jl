@@ -23,7 +23,7 @@ using Printf: Printf
 using Random: Random
 using LinearAlgebra: I
 
-using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake
+using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
@@ -133,6 +133,7 @@ export
     AutoForwardDiff,
     AutoReverseDiff,
     AutoMooncake,
+    AutoEnzyme,
     # Debugging - Turing
     setprogress!,
     # Distributions
