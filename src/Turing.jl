@@ -11,7 +11,6 @@ using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
-using NamedArrays: NamedArrays
 using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
@@ -45,6 +44,7 @@ end
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
+include("init_strategy.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/Variational.jl")
