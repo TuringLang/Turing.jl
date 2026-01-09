@@ -156,15 +156,26 @@ function AbstractMCMC.step(
         varinfo = DynamicPPL.link(varinfo, model)
     end
 
-    # We need to extract the vectorised initial_params, because the later call to
-    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
-    # to be a vector.
-    initial_params_vector = varinfo[:]
 
-    # Construct LogDensityFunction
+    # Construct LogDensityFunction FIRST (we need this for validation)
     f = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
     )
+
+    # Use shared function to find valid initial parameters with gradient checking
+    validator = vi -> begin
+        θ = vi[:]
+        logp, grad = LogDensityProblems.logdensity_and_gradient(f, θ)
+        return isfinite(logp) && all(isfinite, grad)
+
+    end
+    
+    varinfo = find_initial_params(
+        rng, model, varinfo, initial_params, validator; max_attempts=10
+    )
+    
+    initial_params_vector = varinfo[:]
+
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     _, state_inner = if initial_state === nothing
