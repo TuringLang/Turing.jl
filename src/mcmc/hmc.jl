@@ -228,7 +228,7 @@ function Turing.Inference.initialstep(
     adaptor = AHMCAdaptor(spl, hamiltonian.metric, nadapts; ϵ=ϵ)
 
     transition = DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
-    state = HMCState(vi, 1, kernel, hamiltonian, z, adaptor, ldf)
+    state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
 end

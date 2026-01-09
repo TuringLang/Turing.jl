@@ -1,4 +1,8 @@
-# 0.43.3
+# 0.42.4
+
+Fixes a typo that caused NUTS to perform one less adaptation step than in versions prior to 0.41.
+
+# 0.42.3
 
 Removes some dead code.
 
