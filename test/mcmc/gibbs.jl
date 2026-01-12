@@ -9,9 +9,11 @@ using ..NumericalTests:
     two_sample_test
 import Combinatorics
 using AbstractMCMC: AbstractMCMC
+using AbstractPPL: AbstractPPL
 using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
+using FlexiChains: FlexiChains
 using ForwardDiff: ForwardDiff
 using Random: Random
 using ReverseDiff: ReverseDiff
@@ -266,7 +268,7 @@ end
     chain1 = sample(gdemo_default, sampler1, 10)
     Random.seed!(23)
     chain2 = sample(gdemo_default, sampler1, 10)
-    @test chain1.value == chain2.value
+    @test FlexiChains.has_same_data(chain1, chain2)
 end
 
 @testset "Gibbs warmup" begin
@@ -384,12 +386,12 @@ end
             @varname(s) => RepeatSampler(HMC(0.1, 5), 3),
             @varname(m) => RepeatSampler(PG(10), 2),
         )
-        @test sample(gdemo_default, s1, N) isa MCMCChains.Chains
-        @test sample(gdemo_default, s2, N) isa MCMCChains.Chains
-        @test sample(gdemo_default, s3, N) isa MCMCChains.Chains
-        @test sample(gdemo_default, s4, N) isa MCMCChains.Chains
-        @test sample(gdemo_default, s5, N) isa MCMCChains.Chains
-        @test sample(gdemo_default, s6, N) isa MCMCChains.Chains
+        @test sample(gdemo_default, s1, N) isa VNChain
+        @test sample(gdemo_default, s2, N) isa VNChain
+        @test sample(gdemo_default, s3, N) isa VNChain
+        @test sample(gdemo_default, s4, N) isa VNChain
+        @test sample(gdemo_default, s5, N) isa VNChain
+        @test sample(gdemo_default, s6, N) isa VNChain
     end
 
     # Test various combinations of samplers against models for which we know the analytical
@@ -398,28 +400,28 @@ end
         @testset "CSMC and HMC on gdemo" begin
             alg = Gibbs(:s => CSMC(15), :m => HMC(0.2, 4))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
-            check_numerical(chain, [:m], [7 / 6]; atol=0.15)
+            check_numerical(chain, [@varname(m)], [7 / 6]; atol=0.15)
             # Be more relaxed with the tolerance of the variance.
-            check_numerical(chain, [:s], [49 / 24]; atol=0.35)
+            check_numerical(chain, [@varname(s)], [49 / 24]; atol=0.35)
         end
 
         @testset "MH and HMCDA on gdemo" begin
             alg = Gibbs(:s => MH(), :m => HMCDA(200, 0.65, 0.3))
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
-            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+            check_gdemo(chain; atol=0.1)
         end
 
         @testset "CSMC and ESS on gdemo" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
             chain = sample(gdemo(1.5, 2.0), alg, 3_000)
-            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+            check_gdemo(chain; atol=0.1)
         end
 
         # TODO(mhauru) Why is this in the Gibbs test suite?
         @testset "CSMC on gdemo" begin
             alg = CSMC(15)
             chain = sample(gdemo(1.5, 2.0), alg, 4_000)
-            check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.1)
+            check_gdemo(chain; atol=0.1)
         end
 
         @testset "PG and HMC on MoGtest_default" begin
@@ -471,12 +473,7 @@ end
         model = gdemo_copy()
 
         @nospecialize function AbstractMCMC.bundle_samples(
-            samples::Vector,
-            ::typeof(model),
-            ::Gibbs,
-            state,
-            ::Type{MCMCChains.Chains};
-            kwargs...,
+            samples::Vector, ::typeof(model), ::Gibbs, state, ::Type{VNChain}; kwargs...
         )
             samples isa Vector{<:DynamicPPL.ParamsWithStats} ||
                 error("incorrect transitions")
@@ -525,29 +522,23 @@ end
         @test size(chn, 1) == 1000
 
         # Test that both states are explored (basic functionality test)
-        b_samples = chn[:b]
+        b_samples = chn[@varname(b)]
         unique_b_values = unique(skipmissing(b_samples))
         @test length(unique_b_values) >= 1  # At least one value should be sampled
 
         # Test that θ[1] values are reasonable when they exist
-        theta1_samples = collect(skipmissing(chn[:, Symbol("θ[1]"), 1]))
-        if length(theta1_samples) > 0
-            @test all(isfinite, theta1_samples)  # All samples should be finite
-            @test std(theta1_samples) > 0.1     # Should show some variation
-        end
+        theta1_samples = collect(skipmissing(chn[@varname(θ[1])]))
+        @test all(isfinite, theta1_samples)  # All samples should be finite
+        @test std(theta1_samples) > 0.1     # Should show some variation
 
         # Test that when b=0, only θ[1] exists, and when b=1, both θ[1] and θ[2] exist
-        theta2_col_exists = Symbol("θ[2]") in names(chn)
-        if theta2_col_exists
-            theta2_samples = chn[:, Symbol("θ[2]"), 1]
-            # θ[2] should have some missing values (when b=0) and some non-missing (when b=1)
-            n_missing_theta2 = sum(ismissing.(theta2_samples))
-            n_present_theta2 = sum(.!ismissing.(theta2_samples))
-
-            # At least some θ[2] values should be missing (corresponding to b=0 states)
-            # This is a basic structural test - we're not testing exact analytical results
-            @test n_missing_theta2 > 0 || n_present_theta2 > 0  # One of these should be true
-        end
+        theta2_samples = chn[@varname(θ[2])]
+        # θ[2] should have some missing values (when b=0) and some non-missing (when b=1)
+        n_missing_theta2 = sum(ismissing.(theta2_samples))
+        n_present_theta2 = sum(.!ismissing.(theta2_samples))
+        # At least some θ[2] values should be missing (corresponding to b=0 states)
+        # This is a basic structural test - we're not testing exact analytical results
+        @test n_missing_theta2 > 0 || n_present_theta2 > 0  # One of these should be true
     end
 
     @testset "PG with variable number of observations" begin
@@ -580,11 +571,11 @@ end
         # This testset checks that ways of working around such a situation.
 
         function test_dynamic_bernoulli(chain)
-            means = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 2.0)
-            stds = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 1.0)
+            means = Dict(@varname(b) => 0.5, @varname(x[1]) => 1.0, @varname(x[2]) => 2.0)
+            stds = Dict(@varname(b) => 0.5, @varname(x[1]) => 1.0, @varname(x[2]) => 1.0)
             for vn in keys(means)
-                @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.15)
-                @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.15)
+                @test isapprox(mean(skipmissing(chain[vn])), means[vn]; atol=0.15)
+                @test isapprox(std(skipmissing(chain[vn])), stds[vn]; atol=0.15)
             end
         end
 
@@ -708,18 +699,27 @@ end
                     thinning=thinning,
                 )
 
+                # Extract varname leaves.
+                vns = DynamicPPL.TestUtils.varnames(model)
+                vn_leaves = Set{DynamicPPL.VarName}()
+                for vn in vns
+                    val = first(chain[vn])
+                    leaves = AbstractPPL.varname_leaves(vn, val)
+                    vn_leaves = union(vn_leaves, leaves)
+                end
+
                 # Perform KS test to ensure that the chains are similar.
-                xs = Array(chain)
-                xs_true = Array(chain_true)
-                for i in 1:size(xs, 2)
-                    @test two_sample_test(xs[:, i], xs_true[:, i]; warn_on_fail=true)
+                for vn in vn_leaves
+                    vals = vec(chain[vn])
+                    true_vals = vec(chain_true[vn])
+                    @test two_sample_test(vals, true_vals; warn_on_fail=true)
                     # Let's make sure that the significance level is not too low by
                     # checking that the KS test fails for some simple transformations.
                     # TODO: Replace the heuristic below with closed-form implementations
                     # of the targets, once they are implemented in DynamicPPL.
-                    @test !two_sample_test(0.9 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_test(1.1 .* xs_true[:, i], xs_true[:, i])
-                    @test !two_sample_test(1e-1 .+ xs_true[:, i], xs_true[:, i])
+                    @test !two_sample_test(0.9 .* true_vals, true_vals)
+                    @test !two_sample_test(1.1 .* true_vals, true_vals)
+                    @test !two_sample_test(1e-1 .+ true_vals, true_vals)
                 end
             end
         end
@@ -774,9 +774,9 @@ end
         end
         model = model1()
         spl = Gibbs(@varname(x[1]) => HMC(0.5, 10), @varname(y.a) => MH())
-        @test sample(model, spl, 10) isa MCMCChains.Chains
+        @test sample(model, spl, 10) isa VNChain
         spl = Gibbs((@varname(x[1]), @varname(y.a)) => HMC(0.5, 10))
-        @test sample(model, spl, 10) isa MCMCChains.Chains
+        @test sample(model, spl, 10) isa VNChain
     end
 
     @testset "submodels" begin
@@ -790,9 +790,9 @@ end
         spl = Gibbs(
             @varname(a.x) => HMC(0.5, 10), @varname(b.x) => MH(), @varname(x) => MH()
         )
-        @test sample(model, spl, 10) isa MCMCChains.Chains
+        @test sample(model, spl, 10) isa VNChain
         spl = Gibbs((@varname(a.x), @varname(b.x), @varname(x)) => MH())
-        @test sample(model, spl, 10) isa MCMCChains.Chains
+        @test sample(model, spl, 10) isa VNChain
     end
 
     @testset "CSMC + ESS" begin
@@ -858,7 +858,7 @@ end
                 chn = sample(
                     logp_check(), Gibbs(@varname(x) => sampler), 100; progress=false
                 )
-                @test isapprox(logpdf.(Normal(), chn[:x]), chn[:logjoint])
+                @test isapprox(logpdf.(Normal(), chn[@varname(x)]), chn[:logjoint])
             end
         end
 

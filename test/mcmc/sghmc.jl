@@ -45,9 +45,9 @@ end
         check_gdemo(chain; atol=0.25)
 
         # Weight samples by step sizes (cf section 4.2 in the paper by Welling and Teh)
-        v = get(chain, [:SGLD_stepsize, :s, :m])
-        s_weighted = dot(v.SGLD_stepsize, v.s) / sum(v.SGLD_stepsize)
-        m_weighted = dot(v.SGLD_stepsize, v.m) / sum(v.SGLD_stepsize)
+        ss = chain[:SGLD_stepsize]
+        s_weighted = dot(ss, chain[@varname(s)]) / sum(ss)
+        m_weighted = dot(ss, chain[@varname(m)]) / sum(ss)
         @test s_weighted ≈ 49 / 24 atol = 0.2
         @test m_weighted ≈ 7 / 6 atol = 0.2
     end
