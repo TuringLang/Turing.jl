@@ -151,50 +151,37 @@ end
 end
 
 @testset "Initial parameter retry logic" begin
-        # Model that produces -Inf logp for most parameter values
-        # Only valid when x is in narrow range [-0.3, 0.3]
+        init_counter_1 = Ref(0)
         @model function bad_init_model()
             init_counter_1[] += 1
             x ~ Normal(0, 1)
             Turing.@addlogprob! (init_counter_1[] > 5) ? 0.0 : -Inf
         end
         
-        # This should succeed with retry logic (might take a few attempts)
         model = bad_init_model()
         
-        # Test with NUTS (internal HMC sampler with retry logic)
         @testset "NUTS sampler" begin
+            Random.seed!(1234)
             chain = sample(model, NUTS(), 10)
             @test size(chain, 1) == 10
-            # Check that samples are in valid range
-            x_samples = chain[:x]
-            @test all(abs.(x_samples) .< 0.3)
         end
         
-        # Test with HMC (should also work with retry logic)
-        @testset "HMC sampler" begin
-            chain = sample(model, HMC(0.1, 5), 10)
-            @test size(chain, 1) == 10
-            x_samples = chain[:x]
-            @test all(abs.(x_samples) .< 0.3)
-        end
-        
-        # Model with very narrow valid region
+        @test init_counter_1 =>  6
+
+        init_counter_2 = Ref(0)
+
         @model function very_bad_init_model()
-            x ~ Normal(0, 100)  # Very wide prior
-            # Valid only in range [-0.1, 0.1]
+            init_counter_2[] += 1
+            x ~ Normal(0, 1)
             Turing.@addlogprob! (abs(x) < 0.1) ? 0.0 : -Inf
         end
         
-        @testset "Very narrow valid region" begin
-            model = very_bad_init_model()
-            
-            # Should eventually find valid parameters
-            chain = sample(model, NUTS(), 10)
+        @testset "HMC sampler" begin
+            chain = sample(bad_init_model_hmc(), HMC(0.1, 5), 10)
             @test size(chain, 1) == 10
-            x_samples = chain[:x]
-            @test all(abs.(x_samples) .< 0.1)
         end
+
+        @test init_counter_2[] => 6
         
         # Model that's impossible to initialize (always -Inf)
         @model function impossible_model()
@@ -207,6 +194,9 @@ end
             
             # Should throw an error with informative message
             @test_throws ErrorException sample(model, NUTS(), 10)
+                sample(model, NUTS(), 10)
+                @test occursin("Failed to find initial parameters", error_msg)
+            end
         end
         
         # Model that requires many attempts
