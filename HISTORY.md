@@ -33,8 +33,6 @@ This also means that you can now invoke `returned(model, mode_estimate)` to calc
 
 Avoid passing a full VarInfo to `check_model`, which allows more models to be checked safely for validity.
 
-> > > > > > > origin/main
-
 # 0.42.0
 
 ## DynamicPPL 0.39
