@@ -4,7 +4,6 @@ using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
-using Libtask: @might_produce
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
