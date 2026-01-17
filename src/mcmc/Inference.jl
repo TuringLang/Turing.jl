@@ -130,4 +130,7 @@ include("prior.jl")
 include("gibbs.jl")
 include("gibbs_conditional.jl")
 
+# AbstractMCMC callback interface
+include("callbacks.jl")
+
 end # module
