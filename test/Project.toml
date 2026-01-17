@@ -77,6 +77,3 @@ StatsBase = "0.33, 0.34"
 StatsFuns = "0.9.5, 1"
 TimerOutputs = "0.5"
 julia = "1.10"
-
-[sources]
-AdvancedPS = {url = "https://github.com/TuringLang/AdvancedPS.jl", rev = "py/kwargs"}
