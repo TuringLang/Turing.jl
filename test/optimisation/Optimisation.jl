@@ -552,16 +552,25 @@ using Turing
             OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
         ]
         @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
-            result = maximum_likelihood(model, optimizer; reltol=1e-3)
-            vals = result.values
+            try
+                result = maximum_likelihood(model, optimizer; reltol=1e-3)
+                vals = result.values
 
-            for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
-                    if model.f in allowed_incorrect_mle
-                        @test isfinite(get(result_true, vn_leaf))
-                    else
-                        @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
+                for vn in DynamicPPL.TestUtils.varnames(model)
+                    for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
+                        if model.f in allowed_incorrect_mle
+                            @test isfinite(get(result_true, vn_leaf))
+                        else
+                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol =
+                                0.05
+                        end
                     end
+                end
+            catch e
+                if model.f in allowed_incorrect_mle
+                    @info "MLE test for $(model.f) errored, but this is expected due to variance MLE being zero"
+                else
+                    rethrow(e)
                 end
             end
         end
@@ -585,6 +594,19 @@ using Turing
         # Check that those parameters were indeed used as initial params
         @test chain[:µ][1] == mle.params[@varname(µ)]
         @test chain[:σ][1] == mle.params[@varname(σ)]
+    end
+
+    @testset "returned on ModeResult" begin
+        @model function f()
+            x ~ Normal()
+            2.0 ~ Normal(x)
+            return x + 1.0
+        end
+        model = f()
+        result = maximum_a_posteriori(model)
+        @test returned(model, result) == result.params[@varname(x)] + 1.0
+        result = maximum_likelihood(model)
+        @test returned(model, result) == result.params[@varname(x)] + 1.0
     end
 
     # Issue: https://discourse.julialang.org/t/turing-mixture-models-with-dirichlet-weightings/112910

@@ -23,7 +23,7 @@ using Printf: Printf
 using Random: Random
 using LinearAlgebra: I
 
-using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake
+using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
@@ -80,6 +80,7 @@ using DynamicPPL:
     setthreadsafe
 using StatsBase: predict
 using OrderedCollections: OrderedDict
+using Libtask: might_produce, @might_produce
 
 # Turing essentials - modelling macros and inference algorithms
 export
@@ -133,6 +134,7 @@ export
     AutoForwardDiff,
     AutoReverseDiff,
     AutoMooncake,
+    AutoEnzyme,
     # Debugging - Turing
     setprogress!,
     # Distributions
@@ -171,6 +173,9 @@ export
     MAP,
     MLE,
     # Chain save/resume
-    loadstate
+    loadstate,
+    # kwargs in SMC
+    might_produce,
+    @might_produce
 
 end

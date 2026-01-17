@@ -1,4 +1,4 @@
-# 0.42.1
+# 0.42.5
 
 SMC and PG can now be used for models with keyword arguments, albeit with one requirement: the user must mark the model function as being able to produce.
 For example, if the model is
@@ -10,9 +10,30 @@ For example, if the model is
 then before samping from this with SMC or PG, you will have to run
 
 ```julia
-using Libtask;
-Libtask.@might_produce(foo);
+using Turing
+
+@might_produce(foo)
 ```
+
+# 0.42.4
+
+Fixes a typo that caused NUTS to perform one less adaptation step than in versions prior to 0.41.
+
+# 0.42.3
+
+Removes some dead code.
+
+# 0.42.2
+
+`InitFromParams(mode_estimate)`, where `mode_estimate` was obtained from an optimisation on a Turing model, now accepts a second optional argument which provides a fallback initialisation strategy if some parameters are missing from `mode_estimate`.
+
+This also means that you can now invoke `returned(model, mode_estimate)` to calculate a model's return values given the parameters in `mode_estimate`.
+
+# 0.42.1
+
+Avoid passing a full VarInfo to `check_model`, which allows more models to be checked safely for validity.
+
+> > > > > > > origin/main
 
 # 0.42.0
 

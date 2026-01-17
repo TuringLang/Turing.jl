@@ -130,14 +130,4 @@ include("prior.jl")
 include("gibbs.jl")
 include("gibbs_conditional.jl")
 
-################
-# Typing tools #
-################
-
-function DynamicPPL.get_matching_type(
-    spl::Union{PG,SMC}, vi, ::Type{TV}
-) where {T,N,TV<:Array{T,N}}
-    return Array{T,N}
-end
-
 end # module

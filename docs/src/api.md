@@ -44,6 +44,8 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `LogDensityFunction` | [`DynamicPPL.LogDensityFunction`](@extref) | A struct containing all information about how to evaluate a model. Mostly for advanced users |
 | `@addlogprob!`       | [`DynamicPPL.@addlogprob!`](@extref)       | Add arbitrary log-probability terms during model evaluation                                  |
 | `setthreadsafe`      | [`DynamicPPL.setthreadsafe`](@extref)      | Mark a model as requiring threadsafe evaluation                                              |
+| `might_produce`      | [`Libtask.might_produce`](@extref)         | Mark a method signature as potentially calling `Libtask.produce`                             |
+| `@might_produce`     | [`Libtask.@might_produce`](@extref)        | Mark a function name as potentially calling `Libtask.produce`                                |
 
 ### Inference
 
@@ -131,9 +133,10 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 
 | Exported symbol   | Documentation                        | Description            |
 |:----------------- |:------------------------------------ |:---------------------- |
+| `AutoEnzyme`      | [`ADTypes.AutoEnzyme`](@extref)      | Enzyme.jl backend      |
 | `AutoForwardDiff` | [`ADTypes.AutoForwardDiff`](@extref) | ForwardDiff.jl backend |
-| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
 | `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
+| `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
 
 ### Debugging
 
