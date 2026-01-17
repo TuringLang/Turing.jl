@@ -152,10 +152,7 @@ function check_model_kwargs(model::DynamicPPL.Model)
                 " with particle methods. Please run:\n\n",
             )
             printstyled(
-                ctx,
-                "    using Libtask; Libtask.@might_produce($(model.f))";
-                bold=true,
-                color=:blue,
+                ctx, "    Turing.@might_produce($(model.f))"; bold=true, color=:blue
             )
             print(ctx, "\n\nbefore sampling from this model with particle methods.\n")
             error(String(take!(io)))
