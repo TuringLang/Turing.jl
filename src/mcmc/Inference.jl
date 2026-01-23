@@ -115,6 +115,18 @@ function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::
     return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
+# Helper functions for AbstractMCMC callbacks
+# Helper to get log probability from VarInfo
+function _get_lp(vi::DynamicPPL.AbstractVarInfo)
+    lp = DynamicPPL.getlogp(vi)
+    return sum(values(lp))
+end
+
+# Helper to extract raw parameter values from VarInfo as Vector{<:Real}
+function _get_params_vector(vi::DynamicPPL.AbstractVarInfo)
+    return vi[:]
+end
+
 #######################################
 # Concrete algorithm implementations. #
 #######################################
@@ -129,8 +141,5 @@ include("emcee.jl")
 include("prior.jl")
 include("gibbs.jl")
 include("gibbs_conditional.jl")
-
-# AbstractMCMC callback interface
-include("callbacks.jl")
 
 end # module

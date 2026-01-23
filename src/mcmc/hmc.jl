@@ -505,3 +505,21 @@ end
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
 end
+
+#####
+##### AbstractMCMC interface
+#####
+
+function AbstractMCMC.getparams(state::HMCState)
+    return _get_params_vector(state.vi)
+end
+
+function AbstractMCMC.getstats(state::HMCState)
+    lp = _get_lp(state.vi)
+    ϵ = try
+        state.kernel.τ.integrator.ϵ
+    catch
+        NaN
+    end
+    return (lp=lp, step_size=ϵ, iteration=state.i)
+end

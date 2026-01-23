@@ -217,3 +217,35 @@ function AbstractMCMC.step(
 
     return transition, newstate
 end
+
+#####
+##### AbstractMCMC interface
+#####
+
+# SGHMCState
+function AbstractMCMC.getparams(state::SGHMCState)
+    return collect(state.params)
+end
+
+function AbstractMCMC.getstats(state::SGHMCState)
+    lp = try
+        LogDensityProblems.logdensity(state.logdensity, state.params)
+    catch
+        NaN
+    end
+    return (lp=lp,)
+end
+
+# SGLDState
+function AbstractMCMC.getparams(state::SGLDState)
+    return collect(state.params)
+end
+
+function AbstractMCMC.getstats(state::SGLDState)
+    lp = try
+        LogDensityProblems.logdensity(state.logdensity, state.params)
+    catch
+        NaN
+    end
+    return (lp=lp, step=state.step)
+end

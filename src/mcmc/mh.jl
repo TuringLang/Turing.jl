@@ -442,3 +442,15 @@ function DynamicPPL.tilde_observe!!(
 )
     return DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
 end
+
+#####
+##### AbstractMCMC interface
+#####
+
+function AbstractMCMC.getparams(state::MHState)
+    return _get_params_vector(state.varinfo)
+end
+
+function AbstractMCMC.getstats(state::MHState)
+    return (lp=state.logjoint_internal,)
+end

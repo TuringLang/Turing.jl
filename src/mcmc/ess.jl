@@ -118,3 +118,16 @@ function AbstractMCMC.step(
         "This method is not implemented! If you want to use the ESS sampler in Turing.jl, please use `Turing.ESS()` instead. If you want the default behaviour in EllipticalSliceSampling.jl, wrap your model in a different subtype of `AbstractMCMC.AbstractModel`, and then implement the necessary EllipticalSliceSampling.jl methods on it.",
     )
 end
+
+#####
+##### AbstractMCMC interface
+#####
+
+function AbstractMCMC.getparams(state::DynamicPPL.AbstractVarInfo)
+    return _get_params_vector(state)
+end
+
+function AbstractMCMC.getstats(state::DynamicPPL.AbstractVarInfo)
+    lp = _get_lp(state)
+    return (lp=lp,)
+end
