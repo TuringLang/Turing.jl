@@ -8,7 +8,7 @@ if !isdefined(@__MODULE__, :Models)
 end
 
 @model function simple_gaussian()
-    x ~ Normal(0, 1)
+    return x ~ Normal(0, 1)
 end
 
 @testset "AbstractMCMC Callbacks Interface" begin
@@ -20,22 +20,21 @@ end
         ("MH", MH(), gdemo_default),
         ("ESS", ESS(), simple_gaussian()),
         ("Gibbs", Gibbs(:m => HMC(0.1, 5), :s => MH()), gdemo_default),
-        ("SGHMC", SGHMC(learning_rate=0.01, momentum_decay=1e-2), gdemo_default),
+        ("SGHMC", SGHMC(; learning_rate=0.01, momentum_decay=1e-2), gdemo_default),
         ("PG", PG(10), gdemo_default),
     ]
 
     for (name, sampler, model) in samplers
         @testset "$name Interface" begin
             transition, state = AbstractMCMC.step(
-                rng, model, sampler; 
-                initial_params=Turing.Inference.init_strategy(sampler)
+                rng, model, sampler; initial_params=Turing.Inference.init_strategy(sampler)
             )
-            
+
             # Should return a flat vector of Reals (unconstrained)
             params = AbstractMCMC.getparams(state)
             @test params isa Vector{<:Real}
             @test !isempty(params)
-            
+
             # Should return a NamedTuple with at least log probability (:lp)
             stats = AbstractMCMC.getstats(state)
             @test stats isa NamedTuple
