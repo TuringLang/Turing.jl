@@ -126,7 +126,14 @@ end
 function _get_params_vector(vi::DynamicPPL.AbstractVarInfo)
     return vi[:]
 end
+function AbstractMCMC.getparams(state::DynamicPPL.AbstractVarInfo)
+    return _get_params_vector(state)
+end
 
+function AbstractMCMC.getstats(state::DynamicPPL.AbstractVarInfo)
+    lp = _get_lp(state)
+    return (lp=lp,)
+end
 #######################################
 # Concrete algorithm implementations. #
 #######################################
