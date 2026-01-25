@@ -632,10 +632,6 @@ end
 ##### AbstractMCMC interface
 #####
 
-function AbstractMCMC.getparams(state::GibbsState)
-    return _get_params_vector(state.vi)
-end
-
 function AbstractMCMC.getstats(state::GibbsState)
     lp = _get_lp(state.vi)
     return (lp=lp,)

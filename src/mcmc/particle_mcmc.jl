@@ -524,23 +524,11 @@ Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
 ##### AbstractMCMC interface
 #####
 
-# SMCState
-function AbstractMCMC.getparams(state::SMCState)
-    particle = state.particles.vals[state.particleindex]
-    vi = particle.model.f.varinfo
-    return _get_params_vector(vi)
-end
-
-function AbstractMCMC.getstats(state::SMCState)
-    return (logevidence=state.average_logevidence, particle_index=state.particleindex)
-end
-
-# PGState
-function AbstractMCMC.getparams(state::PGState)
-    return _get_params_vector(state.vi)
-end
+# Note: SMCState getparams/getstats intentionally omitted - SMC is not an MCMC
+# method and doesn't fit the conventional AbstractMCMC interface.
 
 function AbstractMCMC.getstats(state::PGState)
     lp = _get_lp(state.vi)
     return (lp=lp,)
 end
+

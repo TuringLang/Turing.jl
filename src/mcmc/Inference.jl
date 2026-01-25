@@ -122,9 +122,11 @@ function _get_lp(vi::DynamicPPL.AbstractVarInfo)
     return sum(values(lp))
 end
 
-# Helper to extract raw parameter values from VarInfo as Vector{<:Real}
-function _get_params_vector(vi::DynamicPPL.AbstractVarInfo)
-    return vi[:]
+# Consolidated getparams using get_varinfo (defined in each sampler file)
+# This covers HMC, MH, PG, Gibbs, and external samplers.
+# SGHMC/SGLD have their own implementations since they don't use VarInfo.
+function AbstractMCMC.getparams(state)
+    return get_varinfo(state)[:]
 end
 
 #######################################

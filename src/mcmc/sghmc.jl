@@ -223,29 +223,19 @@ end
 #####
 
 # SGHMCState
-function AbstractMCMC.getparams(state::SGHMCState)
-    return collect(state.params)
-end
+AbstractMCMC.getparams(state::SGHMCState) = state.params
 
 function AbstractMCMC.getstats(state::SGHMCState)
-    lp = try
-        LogDensityProblems.logdensity(state.logdensity, state.params)
-    catch
-        NaN
-    end
+    # TODO(penelopeysm): This is inefficient as it requires an extra model evaluation
+    lp = LogDensityProblems.logdensity(state.logdensity, state.params)
     return (lp=lp,)
 end
 
 # SGLDState
-function AbstractMCMC.getparams(state::SGLDState)
-    return collect(state.params)
-end
+AbstractMCMC.getparams(state::SGLDState) = state.params
 
 function AbstractMCMC.getstats(state::SGLDState)
-    lp = try
-        LogDensityProblems.logdensity(state.logdensity, state.params)
-    catch
-        NaN
-    end
+    # TODO(penelopeysm): Remove extra evaluation.
+    lp = LogDensityProblems.logdensity(state.logdensity, state.params)
     return (lp=lp, step=state.step)
 end
