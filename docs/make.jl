@@ -6,6 +6,7 @@ using DocumenterInterLinks
 links = InterLinks(
     "DynamicPPL" => "https://turinglang.org/DynamicPPL.jl/stable/",
     "AbstractPPL" => "https://turinglang.org/AbstractPPL.jl/stable/",
+    "Libtask" => "https://turinglang.org/Libtask.jl/stable/",
     "LinearAlgebra" => "https://docs.julialang.org/en/v1/",
     "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/",
     "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/",
