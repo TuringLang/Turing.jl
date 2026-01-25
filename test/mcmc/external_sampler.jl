@@ -151,7 +151,7 @@ end
 
 Base.length(d::ModelDistribution) = length(d.varinfo[:])
 function Distributions._logpdf(d::ModelDistribution, x::AbstractVector)
-    return logprior(d.model, DynamicPPL.unflatten(d.varinfo, x))
+    return logprior(d.model, DynamicPPL.unflatten!!(d.varinfo, x))
 end
 function Distributions._rand!(
     rng::Random.AbstractRNG, d::ModelDistribution, x::AbstractVector{<:Real}

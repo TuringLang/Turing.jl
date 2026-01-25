@@ -268,7 +268,7 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, t.z.θ)
+        vi = DynamicPPL.unflatten!!(vi, t.z.θ)
     end
 
     # Compute next transition and state.

@@ -2,6 +2,8 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+using Accessors: Accessors
+
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
     if DynamicPPL.requires_threadsafe(model)
         throw(
@@ -19,10 +21,15 @@ struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
 
-struct TracedModel{V<:AbstractVarInfo,M<:Model,T<:Tuple,NT<:NamedTuple} <:
-       AdvancedPS.AbstractTuringLibtaskModel
+mutable struct TracedModel{M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
     model::M
-    varinfo::V
+    # TODO(penelopeysm): I don't like that this is an abstract type. However, the problem is
+    # that the type of VarInfo can change during execution, especially with PG-inside-Gibbs
+    # when you have to muck with merging VarInfos from different sub-conditioned models. I
+    # do think that this can be solved. I would recommend that if you have time try to
+    # change this back into a type parameter, see what breaks in CI, and try to fix it.
+    varinfo::AbstractVarInfo
+    evaluator::E
     resample::Bool
     fargs::T
     kwargs::NT
@@ -175,6 +182,7 @@ function Turing.Inference.initialstep(
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
+        # her
         [AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
         rng,
@@ -352,12 +360,7 @@ end
 Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`.
 """
 function get_trace_local_varinfo()
-    trace = try
-        Libtask.get_taped_globals(Any).other
-    catch e
-        e == KeyError(:task_variable) ? nothing : rethrow(e)
-    end
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    trace = Libtask.get_taped_globals(Any).other
     return trace.model.f.varinfo::AbstractVarInfo
 end
 
@@ -371,22 +374,14 @@ example, in SMC, this is true for all particles; in PG, this is true for all par
 except the reference particle, whose trajectory must be reproduced exactly.
 """
 function get_trace_local_resampled()
-    trace = try
-        Libtask.get_taped_globals(Any).other
-    catch e
-        e == KeyError(:task_variable) ? nothing : rethrow(e)
-    end
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    trace = Libtask.get_taped_globals(Any).other
     return trace.model.f.resample::Bool
 end
 
 """
     get_trace_local_rng()
 
-Get the `Trace` local rng if one exists.
-
-If executed within a `TapedTask`, return the `rng` stored in the "taped globals" of the
-task, otherwise return `vi`.
+Get the RNG stored in the 'taped globals' of a `Libtask.TapedTask`, if one exists.
 """
 function get_trace_local_rng()
     return Libtask.get_taped_globals(Any).rng
@@ -402,15 +397,12 @@ Returns `nothing`.
 """
 function set_trace_local_varinfo(vi::AbstractVarInfo)
     trace = Libtask.get_taped_globals(Any).other
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
-    model = trace.model
-    model = Accessors.@set model.f.varinfo = vi
-    trace.model = model
+    trace.model.f.varinfo = vi
     return nothing
 end
 
 function DynamicPPL.tilde_assume!!(
-    ctx::ParticleMCMCContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
+    ::ParticleMCMCContext, dist::Distribution, vn::VarName, template::Any, ::AbstractVarInfo
 )
     # Get all the info we need from the trace, namely, the stored VarInfo, and whether
     # we need to sample a new value or use the existing one.
@@ -423,7 +415,7 @@ function DynamicPPL.tilde_assume!!(
     else
         DynamicPPL.DefaultContext()
     end
-    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, vi)
+    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
     # Set the varinfo back in the trace.
     set_trace_local_varinfo(vi)
     return x, vi
@@ -477,7 +469,7 @@ function DynamicPPL.acclogp(acc1::ProduceLogLikelihoodAccumulator, val)
 end
 
 function DynamicPPL.accumulate_assume!!(
-    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
+    acc::ProduceLogLikelihoodAccumulator, val, tval, logjac, vn, right, template
 )
     return acc
 end

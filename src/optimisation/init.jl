@@ -119,8 +119,8 @@ function DynamicPPL.init(
     # The inner `init` might (for whatever reason) return linked or otherwise
     # transformed values. We need to transform them back into to unlinked space,
     # so that we can check the constraints properly.
-    maybe_transformed_val, transform = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-    proposed_val = transform(maybe_transformed_val)
+    maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+    proposed_val = DynamicPPL.get_true_value(maybe_transformed_val)
     attempts = 1
     while !satisfies_constraints(lb, ub, proposed_val, dist)
         if attempts >= MAX_ATTEMPTS
@@ -130,11 +130,11 @@ function DynamicPPL.init(
                 ),
             )
         end
-        maybe_transformed_val, transform = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-        proposed_val = transform(maybe_transformed_val)
+        maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+        proposed_val = DynamicPPL.get_true_value(maybe_transformed_val)
         attempts += 1
     end
-    return (proposed_val, DynamicPPL.typed_identity)
+    return DynamicPPL.UntransformedValue(proposed_val)
 end
 
 can_have_linked_constraints(::Distribution) = false
@@ -183,7 +183,13 @@ end
 const CONSTRAINT_ACC_NAME = :OptimConstraints
 DynamicPPL.accumulator_name(::ConstraintAccumulator) = CONSTRAINT_ACC_NAME
 function DynamicPPL.accumulate_assume!!(
-    acc::ConstraintAccumulator, val::Any, ::Any, vn::VarName, dist::Distribution
+    acc::ConstraintAccumulator,
+    val::Any,
+    tval::Any,
+    logjac::Any,
+    vn::VarName,
+    dist::Distribution,
+    template::Any,
 )
     # First check if we have any incompatible constraints + linking. 'Incompatible', here,
     # means that the constraints as defined in the unlinked space do not map to box

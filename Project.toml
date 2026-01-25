@@ -42,13 +42,16 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 
+[sources]
+DynamicPPL = {rev = "py/future", url = "https://github.com/TuringLang/DynamicPPL.jl"}
+
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
 
 [compat]
 ADTypes = "1.9"
 AbstractMCMC = "5.9"
-AbstractPPL = "0.11, 0.12, 0.13"
+AbstractPPL = "0.14"
 Accessors = "0.1"
 AdvancedHMC = "0.8.3"
 AdvancedMH = "0.8.9"
@@ -63,7 +66,7 @@ Distributions = "0.25.77"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.39.11"
+DynamicPPL = "0.40"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3, 1"
 Libtask = "0.9.5"

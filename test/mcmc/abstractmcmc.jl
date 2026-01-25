@@ -54,9 +54,10 @@ end
         model = coinflip()
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test chain[1].metadata.p.vals == [0.2]
-            @test DynamicPPL.getlogjoint(chain[1]) == lptrue
+            varinfos = sample(model, spl, 1; initial_params=inits, progress=false)
+            varinfo = only(varinfos)
+            @test varinfo[@varname(p)] == 0.2
+            @test DynamicPPL.getlogjoint(varinfo) == lptrue
 
             # parallel sampling
             chains = sample(
@@ -69,8 +70,9 @@ end
                 progress=false,
             )
             for c in chains
-                @test c[1].metadata.p.vals == [0.2]
-                @test DynamicPPL.getlogjoint(c[1]) == lptrue
+                varinfo = only(c)
+                @test varinfo[@varname(p)] == 0.2
+                @test DynamicPPL.getlogjoint(varinfo) == lptrue
             end
         end
 
@@ -96,9 +98,10 @@ end
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test chain[1].metadata.s.vals == [4]
-            @test chain[1].metadata.m.vals == [-1]
-            @test DynamicPPL.getlogjoint(chain[1]) == lptrue
+            varinfo = only(chain)
+            @test varinfo[@varname(s)] == 4
+            @test varinfo[@varname(m)] == -1
+            @test DynamicPPL.getlogjoint(varinfo) == lptrue
 
             # parallel sampling
             chains = sample(
@@ -111,9 +114,10 @@ end
                 progress=false,
             )
             for c in chains
-                @test c[1].metadata.s.vals == [4]
-                @test c[1].metadata.m.vals == [-1]
-                @test DynamicPPL.getlogjoint(c[1]) == lptrue
+                varinfo = only(c)
+                @test varinfo[@varname(s)] == 4
+                @test varinfo[@varname(m)] == -1
+                @test DynamicPPL.getlogjoint(varinfo) == lptrue
             end
         end
 
@@ -129,8 +133,9 @@ end
             Dict(@varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            @test !ismissing(chain[1].metadata.s.vals[1])
-            @test chain[1].metadata.m.vals == [-1]
+            varinfo = only(chain)
+            @test !ismissing(varinfo[@varname(s)])
+            @test varinfo[@varname(m)] == -1
 
             # parallel sampling
             chains = sample(
@@ -143,8 +148,9 @@ end
                 progress=false,
             )
             for c in chains
-                @test !ismissing(c[1].metadata.s.vals[1])
-                @test c[1].metadata.m.vals == [-1]
+                varinfo = only(c)
+                @test !ismissing(varinfo[@varname(s)])
+                @test varinfo[@varname(m)] == -1
             end
         end
     end

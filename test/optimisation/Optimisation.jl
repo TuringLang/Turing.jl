@@ -554,7 +554,7 @@ end
                 val = AbstractPPL.getvalue(true_optima, vn)
                 for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                     expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                    actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                    actual = result.params[vn_leaf]
                     @test expected ≈ actual atol = 0.05
                 end
             end
@@ -601,7 +601,7 @@ end
                     val = AbstractPPL.getvalue(true_optima, vn)
                     for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                         expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                        actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                        actual = result.params[vn_leaf]
                         if model.f in allowed_incorrect_mle
                             @test isfinite(actual)
                         else
@@ -734,7 +734,7 @@ end
         end
         m = Turing.Optimisation.ModeResult(
             MLE(),
-            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
+            DynamicPPL.VarNamedTuple((; x=0.0, y=0.0)),
             0.0,
             false,
             DynamicPPL.LogDensityFunction(saddle_model(), DynamicPPL.getloglikelihood),
