@@ -21,7 +21,8 @@ struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
 
-mutable struct TracedModel{M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
+mutable struct TracedModel{M<:Model,E<:Tuple,T<:Tuple,NT<:NamedTuple} <:
+               AdvancedPS.AbstractGenericModel
     model::M
     # TODO(penelopeysm): I don't like that this is an abstract type. However, the problem is
     # that the type of VarInfo can change during execution, especially with PG-inside-Gibbs
