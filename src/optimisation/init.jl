@@ -267,9 +267,9 @@ end
         ub::NTOrVNDict,
     ) where {Tlink}
 
-Generate a tuple of (lb_vec, ub_vec, init_vec) which are suitable for directly passing to
-Optimization.jl. All three vectors returned will be in the unlinked or linked space depending
-on the value of `link`.
+Generate a tuple of `(lb_vec, ub_vec, init_vec)` which are suitable for directly passing to
+Optimization.jl. All three vectors returned will be in the unlinked or linked space
+depending on the value of `link`.
 
 The `lb` and `ub` arguments, as well as any `initial_params` provided as `InitFromParams`,
 are expected to be in the unlinked space.
