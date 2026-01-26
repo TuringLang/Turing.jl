@@ -37,9 +37,9 @@ function get_vectorised_params(m::ModeResult)
         end
         # TODO(penelopeysm): This assumes that tovec and varname_leaves return the same
         # number of sub-elements in the same order --- which is NOT true for things like
-        # Cholesky factors --- so this is a bug!!!!!! We COULD use varname_and_value_leaves
-        # but that would just be a different kind of bug because LDF uses tovec for
-        # vectorisation!!!!!!
+        # Cholesky factors --- so this is a bug! We COULD use `varname_and_value_leaves` but
+        # that would just be a different kind of bug because LDF uses tovec for
+        # vectorisation!! https://github.com/TuringLang/Turing.jl/issues/2734
         val = m.params[vn]
         vns[range] = collect(AbstractPPL.varname_leaves(vn, val))
         vals[range] = DynamicPPL.tovec(val)
