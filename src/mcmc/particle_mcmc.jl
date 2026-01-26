@@ -551,4 +551,3 @@ function AbstractMCMC.getstats(state::PGState)
     lp = _get_lp(state.vi)
     return (lp=lp,)
 end
-

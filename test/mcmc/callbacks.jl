@@ -39,6 +39,14 @@ end
             @test stats.lp isa Real
             @test isfinite(stats.lp)
 
+            # x ~ Normal(), y ~ MvNormal(zeros(3), I)
+            # Note: PG uses internal parameterization that may differ from unlinked space
+            if name != "PG"
+                expected_lp =
+                    logpdf(Normal(), params[1]) + logpdf(MvNormal(zeros(3), I), params[2:4])
+                @test stats.lp ≈ expected_lp atol = 1e-6
+            end
+
             # ParamsWithStats returns named params (not θ[i])
             pws = AbstractMCMC.ParamsWithStats(
                 model, sampler, t1, s1; params=true, stats=true
