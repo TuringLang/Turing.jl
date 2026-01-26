@@ -65,9 +65,9 @@ function satisfies_constraints(
     ::Union{MultivariateDistribution,MatrixDistribution},
 )
     satisfies_lb =
-        lb === nothing || all((v, b) -> isnan(v) || v >= b, zip(proposed_val, lb))
+        lb === nothing || all(p -> isnan(p[1]) || p[1] >= p[2], zip(proposed_val, lb))
     satisfies_ub =
-        ub === nothing || all((v, b) -> isnan(v) || v <= b, zip(proposed_val, ub))
+        ub === nothing || all(p -> isnan(p[1]) || p[1] <= p[2], zip(proposed_val, ub))
     return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
