@@ -171,6 +171,7 @@ export
     maximum_likelihood,
     MAP,
     MLE,
+    get_vector_params,
     # Chain save/resume
     loadstate
 

@@ -1,7 +1,7 @@
 import DifferentiationInterface as DI
 
 """
-    get_vectorised_params(m::ModeResult)
+    get_vector_params(m::ModeResult)
 
 Generates a vectorised form of the optimised parameters stored in the `ModeResult`, along
 with the corresponding variable names. These parameters correspond to unlinked space.
@@ -9,7 +9,7 @@ with the corresponding variable names. These parameters correspond to unlinked s
 This function returns two vectors: the first contains the variable names, and the second
 contains the corresponding values.
 """
-function get_vectorised_params(m::ModeResult)
+function get_vector_params(m::ModeResult)
     # This function requires some subtlety. We _could_ simply iterate over keys(m.params)
     # and values(m.params), apply AbstractPPL.varname_and_value_leaves to each pair, and
     # then collect them into a vector. *However*, this vector will later have to be used
@@ -60,7 +60,7 @@ during the computation of the standard errors will be caught and reported in an 
 "Error notes" column.
 """
 function StatsBase.coeftable(m::ModeResult; level::Real=0.95, numerrors_warnonly::Bool=true)
-    vns, estimates = get_vectorised_params(m)
+    vns, estimates = get_vector_params(m)
     # Get columns for coeftable.
     terms = string.(vns)
     # If numerrors_warnonly is true, and if either the information matrix is singular or has
@@ -157,10 +157,10 @@ function StatsBase.informationmatrix(
     ldf = DynamicPPL.LogDensityFunction(model, logprob_func(m.estimator))
     f = Base.Fix1(LogDensityProblems.logdensity, ldf)
     # Then get the vectorised parameters.
-    _, x = get_vectorised_params(m)
+    _, x = get_vector_params(m)
 
     # We can include a check here to make sure that f(x) is in fact the log density at x.
-    # This helps guard against potential bugs where `get_vectorised_params` returns a
+    # This helps guard against potential bugs where `get_vector_params` returns a
     # wrongly-ordered parameter vector.
     if !isapprox(f(x), m.lp)
         error(
@@ -172,8 +172,8 @@ function StatsBase.informationmatrix(
     return -DI.hessian(f, adtype, x)
 end
 
-StatsBase.coef(m::ModeResult) = last(get_vectorised_params(m))
-StatsBase.coefnames(m::ModeResult) = first(get_vectorised_params(m))
+StatsBase.coef(m::ModeResult) = last(get_vector_params(m))
+StatsBase.coefnames(m::ModeResult) = first(get_vector_params(m))
 StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
 StatsBase.vcov(m::ModeResult) = inv(StatsBase.informationmatrix(m))
 StatsBase.loglikelihood(m::ModeResult) = m.lp

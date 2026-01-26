@@ -18,7 +18,7 @@ using StatsAPI: StatsAPI
 using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra
 
-export maximum_a_posteriori, maximum_likelihood, MAP, MLE
+export maximum_a_posteriori, maximum_likelihood, MAP, MLE, get_vector_params
 
 include("init.jl")
 
@@ -89,7 +89,15 @@ struct ModeResult{
     linked::Bool
     "The LogDensityFunction used to calculate the output. Note that this LogDensityFunction
     calculates the actual (non-negated) log density. It should hold that `m.lp ==
-    LogDensityProblems.logdensity(m.ldf, m.optim_result.u)`."
+    LogDensityProblems.logdensity(m.ldf, m.optim_result.u)` for a ModeResult `m`.
+
+    The objective function used for minimisation is equivalent to `p ->
+    -LogDensityProblems.logdensity(m.ldf, p)`). Note, however, that `p` has to be provided
+    as a vector in linked or unlinked space depending on the value of `m.linked`.
+
+    If `m.linked` is true, to evaluate the log-density using unlinked parameters, you
+    can use `logjoint(m.ldf.model, params)` where `params` is a NamedTuple or Dictionary
+    of unlinked parameters."
     ldf::L
     "The stored optimiser results."
     optim_result::O
