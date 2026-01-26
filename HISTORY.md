@@ -38,6 +38,10 @@ In these cases, Turing will raise an error if bounds are provided.
 Users who wish to perform optimisation with such constraints should directly use `LogDensityFunction` and Optimization.jl.
 Documentation on this matter will be forthcoming.
 
+# 0.42.6
+
+Fixed a bug in SMC and PG where results were not always stored correctly in Libtask traces (due to incorrect `objectid` checks).
+
 # 0.42.5
 
 SMC and PG can now be used for models with keyword arguments, albeit with one requirement: the user must mark the model function as being able to produce.
