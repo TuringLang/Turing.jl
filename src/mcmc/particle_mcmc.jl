@@ -21,7 +21,7 @@ struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
 
-mutable struct TracedModel{M<:Model,E<:Tuple,T<:Tuple,NT<:NamedTuple} <:
+mutable struct TracedModel{M<:Model,T<:Tuple,NT<:NamedTuple} <:
                AdvancedPS.AbstractGenericModel
     model::M
     # TODO(penelopeysm): I don't like that this is an abstract type. However, the problem is
@@ -30,7 +30,6 @@ mutable struct TracedModel{M<:Model,E<:Tuple,T<:Tuple,NT<:NamedTuple} <:
     # do think that this can be solved. I would recommend that if you have time try to
     # change this back into a type parameter, see what breaks in CI, and try to fix it.
     varinfo::AbstractVarInfo
-    evaluator::E
     resample::Bool
     fargs::T
     kwargs::NT
