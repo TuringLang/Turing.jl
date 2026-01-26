@@ -204,7 +204,46 @@ DynamicPPL.combine(acc1::ConstraintCheckAccumulator, ::ConstraintCheckAccumulato
 
 Find the mode of the probability distribution of a model.
 
-Under the hood this function calls `Optimization.solve`.
+Under the hood this function constructs a `LogDensityFunction` and calls
+`Optimization.solve` on it.
+
+Note that the optimisation interface that Turing exposes is a more high-level interface
+which is tailored towards probabilistic modelling, so not every option available in
+Optimization.jl is supported here. In particular, Turing's optimisation interface allows you
+to:
+
+- Provide initial parameters, lower bounds, and upper bounds as mappings of `VarName`s to
+  values in original (unlinked space).
+
+- Choose whether to run the optimisation in linked or unlinked space (by default linked).
+  Linked space means that parameters are transformed to unconstrained Euclidean space,
+  meaning that you can avoid hard edges in the optimisation landscape (i.e., logpdf
+  suddenly dropping to `-Inf` outside the support of a variable). It also avoids cases
+  where parameters may not be independent, e.g., `x ~ Dirichlet(...)` where the components
+  of `x` must sum to 1. Optimisation in linked space is enabled by default.
+
+Turing is responsible for 'translating' these user-friendly specifications into vectorised
+forms (of initial parameters, lower bounds, and upper bounds) that Optimization.jl can work
+with.
+
+However, there are cases where this translation can fail or otherwise be ill-defined
+(specifically when considering constraints). For example, recall that constraints are
+supplied in unlinked space, but the optimisation is run by default in linked space.
+Sometimes it is possible to translate constraints from unlinked space to linked space: for
+example, for `x ~ Beta(2, 2)`, lower bounds in unlinked space can be translated to lower
+bounds in linked space via the logit transform (specificallly, by calling
+`to_linked_vec_transform(Beta(2, 2))`.
+
+However, if a user supplies a constraint on a Dirichlet variable, there is no well-defined
+mapping of unlinked constraints to linked space. In such cases, Turing will throw an error
+(although you can still run in unlinked space). Generic, non-box constraints are also not
+possible to correctly support, so Turing's optimisation interface refuses to support them.
+
+See https://github.com/TuringLang/Turing.jl/issues/2634 for more discussion on the interface
+and what it supports.
+
+If you need these capabilities, we suggest that you create your own LogDensityFunction and
+call Optimization.jl directly on it.
 
 # Arguments
 
@@ -334,7 +373,7 @@ end
 Find the maximum a posteriori estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MAP()` as the estimator.
-Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
+Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for full
 details.
 """
 function maximum_a_posteriori(
@@ -357,7 +396,7 @@ end
 Find the maximum likelihood estimate of a model.
 
 This is a convenience function that calls `estimate_mode` with `MLE()` as the estimator.
-Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for more
+Please see the documentation of [`Turing.Optimisation.estimate_mode`](@ref) for full
 details.
 """
 function maximum_likelihood(
