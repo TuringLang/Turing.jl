@@ -130,7 +130,12 @@ function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInf
     # then the parameter type will be Any, so we should skip the check.
     lc = DynamicPPL.leafcontext(context)
     if lc isa DynamicPPL.InitContext{
-        <:Any,<:Union{DynamicPPL.InitFromPrior,DynamicPPL.InitFromUniform}
+        <:Any,
+        <:Union{
+            DynamicPPL.InitFromPrior,
+            DynamicPPL.InitFromUniform,
+            Turing.Optimisation.InitWithConstraintCheck,
+        },
     }
         return nothing
     end

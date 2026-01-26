@@ -39,7 +39,7 @@ function Turing.Inference.init_strategy(spl::Emcee)
     return fill(DynamicPPL.InitFromPrior(), _get_n_walkers(spl))
 end
 # We also have to explicitly allow this or else it will error...
-function Turing.Inference._convert_initial_params(
+function Turing._convert_initial_params(
     x::AbstractVector{<:DynamicPPL.AbstractInitStrategy}
 )
     return x

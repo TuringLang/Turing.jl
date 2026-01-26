@@ -1,3 +1,43 @@
+# 0.43.0
+
+## Optimisation interface
+
+Turing.jl's optimisation interface has been completely overhauled in this release.
+The aim of this has been to provide users with a more consistent and principled way of specifying constraints.
+
+The crux of the issue is that Optimization.jl expects vectorised inputs, whereas Turing models are more high-level: they have named variables which may be scalars, vectors, or in general anything.
+Prior to this version, Turing's interface required the user to provide the vectorised inputs 'raw', which is both unintuitive and error-prone (especially when considering that optimisation may run in linked or unlinked space).
+
+Going forward, initial parameters for optimisation are specified using `AbstractInitStrategy`.
+If specific parameters are provided (via `InitFromParams`), these must be in model space (i.e. untransformed).
+This directly mimics the interface for MCMC sampling that has been in place since v0.41.
+
+Furthermore, lower and upper bounds (if desired) must be specified as either a NamedTuple or an AbstractDict{<:VarName}.
+Bounds are always provided in model space; Turing will handle the transformation of these bounds to linked space if necessary.
+Constraints are respected when creating initial parameters for optimisation: if the `AbstractInitStrategy` provided is incompatible with the constraints (for example `InitFromParams((; x = 2.0))` but `x` is constrained to be between `[0, 1]`), an error will be raised.
+
+Here is a (very simplified) example of the new interface:
+
+```julia
+using Turing
+@model f() = x ~ Beta(2, 2)
+maximum_a_posteriori(
+    f();
+    # All of the following are in unlinked space.
+    initial_params=InitFromParams((; x=0.3)),
+    lb=(; x=0.1),
+    ub=(; x=0.4),
+)
+```
+
+For more information, please see the docstring of `estimate_mode`.
+
+Note that in some cases, the translation of bounds to linked space may not be well-defined.
+This is especially true for distributions where the samples have elements that are not independent (for example, Dirichlet, or LKJCholesky).
+In these cases, Turing will raise an error if bounds are provided.
+Users who wish to perform optimisation with such constraints should directly use `LogDensityFunction` and Optimization.jl.
+Documentation on this matter will be forthcoming.
+
 # 0.42.4
 
 Fixes a typo that caused NUTS to perform one less adaptation step than in versions prior to 0.41.
