@@ -129,6 +129,23 @@ function AbstractMCMC.getparams(state)
     return get_varinfo(state)[:]
 end
 
+# Override for DynamicPPL.ParamsWithStats: provides named params and full transition metrics
+function AbstractMCMC.ParamsWithStats(
+    model,
+    sampler,
+    transition::DynamicPPL.ParamsWithStats,
+    state;
+    params::Bool=true,
+    stats::Bool=false,
+    extras::Bool=false,
+)
+    # Convert OrderedDict params to Vector{Pair} for AbstractMCMC.ParamsWithStats constructor
+    p = params ? [string(k) => v for (k, v) in transition.params] : nothing
+    s = stats ? transition.stats : NamedTuple()
+    e = extras ? NamedTuple() : NamedTuple()
+    return AbstractMCMC.ParamsWithStats(p, s, e)
+end
+
 #######################################
 # Concrete algorithm implementations. #
 #######################################
