@@ -154,11 +154,20 @@ can_have_linked_constraints(::Dirichlet) = false
 can_have_linked_constraints(::LKJCholesky) = false
 
 struct ConstraintAccumulator <: AbstractAccumulator
+    "Whether to store constraints in linked space or not."
     link::Bool
+    "A mapping of VarNames to lower bounds in untransformed space."
     lb::NTOrVNDict
+    "A mapping of VarNames to upper bounds in untransformed space."
     ub::NTOrVNDict
+    "The initial values for the optimisation in linked space (if link=true) or unlinked
+    space (if link=false)."
     init_vecs::Dict{VarName,AbstractVector}
+    "The lower bound vectors for the optimisation in linked space (if link=true) or unlinked
+    space (if link=false)."
     lb_vecs::Dict{VarName,AbstractVector}
+    "The upper bound vectors for the optimisation in linked space (if link=true) or unlinked
+    space (if link=false)."
     ub_vecs::Dict{VarName,AbstractVector}
     function ConstraintAccumulator(link::Bool, lb::NTOrVNDict, ub::NTOrVNDict)
         return new(
