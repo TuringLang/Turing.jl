@@ -343,10 +343,14 @@ end
             lb = (s=0.0, m=0.0)
             ub = (s=2.0, m=2.0)
             # We need to disable linking during the optimisation here, because it will
-            # result in NaN's. See the comment on allowed_incorrect_mle below.
+            # result in NaN's. See the comment on allowed_incorrect_mle below. In fact
+            # even sometimes without linking it still gets NaN's -- we get round that
+            # in these tests by seeding the RNG.
             kwargs = (; lb=lb, ub=ub, link=false)
 
-            m1 = Turing.Optimisation.estimate_mode(GDEMO_DEFAULT, MLE(); kwargs...)
+            m1 = Turing.Optimisation.estimate_mode(
+                StableRNG(468), GDEMO_DEFAULT, MLE(); kwargs...
+            )
             m2 = maximum_likelihood(
                 StableRNG(468),
                 GDEMO_DEFAULT,

@@ -140,7 +140,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
         tree_char = i == length(m.params) ? "└" : "├"
         println(io, "  │             $(tree_char) $vn => $(val)")
     end
-    println(io, "  └ linked    : $(m.linked)")
+    print(io, "  └ linked    : $(m.linked)")
     return nothing
 end
 
