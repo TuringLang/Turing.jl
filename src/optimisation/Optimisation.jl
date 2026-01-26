@@ -179,7 +179,9 @@ function DynamicPPL.reset(acc::ConstraintCheckAccumulator)
     return acc
 end
 function Base.copy(acc::ConstraintCheckAccumulator)
-    return ConstraintCheckAccumulator(deepcopy(acc.lb), deepcopy(acc.ub))
+    # The copy here is probably not needed, since lb and ub are never mutated, and we are
+    # responsible for generating lb and ub. But we can just `copy` to be safe.
+    return ConstraintCheckAccumulator(copy(acc.lb), copy(acc.ub))
 end
 DynamicPPL.split(acc::ConstraintCheckAccumulator) = acc
 DynamicPPL.combine(acc1::ConstraintCheckAccumulator, ::ConstraintCheckAccumulator) = acc1
@@ -196,6 +198,7 @@ DynamicPPL.combine(acc1::ConstraintCheckAccumulator, ::ConstraintCheckAccumulato
         ub::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;),
         adtype::AbstractADType=AutoForwardDiff(),
         check_model::Bool=true,
+        check_constraints_at_runtime::Bool=true,
         kwargs...,
     )
 
@@ -244,6 +247,18 @@ Under the hood this function calls `Optimization.solve`.
 
 - `check_model::Bool=true`: if true, the model is checked for potential errors before
   optimisation begins.
+
+- `check_constraints_at_runtime::Bool=true`: if true, the constraints provided via `lb`
+   and `ub` are checked at each evaluation of the log probability during optimisation (even
+   though Optimization.jl already has access to these constraints). This can be useful in a
+   very specific situation: consider a model where a variable has a dynamic support, e.g.
+   `y ~ truncated(Normal(); lower=x)`, where `x` is another variable in the model. In this
+   case, if the model is run in linked space, then the box constraints that Optimization.jl
+   sees may not always be correct, and `y` may go out of its intended bounds due to changes
+   in `x`. Enabling this option will ensure that such violations are caught and an error
+   thrown. This is very cheap to do, but if you absolutely need to squeeze out every last
+   bit of performance and you know you will not be hitting the edge case above, you can
+   disable this check.
 
 Any extra keyword arguments are passed to `Optimization.solve`.
 """

@@ -230,7 +230,11 @@ function DynamicPPL.reset(acc::ConstraintAccumulator)
     return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
 end
 function Base.copy(acc::ConstraintAccumulator)
-    return ConstraintAccumulator(acc.link, deepcopy(acc.lb), deepcopy(acc.ub))
+    # ConstraintAccumulator should not ever modify `acc.lb` or `acc.ub` (and when
+    # constructing it inside `make_optim_bounds_and_init` we make sure to deepcopy any user
+    # input), so there is no chance that `lb` or `ub` could ever be mutated once they're
+    # inside the accumulator. Hence we don't need to copy them.
+    return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
 end
 function DynamicPPL.split(acc::ConstraintAccumulator)
     return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
@@ -281,7 +285,9 @@ function make_optim_bounds_and_init(
     ctx = DynamicPPL.InitContext(rng, InitWithConstraintCheck(lb, ub, initial_params))
     new_model = DynamicPPL.setleafcontext(ldf.model, ctx)
     # Run the model.
-    vi = DynamicPPL.OnlyAccsVarInfo((ConstraintAccumulator(Tlink, lb, ub),))
+    vi = DynamicPPL.OnlyAccsVarInfo((
+        ConstraintAccumulator(Tlink, deepcopy(lb), deepcopy(ub)),
+    ))
     _, vi = DynamicPPL.evaluate!!(new_model, vi)
     # Now extract the accumulator, and construct the vectorised constraints using the
     # ranges stored in the LDF.
