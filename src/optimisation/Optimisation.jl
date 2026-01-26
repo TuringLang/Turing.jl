@@ -278,11 +278,13 @@ call Optimization.jl directly on it.
 
 - `lb::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;)`: a mapping from variable names
   to lower bounds for the optimisation. The bounds should be provided in the original
-  (unlinked) space.
+  (unlinked) space. Not all constraints are supported by Turing's optimisation interface.
+  See details above.
 
 - `ub::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;)`: a mapping from variable names
   to upper bounds for the optimisation. The bounds should be provided in the original
-  (unlinked) space.
+  (unlinked) space. Not all constraints are supported by Turing's optimisation interface.
+  See details above.
 
 - `adtype::AbstractADType=AutoForwardDiff()`: The automatic differentiation backend to use.
 
