@@ -64,9 +64,11 @@ function satisfies_constraints(
     proposed_val::AbstractArray{<:Real},
     ::Union{MultivariateDistribution,MatrixDistribution},
 )
-    satisfies_lb = lb === nothing || all(proposed_val .>= lb)
-    satisfies_ub = ub === nothing || all(proposed_val .<= ub)
-    return any(isnan, proposed_val) || (satisfies_lb && satisfies_ub)
+    satisfies_lb =
+        lb === nothing || all((v, b) -> isnan(v) || v >= b, zip(proposed_val, lb))
+    satisfies_ub =
+        ub === nothing || all((v, b) -> isnan(v) || v <= b, zip(proposed_val, ub))
+    return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
     lb::Union{Nothing,AbstractArray{<:Real}},
