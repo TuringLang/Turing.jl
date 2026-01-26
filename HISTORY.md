@@ -1,3 +1,20 @@
+# 0.42.5
+
+SMC and PG can now be used for models with keyword arguments, albeit with one requirement: the user must mark the model function as being able to produce.
+For example, if the model is
+
+```julia
+@model foo(x; y) = a ~ Normal(x, y)
+```
+
+then before samping from this with SMC or PG, you will have to run
+
+```julia
+using Turing
+
+@might_produce(foo)
+```
+
 # 0.42.4
 
 Fixes a typo that caused NUTS to perform one less adaptation step than in versions prior to 0.41.

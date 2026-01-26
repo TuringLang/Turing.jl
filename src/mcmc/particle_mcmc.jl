@@ -19,11 +19,13 @@ struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
 
-struct TracedModel{V<:AbstractVarInfo,M<:Model,E<:Tuple} <: AdvancedPS.AbstractGenericModel
+struct TracedModel{V<:AbstractVarInfo,M<:Model,T<:Tuple,NT<:NamedTuple} <:
+       AdvancedPS.AbstractTuringLibtaskModel
     model::M
     varinfo::V
-    evaluator::E
     resample::Bool
+    fargs::T
+    kwargs::NT
 end
 
 function TracedModel(
@@ -31,11 +33,8 @@ function TracedModel(
 )
     model = DynamicPPL.setleafcontext(model, ParticleMCMCContext(rng))
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
-    isempty(kwargs) || error(
-        "Particle sampling methods do not currently support models with keyword arguments.",
-    )
-    evaluator = (model.f, args...)
-    return TracedModel(model, varinfo, evaluator, resample)
+    fargs = (model.f, args...)
+    return TracedModel(model, varinfo, resample, fargs, kwargs)
 end
 
 function AdvancedPS.advance!(
@@ -53,16 +52,16 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
     # In such a case, we need to ensure that when we continue sampling (i.e.
     # the next time we hit tilde_assume!!), we don't use the values in the 
     # reference particle but rather sample new values.
-    return TracedModel(trace.model, trace.varinfo, trace.evaluator, true)
+    return TracedModel(trace.model, trace.varinfo, true, trace.fargs, trace.kwargs)
 end
 
 function AdvancedPS.reset_model(trace::TracedModel)
     return trace
 end
 
-function Libtask.TapedTask(taped_globals, model::TracedModel; kwargs...)
+function Libtask.TapedTask(taped_globals, model::TracedModel)
     return Libtask.TapedTask(
-        taped_globals, model.evaluator[1], model.evaluator[2:end]...; kwargs...
+        taped_globals, model.fargs[1], model.fargs[2:end]...; model.kwargs...
     )
 end
 
@@ -124,6 +123,7 @@ function AbstractMCMC.sample(
 )
     check_model && _check_model(model, sampler)
     error_if_threadsafe_eval(model)
+    check_model_kwargs(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
@@ -138,6 +138,28 @@ function AbstractMCMC.sample(
     )
 end
 
+function check_model_kwargs(model::DynamicPPL.Model)
+    if !isempty(model.defaults)
+        # If there are keyword arguments, we need to check that the user has
+        # accounted for this by overloading `might_produce`.
+        might_produce = Libtask.might_produce(typeof((Core.kwcall, NamedTuple(), model.f)))
+        if !might_produce
+            io = IOBuffer()
+            ctx = IOContext(io, :color => true)
+            print(
+                ctx,
+                "Models with keyword arguments need special treatment to be used" *
+                " with particle methods. Please run:\n\n",
+            )
+            printstyled(
+                ctx, "    Turing.@might_produce($(model.f))"; bold=true, color=:blue
+            )
+            print(ctx, "\n\nbefore sampling from this model with particle methods.\n")
+            error(String(take!(io)))
+        end
+    end
+end
+
 function Turing.Inference.initialstep(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -146,6 +168,7 @@ function Turing.Inference.initialstep(
     nparticles::Int,
     kwargs...,
 )
+    check_model_kwargs(model)
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.empty!!(vi)
@@ -254,6 +277,7 @@ function Turing.Inference.initialstep(
     rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, vi::AbstractVarInfo; kwargs...
 )
     error_if_threadsafe_eval(model)
+    check_model_kwargs(model)
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create a new set of particles
@@ -495,7 +519,7 @@ end
 # details of the compiler, we set a bunch of methods as might_produce = true. We start with
 # adding to ProduceLogLikelihoodAccumulator, which is what calls `produce`, and go up the
 # call stack.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.accloglikelihood!!),Vararg}}) = true
+Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
 function Libtask.might_produce(
     ::Type{
         <:Tuple{
@@ -507,17 +531,13 @@ function Libtask.might_produce(
 )
     return true
 end
-function Libtask.might_produce(
-    ::Type{<:Tuple{typeof(DynamicPPL.accumulate_observe!!),Vararg}}
-)
-    return true
-end
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_observe!!),Vararg}}) = true
-# Could the next two could have tighter type bounds on the arguments, namely a GibbsContext?
+Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
+Libtask.@might_produce(DynamicPPL.tilde_observe!!)
+# Could tilde_assume!! have tighter type bounds on the arguments, namely a GibbsContext?
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.tilde_assume!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.evaluate!!),Vararg}}) = true
-Libtask.might_produce(::Type{<:Tuple{typeof(DynamicPPL.init!!),Vararg}}) = true
+Libtask.@might_produce(DynamicPPL.tilde_assume!!)
+Libtask.@might_produce(DynamicPPL.evaluate!!)
+Libtask.@might_produce(DynamicPPL.init!!)
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
 
 #####

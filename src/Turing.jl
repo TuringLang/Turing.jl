@@ -80,6 +80,7 @@ using DynamicPPL:
     setthreadsafe
 using StatsBase: predict
 using OrderedCollections: OrderedDict
+using Libtask: might_produce, @might_produce
 
 # Turing essentials - modelling macros and inference algorithms
 export
@@ -172,6 +173,9 @@ export
     MAP,
     MLE,
     # Chain save/resume
-    loadstate
+    loadstate,
+    # kwargs in SMC
+    might_produce,
+    @might_produce
 
 end
