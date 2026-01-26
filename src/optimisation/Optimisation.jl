@@ -81,12 +81,14 @@ struct ModeResult{
     even if the optimisation was run in linked space."
     params::P
     "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run.
-    Note that this is a *positive* log probability."
+    Note that this is the actual log probability of the parameters, i.e., not negated;
+    we do need a negated log probability to run the optimisation itself (since it is a
+    maximisation), but this is handled in a way that is entirely transparent to the user."
     lp::LP
     "Whether the optimisation was done in a transformed space."
     linked::Bool
     "The LogDensityFunction used to calculate the output. Note that this LogDensityFunction
-    calculates the positive log density. It should hold that `m.lp ==
+    calculates the actual (non-negated) log density. It should hold that `m.lp ==
     LogDensityProblems.logdensity(m.ldf, m.optim_result.u)`."
     ldf::L
     "The stored optimiser results."
