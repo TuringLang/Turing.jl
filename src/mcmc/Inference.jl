@@ -116,9 +116,14 @@ function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::
 end
 
 # Helper functions for AbstractMCMC callbacks
-# Helper to get log probability from VarInfo
+# Helper to get log probability from VarInfo in unconstrained space.
+# The logjac from getlogp is the forward Jacobian (constrained -> unconstrained),
+# so we negate it: log q(y) = log p(x) - log|J|
 function _get_lp(vi::DynamicPPL.AbstractVarInfo)
     lp = DynamicPPL.getlogp(vi)
+    if haskey(lp, :logjac)
+        lp = merge(lp, (; logjac=-lp.logjac))
+    end
     return sum(values(lp))
 end
 
