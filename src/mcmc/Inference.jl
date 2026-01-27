@@ -127,10 +127,9 @@ function _get_lp(vi::DynamicPPL.AbstractVarInfo)
     return sum(values(lp))
 end
 
-# Consolidated getparams using get_varinfo (defined in each sampler file)
-# This covers HMC, MH, PG, Gibbs, and external samplers.
+# Consolidated getparams using get_varinfo (defined in each sampler file).
 # SGHMC/SGLD have their own implementations since they don't use VarInfo.
-function AbstractMCMC.getparams(state)
+function AbstractMCMC.getparams(state::Union{HMCState,MHState,PGState,GibbsState})
     return get_varinfo(state)[:]
 end
 
