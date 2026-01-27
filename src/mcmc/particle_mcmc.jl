@@ -347,102 +347,85 @@ function AbstractMCMC.step(
 end
 
 """
-get_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+    get_trace_local_varinfo()
 
-Get the `Trace` local varinfo if one exists.
-
-If executed within a `TapedTask`, return the `varinfo` stored in the "taped globals" of the
-task, otherwise return `vi`.
+Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`.
 """
-function get_trace_local_varinfo_maybe(varinfo::AbstractVarInfo)
+function get_trace_local_varinfo()
     trace = try
         Libtask.get_taped_globals(Any).other
     catch e
         e == KeyError(:task_variable) ? nothing : rethrow(e)
     end
-    return (trace === nothing ? varinfo : trace.model.f.varinfo)::AbstractVarInfo
+    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    return trace.model.f.varinfo::AbstractVarInfo
 end
 
 """
-get_trace_local_resampled_maybe(fallback_resampled::Bool)
+    get_trace_local_resampled()
 
-Get the `Trace` local `resampled` if one exists.
+Get the `resample` flag stored in the 'taped globals' of a `Libtask.TapedTask`.
 
-If executed within a `TapedTask`, return the `resampled` stored in the "taped globals" of
-the task, otherwise return `fallback_resampled`.
+This indicates whether new variable values should be sampled from the prior or not. For
+example, in SMC, this is true for all particles; in PG, this is true for all particles
+except the reference particle, whose trajectory must be reproduced exactly.
 """
-function get_trace_local_resampled_maybe(fallback_resampled::Bool)
+function get_trace_local_resampled()
     trace = try
         Libtask.get_taped_globals(Any).other
     catch e
         e == KeyError(:task_variable) ? nothing : rethrow(e)
     end
-    return (trace === nothing ? fallback_resampled : trace.model.f.resample)::Bool
+    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    return trace.model.f.resample::Bool
 end
 
 """
-get_trace_local_rng_maybe(rng::Random.AbstractRNG)
+    get_trace_local_rng()
 
 Get the `Trace` local rng if one exists.
 
 If executed within a `TapedTask`, return the `rng` stored in the "taped globals" of the
 task, otherwise return `vi`.
 """
-function get_trace_local_rng_maybe(rng::Random.AbstractRNG)
-    return try
-        Libtask.get_taped_globals(Any).rng
-    catch e
-        e == KeyError(:task_variable) ? rng : rethrow(e)
-    end
+function get_trace_local_rng()
+    return Libtask.get_taped_globals(Any).rng
 end
 
 """
-set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
+    set_trace_local_varinfo(vi::AbstractVarInfo)
 
-Set the `Trace` local varinfo if executing within a `Trace`. Return `nothing`.
+Set the `varinfo` stored in Libtask's taped globals. The 'other' taped global in Libtask
+is expected to be an `AdvancedPS.Trace`.
 
-If executed within a `TapedTask`, set the `varinfo` stored in the "taped globals" of the
-task. Otherwise do nothing.
+Returns `nothing`.
 """
-function set_trace_local_varinfo_maybe(vi::AbstractVarInfo)
-    # TODO(mhauru) This should be done in a try-catch block, as in the commented out code.
-    # However, Libtask currently can't handle this block.
-    trace = #try
-        Libtask.get_taped_globals(Any).other
-    # catch e
-    #     e == KeyError(:task_variable) ? nothing : rethrow(e)
-    # end
-    if trace !== nothing
-        model = trace.model
-        model = Accessors.@set model.f.varinfo = vi
-        trace.model = model
-    end
+function set_trace_local_varinfo(vi::AbstractVarInfo)
+    trace = Libtask.get_taped_globals(Any).other
+    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    model = trace.model
+    model = Accessors.@set model.f.varinfo = vi
+    trace.model = model
     return nothing
 end
 
 function DynamicPPL.tilde_assume!!(
     ctx::ParticleMCMCContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
 )
-    arg_vi_id = objectid(vi)
-    vi = get_trace_local_varinfo_maybe(vi)
-    using_local_vi = objectid(vi) == arg_vi_id
-
-    trng = get_trace_local_rng_maybe(ctx.rng)
-    resample = get_trace_local_resampled_maybe(true)
-
+    # Get all the info we need from the trace, namely, the stored VarInfo, and whether
+    # we need to sample a new value or use the existing one.
+    vi = get_trace_local_varinfo()
+    trng = get_trace_local_rng()
+    resample = get_trace_local_resampled()
+    # Modify the varinfo as appropriate.
     dispatch_ctx = if ~haskey(vi, vn) || resample
         DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior())
     else
         DynamicPPL.DefaultContext()
     end
     x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, vi)
-
-    # TODO(mhauru) Rather than this if-block, we should use try-catch within
-    # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
-    # hence this.
-    if !using_local_vi
-        set_trace_local_varinfo_maybe(vi)
-    end
+    # Set the varinfo back in the trace.
+    set_trace_local_varinfo(vi)
     return x, vi
 end
 
@@ -453,18 +436,9 @@ function DynamicPPL.tilde_observe!!(
     vn::Union{VarName,Nothing},
     vi::AbstractVarInfo,
 )
-    arg_vi_id = objectid(vi)
-    vi = get_trace_local_varinfo_maybe(vi)
-    using_local_vi = objectid(vi) == arg_vi_id
-
+    vi = get_trace_local_varinfo()
     left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
-
-    # TODO(mhauru) Rather than this if-block, we should use try-catch within
-    # `set_trace_local_varinfo_maybe`. However, currently Libtask can't handle such a block,
-    # hence this.
-    if !using_local_vi
-        set_trace_local_varinfo_maybe(vi)
-    end
+    set_trace_local_varinfo(vi)
     return left, vi
 end
 
