@@ -115,25 +115,11 @@ function mh_accept(logp_current::Real, logp_proposal::Real, log_proposal_ratio::
     return log(rand()) + logp_current ≤ logp_proposal + log_proposal_ratio
 end
 
-# Helper functions for AbstractMCMC callbacks
-# Helper to get log probability from VarInfo in unconstrained space.
-# The logjac from getlogp is the forward Jacobian (constrained -> unconstrained),
-# so we negate it: log q(y) = log p(x) - log|J|
-function _get_lp(vi::DynamicPPL.AbstractVarInfo)
-    lp = DynamicPPL.getlogp(vi)
-    if haskey(lp, :logjac)
-        lp = merge(lp, (; logjac=-lp.logjac))
-    end
-    return sum(values(lp))
-end
-
-# Consolidated getparams using get_varinfo (defined in each sampler file).
-# SGHMC/SGLD have their own implementations since they don't use VarInfo.
-function AbstractMCMC.getparams(state::Union{HMCState,MHState,PGState,GibbsState})
-    return get_varinfo(state)[:]
-end
-
-# Override for DynamicPPL.ParamsWithStats: provides named params and full transition metrics
+# Directly overload the constructor of `AbstractMCMC.ParamsWithStats` so that we don't
+# hit the default method, which uses `getparams(state)` and `getstats(state)`. For Turing's
+# MCMC samplers, the state might contain results that are in linked space. Using the
+# outputs of the transition here ensures that parameters and logprobs are provided in
+# user space (similar to chains output).
 function AbstractMCMC.ParamsWithStats(
     model,
     sampler,
@@ -143,17 +129,12 @@ function AbstractMCMC.ParamsWithStats(
     stats::Bool=false,
     extras::Bool=false,
 )
-    # Convert OrderedDict params to Vector{Pair} for AbstractMCMC.ParamsWithStats constructor
     p = params ? [string(k) => v for (k, v) in transition.params] : nothing
     s = stats ? transition.stats : NamedTuple()
     e = extras ? NamedTuple() : NamedTuple()
     return AbstractMCMC.ParamsWithStats(p, s, e)
 end
 
-function AbstractMCMC.getstats(state::DynamicPPL.AbstractVarInfo)
-    lp = _get_lp(state)
-    return (lp=lp,)
-end
 #######################################
 # Concrete algorithm implementations. #
 #######################################

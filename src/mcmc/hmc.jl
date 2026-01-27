@@ -505,22 +505,3 @@ end
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
 end
-
-#####
-##### AbstractMCMC interface
-#####
-
-function AbstractMCMC.getstats(state::HMCState)
-    lp = _get_lp(state.vi)
-    # TODO(penelopeysm): For many Hamiltonian samplers you can get the
-    # stepsize from the state. However for non-adaptive Hamiltonians the
-    # info is only in the sampler and thus can't be accessed via getstats.
-    # HMCState should be modified to include the step size as a field, which
-    # would allow us to access this information here properly.
-    ϵ = try
-        state.kernel.τ.integrator.ϵ
-    catch
-        NaN
-    end
-    return (lp=lp, step_size=ϵ, iteration=state.i)
-end

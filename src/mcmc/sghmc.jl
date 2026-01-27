@@ -217,25 +217,3 @@ function AbstractMCMC.step(
 
     return transition, newstate
 end
-
-#####
-##### AbstractMCMC interface
-#####
-
-# SGHMCState
-AbstractMCMC.getparams(state::SGHMCState) = state.params
-
-function AbstractMCMC.getstats(state::SGHMCState)
-    # TODO(penelopeysm): This is inefficient as it requires an extra model evaluation
-    lp = LogDensityProblems.logdensity(state.logdensity, state.params)
-    return (lp=lp,)
-end
-
-# SGLDState
-AbstractMCMC.getparams(state::SGLDState) = state.params
-
-function AbstractMCMC.getstats(state::SGLDState)
-    # TODO(penelopeysm): Remove extra evaluation.
-    lp = LogDensityProblems.logdensity(state.logdensity, state.params)
-    return (lp=lp, step=state.step)
-end

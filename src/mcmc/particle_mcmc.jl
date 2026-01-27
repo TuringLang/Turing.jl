@@ -513,15 +513,3 @@ Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 Libtask.@might_produce(DynamicPPL.evaluate!!)
 Libtask.@might_produce(DynamicPPL.init!!)
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
-
-#####
-##### AbstractMCMC interface
-#####
-
-# Note: SMCState getparams/getstats intentionally omitted - SMC is not an MCMC
-# method and doesn't fit the conventional AbstractMCMC interface.
-
-function AbstractMCMC.getstats(state::PGState)
-    lp = _get_lp(state.vi)
-    return (lp=lp,)
-end
