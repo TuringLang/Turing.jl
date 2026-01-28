@@ -120,7 +120,9 @@ function DynamicPPL.init(
     # transformed values. We need to transform them back into to unlinked space,
     # so that we can check the constraints properly.
     maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-    proposed_val = DynamicPPL.get_true_value(maybe_transformed_val)
+    proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
+        DynamicPPL.get_internal_value(maybe_transformed_val)
+    )
     attempts = 1
     while !satisfies_constraints(lb, ub, proposed_val, dist)
         if attempts >= MAX_ATTEMPTS
@@ -131,7 +133,9 @@ function DynamicPPL.init(
             )
         end
         maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-        proposed_val = DynamicPPL.get_true_value(maybe_transformed_val)
+        proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
+            DynamicPPL.get_internal_value(maybe_transformed_val)
+        )
         attempts += 1
     end
     return DynamicPPL.UntransformedValue(proposed_val)

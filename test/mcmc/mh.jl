@@ -14,7 +14,7 @@ using Turing.Inference: Inference
 using ..Models: gdemo_default, MoGtest_default
 using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 
-GKernel(variance) = (vnt -> Normal(vnt[@varname(m)], sqrt(variance)))
+GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
 
 @testset "mh.jl" begin
     @info "Starting MH tests"
@@ -22,7 +22,7 @@ GKernel(variance) = (vnt -> Normal(vnt[@varname(m)], sqrt(variance)))
 
     @testset "mh constructor" begin
         N = 10
-        s1 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0))
+        s1 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0, @varname(m)))
         s2 = MH()
         s3 = MH([1.0 0.1; 0.1 1.0])
 
@@ -49,7 +49,7 @@ GKernel(variance) = (vnt -> Normal(vnt[@varname(m)], sqrt(variance)))
         end
 
         @testset "gdemo_default with custom proposals" begin
-            alg = MH(:s => InverseGamma(2, 3), :m => GKernel(1.0))
+            alg = MH(:s => InverseGamma(2, 3), :m => GKernel(1.0, @varname(m)))
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
@@ -67,8 +67,8 @@ GKernel(variance) = (vnt -> Normal(vnt[@varname(m)], sqrt(variance)))
         @testset "MoGtest_default with Gibbs" begin
             gibbs = Gibbs(
                 (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
-                @varname(mu1) => MH(:mu1 => GKernel(1)),
-                @varname(mu2) => MH(:mu2 => GKernel(1)),
+                @varname(mu1) => MH(:mu1 => GKernel(1, @varname(mu1))),
+                @varname(mu2) => MH(:mu2 => GKernel(1, @varname(mu2))),
             )
             initial_params = InitFromParams((mu1=1.0, mu2=1.0, z1=0, z2=0, z3=1, z4=1))
             chain = sample(
