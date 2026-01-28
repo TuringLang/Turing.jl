@@ -166,6 +166,7 @@ function Turing.Inference.initialstep(
     spl::SMC,
     vi::AbstractVarInfo;
     nparticles::Int,
+    discard_sample=false,
     kwargs...,
 )
     check_model_kwargs(model)
@@ -189,16 +190,23 @@ function Turing.Inference.initialstep(
 
     # Compute the first transition and the first state.
     stats = (; weight=weight, logevidence=logevidence)
-    transition = DynamicPPL.ParamsWithStats(
-        deepcopy(particle.model.f.varinfo), model, stats
-    )
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(deepcopy(particle.model.f.varinfo), model, stats)
+    end
     state = SMCState(particles, 2, logevidence)
 
     return transition, state
 end
 
 function AbstractMCMC.step(
-    ::AbstractRNG, model::DynamicPPL.Model, spl::SMC, state::SMCState; kwargs...
+    ::AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::SMC,
+    state::SMCState;
+    discard_sample=false,
+    kwargs...,
 )
     # Extract the index of the current particle.
     index = state.particleindex
@@ -210,9 +218,11 @@ function AbstractMCMC.step(
 
     # Compute the transition and the next state.
     stats = (; weight=weight, logevidence=state.average_logevidence)
-    transition = DynamicPPL.ParamsWithStats(
-        deepcopy(particle.model.f.varinfo), model, stats
-    )
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(deepcopy(particle.model.f.varinfo), model, stats)
+    end
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
     return transition, nextstate
@@ -274,7 +284,12 @@ end
 get_varinfo(state::PGState) = state.vi
 
 function Turing.Inference.initialstep(
-    rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::PG,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
     error_if_threadsafe_eval(model)
     check_model_kwargs(model)
@@ -301,15 +316,22 @@ function Turing.Inference.initialstep(
 
     # Compute the first transition.
     _vi = reference.model.f.varinfo
-    transition = DynamicPPL.ParamsWithStats(
-        deepcopy(_vi), model, (; logevidence=logevidence)
-    )
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(deepcopy(_vi), model, (; logevidence=logevidence))
+    end
 
     return transition, PGState(_vi, reference.rng)
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, spl::PG, state::PGState; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::PG,
+    state::PGState;
+    discard_sample=false,
+    kwargs...,
 )
     # Reset the VarInfo before new sweep.
     vi = state.vi
@@ -339,9 +361,11 @@ function AbstractMCMC.step(
 
     # Compute the transition.
     _vi = newreference.model.f.varinfo
-    transition = DynamicPPL.ParamsWithStats(
-        deepcopy(_vi), model, (; logevidence=logevidence)
-    )
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(deepcopy(_vi), model, (; logevidence=logevidence))
+    end
 
     return transition, PGState(_vi, newreference.rng)
 end

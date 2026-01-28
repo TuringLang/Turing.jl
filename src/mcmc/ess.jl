@@ -24,18 +24,29 @@ struct ESS <: AbstractSampler end
 
 # always accept in the first step
 function Turing.Inference.initialstep(
-    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    ::ESS,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
     for vn in keys(vi)
         dist = getdist(vi, vn)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    return DynamicPPL.ParamsWithStats(vi, model), vi
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, vi
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    ::ESS,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
     # obtain previous sample
     f = vi[:]
@@ -56,7 +67,8 @@ function AbstractMCMC.step(
     vi = DynamicPPL.unflatten(vi, sample)
     vi = DynamicPPL.setloglikelihood!!(vi, state.loglikelihood)
 
-    return DynamicPPL.ParamsWithStats(vi, model), vi
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, vi
 end
 
 # Prior distribution of considered random variable

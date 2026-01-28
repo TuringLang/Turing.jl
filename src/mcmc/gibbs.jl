@@ -313,6 +313,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     spl::Gibbs;
     initial_params=Turing.Inference.init_strategy(spl),
+    discard_sample=false,
     kwargs...,
 )
     varnames = spl.varnames
@@ -329,7 +330,8 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -337,6 +339,7 @@ function AbstractMCMC.step_warmup(
     model::DynamicPPL.Model,
     spl::Gibbs;
     initial_params=Turing.Inference.init_strategy(spl),
+    discard_sample=false,
     kwargs...,
 )
     varnames = spl.varnames
@@ -353,7 +356,8 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, GibbsState(vi, states)
 end
 
 """
@@ -395,6 +399,7 @@ function gibbs_initialstep_recursive(
         # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
         initial_params=initial_params,
         kwargs...,
+        discard_sample=true,
     )
     new_vi_local = get_varinfo(new_state)
     # Merge in any new variables that were introduced during the step, but that
@@ -422,6 +427,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     spl::Gibbs,
     state::GibbsState;
+    discard_sample=false,
     kwargs...,
 )
     vi = get_varinfo(state)
@@ -433,7 +439,8 @@ function AbstractMCMC.step(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
     )
-    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, GibbsState(vi, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -441,6 +448,7 @@ function AbstractMCMC.step_warmup(
     model::DynamicPPL.Model,
     spl::Gibbs,
     state::GibbsState;
+    discard_sample=false,
     kwargs...,
 )
     vi = get_varinfo(state)
@@ -452,7 +460,8 @@ function AbstractMCMC.step_warmup(
     vi, states = gibbs_step_recursive(
         rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
     )
-    return DynamicPPL.ParamsWithStats(vi, model), GibbsState(vi, states)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, GibbsState(vi, states)
 end
 
 """
@@ -606,8 +615,13 @@ function gibbs_step_recursive(
     # samplers.
     state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
 
-    # Take a step with the local sampler.
-    new_state = last(step_function(rng, conditioned_model, sampler, state; kwargs...))
+    # Take a step with the local sampler. We don't need the actual sample, only the state.
+    # Note that we pass `discard_sample=true` after `kwargs...`, because AbstractMCMC will
+    # tell Gibbs that _this Gibbs sample_ should be kept, and so `kwargs` will actually
+    # contain `discard_sample=false`!
+    _, new_state = step_function(
+        rng, conditioned_model, sampler, state; kwargs..., discard_sample=true
+    )
 
     new_vi_local = get_varinfo(new_state)
     # Merge the latest values for all the variables in the current sampler.

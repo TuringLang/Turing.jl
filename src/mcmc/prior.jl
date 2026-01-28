@@ -10,6 +10,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler::Prior,
     state=nothing;
+    discard_sample=false,
     kwargs...,
 )
     accs = DynamicPPL.AccumulatorTuple((
@@ -19,5 +20,6 @@ function AbstractMCMC.step(
     ))
     vi = DynamicPPL.OnlyAccsVarInfo(accs)
     _, vi = DynamicPPL.init!!(rng, model, vi, DynamicPPL.InitFromPrior())
-    return DynamicPPL.ParamsWithStats(vi), nothing
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi)
+    return transition, nothing
 end
