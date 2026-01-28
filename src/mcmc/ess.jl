@@ -29,19 +29,20 @@ end
 get_varinfo(state::TuringESSState) = state.vi
 
 # always accept in the first step
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    ::ESS,
-    vi::AbstractVarInfo;
+    ::ESS;
     discard_sample=false,
+    initial_params,
     kwargs...,
 )
-    # TODO(penelopeysm): This costs an extra model evaluation. We could avoid it by
-    # overloading AbstractMCMC.step directly and instead of generating a default
-    # VarInfo with the default accumulators, generate one that includes the
-    # PriorAccumulator, then just read off the results.
-    priors = DynamicPPL.extract_priors(model)
+    vi = DynamicPPL.VarInfo()
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(true))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.PriorDistributionAccumulator())
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
+    priors = DynamicPPL.getacc(vi, Val(:PriorDistributionAccumulator)).values
+
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
@@ -100,7 +101,6 @@ struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
             EllipticalSliceSampling.isgaussian(typeof(prior_dist)) || error(
                 "[ESS] only supports Gaussian prior distributions, but found $(typeof(prior_dist))",
             )
-            # TODO(penelopeysm): Use Bijectors here
             DynamicPPL.tovec(mean(prior_dist))
         end
         return new{typeof(model),typeof(varinfo),typeof(μ)}(model, varinfo, μ)
