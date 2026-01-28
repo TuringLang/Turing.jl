@@ -186,6 +186,7 @@ function Turing.Inference.initialstep(
     # src/sampler.jl, so we don't need to provide a default value here
     initial_params::DynamicPPL.AbstractInitStrategy,
     nadapts=0,
+    discard_sample=false,
     verbose::Bool=true,
     kwargs...,
 )
@@ -227,7 +228,11 @@ function Turing.Inference.initialstep(
     kernel = make_ahmc_kernel(spl, ϵ)
     adaptor = AHMCAdaptor(spl, hamiltonian.metric, nadapts; ϵ=ϵ)
 
-    transition = DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
+    end
     state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
@@ -239,6 +244,7 @@ function AbstractMCMC.step(
     spl::Hamiltonian,
     state::HMCState;
     nadapts=0,
+    discard_sample=false,
     kwargs...,
 )
     # Get step size
@@ -272,7 +278,11 @@ function AbstractMCMC.step(
     end
 
     # Compute next transition and state.
-    transition = DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
+    end
     newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
 
     return transition, newstate
