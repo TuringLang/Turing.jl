@@ -1,3 +1,8 @@
+# 0.42.7
+
+Avoid reevaluating the model on MCMC iterations where the transition is not saved to the chain (e.g. in initial burn-in, or when using thinning).
+Also avoid each component sampler of Gibbs unnecessarily evaluating the model once per iteration.
+
 # 0.42.6
 
 Fixed a bug in SMC and PG where results were not always stored correctly in Libtask traces (due to incorrect `objectid` checks).

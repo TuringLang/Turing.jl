@@ -144,6 +144,7 @@ function AbstractMCMC.step(
     sampler_wrapper::ExternalSampler{unconstrained};
     initial_state=nothing,
     initial_params, # passed through from sample
+    discard_sample=false,
     kwargs...,
 ) where {unconstrained}
     sampler = sampler_wrapper.sampler
@@ -188,11 +189,13 @@ function AbstractMCMC.step(
     end
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_stats = AbstractMCMC.getstats(state_inner)
-    return (
-        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
-        TuringState(state_inner, varinfo, new_parameters, f),
-    )
+    new_transition = if discard_sample
+        nothing
+    else
+        new_stats = AbstractMCMC.getstats(state_inner)
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
+    end
+    return (new_transition, TuringState(state_inner, varinfo, new_parameters, f))
 end
 
 function AbstractMCMC.step(
@@ -200,6 +203,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::ExternalSampler,
     state::TuringState;
+    discard_sample=false,
     kwargs...,
 )
     sampler = sampler_wrapper.sampler
@@ -211,9 +215,11 @@ function AbstractMCMC.step(
     )
 
     new_parameters = AbstractMCMC.getparams(f.model, state_inner)
-    new_stats = AbstractMCMC.getstats(state_inner)
-    return (
-        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats),
-        TuringState(state_inner, state.varinfo, new_parameters, f),
-    )
+    new_transition = if discard_sample
+        nothing
+    else
+        new_stats = AbstractMCMC.getstats(state_inner)
+        DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
+    end
+    return (new_transition, TuringState(state_inner, state.varinfo, new_parameters, f))
 end

@@ -400,25 +400,45 @@ function propose!!(
 end
 
 function Turing.Inference.initialstep(
-    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::MH,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
     # If we're doing random walk with a covariance matrix,
     # just link everything before sampling.
     vi = maybe_link!!(vi, spl, spl.proposals, model)
 
-    return DynamicPPL.ParamsWithStats(vi, model),
-    MHState(vi, DynamicPPL.getlogjoint_internal(vi))
+    sample = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(vi, model)
+    end
+    state = MHState(vi, DynamicPPL.getlogjoint_internal(vi))
+    return sample, state
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, spl::MH, state::MHState; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::MH,
+    state::MHState;
+    discard_sample=false,
+    kwargs...,
 )
     # Cases:
     # 1. A covariance proposal matrix
     # 2. A bunch of NamedTuples that specify the proposal space
     new_state = propose!!(rng, state, model, spl, spl.proposals)
 
-    return DynamicPPL.ParamsWithStats(new_state.varinfo, model), new_state
+    sample = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(new_state.varinfo, model)
+    end
+    return sample, new_state
 end
 
 struct MHContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
