@@ -169,6 +169,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     ::MH;
     initial_params::DynamicPPL.AbstractInitStrategy,
+    discard_sample=false,
     kwargs...,
 )
     # Generate and return initial parameters. We need to use VAIMAcc because that will
@@ -181,13 +182,17 @@ function AbstractMCMC.step(
     vi = DynamicPPL.VarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
-    return DynamicPPL.ParamsWithStats(vi, (; accepted=true)), vi
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
+    return transition, vi
 end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::MH,
     old_vi::DynamicPPL.AbstractVarInfo;
+    discard_sample=false,
     kwargs...,
 )
     old_lp = DynamicPPL.getlogjoint(old_vi)
@@ -220,7 +225,9 @@ function AbstractMCMC.step(
     else
         false, old_vi
     end
-    return DynamicPPL.ParamsWithStats(vi, (; accepted=accepted)), vi
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=accepted))
+    return transition, vi
 end
 
 """

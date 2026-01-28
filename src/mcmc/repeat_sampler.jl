@@ -55,11 +55,18 @@ function AbstractMCMC.step(
     model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler,
     state;
+    discard_sample=false,
     kwargs...,
 )
-    transition, state = AbstractMCMC.step(rng, model, sampler.sampler, state; kwargs...)
-    for _ in 2:(sampler.num_repeat)
-        transition, state = AbstractMCMC.step(rng, model, sampler.sampler, state; kwargs...)
+    discard_first_sample = discard_sample || sampler.num_repeat > 1
+    transition, state = AbstractMCMC.step(
+        rng, model, sampler.sampler, state; kwargs..., discard_sample=discard_first_sample
+    )
+    for i in 2:(sampler.num_repeat)
+        discard_ith_sample = discard_sample || i < sampler.num_repeat
+        transition, state = AbstractMCMC.step(
+            rng, model, sampler.sampler, state; kwargs..., discard_sample=discard_ith_sample
+        )
     end
     return transition, state
 end
@@ -78,14 +85,17 @@ function AbstractMCMC.step_warmup(
     model::AbstractMCMC.AbstractModel,
     sampler::RepeatSampler,
     state;
+    discard_sample=false,
     kwargs...,
 )
+    discard_first_sample = discard_sample || sampler.num_repeat > 1
     transition, state = AbstractMCMC.step_warmup(
-        rng, model, sampler.sampler, state; kwargs...
+        rng, model, sampler.sampler, state; kwargs..., discard_sample=discard_first_sample
     )
-    for _ in 2:(sampler.num_repeat)
+    for i in 2:(sampler.num_repeat)
+        discard_ith_sample = discard_sample || i < sampler.num_repeat
         transition, state = AbstractMCMC.step_warmup(
-            rng, model, sampler.sampler, state; kwargs...
+            rng, model, sampler.sampler, state; kwargs..., discard_sample=discard_ith_sample
         )
     end
     return transition, state

@@ -50,7 +50,7 @@ TuringDynamicHMCExt = "DynamicHMC"
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.9"
+AbstractMCMC = "5.13"
 AbstractPPL = "0.14"
 Accessors = "0.1"
 AdvancedHMC = "0.8.3"

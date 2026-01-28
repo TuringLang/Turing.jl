@@ -27,17 +27,29 @@ sample(gdemo([1.5, 2]), IS(), 1000)
 struct IS <: AbstractSampler end
 
 function Turing.Inference.initialstep(
-    rng::AbstractRNG, model::Model, spl::IS, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::Model,
+    spl::IS,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
-    return DynamicPPL.ParamsWithStats(vi, model), nothing
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, nothing
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::Model, spl::IS, ::Nothing; kwargs...
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::IS,
+    ::Nothing;
+    discard_sample=false,
+    kwargs...,
 )
     model = DynamicPPL.setleafcontext(model, ISContext(rng))
     _, vi = DynamicPPL.evaluate!!(model, DynamicPPL.VarInfo())
-    return DynamicPPL.ParamsWithStats(vi, model), nothing
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, nothing
 end
 
 struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext

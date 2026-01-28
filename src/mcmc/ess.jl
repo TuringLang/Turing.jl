@@ -30,7 +30,12 @@ get_varinfo(state::TuringESSState) = state.vi
 
 # always accept in the first step
 function Turing.Inference.initialstep(
-    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, vi::AbstractVarInfo; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    ::ESS,
+    vi::AbstractVarInfo;
+    discard_sample=false,
+    kwargs...,
 )
     # TODO(penelopeysm): This costs an extra model evaluation. We could avoid it by
     # overloading AbstractMCMC.step directly and instead of generating a default
@@ -41,11 +46,17 @@ function Turing.Inference.initialstep(
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    return DynamicPPL.ParamsWithStats(vi, model), TuringESSState(vi, priors)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, TuringESSState(vi, priors)
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, ::ESS, state::TuringESSState; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    ::ESS,
+    state::TuringESSState;
+    discard_sample=false,
+    kwargs...,
 )
     # obtain previous sample
     vi = state.vi
@@ -71,7 +82,8 @@ function AbstractMCMC.step(
     vi = DynamicPPL.unflatten!!(vi, sample)
     vi = DynamicPPL.setloglikelihood!!(vi, new_wrapped_state.loglikelihood)
 
-    return DynamicPPL.ParamsWithStats(vi, model), TuringESSState(vi, state.priors)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
+    return transition, TuringESSState(vi, state.priors)
 end
 
 # Prior distribution of considered random variable
