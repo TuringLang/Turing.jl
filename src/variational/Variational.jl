@@ -88,12 +88,11 @@ function q_initialize_scale(
 )
     prob = DynamicPPL.LogDensityFunction(model)
     ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
-    varinfo = DynamicPPL.VarInfo(model)
 
     n_trial = 0
     while true
         q = AdvancedVI.MvLocationScale(location, scale, basedist)
-        b = Bijectors.bijector(model; varinfo=varinfo)
+        b = Bijectors.bijector(model)
         q_trans = Bijectors.transformed(q, Bijectors.inverse(b))
         energy = mean(ℓπ, eachcol(rand(rng, q_trans, num_samples)))
 
@@ -187,7 +186,7 @@ function q_locationscale(
         end
     end
     q = AdvancedVI.MvLocationScale(μ, L, basedist)
-    b = Bijectors.bijector(model; varinfo=varinfo)
+    b = Bijectors.bijector(model)
     return Bijectors.transformed(q, Bijectors.inverse(b))
 end
 
