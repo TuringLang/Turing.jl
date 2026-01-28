@@ -125,7 +125,7 @@ function AbstractMCMC.sample(
         model,
         sampler,
         N;
-        initial_params=_convert_initial_params(initial_params),
+        initial_params=Turing._convert_initial_params(initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,
@@ -153,7 +153,7 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
-        initial_params=map(_convert_initial_params, initial_params),
+        initial_params=map(Turing._convert_initial_params, initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,
