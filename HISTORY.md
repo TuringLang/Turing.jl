@@ -1,3 +1,7 @@
+# 0.42.8
+
+Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callbaks`. See [here](https://turinglang.org/AbstractMCMC.jl/stable/callbacks/#TensorBoard-Logging). 
+
 # 0.42.7
 
 Avoid reevaluating the model on MCMC iterations where the transition is not saved to the chain (e.g. in initial burn-in, or when using thinning).
