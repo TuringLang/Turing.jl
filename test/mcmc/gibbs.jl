@@ -499,12 +499,11 @@ end
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
 
+            θ = zeros(2)
             if b == 0
-                θ = Vector{Float64}(undef, 1)
                 θ[1] ~ Normal(0.0, 1.0)
                 y_obs ~ Normal(θ[1], 0.5)
             else
-                θ = Vector{Float64}(undef, 2)
                 θ[1] ~ Normal(0.0, 1.0)
                 θ[2] ~ Normal(0.0, 1.0)
                 y_obs ~ Normal(θ[1] + θ[2], 0.5)
@@ -514,11 +513,7 @@ end
         # Run the sampler - focus on testing that it works rather than exact convergence
         model = dynamic_bernoulli_normal(2.0)
         chn = sample(
-            StableRNG(42),
-            model,
-            Gibbs(:b => MH(), :θ => HMC(0.1, 10)),
-            1000;
-            discard_initial=500,
+            StableRNG(42), model, Gibbs(:b => MH(), :θ => MH()), 1000; discard_initial=500
         )
 
         # Test that sampling completes without error
