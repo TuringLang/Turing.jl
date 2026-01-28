@@ -35,7 +35,7 @@ function check_optimisation_result(
     # Check that `result.params` contains all the keys in `true_values`
     @test Set(keys(result.params)) == Set(keys(true_values))
     # Check that their values are close
-    for (vn, val) in result.params
+    for (vn, val) in pairs(result.params)
         @test isapprox(val, true_values[vn], atol=0.01)
     end
     # Check logp and retcode
@@ -578,6 +578,7 @@ end
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
         DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
+        DynamicPPL.TestUtils.demo_nested_colons,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         true_optima = DynamicPPL.TestUtils.likelihood_optima(model)
