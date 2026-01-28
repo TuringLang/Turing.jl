@@ -81,6 +81,12 @@ function test_sampler_analytical(
     kwargs...,
 )
     @testset "$(sampler_name) on $(nameof(model))" for model in models
+        # TODO(penelopeysm): Test demo_nested_colons again when FlexiChains is in.
+        # The subparams[:, 1, :] thing just completely breaks MCMCChains.
+        if model.f == DynamicPPL.TestUtils.demo_nested_colons
+            @info "Skipping test_sampler_analytical for demo_nested_colons due to MCMCChains limitations."
+            continue
+        end
         chain = AbstractMCMC.sample(model, sampler, args...; kwargs...)
         target_values = DynamicPPL.TestUtils.posterior_mean(model)
         for vn in filter(varnames_filter, DynamicPPL.TestUtils.varnames(model))

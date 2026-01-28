@@ -170,9 +170,13 @@ function initialize_mh_with_prior_proposal(model)
 end
 
 function test_initial_params(model, sampler; kwargs...)
-    # Generate some parameters.
-    dict = DynamicPPL.values_as(DynamicPPL.VarInfo(model), Dict)
-    init_strategy = DynamicPPL.InitFromParams(dict)
+    # Generate some parameters. Doesn't really matter what.
+    vi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.ValuesAsInModelAccumulator(false),))
+    _, vi = DynamicPPL.init!!(model, vi)
+    # sometimes `dict` has a key type of Any, which won't work with InitFromParams
+    # as it expects VarName keys
+    vnt = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    init_strategy = DynamicPPL.InitFromParams(vnt)
 
     # Execute the transition with two different RNGs and check that the resulting
     # parameter values are the same. This ensures that the `initial_params` are
