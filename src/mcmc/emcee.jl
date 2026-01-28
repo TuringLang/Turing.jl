@@ -46,7 +46,12 @@ function Turing.Inference._convert_initial_params(
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG, model::Model, spl::Emcee; initial_params, kwargs...
+    rng::Random.AbstractRNG,
+    model::Model,
+    spl::Emcee;
+    initial_params,
+    discard_sample=false,
+    kwargs...,
 )
     # Sample from the prior
     n = _get_n_walkers(spl)
@@ -65,7 +70,11 @@ function AbstractMCMC.step(
     end
 
     # Compute initial transition and states.
-    transition = [DynamicPPL.ParamsWithStats(vi, model) for vi in vis]
+    transition = if discard_sample
+        nothing
+    else
+        [DynamicPPL.ParamsWithStats(vi, model) for vi in vis]
+    end
 
     linked_vi = DynamicPPL.link!!(vis[1], model)
     state = EmceeState(
@@ -80,7 +89,12 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::Model, spl::Emcee, state::EmceeState; kwargs...
+    rng::AbstractRNG,
+    model::Model,
+    spl::Emcee,
+    state::EmceeState;
+    discard_sample=false,
+    kwargs...,
 )
     # Generate a log joint function.
     densitymodel = AMH.DensityModel(Base.Fix1(LogDensityProblems.logdensity, state.ldf))
@@ -89,10 +103,14 @@ function AbstractMCMC.step(
     _, states = AbstractMCMC.step(rng, densitymodel, spl.ensemble, state.states)
 
     # Compute the next transition and state.
-    transition = map(states) do _state
-        return DynamicPPL.ParamsWithStats(
-            _state.params, state.ldf, AbstractMCMC.getstats(_state)
-        )
+    transition = if discard_sample
+        nothing
+    else
+        map(states) do _state
+            return DynamicPPL.ParamsWithStats(
+                _state.params, state.ldf, AbstractMCMC.getstats(_state)
+            )
+        end
     end
     newstate = EmceeState(state.ldf, states)
 
