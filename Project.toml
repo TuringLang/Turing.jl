@@ -43,7 +43,7 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 
 [sources]
-DynamicPPL = {rev = "py/future", url = "https://github.com/TuringLang/DynamicPPL.jl"}
+DynamicPPL = {rev = "breaking", url = "https://github.com/TuringLang/DynamicPPL.jl"}
 
 [extensions]
 TuringDynamicHMCExt = "DynamicHMC"
