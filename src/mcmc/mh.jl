@@ -282,7 +282,6 @@ function AbstractMCMC.step(
         new_raw_values, new_linked_values
     )
     # Calculate the log-acceptance probability.
-    @show new_raw_values new_lp
     log_a = (
         new_lp - old_lp +
         log_proposal_density(old_vi, init_strategy_given_new, unspecified_priors) -
