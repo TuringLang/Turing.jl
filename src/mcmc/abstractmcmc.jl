@@ -20,23 +20,27 @@ parameters for sampling are chosen if not specified by the user. By default, thi
 init_strategy(::AbstractSampler) = DynamicPPL.InitFromPrior()
 
 """
-    default_varinfo(rng, model, sampler)
+    _convert_initial_params(initial_params)
 
-Return a default varinfo object for the given `model` and `sampler`.
-The default method for this returns a NTVarInfo (i.e. 'typed varinfo').
+Convert `initial_params` to a `DynamicPPl.AbstractInitStrategy` if it is not already one, or
+throw a useful error message.
 """
-function default_varinfo(
-    rng::Random.AbstractRNG, model::DynamicPPL.Model, ::AbstractSampler
-)
-    # Note that in `AbstractMCMC.step`, the values in the varinfo returned here are
-    # immediately overwritten by a subsequent call to `init!!`. The reason why we
-    # _do_ create a varinfo with parameters here (as opposed to simply returning
-    # an empty `typed_varinfo(VarInfo())`) is to avoid issues where pushing to an empty
-    # typed VarInfo would fail. This can happen if two VarNames have different types
-    # but share the same symbol (e.g. `x.a` and `x.b`).
-    # TODO(mhauru) Fix push!! to work with arbitrary lens types, and then remove the arguments
-    # and return an empty VarInfo instead.
-    return DynamicPPL.typed_varinfo(VarInfo(rng, model))
+_convert_initial_params(initial_params::DynamicPPL.AbstractInitStrategy) = initial_params
+function _convert_initial_params(nt::NamedTuple)
+    @info "Using a NamedTuple for `initial_params` will be deprecated in a future release. Please use `InitFromParams(namedtuple)` instead."
+    return DynamicPPL.InitFromParams(nt)
+end
+function _convert_initial_params(d::AbstractDict{<:VarName})
+    @info "Using a Dict for `initial_params` will be deprecated in a future release. Please use `InitFromParams(dict)` instead."
+    return DynamicPPL.InitFromParams(d)
+end
+function _convert_initial_params(::AbstractVector{<:Real})
+    errmsg = "`initial_params` must be a `NamedTuple`, an `AbstractDict{<:VarName}`, or ideally a `DynamicPPL.AbstractInitStrategy`. Using a vector of parameters for `initial_params` is no longer supported. Please see https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters for details on how to update your code."
+    throw(ArgumentError(errmsg))
+end
+function _convert_initial_params(@nospecialize(_::Any))
+    errmsg = "`initial_params` must be a `NamedTuple`, an `AbstractDict{<:VarName}`, or a `DynamicPPL.AbstractInitStrategy`."
+    throw(ArgumentError(errmsg))
 end
 
 #########################################
@@ -144,15 +148,10 @@ function AbstractMCMC.step(
     initial_params,
     kwargs...,
 )
-    # Generate the default varinfo. Note that any parameters inside this varinfo
-    # will be immediately overwritten by the next call to `init!!`.
-    vi = default_varinfo(rng, model, spl)
-
-    # Fill it with initial parameters. Note that, if `InitFromParams` is used, the
-    # parameters provided must be in unlinked space (when inserted into the
-    # varinfo, they will be adjusted to match the linking status of the
-    # varinfo).
-    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
+    # Generate a VarInfo with initial parameters. Note that, if `InitFromParams` is used,
+    # the parameters provided must be in unlinked space (when inserted into the varinfo,
+    # they will be adjusted to match the linking status of the varinfo).
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params)
 
     # Call the actual function that does the first step.
     return initialstep(rng, model, spl, vi; initial_params, kwargs...)

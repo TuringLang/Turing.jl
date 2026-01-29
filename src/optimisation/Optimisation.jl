@@ -11,7 +11,6 @@ using Random: Random
 using SciMLBase: SciMLBase
 using ADTypes: ADTypes
 using StatsBase: StatsBase
-using Accessors: Accessors
 using Printf: Printf
 using ForwardDiff: ForwardDiff
 using StatsAPI: StatsAPI
@@ -56,7 +55,7 @@ end
 """
     ModeResult{
         E<:ModeEstimator,
-        P<:AbstractDict{<:VarName,<:Any}
+        P<:DynamicPPL.VarNamedTuple,
         LP<:Real,
         L<:DynamicPPL.LogDensityFunction,
         O<:Any,
@@ -69,11 +68,7 @@ A wrapper struct to store various results from a MAP or MLE estimation.
 $(TYPEDFIELDS)
 """
 struct ModeResult{
-    E<:ModeEstimator,
-    P<:AbstractDict{<:AbstractPPL.VarName,<:Any},
-    LP<:Real,
-    L<:LogDensityFunction,
-    O,
+    E<:ModeEstimator,P<:DynamicPPL.VarNamedTuple,LP<:Real,L<:DynamicPPL.LogDensityFunction,O
 } <: StatsBase.StatisticalModel
     "The type of mode estimation (MAP or MLE)."
     estimator::E
@@ -135,8 +130,10 @@ function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
     println(io, "  ├ estimator : $(typeof(m.estimator))")
     println(io, "  ├ lp        : $(m.lp)")
     entries = length(m.params) == 1 ? "entry" : "entries"
-    println(io, "  ├ params    : $(typeof(m.params)) with $(length(m.params)) $(entries)")
-    for (i, (vn, val)) in enumerate(m.params)
+    println(
+        io, "  ├ params    : DynamicPPL.VarNamedTuple with $(length(m.params)) $(entries)"
+    )
+    for (i, (vn, val)) in enumerate(pairs(m.params))
         tree_char = i == length(m.params) ? "└" : "├"
         println(io, "  │             $(tree_char) $vn => $(val)")
     end
@@ -165,7 +162,13 @@ struct ConstraintCheckAccumulator <: AbstractAccumulator
 end
 DynamicPPL.accumulator_name(::ConstraintCheckAccumulator) = :OptimConstraintCheck
 function DynamicPPL.accumulate_assume!!(
-    acc::ConstraintCheckAccumulator, val::Any, ::Any, vn::VarName, dist::Distribution
+    acc::ConstraintCheckAccumulator,
+    val::Any,
+    tval::Any,
+    logjac::Any,
+    vn::VarName,
+    dist::Distribution,
+    template::Any,
 )
     # `val`, `acc.lb`, and `acc.ub` are all in unlinked space.
     lb = get_constraints(acc.lb, vn)

@@ -11,12 +11,9 @@ using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
-using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
-
-using Accessors: Accessors
 
 using Printf: Printf
 using Random: Random
@@ -102,6 +99,7 @@ export
     # Samplers - Turing.Inference
     Prior,
     MH,
+    LinkedRW,
     Emcee,
     ESS,
     Gibbs,

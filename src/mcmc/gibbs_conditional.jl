@@ -16,21 +16,29 @@ sampler = Gibbs(
 )
 ```
 
-Here `get_cond_dists(c::Dict{<:VarName})` should be a function that takes a `Dict` mapping
-the conditioned variables (anything other than `var1` and `var2`) to their values, and
-returns the conditional posterior distributions for `var1` and `var2`. You may, of course,
-have any number of variables being sampled as a block in this manner, we only use two as an
-example. The return value of `get_cond_dists` should be one of the following:
+Here `get_cond_dists(vnt::VarNamedTuple)` should be a function that takes a `VarNamedTuple`
+that contains the values of all other variables (apart from `var1` and `var2`), and returns
+the conditional posterior distributions for `var1` and `var2`. `VarNamedTuple`s behave very
+similarly to `Dict{VarName,Any}`s, but are more efficient and more general: you can obtain
+values simply by using, e.g. `vnt[@varname(var3)]`.
+
+You may, of course, have any number of variables being sampled as a block in this manner, we
+only use two as an example.
+
+The return value of `get_cond_dists` should be one of the following:
+
 - A single `Distribution`, if only one variable is being sampled.
 - An `AbstractDict{<:VarName,<:Distribution}` that maps the variables being sampled to their
   conditional posteriors E.g. `Dict(@varname(var1) => dist1, @varname(var2) => dist2)`.
 - A `NamedTuple` of `Distribution`s, which is like the `AbstractDict` case but can be used
-  if all the variable names are single `Symbol`s, and may be more performant. E.g.
+  if all the variable names are single `Symbol`s, and may be more performant, e.g.:
   `(; var1=dist1, var2=dist2)`.
 
 # Examples
 
 ```julia
+using Turing
+
 # Define a model
 @model function inverse_gdemo(x)
     precision ~ Gamma(2, inv(3))
@@ -43,24 +51,20 @@ end
 
 # Define analytical conditionals. See
 # https://en.wikipedia.org/wiki/Conjugate_prior#When_likelihood_function_is_a_continuous_distribution
-function cond_precision(c)
+function cond_precision(vnt)
     a = 2.0
     b = 3.0
-    # We use AbstractPPL.getvalue instead of indexing into `c` directly to guard against
-    # issues where e.g. you try to get `c[@varname(x[1])]` but only `@varname(x)` is present
-    # in `c`. `getvalue` handles that gracefully, `getindex` doesn't. In this case
-    # `getindex` would suffice, but `getvalue` is good practice.
-    m = AbstractPPL.getvalue(c, @varname(m))
-    x = AbstractPPL.getvalue(c, @varname(x))
+    m = vnt[@varname(m)]
+    x = vnt[@varname(x)]
     n = length(x)
     a_new = a + (n + 1) / 2
     b_new = b + sum(abs2, x .- m) / 2 + m^2 / 2
     return Gamma(a_new, 1 / b_new)
 end
 
-function cond_m(c)
-    precision = AbstractPPL.getvalue(c, @varname(precision))
-    x = AbstractPPL.getvalue(c, @varname(x))
+function cond_m(vnt)
+    precision = vnt[@varname(precision)]
+    x = vnt[@varname(x)]
     n = length(x)
     m_mean = sum(x) / (n + 1)
     m_var = 1 / (precision * (n + 1))
@@ -82,26 +86,42 @@ end
 isgibbscomponent(::GibbsConditional) = true
 
 """
-    build_variable_dict(model::DynamicPPL.Model)
+    build_values_vnt(model::DynamicPPL.Model)
 
-Traverse the context stack of `model` and build a `Dict` of all the variable values that are
-set in GibbsContext, ConditionContext, or FixedContext.
+Traverse the context stack of `model` and build a `VarNamedTuple` of all the variable values
+that are set in GibbsContext, ConditionContext, or FixedContext.
 """
-function build_variable_dict(model::DynamicPPL.Model)
+function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
-    cond_vals = DynamicPPL.conditioned(context)
-    fixed_vals = DynamicPPL.fixed(context)
-    # TODO(mhauru) Can we avoid invlinking all the time?
-    global_vi = DynamicPPL.invlink(get_gibbs_global_varinfo(context), model)
-    # TODO(mhauru) This creates a lot of Dicts, which are then immediately merged into one.
-    # Also, DynamicPPL.to_varname_dict is known to be inefficient. Make a more efficient
-    # implementation.
-    return merge(
-        DynamicPPL.values_as(global_vi, Dict),
-        DynamicPPL.to_varname_dict(cond_vals),
-        DynamicPPL.to_varname_dict(fixed_vals),
-        DynamicPPL.to_varname_dict(model.args),
-    )
+    # TODO(penelopeysm): Use VNTs for ConditionContext and FixedContext
+    cond_vals = DynamicPPL.to_varname_dict(DynamicPPL.conditioned(context))
+    fixed_vals = DynamicPPL.to_varname_dict(DynamicPPL.fixed(context))
+    arg_vals = DynamicPPL.to_varname_dict(model.args)
+    # Need to get the invlinked values as a VNT
+    vi = deepcopy(get_gibbs_global_varinfo(context))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    # need to remove the Gibbs conditioning so that we can get all variables in the VarInfo
+    defmodel = replace_gibbs_context(model)
+    _, vi = DynamicPPL.evaluate!!(defmodel, vi)
+    global_vals = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    # Merge them.
+    # TODO(penelopeysm): We don't have templating information here. This could be fixed if
+    # we used VNTs everywhere -- in which case we can just merge the VNTs. Although we
+    # might have to be careful if a conditioned VNT has no templates and we attempt to
+    # merge into one that does......
+    for (vn, val) in [pairs(cond_vals)..., pairs(fixed_vals)..., pairs(arg_vals)...]
+        global_vals = BangBang.setindex!!(global_vals, val, vn)
+    end
+    return global_vals
+end
+
+replace_gibbs_context(::GibbsContext) = DefaultContext()
+replace_gibbs_context(::DynamicPPL.AbstractContext) = DefaultContext()
+function replace_gibbs_context(c::DynamicPPL.AbstractParentContext)
+    return DynamicPPL.setchildcontext(c, replace_gibbs_context(DynamicPPL.childcontext(c)))
+end
+function replace_gibbs_context(m::DynamicPPL.Model)
+    return DynamicPPL.contextualize(m, replace_gibbs_context(m.context))
 end
 
 function get_gibbs_global_varinfo(context::GibbsContext)
@@ -139,7 +159,7 @@ function AbstractMCMC.step(
 )
     # Get all the conditioned variable values from the model context. This is assumed to
     # include a GibbsContext as part of the context stack.
-    condvals = build_variable_dict(model)
+    condvals = build_values_vnt(model)
     conddists = sampler.get_cond_dists(condvals)
 
     # We support three different kinds of return values for `sample.get_cond_dists`, to make

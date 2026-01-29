@@ -48,7 +48,6 @@ function AbstractMCMC.step(
 )
     model = DynamicPPL.setleafcontext(model, ISContext(rng))
     _, vi = DynamicPPL.evaluate!!(model, DynamicPPL.VarInfo())
-    vi = DynamicPPL.typed_varinfo(vi)
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
     return transition, nothing
 end
@@ -58,16 +57,19 @@ struct ISContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
 end
 
 function DynamicPPL.tilde_assume!!(
-    ctx::ISContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
+    ctx::ISContext, dist::Distribution, vn::VarName, template, vi::AbstractVarInfo
 )
     if haskey(vi, vn)
-        r = vi[vn]
+        tval = vi.values[vn]
+        val, logjac = with_logabsdet_jacobian(
+            DynamicPPL.get_transform(tval), DynamicPPL.get_internal_value(tval)
+        )
     else
-        r = rand(ctx.rng, dist)
-        vi = push!!(vi, vn, r, dist)
+        val = rand(ctx.rng, dist)
+        vi, logjac, tval = DynamicPPL.setindex_with_dist!!(vi, val, dist, vn, template)
     end
-    vi = DynamicPPL.accumulate_assume!!(vi, r, 0.0, vn, dist)
-    return r, vi
+    vi = DynamicPPL.accumulate_assume!!(vi, val, tval, logjac, vn, dist, template)
+    return val, vi
 end
 function DynamicPPL.tilde_observe!!(
     ::ISContext, right::Distribution, left, vn::Union{VarName,Nothing}, vi::AbstractVarInfo

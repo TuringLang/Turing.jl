@@ -134,7 +134,7 @@ end
 
 # get_varinfo must return something from which the correct parameters can be obtained
 function get_varinfo(state::TuringState)
-    return DynamicPPL.unflatten(state.varinfo, state.params)
+    return DynamicPPL.unflatten!!(state.varinfo, state.params)
 end
 get_varinfo(state::AbstractVarInfo) = state
 

@@ -35,7 +35,7 @@ function check_optimisation_result(
     # Check that `result.params` contains all the keys in `true_values`
     @test Set(keys(result.params)) == Set(keys(true_values))
     # Check that their values are close
-    for (vn, val) in result.params
+    for (vn, val) in pairs(result.params)
         @test isapprox(val, true_values[vn], atol=0.01)
     end
     # Check logp and retcode
@@ -554,7 +554,7 @@ end
                 val = AbstractPPL.getvalue(true_optima, vn)
                 for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                     expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                    actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                    actual = result.params[vn_leaf]
                     @test expected ≈ actual atol = 0.05
                 end
             end
@@ -578,6 +578,7 @@ end
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
         DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
+        DynamicPPL.TestUtils.demo_nested_colons,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         true_optima = DynamicPPL.TestUtils.likelihood_optima(model)
@@ -601,7 +602,7 @@ end
                     val = AbstractPPL.getvalue(true_optima, vn)
                     for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                         expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                        actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                        actual = result.params[vn_leaf]
                         if model.f in allowed_incorrect_mle
                             @test isfinite(actual)
                         else
@@ -734,7 +735,7 @@ end
         end
         m = Turing.Optimisation.ModeResult(
             MLE(),
-            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
+            DynamicPPL.VarNamedTuple((; x=0.0, y=0.0)),
             0.0,
             false,
             DynamicPPL.LogDensityFunction(saddle_model(), DynamicPPL.getloglikelihood),

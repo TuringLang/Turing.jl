@@ -23,10 +23,11 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
             # Latent assignment.
             z = zeros(Int, length(x))
 
-            # Locations of the infinitely many clusters.
-            μ = zeros(Float64, 0)
+            # Locations of the infinitely many clusters. µ[i] represents the location
+            # of the cluster number z[i].
+            μ = zeros(Float64, length(x))
 
-            for i in 1:length(x)
+            for i in eachindex(x)
 
                 # Number of clusters.
                 K = maximum(z)
@@ -37,14 +38,12 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
                 # Create a new cluster?
                 if z[i] > K
-                    push!(μ, 0.0)
-
                     # Draw location of new cluster.
-                    μ[z[i]] ~ H
+                    μ[i] ~ H
                 end
 
                 # Draw observation.
-                x[i] ~ Normal(μ[z[i]], 1.0)
+                x[i] ~ Normal(μ[i], 1.0)
             end
         end
 
