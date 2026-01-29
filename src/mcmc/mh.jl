@@ -2,19 +2,23 @@ using AdvancedMH: AdvancedMH
 using BangBang: BangBang
 
 """
-    MH([proposal])
+    MH(vn1 => proposal1, vn2 => proposal2, ...)
 
 Construct a Metropolis-Hastings algorithm.
 
-The argument `proposal` can be
+Each argument `proposal` can be
 
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as
   the proposal distribution.
-- A mapping of `VarName`s to a `Distribution`, or generic callable that returns a
-  conditional proposal distribution.
-- A covariance matrix to use as for mean-zero multivariate normal proposals. Note that if a
-  covariance matrix is passed, sampling occurs in linked space, so the size of an MH step
-  may differ from the size of a step in parameter space.
+- A mapping of `VarName`s to a `Distribution`, `LinkedRW`, or a generic callable that
+  defines a conditional proposal distribution.
+
+
+    MH(cov_matrix)
+
+Construct a Metropolis-Hastings algorithm that performs random-walk sampling in linked
+space, with proposals drawn from a multivariate normal distribution with the given
+covariance matrix.
 
 # Examples
 
@@ -90,6 +94,7 @@ proposal in linked space. For this, you can use `LinkedRW` as a proposal, which 
 covariance matrix as an argument:
 
 ```julia
+using LinearAlgebra: Diagonal
 spl = MH(
     @varname(s) => InverseGamma(2, 3),
     @varname(m) => LinkedRW(Diagonal([0.25]))
@@ -132,7 +137,9 @@ struct MH{I} <: AbstractSampler
     "Linked variables, i.e., variables which have a `LinkedRW` proposal."
     linkedrw_vns::Set{VarName}
 end
-MH() = MH(vnt -> DynamicPPL.InitFromPrior(), Set{VarName}())
+# If no proposals are given, then 
+#
+MH() = MH(Returns(DynamicPPL.InitFromPrior()), Set{VarName}())
 
 """
     LinkedRW(cov_matrix)
