@@ -165,12 +165,9 @@ function DynamicPPL.init(
         is_linkedrw, dist = strategy.proposals[vn]
         if is_linkedrw
             # LinkedRW proposals end up here.
-            # TODO(penelopeysm): The transform here is not actually used since
-            # tilde_assume!! will recalculate it. I could put a placeholder here, but it
-            # feels a bit dangerous.
             transform = DynamicPPL.from_linked_vec_transform(prior)
-            val_size = hasmethod(size, Tuple{typeof(dist)}) ? size(prior) : ()
-            return DynamicPPL.LinkedVectorValue(rand(rng, dist), transform, val_size)
+            linked_vec = rand(rng, dist)
+            return DynamicPPL.UntransformedValue(transform(linked_vec))
         else
             # Static or conditional proposal in untransformed space.
             return DynamicPPL.UntransformedValue(rand(rng, dist))
@@ -208,9 +205,8 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
             elseif proposal isa LinkedRW
                 # The distribution we draw from is an MvNormal, centred at the current
                 # linked value, and with the given covariance matrix. We also need to add a
-                # flag to signal that this is being sampled in linked space, and that the
-                # proposal should return a LinkedVectorValue.
-                # linked_vals[vn] is a MHLinkedVal struct (defined below)
+                # flag to signal that this is being sampled in linked space.
+                # `linked_vals[vn]` is a MHLinkedVal struct (defined below)
                 (true, MvNormal(linked_vals[vn].val, proposal.cov_matrix))
             else
                 # It's a callable that takes `vnt` and returns a distribution.
@@ -367,15 +363,11 @@ struct MHLinkedVal{V,T}
     sz::T
 end
 function (s::StoreLinkedValues)(val, tval, logjac, vn, dist)
-    if vn in s.linkedrw_vns
-        if tval isa DynamicPPL.LinkedVectorValue
-            return MHLinkedVal(DynamicPPL.get_internal_value(tval), size(val))
-        else
-            linked_vec = DynamicPPL.to_linked_vec_transform(dist)(val)
-            return MHLinkedVal(linked_vec, size(val))
-        end
+    return if vn in s.linkedrw_vns
+        linked_vec = DynamicPPL.to_linked_vec_transform(dist)(val)
+        MHLinkedVal(linked_vec, size(val))
     else
-        return DynamicPPL.DoNotAccumulate()
+        DynamicPPL.DoNotAccumulate()
     end
 end
 function MHLinkedValuesAccumulator(vns::Set{VarName})
