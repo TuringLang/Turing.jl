@@ -470,15 +470,16 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, ::MH, state::AbstractVarInfo, params::AbstractVarInfo
+    model::DynamicPPL.Model, spl::MH, ::AbstractVarInfo, params::AbstractVarInfo
 )
     # Setting `params` into `state` really just means using `params` itself, but we
     # need to update the logprob. We also need to be a bit more careful, because
     # the `state` here carries a VAIMAcc, which is needed for the MH step() function
     # but may not be present in `params`. So we need to make sure that the value
     # we return from this function also has a VAIMAcc which corresponds to the
-    # values in `params`.
+    # values in `params`. Likewise with MHLinkedValuesAccumulator.
     params = DynamicPPL.setacc!!(params, DynamicPPL.ValuesAsInModelAccumulator(false))
+    params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator(spl.linkedrw_vns))
     return last(DynamicPPL.evaluate!!(model, params))
 end
 

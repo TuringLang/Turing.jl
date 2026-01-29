@@ -42,9 +42,8 @@ This implies the use of static proposals for each variable. If a variable is not
 its prior distribution is used as the proposal.
 
 ```julia
-# Use a static proposal for s² (which happens to be the same
-# as the prior) and a static proposal for m (note that this
-# isn't a random walk proposal).
+# Use a static proposal for s² (which happens to be the same as the prior) and a static
+# proposal for m (note that this isn't a random walk proposal).
 spl = MH(
     # This happens to be the same as the prior
     @varname(s) => InverseGamma(2, 3),
@@ -85,89 +84,154 @@ spl = MH(
 )
 ```
 
-Providing a covariance matrix will cause `MH` to perform random-walk sampling in the
-transformed space with proposals drawn from a multivariate normal distribution. The provided
-matrix must be positive semi-definite and square:
+**Note that when using conditional proposals, the values obtained by indexing into the
+`VarNamedTuple` are always in unlinked space.** Sometimes, you may want to define a random-walk
+proposal in linked space. For this, you can use `LinkedRW` as a proposal, which takes a
+covariance matrix as an argument:
+
+```julia
+spl = MH(
+    @varname(s) => InverseGamma(2, 3),
+    @varname(m) => LinkedRW(Diagonal([0.25]))
+)
+```
+
+In the above example, `LinkedRW(Diagonal([0.25]))` defines a random-walk proposal for `m` in
+linked space. This is in fact the same as the conditional proposal above, because `m` is
+already unconstrained, and so linked space and unlinked space are the same for this
+variable. However, `s` is constrained to be positive, and so using a `LinkedRW` proposal for
+`s` would be different from using a normal proposal in unlinked space (`LinkedRW` will
+ensure that the proposals for `s` always remain positive in unlinked space).
+
+```julia
+spl = MH(
+    @varname(s) => LinkedRW(Diagonal([0.5])),
+    @varname(m) => LinkedRW(Diagonal([0.25])),
+)
+```
+
+Finally, providing just a single covariance matrix will cause `MH` to perform random-walk
+sampling in linked space with proposals drawn from a multivariate normal distribution. All
+variables are linked in this case. The provided matrix must be positive semi-definite and
+square. This example is therefore equivalent to the previous one:
 
 ```julia
 # Providing a custom variance-covariance matrix
 spl = MH(
-    [0.25 0.05;
-     0.05 0.50]
+    [0.50 0;
+     0 0.25]
 )
 ```
 """
 struct MH{I} <: AbstractSampler
-    "A function which takes the VarNamedTuple of values at the previous step and returns an
-    AbstractInitStrategy. We don't have access to the VNT until the actual sampling, so we
-    have to use a function here."
+    "A function which takes two arguments: (1) the VarNamedTuple of raw values at the
+    previous step, and (2) a VarNamedTuple of linked values for any variables that have
+    `LinkedRW` proposals; and returns an AbstractInitStrategy. We don't have access to the
+    VNTs until the actual sampling, so we have to use a function here."
     init_strategy_constructor::I
+    "Linked variables, i.e., variables which have a `LinkedRW` proposal."
+    linkedrw_vns::Set{VarName}
 end
-MH() = MH(vnt -> DynamicPPL.InitFromPrior())
+MH() = MH(vnt -> DynamicPPL.InitFromPrior(), Set{VarName}())
+
+"""
+    LinkedRW(cov_matrix)
+
+Define a random-walk proposal in linked space with the given covariance matrix. Note that
+the covariance matrix must correspond exactly to the size of the variable in linked space.
+"""
+struct LinkedRW
+    # TODO(penelopeysm): Use PDMats to check?
+    "The covariance matrix to use for the random-walk proposal in linked space."
+    cov_matrix::AbstractMatrix
+end
 
 struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInitStrategy
-    "A mapping of VarNames to Distributions that they should be sampled from. If the VarName
-    is not in this VarNamedTuple, then it will be sampled from the prior."
+    "A mapping of VarNames to Tuple{Bool,Distribution}s that they should be sampled from. If
+    the VarName is not in this VarNamedTuple, then it will be sampled from the prior. The
+    Bool indicates whether the proposal is in linked space (true, i.e., the strategy should
+    return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
+    should return an `UntransformedValue`)."
     proposals::V
+    "A cache of the prior distributions for any variables that were not given an explicit
+    proposal. This is needed to compute the proposal density during MH steps."
     priors::Dict{VarName,Distribution}
 end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, prior::Distribution, strategy::InitFromProposals
 )
-    dist = if haskey(strategy.proposals, vn)
+    if haskey(strategy.proposals, vn)
         # this is the proposal that the user wanted
-        strategy.proposals[vn]
+        is_linkedrw, dist = strategy.proposals[vn]
+        if is_linkedrw
+            # LinkedRW proposals end up here.
+            # TODO(penelopeysm): The transform here is not actually used since
+            # tilde_assume!! will recalculate it. I could put a placeholder here, but it
+            # feels a bit dangerous.
+            transform = DynamicPPL.from_linked_vec_transform(prior)
+            val_size = hasmethod(size, Tuple{typeof(dist)}) ? size(prior) : ()
+            return DynamicPPL.LinkedVectorValue(rand(rng, dist), transform, val_size)
+        else
+            # Static or conditional proposal in untransformed space.
+            return DynamicPPL.UntransformedValue(rand(rng, dist))
+        end
     else
-        # dist is the prior. We need to cache it for later use when calculating the proposal
-        # density.
+        # No proposal was specified for this variable, so we sample from the prior. We
+        # also need to cache the prior for later use in log-proposal density calculations.
         strategy.priors[vn] = prior
-        prior
+        return DynamicPPL.UntransformedValue(rand(rng, prior))
     end
-    return DynamicPPL.UntransformedValue(rand(rng, dist))
 end
 
 const SymOrVNPair = Pair{<:Union{Symbol,VarName},<:Any}
 
 function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     vn_proposal_pairs = (pair1, pairs...)
-    return MH(
-        # It is assumed that `vnt` is a VarNamedTuple that has all the variables' values
-        # already set. NOTE: It doesn't store `AbstractTransformedValue`s, but the actual
-        # raw values.
-        vnt -> begin
-            proposals = DynamicPPL.VarNamedTuple()
-            for pair in vn_proposal_pairs
-                vn, proposal = pair
-                # Convert all keys to VarNames.
-                if vn isa Symbol
-                    vn = DynamicPPL.VarName{vn}()
-                elseif !(vn isa DynamicPPL.VarName)
-                    throw(
-                        ArgumentError(
-                            "first element of each pair must be a Symbol or VarName"
-                        ),
-                    )
-                end
-                # Check whether the proposal is a Distribution.
-                proposal_dist = if proposal isa Distribution
-                    proposal
-                else
-                    # It's a callable that takes `vnt` and returns a distribution.
-                    proposal(vnt)
-                end
-                proposals = DynamicPPL.templated_setindex!!(
-                    proposals, proposal_dist, vn, vnt.data[AbstractPPL.getsym(vn)]
+    # It is assumed that `raw_vals` is a VarNamedTuple that has all the variables' values
+    # already set. Furthermore, `linked_vals` is a VarNamedTuple that has the linked values
+    # for any variables that have `LinkedRW` proposals.
+    function init_strategy_constructor(raw_vals, linked_vals)
+        proposals = DynamicPPL.VarNamedTuple()
+        for pair in vn_proposal_pairs
+            vn, proposal = pair
+            # Convert all keys to VarNames.
+            if vn isa Symbol
+                vn = DynamicPPL.VarName{vn}()
+            elseif !(vn isa DynamicPPL.VarName)
+                throw(
+                    ArgumentError("first element of each pair must be a Symbol or VarName")
                 )
             end
-            return InitFromProposals(proposals, Dict{VarName,Distribution}())
-        end,
+            # Check whether the proposal is a Distribution.
+            proposal_dist = if proposal isa Distribution
+                (false, proposal)
+            elseif proposal isa LinkedRW
+                # The distribution we draw from is an MvNormal, centred at the current
+                # linked value, and with the given covariance matrix. We also need to add a
+                # flag to signal that this is being sampled in linked space, and that the
+                # proposal should return a LinkedVectorValue.
+                # linked_vals[vn] is a MHLinkedVal struct (defined below)
+                (true, MvNormal(linked_vals[vn].val, proposal.cov_matrix))
+            else
+                # It's a callable that takes `vnt` and returns a distribution.
+                (false, proposal(raw_vals))
+            end
+            proposals = DynamicPPL.templated_setindex!!(
+                proposals, proposal_dist, vn, raw_vals.data[AbstractPPL.getsym(vn)]
+            )
+        end
+        return InitFromProposals(proposals, Dict{VarName,Distribution}())
+    end
+    return MH(
+        init_strategy_constructor,
+        Set{VarName}(vn for (vn, proposal) in vn_proposal_pairs if proposal isa LinkedRW),
     )
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    ::MH;
+    spl::MH;
     initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
@@ -181,6 +245,7 @@ function AbstractMCMC.step(
     # inside Gibbs needs a full VarInfo.
     vi = DynamicPPL.VarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator(spl.linkedrw_vns))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
@@ -197,23 +262,31 @@ function AbstractMCMC.step(
 )
     old_lp = DynamicPPL.getlogjoint(old_vi)
     # Get the init strategy for this step from the VAIMAcc.
-    old_params = DynamicPPL.getacc(old_vi, Val(:ValuesAsInModel)).values
-    init_strategy_given_old = spl.init_strategy_constructor(old_params)
+    old_raw_values = DynamicPPL.getacc(old_vi, Val(:ValuesAsInModel)).values
+    old_linked_values = DynamicPPL.getacc(old_vi, Val(MH_ACC_NAME)).values
+    init_strategy_given_old = spl.init_strategy_constructor(
+        old_raw_values, old_linked_values
+    )
     # Generate some new parameters.
     # TODO(penelopeysm): This could also be an OnlyAccsVarInfo.
     new_vi = DynamicPPL.VarInfo()
     new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator(spl.linkedrw_vns))
     _, new_vi = DynamicPPL.init!!(rng, model, new_vi, init_strategy_given_old)
     new_lp = DynamicPPL.getlogjoint(new_vi)
-    new_params = DynamicPPL.getacc(new_vi, Val(:ValuesAsInModel)).values
+    new_raw_values = DynamicPPL.getacc(new_vi, Val(:ValuesAsInModel)).values
+    new_linked_values = DynamicPPL.getacc(new_vi, Val(MH_ACC_NAME)).values
     # We need to get the priors that have been cached inside `init_strategy`.
     unspecified_priors = if init_strategy_given_old isa InitFromProposals
         init_strategy_given_old.priors
     else
         Dict{VarName,Distribution}()
     end
-    init_strategy_given_new = spl.init_strategy_constructor(new_params)
+    init_strategy_given_new = spl.init_strategy_constructor(
+        new_raw_values, new_linked_values
+    )
     # Calculate the log-acceptance probability.
+    @show new_raw_values new_lp
     log_a = (
         new_lp - old_lp +
         log_proposal_density(old_vi, init_strategy_given_new, unspecified_priors) -
@@ -262,9 +335,15 @@ function log_proposal_density(
     # an explicit proposal (in `strategy.proposals`) we need to know what their prior was.
     vals = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
     g = 0.0
-    for (vn, proposal) in pairs(strategy.proposals)
-        # proposal isa Distribution
-        g += logpdf(proposal, vals[vn])
+    for (vn, (is_linkedrw, proposal)) in pairs(strategy.proposals)
+        if is_linkedrw
+            # LinkedRW proposals end up here, but they are symmetric proposals, so we can
+            # skip their contribution.
+            continue
+        else
+            # proposal isa Distribution
+            g += logpdf(proposal, vals[vn])
+        end
     end
     for (vn, prior) in unspecified_priors
         g += logpdf(prior, vals[vn])
@@ -275,4 +354,30 @@ end
 # RWMH can be delegated to AdvancedMH.
 function MH(cov_matrix::AbstractMatrix)
     return externalsampler(AdvancedMH.RWMH(MvNormal(cov_matrix)); unconstrained=true)
+end
+
+# Accumulator to store linked values; but only the ones that have a LinkedRW proposal.
+const MH_ACC_NAME = :MHLinkedValuesAccumulator
+struct StoreLinkedValues
+    "The set of VarNames that have LinkedRW proposals."
+    linkedrw_vns::Set{VarName}
+end
+struct MHLinkedVal{V,T}
+    val::V
+    sz::T
+end
+function (s::StoreLinkedValues)(val, tval, logjac, vn, dist)
+    if vn in s.linkedrw_vns
+        if tval isa DynamicPPL.LinkedVectorValue
+            return MHLinkedVal(DynamicPPL.get_internal_value(tval), size(val))
+        else
+            linked_vec = DynamicPPL.to_linked_vec_transform(dist)(val)
+            return MHLinkedVal(linked_vec, size(val))
+        end
+    else
+        return DynamicPPL.DoNotAccumulate()
+    end
+end
+function MHLinkedValuesAccumulator(vns::Set{VarName})
+    return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(StoreLinkedValues(vns))
 end
