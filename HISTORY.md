@@ -1,6 +1,7 @@
 # 0.42.8
 
-Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callbaks`. See [here](https://turinglang.org/AbstractMCMC.jl/stable/callbacks/#TensorBoard-Logging). 
+Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callback`.
+See [the AbstractMCMC documentation](https://turinglang.org/AbstractMCMC.jl/stable/callbacks/#TensorBoard-Logging) for more details.
 
 # 0.42.7
 
