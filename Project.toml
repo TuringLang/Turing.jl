@@ -1,6 +1,6 @@
 name = "Turing"
 uuid = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-version = "0.42.6"
+version = "0.42.8"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -47,7 +47,7 @@ TuringDynamicHMCExt = "DynamicHMC"
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.9"
+AbstractMCMC = "5.13"
 AbstractPPL = "0.11, 0.12, 0.13"
 Accessors = "0.1"
 AdvancedHMC = "0.8.3"
