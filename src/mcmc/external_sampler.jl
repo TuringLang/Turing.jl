@@ -150,12 +150,8 @@ function AbstractMCMC.step(
     sampler = sampler_wrapper.sampler
 
     # Initialise varinfo with initial params and link the varinfo if needed.
-    varinfo = DynamicPPL.VarInfo(model)
-    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, initial_params)
-
-    if unconstrained
-        varinfo = DynamicPPL.link(varinfo, model)
-    end
+    tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
+    _, varinfo = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, tfm_strategy)
 
     # We need to extract the vectorised initial_params, because the later call to
     # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`

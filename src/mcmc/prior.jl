@@ -19,7 +19,9 @@ function AbstractMCMC.step(
         DynamicPPL.LogLikelihoodAccumulator(),
     ))
     vi = DynamicPPL.OnlyAccsVarInfo(accs)
-    _, vi = DynamicPPL.init!!(rng, model, vi, DynamicPPL.InitFromPrior())
+    _, vi = DynamicPPL.init!!(
+        rng, model, vi, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
+    )
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi)
     return transition, nothing
 end

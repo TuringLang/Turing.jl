@@ -314,7 +314,7 @@ function AbstractMCMC.step(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,
@@ -340,7 +340,7 @@ function AbstractMCMC.step_warmup(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,

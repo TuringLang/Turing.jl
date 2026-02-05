@@ -172,7 +172,7 @@ end
 function test_initial_params(model, sampler; kwargs...)
     # Generate some parameters. Doesn't really matter what.
     vi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.ValuesAsInModelAccumulator(false),))
-    _, vi = DynamicPPL.init!!(model, vi)
+    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
     # sometimes `dict` has a key type of Any, which won't work with InitFromParams
     # as it expects VarName keys
     vnt = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values

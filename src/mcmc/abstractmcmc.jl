@@ -139,7 +139,7 @@ function AbstractMCMC.step(
     # Generate a VarInfo with initial parameters. Note that, if `InitFromParams` is used,
     # the parameters provided must be in unlinked space (when inserted into the varinfo,
     # they will be adjusted to match the linking status of the varinfo).
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, UnlinkAll())
 
     # Call the actual function that does the first step.
     return initialstep(rng, model, spl, vi; initial_params, kwargs...)

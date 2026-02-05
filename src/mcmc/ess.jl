@@ -40,7 +40,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.VarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(true))
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.PriorDistributionAccumulator())
-    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll())
     priors = DynamicPPL.getacc(vi, Val(:PriorDistributionAccumulator)).values
 
     for dist in values(priors)
@@ -112,7 +112,9 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    _, vi = DynamicPPL.init!!(rng, p.model, p.varinfo, DynamicPPL.InitFromPrior())
+    _, vi = DynamicPPL.init!!(
+        rng, p.model, p.varinfo, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
+    )
     return vi[:]
 end
 
