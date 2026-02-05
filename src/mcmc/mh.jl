@@ -206,14 +206,12 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     function init_strategy_constructor(raw_vals, linked_vals)
         proposals = DynamicPPL.VarNamedTuple()
         for pair in vn_proposal_pairs
+            # Convert all keys to VarNames.
             vn, proposal = pair
+            vn = _to_varname(vn)
             if !haskey(raw_vals, vn)
-                @warn "Variable name $(vn) not found in the model; skipping proposal for this variable." maxlog =
-                    1
                 continue
             end
-            # Convert all keys to VarNames.
-            vn = _to_varname(vn)
             proposal_dist = if proposal isa Distribution
                 # Static proposal.
                 (false, proposal)
@@ -272,6 +270,35 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
+
+    # Since our initial parameters are sampled with `initial_params`, which could be
+    # anything, it's possible that the initial parameters are outside the support of the
+    # proposal. That will mess up the sampling because when calculating the proposal density
+    # ratio, we will get -Inf for the forward proposal density (i.e., log(g(x|x'))), because
+    # `log(g(x))` is already -Inf regardless of what `x'` is. We insert a check for this
+    # here.
+    initial_raw_values = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    initial_linked_values = DynamicPPL.getacc(vi, Val(MH_ACC_NAME)).values
+    init_strategy = spl.init_strategy_constructor(initial_raw_values, initial_linked_values)
+    initial_unspecified_priors = DynamicPPL.getacc(vi, Val(MH_PRIOR_ACC_NAME)).values
+    initial_log_proposal_density = log_proposal_density(
+        vi, init_strategy, initial_unspecified_priors
+    )
+    if initial_log_proposal_density == -Inf
+        io = IOContext(IOBuffer(), :color => true)
+        show(io, "text/plain", initial_raw_values)
+        init_str = String(take!(io.io))
+        error(
+            "The initial parameters have zero probability density under the proposal" *
+            " distribution (for example, an initial value of `x=2.0` for a" *
+            " proposal `@varname(x) => Uniform(0, 1)`. This will cause the" *
+            " sampler to get stuck at the initial parameters. Consider specifying" *
+            " different initial parameters (e.g. via `InitFromParams`) or using a" *
+            " different proposal distribution." *
+            " Your initial values were:\n\n$init_str\n",
+        )
+    end
+
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
     return transition, vi

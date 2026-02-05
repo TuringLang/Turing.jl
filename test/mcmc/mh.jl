@@ -7,7 +7,7 @@ using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Inference: Inference
 
@@ -34,7 +34,84 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         c4 = sample(gdemo_default, s4, N)
     end
 
-    @testset "mh inference" begin
+    @testset "basic accuracy tests" begin
+        @testset "linking and Jacobian" begin
+            # This model has no likelihood, it's mainly here to test that linking and
+            # Jacobians work fine.
+            @model function f()
+                x ~ Normal()
+                return y ~ Beta(2, 2)
+            end
+            function test_mean_and_std(spl)
+                @testset let spl = spl
+                    chn = sample(StableRNG(468), f(), spl, 20_000)
+                    @test mean(chn[:x]) ≈ mean(Normal()) atol = 0.1
+                    @test std(chn[:x]) ≈ std(Normal()) atol = 0.1
+                    @test mean(chn[:y]) ≈ mean(Beta(2, 2)) atol = 0.1
+                    @test std(chn[:y]) ≈ std(Beta(2, 2)) atol = 0.1
+                end
+            end
+            test_mean_and_std(MH())
+            test_mean_and_std(MH(@varname(x) => Normal(1.0)))
+            test_mean_and_std(MH(@varname(y) => Uniform(0, 1)))
+            test_mean_and_std(MH(@varname(x) => Normal(1.0), @varname(y) => Uniform(0, 1)))
+            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5)))
+            test_mean_and_std(MH(@varname(y) => LinkedRW(0.5)))
+            # this is a random walk in unlinked space
+            test_mean_and_std(MH(@varname(y) => y -> Normal(y, 0.5)))
+            test_mean_and_std(MH(@varname(x) => Normal(), @varname(y) => LinkedRW(0.5)))
+            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5), @varname(y) => Normal()))
+            # this uses AdvancedMH
+            test_mean_and_std(MH([1.0 0.1; 0.1 1.0]))
+        end
+
+        @testset "bad proposals" begin
+            errmsg = "The initial parameters have zero probability density"
+
+            @model f() = x ~ Normal()
+            # Here we give `x` a constrained proposal. Any samples of `x` that fall outside
+            # of it will get a proposal density of -Inf, so should be rejected
+            fspl = MH(@varname(x) => Uniform(-1, 1))
+            # We now start the chain outside the proposal region. The point of this test is 
+            # to make sure that we throw a sensible error.
+            @test_throws errmsg sample(f(), fspl, 2; initial_params=InitFromParams((; x=2)))
+
+            # Same here, except that now it's the proposal that's bad, not the initial
+            # parameters.
+            @model g() = x ~ Beta(2, 2)
+            gspl = MH(@varname(x) => Uniform(-2, -1))
+            @test_throws errmsg sample(g(), gspl, 2; initial_params=InitFromPrior())
+        end
+
+        @testset "with unspecified priors that depend on other variables" begin
+            # If we don't specify a proposal for `y`, it will be sampled from `Normal(x)`.
+            # However, we need to be careful here since the value of `x` varies! This testset is
+            # essentially a test to check that `MHUnspecifiedPriorAccumulator` is doing
+            # the right thing, i.e., it correctly accumulates the prior for the evaluation that
+            # we're interested in.
+            chn = sample(StableRNG(468), f(), MH(@varname(a) => Normal()), 10000)
+            @test mean(chn[:a]) ≈ 0.0 atol = 0.05
+            @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
+            @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
+
+            # Note that if we additionally don't specify a proposal for `a`, then it will defer
+            # to InitFromPrior for all variables, and its prior *is* Normal(). So we can do
+            # this:
+            chn2 = sample(StableRNG(468), f(), MH(), 10000)
+            # and it should actually give us exactly the same results as above.
+            #
+            # This test *does* depend on internal implementation details of MH and is a bit
+            # brittle. If it fails, you should check that the values are still approximately
+            # correct (i.e. 0, 2/3, and 4/3). If they are still correct, then it probably just
+            # means that the internal implementation details have changed, and this test can
+            # just be updated (or removed).
+            @test mean(chn2[:a]) ≈ mean(chn[:a])
+            @test mean(chn2[:x]) ≈ mean(chn[:x])
+            @test mean(chn2[:y]) ≈ mean(chn[:y])
+        end
+    end
+
+    @testset "with demo models" begin
         # Set the initial parameters, because if we get unlucky with the initial state,
         # these chains are too short to converge to reasonable numbers.
         discard_initial = 1_000
