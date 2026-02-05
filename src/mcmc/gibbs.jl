@@ -479,7 +479,7 @@ function setparams_varinfo!!(
     # we return from this function also has a VAIMAcc which corresponds to the
     # values in `params`. Likewise with MHLinkedValuesAccumulator.
     params = DynamicPPL.setacc!!(params, DynamicPPL.ValuesAsInModelAccumulator(false))
-    params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator(spl.linkedrw_vns))
+    params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator())
     return last(DynamicPPL.evaluate!!(model, params))
 end
 
@@ -528,30 +528,6 @@ function setparams_varinfo!!(
 end
 
 """
-    MatchExactLinking(linked_vns, unlinked_vns, fallback) <: AbstractLinkStrategy
-
-Indicate that the variables in `vns` must be linked, and all others are unlinked. are
-preserved. `vns` should be some iterable collection of `VarName`s, although there is no
-strict type requirement.
-"""
-struct MatchExactLinking{V1,V2} <: DynamicPPL.AbstractLinkStrategy
-    linked_vns::V1
-    unlinked_vns::V2
-    fallback::Bool
-end
-function DynamicPPL.generate_linked_value(
-    linker::MatchExactLinking, vn::VarName, ::DynamicPPL.AbstractTransformedValue
-)
-    return if any(linker_vn -> subsumes(linker_vn, vn), linker.linked_vns)
-        true
-    elseif any(unlinker_vn -> subsumes(unlinker_vn, vn), linker.unlinked_vns)
-        false
-    else
-        linker.fallback
-    end
-end
-
-"""
     match_linking!!(varinfo_local, prev_state_local, model)
 
 Make sure the linked/invlinked status of varinfo_local matches that of the previous
@@ -570,16 +546,18 @@ function match_linking!!(varinfo_local, prev_state_local, model)
             push!(unlinked_vns, vn)
         end
     end
-    link_strategy = if isempty(unlinked_vns)
+    transform_strategy = if isempty(unlinked_vns)
         # All variables were linked
         DynamicPPL.LinkAll()
     elseif isempty(linked_vns)
         # No variables were linked
         DynamicPPL.UnlinkAll()
     else
-        MatchExactLinking(collect(linked_vns), collect(unlinked_vns), true)
+        DynamicPPL.LinkSome(
+            linked_vns, DynamicPPL.UnlinkSome(unlinked_vns, DynamicPPL.LinkAll())
+        )
     end
-    return DynamicPPL.update_link_status!!(varinfo_local, link_strategy, model)
+    return DynamicPPL.update_link_status!!(varinfo_local, transform_strategy, model)
 end
 
 """

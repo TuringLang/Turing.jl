@@ -1,4 +1,5 @@
 using AdvancedMH: AdvancedMH
+using AbstractPPL: @varname
 
 """
     MH(vn1 => proposal1, vn2 => proposal2, ...)
@@ -127,7 +128,7 @@ spl = MH(
 )
 ```
 """
-struct MH{I,L<:DynamicPPL.AbstractLinkStrategy} <: AbstractSampler
+struct MH{I,L<:DynamicPPL.AbstractTransformStrategy} <: AbstractSampler
     "A function which takes two arguments: (1) the VarNamedTuple of raw values at the
     previous step, and (2) a VarNamedTuple of linked values for any variables that have
     `LinkedRW` proposals; and returns an AbstractInitStrategy. We don't have access to the
@@ -135,7 +136,7 @@ struct MH{I,L<:DynamicPPL.AbstractLinkStrategy} <: AbstractSampler
     will be constructed anew in each sampling step."
     init_strategy_constructor::I
     "Linked variables, i.e., variables which have a `LinkedRW` proposal."
-    link_strategy::L
+    transform_strategy::L
 end
 # If no proposals are given, then the initialisation strategy to use is always
 # `InitFromPrior`.
@@ -236,7 +237,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     link_strategy = if isempty(linkedrw_vns)
         DynamicPPL.UnlinkAll()
     else
-        DynamicPPL.LinkSome(linkedrw_vns)
+        DynamicPPL.LinkSome(linkedrw_vns, DynamicPPL.UnlinkAll())
     end
     return MH(init_strategy_constructor, link_strategy)
 end
@@ -256,11 +257,18 @@ function AbstractMCMC.step(
     # TODO(penelopeysm): This in fact could very well be OnlyAccsVarInfo. Indeed, if you
     # only run MH, OnlyAccsVarInfo already works right now. The problem is that using MH
     # inside Gibbs needs a full VarInfo.
+    #
+    # see e.g.
+    #    @model f() = x ~ Beta(2, 2)
+    #    sample(f(), MH(:x => LinkedRW(0.4)), 100_000; progress=false)
+    # with full VarInfo:
+    #    2.302728 seconds (18.81 M allocations: 782.125 MiB, 9.00% gc time)
+    # with OnlyAccsVarInfo:
+    #    1.196674 seconds (18.51 M allocations: 722.256 MiB, 5.11% gc time)
     vi = DynamicPPL.VarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
-    vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator(spl.link_strategy))
-    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
-    vi = DynamicPPL.update_link_status!!(vi, spl.link_strategy, model)
+    vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
     return transition, vi
@@ -290,14 +298,16 @@ function AbstractMCMC.step(
     # that can't be done without traversing the model again. The answer is to move
     # link_strategy into init!! as well.
     new_vi = DynamicPPL.setacc!!(old_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
-    new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator(spl.link_strategy))
-    _, new_vi = DynamicPPL.init!!(rng, model, new_vi, init_strategy_given_old)
+    new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
+    _, new_vi = DynamicPPL.init!!(
+        rng, model, new_vi, init_strategy_given_old, spl.transform_strategy
+    )
     new_lp = DynamicPPL.getlogjoint_internal(new_vi)
-
     # We need to reconstruct the initialisation strategy for the 'reverse' transition
     # i.e. from new_vi to old_vi. That allows us to calculate the proposal density
     # ratio.
     new_raw_values = DynamicPPL.getacc(new_vi, Val(:ValuesAsInModel)).values
+
     new_linked_values = DynamicPPL.getacc(new_vi, Val(MH_ACC_NAME)).values
     # For any variables that were not given an explicit proposal, we need to know
     # their priors, which will also go into the proposal density.
@@ -377,25 +387,21 @@ function log_proposal_density(
     return g
 end
 
-# Accumulator to store linked values; but only the ones that have a LinkedRW proposal.
+# Accumulator to store linked values; but only the ones that have a LinkedRW proposal. Since
+# model evaluation should have happened with `s.transform_strategy`, any variables that are
+# marked by `s.transform_strategy` as being linked should generate a LinkedVectorValue here.
 const MH_ACC_NAME = :MHLinkedValues
-struct StoreLinkedValues{L<:DynamicPPL.AbstractLinkStrategy}
-    link_strategy::L
+struct StoreLinkedValues end
+function (s::StoreLinkedValues)(val, tval::DynamicPPL.LinkedVectorValue, logjac, vn, dist)
+    return DynamicPPL.get_internal_value(tval)
 end
-function (s::StoreLinkedValues)(val, tval, logjac, vn, dist)
-    return if DynamicPPL.generate_linked_value(s.link_strategy, vn, tval)
-        if tval isa DynamicPPL.LinkedVectorValue
-            DynamicPPL.get_internal_value(tval)
-        else
-            # Need to convert untransformed value to linked value.
-            DynamicPPL.to_linked_vec_transform(dist)(val)
-        end
-    else
-        DynamicPPL.DoNotAccumulate()
-    end
+function (s::StoreLinkedValues)(
+    val, ::DynamicPPL.AbstractTransformedValue, logjac, vn, dist
+)
+    return DynamicPPL.DoNotAccumulate()
 end
-function MHLinkedValuesAccumulator(link_strategy::DynamicPPL.AbstractLinkStrategy)
-    return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(StoreLinkedValues(link_strategy))
+function MHLinkedValuesAccumulator()
+    return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(StoreLinkedValues())
 end
 
 # RWMH can be delegated to AdvancedMH. The type bound is intentionally lax because we just
