@@ -156,12 +156,11 @@ struct LinkedRW{C}
 end
 
 """
-    InitFromProposals(proposals::VarNamedTuple, priors::Dict{VarName,Distribution})
+    InitFromProposals(proposals::VarNamedTuple)
 
 An initialisation strategy that samples variables from user-defined proposal distributions.
 If a proposal distribution is not found in `proposals`, then we defer to sampling from the
-prior, but we additionally cache the prior distribution in `priors` for later use in
-proposal density calculations.
+prior.
 """
 struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInitStrategy
     "A mapping of VarNames to Tuple{Bool,Distribution}s that they should be sampled from. If
@@ -170,9 +169,6 @@ struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInit
     return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
     should return an `UntransformedValue`)."
     proposals::V
-    "A cache of the prior distributions for any variables that were not given an explicit
-    proposal. This is needed to compute the proposal density during MH steps."
-    priors::Dict{VarName,Distribution}
 end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, prior::Distribution, strategy::InitFromProposals
@@ -190,9 +186,7 @@ function DynamicPPL.init(
             return DynamicPPL.UntransformedValue(rand(rng, dist))
         end
     else
-        # No proposal was specified for this variable, so we sample from the prior. We
-        # also need to cache the prior for later use in log-proposal density calculations.
-        strategy.priors[vn] = prior
+        # No proposal was specified for this variable, so we sample from the prior.
         return DynamicPPL.UntransformedValue(rand(rng, prior))
     end
 end
@@ -213,6 +207,11 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
         proposals = DynamicPPL.VarNamedTuple()
         for pair in vn_proposal_pairs
             vn, proposal = pair
+            if !haskey(raw_vals, vn)
+                @warn "Variable name $(vn) not found in the model; skipping proposal for this variable." maxlog =
+                    1
+                continue
+            end
             # Convert all keys to VarNames.
             vn = _to_varname(vn)
             proposal_dist = if proposal isa Distribution
@@ -231,7 +230,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
                 proposals, proposal_dist, vn, raw_vals.data[AbstractPPL.getsym(vn)]
             )
         end
-        return InitFromProposals(proposals, Dict{VarName,Distribution}())
+        return InitFromProposals(proposals)
     end
     all_vns = Set{VarName}(_to_varname(pair[1]) for pair in vn_proposal_pairs)
     linkedrw_vns = Set{VarName}(
@@ -323,8 +322,8 @@ function AbstractMCMC.step(
     # Calculate the log-acceptance probability.
     log_a = (
         new_lp - old_lp +
-        log_proposal_density(old_vi, init_strategy_given_new, new_unspecified_priors) -
-        log_proposal_density(new_vi, init_strategy_given_old, old_unspecified_priors)
+        log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors) -
+        log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
     )
 
     # Decide whether to accept.
@@ -342,7 +341,7 @@ end
     log_proposal_density(
         old_vi::DynamicPPL.AbstractVarInfo,
         init_strategy_given_new::DynamicPPL.AbstractInitStrategy,
-        unspecified_priors::DynamicPPL.VarNamedTuple
+        old_unspecified_priors::DynamicPPL.VarNamedTuple
     )
 
 Calculate the ratio `g(x|x')` where `g` is the proposal distribution used to generate
@@ -350,6 +349,14 @@ Calculate the ratio `g(x|x')` where `g` is the proposal distribution used to gen
 
 If the arguments are switched (i.e., `new_vi` is passed as the first argument, and
 `init_strategy_given_old` as the second), the function calculates `g(x'|x)`.
+
+The log-density of the proposal distribution is calculated by summing up the contributions
+from:
+
+- any variables that have an explicit proposal in `init_strategy_given_new` (i.e., those
+  in `spl.vns_with_proposal`), which can be either static or conditional proposals; and
+- any variables that do not have an explicit proposal, for which we defer to its prior
+  distribution.
 """
 function log_proposal_density(
     vi::DynamicPPL.AbstractVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
