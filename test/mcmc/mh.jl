@@ -84,6 +84,12 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         end
 
         @testset "with unspecified priors that depend on other variables" begin
+            @model function f()
+                a ~ Normal()
+                x ~ Normal(0.0)
+                y ~ Normal(x)
+                return 2.0 ~ Normal(y)
+            end
             # If we don't specify a proposal for `y`, it will be sampled from `Normal(x)`.
             # However, we need to be careful here since the value of `x` varies! This testset is
             # essentially a test to check that `MHUnspecifiedPriorAccumulator` is doing
