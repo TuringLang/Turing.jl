@@ -88,7 +88,7 @@ function AbstractMCMC.sample(
     initial_params=fill(init_strategy(spl), n_chains),
     kwargs...,
 )
-    check_model && _check_model(model, spl)
+    check_model && Turing._check_model(model, spl)
     if !(initial_params isa AbstractVector) || length(initial_params) != n_chains
         errmsg = "`initial_params` must be an AbstractVector of length `n_chains`; one element per chain"
         throw(ArgumentError(errmsg))

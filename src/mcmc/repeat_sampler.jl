@@ -145,7 +145,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     return AbstractMCMC.mcmcsample(
         rng,
         model,
