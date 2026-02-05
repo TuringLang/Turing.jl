@@ -37,6 +37,6 @@ function _check_model(model::DynamicPPL.Model)
         new_model, DynamicPPL.OnlyAccsVarInfo(); error_on_failure=true
     )
 end
-function _check_model(model::DynamicPPL.Model, ::AbstractSampler)
+function _check_model(model::DynamicPPL.Model, ::AbstractMCMC.AbstractSampler)
     return _check_model(model)
 end
