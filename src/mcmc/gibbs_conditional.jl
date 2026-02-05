@@ -93,10 +93,10 @@ that are set in GibbsContext, ConditionContext, or FixedContext.
 """
 function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
-    # TODO(penelopeysm): Use VNTs for ConditionContext and FixedContext
-    cond_vals = DynamicPPL.to_varname_dict(DynamicPPL.conditioned(context))
-    fixed_vals = DynamicPPL.to_varname_dict(DynamicPPL.fixed(context))
-    arg_vals = DynamicPPL.to_varname_dict(model.args)
+    cond_vals = DynamicPPL.conditioned(context)
+    fixed_vals = DynamicPPL.fixed(context)
+    # model.args is a NamedTuple
+    arg_vals = DynamicPPL.VarNamedTuple(model.args)
     # Need to get the invlinked values as a VNT
     vi = deepcopy(get_gibbs_global_varinfo(context))
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
@@ -105,14 +105,7 @@ function build_values_vnt(model::DynamicPPL.Model)
     _, vi = DynamicPPL.evaluate!!(defmodel, vi)
     global_vals = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
     # Merge them.
-    # TODO(penelopeysm): We don't have templating information here. This could be fixed if
-    # we used VNTs everywhere -- in which case we can just merge the VNTs. Although we
-    # might have to be careful if a conditioned VNT has no templates and we attempt to
-    # merge into one that does......
-    for (vn, val) in [pairs(cond_vals)..., pairs(fixed_vals)..., pairs(arg_vals)...]
-        global_vals = BangBang.setindex!!(global_vals, val, vn)
-    end
-    return global_vals
+    return merge(global_vals, cond_vals, fixed_vals, arg_vals)
 end
 
 replace_gibbs_context(::GibbsContext) = DefaultContext()
@@ -137,7 +130,7 @@ function get_gibbs_global_varinfo(::DynamicPPL.AbstractContext)
     throw(ArgumentError(msg))
 end
 
-function initialstep(
+function Turing.Inference.initialstep(
     ::Random.AbstractRNG,
     model::DynamicPPL.Model,
     ::GibbsConditional,
