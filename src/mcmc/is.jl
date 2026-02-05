@@ -14,11 +14,11 @@ Example:
 ```julia
 # Define a simple Normal model with unknown mean and variance.
 @model function gdemo(x)
-    s² ~ InverseGamma(2,3)
+    s ~ InverseGamma(2,3)
     m ~ Normal(0,sqrt.(s))
     x[1] ~ Normal(m, sqrt.(s))
     x[2] ~ Normal(m, sqrt.(s))
-    return s², m
+    return s, m
 end
 
 sample(gdemo([1.5, 2]), IS(), 1000)
@@ -66,7 +66,9 @@ function DynamicPPL.tilde_assume!!(
         )
     else
         val = rand(ctx.rng, dist)
-        vi, logjac, tval = DynamicPPL.setindex_with_dist!!(vi, val, dist, vn, template)
+        tval = DynamicPPL.UntransformedValue(val)
+        vi = DynamicPPL.setindex_with_dist!!(vi, tval, dist, vn, template)
+        logjac = 0.0
     end
     vi = DynamicPPL.accumulate_assume!!(vi, val, tval, logjac, vn, dist, template)
     return val, vi
