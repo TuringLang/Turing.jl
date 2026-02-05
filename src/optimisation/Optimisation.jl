@@ -2,7 +2,7 @@ module Optimisation
 
 using ..Turing
 using AbstractPPL: AbstractPPL, VarName
-using DynamicPPL: DynamicPPL, VarInfo, LogDensityFunction
+using DynamicPPL: DynamicPPL, VarInfo, LogDensityFunction, VarNamedTuple
 using DocStringExtensions: TYPEDFIELDS
 using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
@@ -130,9 +130,7 @@ function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
     println(io, "  ├ estimator : $(typeof(m.estimator))")
     println(io, "  ├ lp        : $(m.lp)")
     entries = length(m.params) == 1 ? "entry" : "entries"
-    println(
-        io, "  ├ params    : DynamicPPL.VarNamedTuple with $(length(m.params)) $(entries)"
-    )
+    println(io, "  ├ params    : VarNamedTuple with $(length(m.params)) $(entries)")
     for (i, (vn, val)) in enumerate(pairs(m.params))
         tree_char = i == length(m.params) ? "└" : "├"
         println(io, "  │             $(tree_char) $vn => $(val)")
@@ -156,9 +154,10 @@ function DynamicPPL.InitFromParams(
     return DynamicPPL.InitFromParams(m.params, fallback)
 end
 
-struct ConstraintCheckAccumulator <: AbstractAccumulator
-    lb::NTOrVNDict # Must be in unlinked space
-    ub::NTOrVNDict # Must be in unlinked space
+struct ConstraintCheckAccumulator{Vlb<:VarNamedTuple,Vub<:VarNamedTuple} <:
+       AbstractAccumulator
+    lb::Vlb # Must be in unlinked space
+    ub::Vub # Must be in unlinked space
 end
 DynamicPPL.accumulator_name(::ConstraintCheckAccumulator) = :OptimConstraintCheck
 function DynamicPPL.accumulate_assume!!(
@@ -323,14 +322,16 @@ function estimate_mode(
     solver=LBFGS();
     link::Bool=true,
     initial_params=DynamicPPL.InitFromPrior(),
-    lb::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;),
-    ub::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;),
+    lb::Union{NamedTuple,AbstractDict{<:VarName,<:Any},VarNamedTuple}=VarNamedTuple(),
+    ub::Union{NamedTuple,AbstractDict{<:VarName,<:Any},VarNamedTuple}=VarNamedTuple(),
     adtype=ADTypes.AutoForwardDiff(),
     check_model::Bool=true,
     check_constraints_at_runtime::Bool=true,
     solve_kwargs...,
 )
     check_model && Turing._check_model(model)
+    lb = Turing._to_varnamedtuple(lb)
+    ub = Turing._to_varnamedtuple(ub)
 
     # Generate a LogDensityFunction first. We do this first because we want to use the
     # info stored in the LDF to generate the initial parameters and constraints in the

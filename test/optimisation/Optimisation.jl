@@ -122,7 +122,11 @@ end
             [([2.0, 2.0], nothing), (nothing, [-1.0, -1.0]), ([0.3, 0.3], [0.1, 0.1])]
             # unit test the function
             @test_throws ArgumentError make_optim_bounds_and_init(
-                Random.default_rng(), ldf, InitFromPrior(), (x=lb,), (x=ub,)
+                Random.default_rng(),
+                ldf,
+                InitFromPrior(),
+                VarNamedTuple(; x=lb),
+                VarNamedTuple(; x=ub),
             )
             # check that the high-level function also errors
             @test_throws ArgumentError maximum_likelihood(diric(); lb=(x=lb,), ub=(x=ub,))
@@ -139,7 +143,11 @@ end
         ub = (x=1.0,)
         bad_init = (x=10.0,)
         @test_throws ArgumentError make_optim_bounds_and_init(
-            Random.default_rng(), ldf, InitFromParams(bad_init), lb, ub
+            Random.default_rng(),
+            ldf,
+            InitFromParams(bad_init),
+            VarNamedTuple(lb),
+            VarNamedTuple(ub),
         )
         @test_throws ArgumentError maximum_likelihood(
             normal_model(); initial_params=InitFromParams(bad_init), lb=lb, ub=ub
@@ -171,7 +179,11 @@ end
             @testset "unlinked" begin
                 ldf = LogDensityFunction(model)
                 lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
-                    Random.default_rng(), ldf, InitFromPrior(), lb, ub
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
                 )
                 @test lb_vec == maybe_to_vec(lb.x)
                 @test ub_vec == maybe_to_vec(ub.x)
@@ -183,7 +195,11 @@ end
                 vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
                 ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
                 lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
-                    Random.default_rng(), ldf, InitFromPrior(), lb, ub
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
                 )
                 b = Bijectors.bijector(dist)
                 @test lb_vec ≈ maybe_to_vec(b(lb.x))
@@ -201,8 +217,8 @@ end
 
             vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
             ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
-            lb = (x=rand(dist),)
-            ub = (;)
+            lb = VarNamedTuple(; x=rand(dist))
+            ub = VarNamedTuple()
 
             @test_throws ArgumentError make_optim_bounds_and_init(
                 Random.default_rng(), ldf, InitFromPrior(), lb, ub

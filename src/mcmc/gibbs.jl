@@ -214,12 +214,15 @@ end
 Return a new, conditioned model for a component of a Gibbs sampler.
 
 # Arguments
+#
 - `model::DynamicPPL.Model`: The model to condition.
+
 - `target_variables::AbstractVector{<:VarName}`: The target variables of the component
-sampler. These will _not_ be conditioned.
+  sampler. These will _not_ be conditioned.
+
 - `varinfo::DynamicPPL.AbstractVarInfo`: Values for all variables in the model. All the
-values in `varinfo` but not in `target_variables` will be conditioned to the values they
-have in `varinfo`.
+  values in `varinfo` but not in `target_variables` will be conditioned to the values they
+  have in `varinfo`.
 
 # Returns
 - A new model with the variables _not_ in `target_variables` conditioned.
@@ -314,7 +317,7 @@ function AbstractMCMC.step(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, UnlinkAll())
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,
@@ -340,7 +343,7 @@ function AbstractMCMC.step_warmup(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, UnlinkAll())
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,

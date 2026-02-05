@@ -1,26 +1,25 @@
 using DynamicPPL: AbstractInitStrategy, AbstractAccumulator
 using Distributions
 
-# TODO(penelopeysm): Eventually replace with VNT
-const NTOrVNDict = Union{NamedTuple,AbstractDict{<:VarName,<:Any}}
-function get_constraints(bounds::NTOrVNDict, vn::VarName)
-    return if AbstractPPL.hasvalue(bounds, vn)
-        return AbstractPPL.getvalue(bounds, vn)
-    else
-        nothing
-    end
-end
-
 """
     InitWithConstraintCheck(lb, ub, actual_strategy) <: AbstractInitStrategy
 
 Initialise parameters with `actual_strategy`, but check that the initialised
 parameters satisfy any bounds in `lb` and `ub`.
 """
-struct InitWithConstraintCheck{Tlb<:NTOrVNDict,Tub<:NTOrVNDict} <: AbstractInitStrategy
+struct InitWithConstraintCheck{Tlb<:VarNamedTuple,Tub<:VarNamedTuple} <:
+       AbstractInitStrategy
     lb::Tlb
     ub::Tub
     actual_strategy::AbstractInitStrategy
+end
+
+function get_constraints(constraints::VarNamedTuple, vn::VarName)
+    if haskey(constraints, vn)
+        return constraints[vn]
+    else
+        return nothing
+    end
 end
 
 const MAX_ATTEMPTS = 1000
@@ -157,13 +156,15 @@ end
 can_have_linked_constraints(::Dirichlet) = false
 can_have_linked_constraints(::LKJCholesky) = false
 
-struct ConstraintAccumulator <: AbstractAccumulator
+struct ConstraintAccumulator{
+    T<:DynamicPPL.AbstractTransformStrategy,Vlb<:VarNamedTuple,Vub<:VarNamedTuple
+} <: AbstractAccumulator
     "Whether to store constraints in linked space or not."
-    link::Bool
+    transform_strategy::T
     "A mapping of VarNames to lower bounds in untransformed space."
-    lb::NTOrVNDict
+    lb::Vlb
     "A mapping of VarNames to upper bounds in untransformed space."
-    ub::NTOrVNDict
+    ub::Vub
     "The initial values for the optimisation in linked space (if link=true) or unlinked
     space (if link=false)."
     init_vecs::Dict{VarName,AbstractVector}
@@ -173,8 +174,10 @@ struct ConstraintAccumulator <: AbstractAccumulator
     "The upper bound vectors for the optimisation in linked space (if link=true) or unlinked
     space (if link=false)."
     ub_vecs::Dict{VarName,AbstractVector}
-    function ConstraintAccumulator(link::Bool, lb::NTOrVNDict, ub::NTOrVNDict)
-        return new(
+    function ConstraintAccumulator(
+        link::DynamicPPL.AbstractTransformStrategy, lb::VarNamedTuple, ub::VarNamedTuple
+    )
+        return new{typeof(link),typeof(lb),typeof(ub)}(
             link,
             lb,
             ub,
@@ -202,18 +205,28 @@ function DynamicPPL.accumulate_assume!!(
     # e.g. Dirichlet.
     lb = get_constraints(acc.lb, vn)
     ub = get_constraints(acc.ub, vn)
-    if (lb !== nothing || ub !== nothing) && acc.link && !can_have_linked_constraints(dist)
+    should_be_linked =
+        DynamicPPL.target_transform(acc.transform_strategy, vn) isa DynamicPPL.DynamicLink
+    if (lb !== nothing || ub !== nothing) &&
+        should_be_linked &&
+        !can_have_linked_constraints(dist)
         throw(
             ArgumentError(
                 "Cannot use constraints for variable $(vn) with distribution $(typeof(dist)) when performing linked optimisation; this is because the constraints cannot be cleanly mapped to linked space. If you need to use constraints for this variable, please set `link=false` when optimising, or manually perform optimisation with your own LogDensityFunction.",
             ),
         )
     end
-    transform = if acc.link
-        DynamicPPL.to_linked_vec_transform(dist)
-    else
-        DynamicPPL.to_vec_transform(dist)
-    end
+    transform =
+        if DynamicPPL.target_transform(acc.transform_strategy, vn) isa
+            DynamicPPL.DynamicLink
+            DynamicPPL.to_linked_vec_transform(dist)
+        elseif DynamicPPL.target_transform(acc.transform_strategy, vn) isa DynamicPPL.Unlink
+            DynamicPPL.to_vec_transform(dist)
+        else
+            error(
+                "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
+            )
+        end
     # Transform the value and store it.
     vectorised_val = transform(val)
     acc.init_vecs[vn] = vectorised_val
@@ -237,20 +250,20 @@ function DynamicPPL.accumulate_observe!!(
     return acc
 end
 function DynamicPPL.reset(acc::ConstraintAccumulator)
-    return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
+    return ConstraintAccumulator(acc.transform_strategy, acc.lb, acc.ub)
 end
 function Base.copy(acc::ConstraintAccumulator)
     # ConstraintAccumulator should not ever modify `acc.lb` or `acc.ub` (and when
     # constructing it inside `make_optim_bounds_and_init` we make sure to deepcopy any user
     # input), so there is no chance that `lb` or `ub` could ever be mutated once they're
     # inside the accumulator. Hence we don't need to copy them.
-    return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
+    return ConstraintAccumulator(acc.transform_strategy, acc.lb, acc.ub)
 end
 function DynamicPPL.split(acc::ConstraintAccumulator)
-    return ConstraintAccumulator(acc.link, acc.lb, acc.ub)
+    return ConstraintAccumulator(acc.transform_strategy, acc.lb, acc.ub)
 end
 function DynamicPPL.combine(acc1::ConstraintAccumulator, acc2::ConstraintAccumulator)
-    combined = ConstraintAccumulator(acc1.link, acc1.lb, acc1.ub)
+    combined = ConstraintAccumulator(acc1.transform_strategy, acc1.lb, acc1.ub)
     combined.init_vecs = merge(acc1.init_vecs, acc2.init_vecs)
     combined.lb_vecs = merge(acc1.lb_vecs, acc2.lb_vecs)
     combined.ub_vecs = merge(acc1.ub_vecs, acc2.ub_vecs)
@@ -271,32 +284,33 @@ end
 """
     make_optim_bounds_and_init(
         rng::Random.AbstractRNG,
-        ldf::LogDensityFunction{Tlink},
+        ldf::LogDensityFunction,
         initial_params::AbstractInitStrategy,
-        lb::NTOrVNDict,
-        ub::NTOrVNDict,
-    ) where {Tlink}
+        lb::VarNamedTuple,
+        ub::VarNamedTuple,
+    )
 
 Generate a tuple of `(lb_vec, ub_vec, init_vec)` which are suitable for directly passing to
 Optimization.jl. All three vectors returned will be in the unlinked or linked space
-depending on the value of `link`.
+depending on `ldf.transform_strategy`, which in turn is defined by the value of `link` passed
+to `mode_estimate`.
 
 The `lb` and `ub` arguments, as well as any `initial_params` provided as `InitFromParams`,
 are expected to be in the unlinked space.
 """
 function make_optim_bounds_and_init(
     rng::Random.AbstractRNG,
-    ldf::LogDensityFunction{Tlink},
+    ldf::LogDensityFunction,
     initial_params::AbstractInitStrategy,
-    lb::NTOrVNDict,
-    ub::NTOrVNDict,
-) where {Tlink}
+    lb::VarNamedTuple,
+    ub::VarNamedTuple,
+)
     # Initialise a VarInfo with parameters that satisfy the constraints.
     # ConstraintAccumulator only needs the raw value so we can use UnlinkAll() as the
     # transform strategy for this
     init_strategy = InitWithConstraintCheck(lb, ub, initial_params)
     vi = DynamicPPL.OnlyAccsVarInfo((
-        ConstraintAccumulator(Tlink, deepcopy(lb), deepcopy(ub)),
+        ConstraintAccumulator(ldf.transform_strategy, deepcopy(lb), deepcopy(ub)),
     ))
     _, vi = DynamicPPL.init!!(rng, ldf.model, vi, init_strategy, DynamicPPL.UnlinkAll())
     # Now extract the accumulator, and construct the vectorised constraints using the

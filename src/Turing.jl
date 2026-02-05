@@ -70,6 +70,8 @@ using DynamicPPL:
     conditioned,
     to_submodel,
     LogDensityFunction,
+    VarNamedTuple,
+    @vnt,
     @addlogprob!,
     InitFromPrior,
     InitFromUniform,
@@ -164,6 +166,9 @@ export
     InitFromPrior,
     InitFromUniform,
     InitFromParams,
+    # VNT,
+    VarNamedTuple,
+    @vnt,
     # Point estimates - Turing.Optimisation
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,
