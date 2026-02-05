@@ -435,7 +435,7 @@ function DynamicPPL.tilde_assume!!(
     resample = get_trace_local_resampled()
     # Modify the varinfo as appropriate.
     dispatch_ctx = if ~haskey(vi, vn) || resample
-        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior())
+        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
     else
         DynamicPPL.DefaultContext()
     end

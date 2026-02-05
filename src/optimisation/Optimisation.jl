@@ -330,10 +330,7 @@ function estimate_mode(
     check_constraints_at_runtime::Bool=true,
     solve_kwargs...,
 )
-    if check_model
-        new_model = DynamicPPL.setleafcontext(model, DynamicPPL.InitContext())
-        DynamicPPL.check_model(new_model, VarInfo(); error_on_failure=true)
-    end
+    check_model && Turing._check_model(model)
 
     # Generate a LogDensityFunction first. We do this first because we want to use the
     # info stored in the LDF to generate the initial parameters and constraints in the

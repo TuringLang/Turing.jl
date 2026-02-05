@@ -292,13 +292,13 @@ function make_optim_bounds_and_init(
     ub::NTOrVNDict,
 ) where {Tlink}
     # Initialise a VarInfo with parameters that satisfy the constraints.
-    ctx = DynamicPPL.InitContext(rng, InitWithConstraintCheck(lb, ub, initial_params))
-    new_model = DynamicPPL.setleafcontext(ldf.model, ctx)
-    # Run the model.
+    # ConstraintAccumulator only needs the raw value so we can use UnlinkAll() as the
+    # transform strategy for this
+    init_strategy = InitWithConstraintCheck(lb, ub, initial_params)
     vi = DynamicPPL.OnlyAccsVarInfo((
         ConstraintAccumulator(Tlink, deepcopy(lb), deepcopy(ub)),
     ))
-    _, vi = DynamicPPL.evaluate!!(new_model, vi)
+    _, vi = DynamicPPL.init!!(rng, ldf.model, vi, init_strategy, DynamicPPL.UnlinkAll())
     # Now extract the accumulator, and construct the vectorised constraints using the
     # ranges stored in the LDF.
     constraint_acc = DynamicPPL.getacc(vi, Val(CONSTRAINT_ACC_NAME))

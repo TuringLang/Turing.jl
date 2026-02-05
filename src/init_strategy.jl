@@ -1,7 +1,8 @@
 using AbstractPPL: VarName
 using DynamicPPL: DynamicPPL
 
-# This function is shared by both MCMC and optimisation, so has to exist outside of both.
+# These functions are shared by both MCMC and optimisation, so has to exist outside of both.
+
 """
     _convert_initial_params(initial_params)
 
@@ -24,4 +25,18 @@ end
 function _convert_initial_params(@nospecialize(_::Any))
     errmsg = "`initial_params` must be a `NamedTuple`, an `AbstractDict{<:VarName}`, or a `DynamicPPL.AbstractInitStrategy`."
     throw(ArgumentError(errmsg))
+end
+
+# TODO: Implement additional checks for certain samplers, e.g.
+# HMC not supporting discrete parameters.
+function _check_model(model::DynamicPPL.Model)
+    new_model = DynamicPPL.setleafcontext(
+        model, DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
+    )
+    return DynamicPPL.check_model(
+        new_model, DynamicPPL.OnlyAccsVarInfo(); error_on_failure=true
+    )
+end
+function _check_model(model::DynamicPPL.Model, ::AbstractSampler)
+    return _check_model(model)
 end

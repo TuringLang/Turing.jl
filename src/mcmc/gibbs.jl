@@ -192,8 +192,12 @@ function DynamicPPL.tilde_assume!!(
         # being used by the current sampler.
         value, new_global_vi = DynamicPPL.tilde_assume!!(
             # child_context might be a PrefixContext so we have to be careful to not
-            # overwrite it.
-            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext()),
+            # overwrite it. We assume that the new variable should just be sampled in
+            # unlinked space.
+            DynamicPPL.setleafcontext(
+                child_context,
+                DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()),
+            ),
             right,
             vn,
             template,

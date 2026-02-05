@@ -1,17 +1,3 @@
-# TODO: Implement additional checks for certain samplers, e.g.
-# HMC not supporting discrete parameters.
-function _check_model(model::DynamicPPL.Model)
-    new_model = DynamicPPL.setleafcontext(
-        model, DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
-    )
-    return DynamicPPL.check_model(
-        new_model, DynamicPPL.OnlyAccsVarInfo(); error_on_failure=true
-    )
-end
-function _check_model(model::DynamicPPL.Model, ::AbstractSampler)
-    return _check_model(model)
-end
-
 """
     Turing.Inference.init_strategy(spl::AbstractSampler)
 
