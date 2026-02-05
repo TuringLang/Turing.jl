@@ -51,7 +51,7 @@ function AbstractMCMC.sample(
     chain_type=DEFAULT_CHAIN_TYPE,
     kwargs...,
 )
-    check_model && _check_model(model, spl)
+    check_model && Turing._check_model(model, spl)
     return AbstractMCMC.mcmcsample(
         rng,
         model,

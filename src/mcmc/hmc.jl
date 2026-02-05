@@ -100,7 +100,7 @@ function AbstractMCMC.sample(
     discard_initial=-1,
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,

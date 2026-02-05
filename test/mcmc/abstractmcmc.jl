@@ -10,7 +10,7 @@ using Turing
     # Set up a model for which check_model errors.
     @model f() = x ~ Normal()
     model = f()
-    Turing.Inference._check_model(::typeof(model)) = error("nope")
+    Turing._check_model(::typeof(model)) = error("nope")
     # Make sure that default sampling does throw the error.
     @test_throws "nope" sample(model, NUTS(), 100)
     @test_throws "nope" sample(model, NUTS(), MCMCThreads(), 100, 2)

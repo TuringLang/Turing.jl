@@ -128,7 +128,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
     check_model_kwargs(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
