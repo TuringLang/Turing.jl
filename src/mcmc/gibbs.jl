@@ -484,9 +484,12 @@ function setparams_varinfo!!(
     # the `state` here carries a VAIMAcc, which is needed for the MH step() function
     # but may not be present in `params`. So we need to make sure that the value
     # we return from this function also has a VAIMAcc which corresponds to the
-    # values in `params`. Likewise with MHLinkedValuesAccumulator.
+    # values in `params`. Likewise with the other MH-specific accumulators.
     params = DynamicPPL.setacc!!(params, DynamicPPL.ValuesAsInModelAccumulator(false))
     params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator())
+    params = DynamicPPL.setacc!!(
+        params, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
+    )
     return last(DynamicPPL.evaluate!!(model, params))
 end
 

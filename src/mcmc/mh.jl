@@ -137,10 +137,12 @@ struct MH{I,L<:DynamicPPL.AbstractTransformStrategy} <: AbstractSampler
     init_strategy_constructor::I
     "Linked variables, i.e., variables which have a `LinkedRW` proposal."
     transform_strategy::L
+    "All variables with a proposal"
+    vns_with_proposal::Set{VarName}
 end
 # If no proposals are given, then the initialisation strategy to use is always
 # `InitFromPrior`.
-MH() = MH(Returns(DynamicPPL.InitFromPrior()), DynamicPPL.UnlinkAll())
+MH() = MH(Returns(DynamicPPL.InitFromPrior()), DynamicPPL.UnlinkAll(), Set{VarName}())
 
 """
     LinkedRW(cov_matrix)
@@ -231,6 +233,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
         end
         return InitFromProposals(proposals, Dict{VarName,Distribution}())
     end
+    all_vns = Set{VarName}(_to_varname(pair[1]) for pair in vn_proposal_pairs)
     linkedrw_vns = Set{VarName}(
         _to_varname(vn) for (vn, proposal) in vn_proposal_pairs if proposal isa LinkedRW
     )
@@ -239,7 +242,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     else
         DynamicPPL.LinkSome(linkedrw_vns, DynamicPPL.UnlinkAll())
     end
-    return MH(init_strategy_constructor, link_strategy)
+    return MH(init_strategy_constructor, link_strategy, all_vns)
 end
 
 function AbstractMCMC.step(
@@ -268,6 +271,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.VarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
+    vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
@@ -288,14 +292,19 @@ function AbstractMCMC.step(
     # that were used in the previous step.
     old_raw_values = DynamicPPL.getacc(old_vi, Val(:ValuesAsInModel)).values
     old_linked_values = DynamicPPL.getacc(old_vi, Val(MH_ACC_NAME)).values
+    old_unspecified_priors = DynamicPPL.getacc(old_vi, Val(MH_PRIOR_ACC_NAME)).values
+
     init_strategy_given_old = spl.init_strategy_constructor(
         old_raw_values, old_linked_values
     )
 
     # Evaluate the model with a new proposal.
-    new_vi = DynamicPPL.OnlyAccsVarInfo()
+    new_vi = DynamicPPL.VarInfo()
     new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
+    new_vi = DynamicPPL.setacc!!(
+        new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
+    )
     _, new_vi = DynamicPPL.init!!(
         rng, model, new_vi, init_strategy_given_old, spl.transform_strategy
     )
@@ -304,15 +313,9 @@ function AbstractMCMC.step(
     # i.e. from new_vi to old_vi. That allows us to calculate the proposal density
     # ratio.
     new_raw_values = DynamicPPL.getacc(new_vi, Val(:ValuesAsInModel)).values
-
     new_linked_values = DynamicPPL.getacc(new_vi, Val(MH_ACC_NAME)).values
-    # For any variables that were not given an explicit proposal, we need to know
-    # their priors, which will also go into the proposal density.
-    unspecified_priors = if init_strategy_given_old isa InitFromProposals
-        init_strategy_given_old.priors
-    else
-        Dict{VarName,Distribution}()
-    end
+    new_unspecified_priors = DynamicPPL.getacc(new_vi, Val(MH_PRIOR_ACC_NAME)).values
+
     init_strategy_given_new = spl.init_strategy_constructor(
         new_raw_values, new_linked_values
     )
@@ -320,8 +323,8 @@ function AbstractMCMC.step(
     # Calculate the log-acceptance probability.
     log_a = (
         new_lp - old_lp +
-        log_proposal_density(old_vi, init_strategy_given_new, unspecified_priors) -
-        log_proposal_density(new_vi, init_strategy_given_old, unspecified_priors)
+        log_proposal_density(old_vi, init_strategy_given_new, new_unspecified_priors) -
+        log_proposal_density(new_vi, init_strategy_given_old, old_unspecified_priors)
     )
 
     # Decide whether to accept.
@@ -339,7 +342,7 @@ end
     log_proposal_density(
         old_vi::DynamicPPL.AbstractVarInfo,
         init_strategy_given_new::DynamicPPL.AbstractInitStrategy,
-        unspecified_priors::Dict{VarName,Distribution}
+        unspecified_priors::DynamicPPL.VarNamedTuple
     )
 
 Calculate the ratio `g(x|x')` where `g` is the proposal distribution used to generate
@@ -349,7 +352,7 @@ If the arguments are switched (i.e., `new_vi` is passed as the first argument, a
 `init_strategy_given_old` as the second), the function calculates `g(x'|x)`.
 """
 function log_proposal_density(
-    vi::DynamicPPL.AbstractVarInfo, ::DynamicPPL.InitFromPrior, ::Dict{VarName,Distribution}
+    vi::DynamicPPL.AbstractVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
 )
     # All samples were drawn from the prior -- in this case g(x|x') = g(x) = prior
     # probability of x.
@@ -358,7 +361,7 @@ end
 function log_proposal_density(
     vi::DynamicPPL.AbstractVarInfo,
     strategy::InitFromProposals,
-    unspecified_priors::Dict{VarName,Distribution},
+    unspecified_priors::DynamicPPL.VarNamedTuple,
 )
     # In this case, the proposal distribution might indeed be conditional, so we need to
     # 'run' the initialisation strategies both ways. Luckily, we don't need to run the model
@@ -378,7 +381,7 @@ function log_proposal_density(
             g += logpdf(proposal, vals[vn])
         end
     end
-    for (vn, prior) in unspecified_priors
+    for (vn, prior) in pairs(unspecified_priors)
         g += logpdf(prior, vals[vn])
     end
     return g
@@ -399,6 +402,25 @@ function (s::StoreLinkedValues)(
 end
 function MHLinkedValuesAccumulator()
     return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(StoreLinkedValues())
+end
+
+# Accumulator to store priors for any variables that were not given an explicit proposal.
+# This is needed to compute the log-proposal density correctly.
+const MH_PRIOR_ACC_NAME = :MHUnspecifiedPriors
+struct StoreUnspecifiedPriors
+    vns_with_proposal::Set{VarName}
+end
+function (s::StoreUnspecifiedPriors)(val, tval, logjac, vn, dist::Distribution)
+    return if vn in s.vns_with_proposal
+        DynamicPPL.DoNotAccumulate()
+    else
+        dist
+    end
+end
+function MHUnspecifiedPriorsAccumulator(vns_with_proposal)
+    return DynamicPPL.VNTAccumulator{MH_PRIOR_ACC_NAME}(
+        StoreUnspecifiedPriors(vns_with_proposal)
+    )
 end
 
 # RWMH can be delegated to AdvancedMH. The type bound is intentionally lax because we just
