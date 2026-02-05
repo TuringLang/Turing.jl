@@ -293,11 +293,8 @@ function AbstractMCMC.step(
     )
 
     # Evaluate the model with a new proposal.
-    # TODO(penelopeysm): This could also be an OnlyAccsVarInfo. However, if we change it to
-    # OAVI, we need to be careful to preserve the link status of the old state. Right now
-    # that can't be done without traversing the model again. The answer is to move
-    # link_strategy into init!! as well.
-    new_vi = DynamicPPL.setacc!!(old_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    new_vi = DynamicPPL.OnlyAccsVarInfo()
+    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     _, new_vi = DynamicPPL.init!!(
         rng, model, new_vi, init_strategy_given_old, spl.transform_strategy
