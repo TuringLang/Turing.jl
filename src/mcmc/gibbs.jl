@@ -485,7 +485,7 @@ function setparams_varinfo!!(
     # but may not be present in `params`. So we need to make sure that the value
     # we return from this function also has a VAIMAcc which corresponds to the
     # values in `params`. Likewise with the other MH-specific accumulators.
-    params = DynamicPPL.setacc!!(params, DynamicPPL.ValuesAsInModelAccumulator(false))
+    params = DynamicPPL.setacc!!(params, DynamicPPL.RawValueAccumulator(false))
     params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator())
     params = DynamicPPL.setacc!!(
         params, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)

@@ -99,11 +99,11 @@ function build_values_vnt(model::DynamicPPL.Model)
     arg_vals = DynamicPPL.VarNamedTuple(model.args)
     # Need to get the invlinked values as a VNT
     vi = deepcopy(get_gibbs_global_varinfo(context))
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
     # need to remove the Gibbs conditioning so that we can get all variables in the VarInfo
     defmodel = replace_gibbs_context(model)
     _, vi = DynamicPPL.evaluate!!(defmodel, vi)
-    global_vals = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    global_vals = DynamicPPL.get_raw_values(vi)
     # Merge them.
     return merge(global_vals, cond_vals, fixed_vals, arg_vals)
 end

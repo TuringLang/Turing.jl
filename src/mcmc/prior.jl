@@ -14,7 +14,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     accs = DynamicPPL.AccumulatorTuple((
-        DynamicPPL.ValuesAsInModelAccumulator(true),
+        DynamicPPL.RawValueAccumulator(true),
         DynamicPPL.LogPriorAccumulator(),
         DynamicPPL.LogLikelihoodAccumulator(),
     ))

@@ -38,10 +38,12 @@ function AbstractMCMC.step(
     kwargs...,
 )
     vi = DynamicPPL.VarInfo()
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(true))
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.PriorDistributionAccumulator())
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
+    prior_acc = DynamicPPL.PriorDistributionAccumulator()
+    prior_accname = DynamicPPL.accumulator_name(prior_acc)
+    vi = DynamicPPL.setacc!!(vi, prior_acc)
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll())
-    priors = DynamicPPL.getacc(vi, Val(:PriorDistributionAccumulator)).values
+    priors = DynamicPPL.getacc(vi, Val(prior_accname)).values
 
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||

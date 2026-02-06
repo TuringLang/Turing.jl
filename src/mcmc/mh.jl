@@ -200,7 +200,7 @@ _to_varname(x) = throw(ArgumentError("Expected Symbol or VarName, got $(typeof(x
 function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     vn_proposal_pairs = (pair1, pairs...)
     # It is assumed that `raw_vals` is a VarNamedTuple that has all the variables' values
-    # already set. We can obtain this by using `ValuesAsInModelAccumulator`. Furthermore,
+    # already set. We can obtain this by using `RawValueAccumulator`. Furthermore,
     # `linked_vals` is a VarNamedTuple that stores a `MHLinkedVal` for any variables that
     # have `LinkedRW` proposals. That in turn is obtained using `MHLinkedValuesAccumulator`.
     function init_strategy_constructor(raw_vals, linked_vals)
@@ -266,7 +266,7 @@ function AbstractMCMC.step(
     # with OnlyAccsVarInfo:
     #    1.196674 seconds (18.51 M allocations: 722.256 MiB, 5.11% gc time)
     vi = DynamicPPL.VarInfo()
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
@@ -277,7 +277,7 @@ function AbstractMCMC.step(
     # ratio, we will get -Inf for the forward proposal density (i.e., log(g(x|x'))), because
     # `log(g(x))` is already -Inf regardless of what `x'` is. We insert a check for this
     # here.
-    initial_raw_values = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    initial_raw_values = DynamicPPL.get_raw_values(vi)
     initial_linked_values = DynamicPPL.getacc(vi, Val(MH_ACC_NAME)).values
     init_strategy = spl.init_strategy_constructor(initial_raw_values, initial_linked_values)
     initial_unspecified_priors = DynamicPPL.getacc(vi, Val(MH_PRIOR_ACC_NAME)).values
@@ -316,7 +316,7 @@ function AbstractMCMC.step(
     # The initialisation strategy that we use to generate a proposal depends on the
     # state from the previous step. We need to extract the raw values and linked values
     # that were used in the previous step.
-    old_raw_values = DynamicPPL.getacc(old_vi, Val(:ValuesAsInModel)).values
+    old_raw_values = DynamicPPL.get_raw_values(old_vi)
     old_linked_values = DynamicPPL.getacc(old_vi, Val(MH_ACC_NAME)).values
     old_unspecified_priors = DynamicPPL.getacc(old_vi, Val(MH_PRIOR_ACC_NAME)).values
 
@@ -326,7 +326,7 @@ function AbstractMCMC.step(
 
     # Evaluate the model with a new proposal.
     new_vi = DynamicPPL.VarInfo()
-    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.ValuesAsInModelAccumulator(false))
+    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(false))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
         new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
@@ -338,7 +338,7 @@ function AbstractMCMC.step(
     # We need to reconstruct the initialisation strategy for the 'reverse' transition
     # i.e. from new_vi to old_vi. That allows us to calculate the proposal density
     # ratio.
-    new_raw_values = DynamicPPL.getacc(new_vi, Val(:ValuesAsInModel)).values
+    new_raw_values = DynamicPPL.get_raw_values(new_vi)
     new_linked_values = DynamicPPL.getacc(new_vi, Val(MH_ACC_NAME)).values
     new_unspecified_priors = DynamicPPL.getacc(new_vi, Val(MH_PRIOR_ACC_NAME)).values
 
@@ -403,7 +403,7 @@ function log_proposal_density(
     # we have to cache the priors in the InitFromProposals struct -- if any variables were
     # not given an explicit proposal (in `strategy.proposals`) we need to know what their
     # prior was.
-    vals = DynamicPPL.getacc(vi, Val(:ValuesAsInModel)).values
+    vals = DynamicPPL.get_raw_values(vi)
     g = 0.0
     for (vn, (is_linkedrw, proposal)) in pairs(strategy.proposals)
         if is_linkedrw
