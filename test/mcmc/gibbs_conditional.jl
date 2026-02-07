@@ -252,7 +252,12 @@ using Turing
             d1 = Normal(c[@varname(a[1])], 1)
             d2 = Normal(c[@varname(a[2])], 1)
             d3 = Normal(c[@varname(a[3])], 1)
-            return Dict(@varname(b[1]) => d1, @varname(b[2]) => d2, @varname(b[3]) => d3)
+            return @vnt begin
+                @template b = zeros(3)
+                b[1] := d1
+                b[2] := d2
+                b[3] := d3
+            end
         end
 
         sampler = Gibbs(
@@ -265,9 +270,15 @@ using Turing
         @test mean(chain, Symbol("b[2]")) ≈ 10.0 atol = 0.05
         @test mean(chain, Symbol("b[3]")) ≈ 20.0 atol = 0.05
 
-        m_condfix = fix(
-            condition(m, Dict(@varname(a[1]) => 100.0)), Dict(@varname(a[2]) => 200.0)
-        )
+        condvals = @vnt begin
+            @template a = zeros(3)
+            a[1] := 100.0
+        end
+        fixvals = @vnt begin
+            @template a = zeros(3)
+            a[2] := 200.0
+        end
+        m_condfix = fix(condition(m, condvals), fixvals)
         sampler = Gibbs(
             (@varname(b[1]), @varname(b[2]), @varname(b[3])) =>
                 GibbsConditional(conditionals_b),

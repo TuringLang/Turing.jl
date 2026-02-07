@@ -35,7 +35,7 @@ function check_optimisation_result(
     # Check that `result.params` contains all the keys in `true_values`
     @test Set(keys(result.params)) == Set(keys(true_values))
     # Check that their values are close
-    for (vn, val) in result.params
+    for (vn, val) in pairs(result.params)
         @test isapprox(val, true_values[vn], atol=0.01)
     end
     # Check logp and retcode
@@ -122,7 +122,11 @@ end
             [([2.0, 2.0], nothing), (nothing, [-1.0, -1.0]), ([0.3, 0.3], [0.1, 0.1])]
             # unit test the function
             @test_throws ArgumentError make_optim_bounds_and_init(
-                Random.default_rng(), ldf, InitFromPrior(), (x=lb,), (x=ub,)
+                Random.default_rng(),
+                ldf,
+                InitFromPrior(),
+                VarNamedTuple(; x=lb),
+                VarNamedTuple(; x=ub),
             )
             # check that the high-level function also errors
             @test_throws ArgumentError maximum_likelihood(diric(); lb=(x=lb,), ub=(x=ub,))
@@ -139,7 +143,11 @@ end
         ub = (x=1.0,)
         bad_init = (x=10.0,)
         @test_throws ArgumentError make_optim_bounds_and_init(
-            Random.default_rng(), ldf, InitFromParams(bad_init), lb, ub
+            Random.default_rng(),
+            ldf,
+            InitFromParams(bad_init),
+            VarNamedTuple(lb),
+            VarNamedTuple(ub),
         )
         @test_throws ArgumentError maximum_likelihood(
             normal_model(); initial_params=InitFromParams(bad_init), lb=lb, ub=ub
@@ -171,7 +179,11 @@ end
             @testset "unlinked" begin
                 ldf = LogDensityFunction(model)
                 lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
-                    Random.default_rng(), ldf, InitFromPrior(), lb, ub
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
                 )
                 @test lb_vec == maybe_to_vec(lb.x)
                 @test ub_vec == maybe_to_vec(ub.x)
@@ -183,7 +195,11 @@ end
                 vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
                 ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
                 lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
-                    Random.default_rng(), ldf, InitFromPrior(), lb, ub
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
                 )
                 b = Bijectors.bijector(dist)
                 @test lb_vec ≈ maybe_to_vec(b(lb.x))
@@ -201,8 +217,8 @@ end
 
             vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
             ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
-            lb = (x=rand(dist),)
-            ub = (;)
+            lb = VarNamedTuple(; x=rand(dist))
+            ub = VarNamedTuple()
 
             @test_throws ArgumentError make_optim_bounds_and_init(
                 Random.default_rng(), ldf, InitFromPrior(), lb, ub
@@ -554,7 +570,7 @@ end
                 val = AbstractPPL.getvalue(true_optima, vn)
                 for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                     expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                    actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                    actual = result.params[vn_leaf]
                     @test expected ≈ actual atol = 0.05
                 end
             end
@@ -578,6 +594,7 @@ end
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
         DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
+        DynamicPPL.TestUtils.demo_nested_colons,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
         true_optima = DynamicPPL.TestUtils.likelihood_optima(model)
@@ -601,7 +618,7 @@ end
                     val = AbstractPPL.getvalue(true_optima, vn)
                     for vn_leaf in AbstractPPL.varname_leaves(vn, val)
                         expected = AbstractPPL.getvalue(true_optima, vn_leaf)
-                        actual = AbstractPPL.getvalue(result.params, vn_leaf)
+                        actual = result.params[vn_leaf]
                         if model.f in allowed_incorrect_mle
                             @test isfinite(actual)
                         else
@@ -734,7 +751,7 @@ end
         end
         m = Turing.Optimisation.ModeResult(
             MLE(),
-            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
+            DynamicPPL.VarNamedTuple((; x=0.0, y=0.0)),
             0.0,
             false,
             DynamicPPL.LogDensityFunction(saddle_model(), DynamicPPL.getloglikelihood),

@@ -7,8 +7,9 @@ using DynamicPPL.TestUtils.AD: run_ad
 using Random: Random
 using StableRNGs: StableRNG
 using Test
-using ..Models: gdemo_default
 import ForwardDiff, ReverseDiff, Mooncake
+
+gdemo_default = DynamicPPL.TestUtils.demo_assume_observe_literal()
 
 """Element types that are always valid for a VarInfo regardless of ADType."""
 const always_valid_eltypes = (AbstractFloat, AbstractIrrational, Integer, Rational)
@@ -148,6 +149,7 @@ function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInf
     param_eltype = DynamicPPL.get_param_eltype(vi, context)
     valids = valid_eltypes(context)
     if !(any(param_eltype .<: valids))
+        @show context
         throw(IncompatibleADTypeError(param_eltype, adtype(context)))
     end
 end
@@ -157,9 +159,15 @@ end
 # child context.
 
 function DynamicPPL.tilde_assume!!(
-    context::ADTypeCheckContext, right::Distribution, vn::VarName, vi::AbstractVarInfo
+    context::ADTypeCheckContext,
+    right::Distribution,
+    vn::VarName,
+    template::Any,
+    vi::AbstractVarInfo,
 )
-    value, vi = DynamicPPL.tilde_assume!!(DynamicPPL.childcontext(context), right, vn, vi)
+    value, vi = DynamicPPL.tilde_assume!!(
+        DynamicPPL.childcontext(context), right, vn, template, vi
+    )
     check_adtype(context, vi)
     return value, vi
 end

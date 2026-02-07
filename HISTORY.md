@@ -38,6 +38,11 @@ In these cases, Turing will raise an error if bounds are provided.
 Users who wish to perform optimisation with such constraints should directly use `LogDensityFunction` and Optimization.jl.
 Documentation on this matter will be forthcoming.
 
+## `IS` sampler
+
+The `IS` sampler has been removed (its behaviour was in fact exactly the same as `Prior`).
+To see an example of importance sampling (via `Prior()` and then subsequent reweighting), see e.g. [this issue](https://github.com/TuringLang/Turing.jl/issues/2767).
+
 # 0.42.7
 
 Avoid reevaluating the model on MCMC iterations where the transition is not saved to the chain (e.g. in initial burn-in, or when using thinning).

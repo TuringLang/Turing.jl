@@ -1,7 +1,8 @@
 using AbstractPPL: VarName
 using DynamicPPL: DynamicPPL
 
-# This function is shared by both MCMC and optimisation, so has to exist outside of both.
+# These functions are shared by both MCMC and optimisation, so has to exist outside of both.
+
 """
     _convert_initial_params(initial_params)
 
@@ -18,10 +19,24 @@ function _convert_initial_params(d::AbstractDict{<:VarName})
     return DynamicPPL.InitFromParams(d)
 end
 function _convert_initial_params(::AbstractVector{<:Real})
-    errmsg = "`initial_params` must be a `NamedTuple`, an `AbstractDict{<:VarName}`, or ideally a `DynamicPPL.AbstractInitStrategy`. Using a vector of parameters for `initial_params` is no longer supported. Please see https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters for details on how to update your code."
+    errmsg = "`initial_params` must be an `DynamicPPL.AbstractInitStrategy`. Using a vector of parameters for `initial_params` is no longer supported. Please see https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters for details on how to update your code."
     throw(ArgumentError(errmsg))
 end
 function _convert_initial_params(@nospecialize(_::Any))
-    errmsg = "`initial_params` must be a `NamedTuple`, an `AbstractDict{<:VarName}`, or a `DynamicPPL.AbstractInitStrategy`."
+    errmsg = "`initial_params` must be a `DynamicPPL.AbstractInitStrategy`."
     throw(ArgumentError(errmsg))
 end
+
+# TODO: Implement additional checks for certain samplers, e.g.
+# HMC not supporting discrete parameters.
+function _check_model(model::DynamicPPL.Model)
+    return DynamicPPL.check_model(model; error_on_failure=true)
+end
+function _check_model(model::DynamicPPL.Model, ::AbstractMCMC.AbstractSampler)
+    return _check_model(model)
+end
+
+# Similar to InitFromParams, this is just for convenience
+_to_varnamedtuple(nt::NamedTuple) = DynamicPPL.VarNamedTuple(nt)
+_to_varnamedtuple(d::AbstractDict{<:VarName}) = DynamicPPL.VarNamedTuple(pairs(d))
+_to_varnamedtuple(vnt::DynamicPPL.VarNamedTuple) = vnt
