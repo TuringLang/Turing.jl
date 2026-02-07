@@ -97,13 +97,16 @@ function build_values_vnt(model::DynamicPPL.Model)
     fixed_vals = DynamicPPL.fixed(context)
     # model.args is a NamedTuple
     arg_vals = DynamicPPL.VarNamedTuple(model.args)
-    # Need to get the invlinked values as a VNT
-    vi = deepcopy(get_gibbs_global_varinfo(context))
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
-    # need to remove the Gibbs conditioning so that we can get all variables in the VarInfo
+    # Extract values from the GibbsContext itself, as a VNT.
+    init_strat = DynamicPPL.InitFromParams(
+        get_gibbs_global_varinfo(context).values, nothing
+    )
+    oavi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
+    # We need to remove the Gibbs conditioning so that we can get all variables in the
+    # accumulator (otherwise those that are conditioned on in `model` will not be included).
     defmodel = replace_gibbs_context(model)
-    _, vi = DynamicPPL.evaluate!!(defmodel, vi)
-    global_vals = DynamicPPL.get_raw_values(vi)
+    _, oavi = DynamicPPL.init!!(defmodel, oavi, init_strat, UnlinkAll())
+    global_vals = DynamicPPL.get_raw_values(oavi)
     # Merge them.
     return merge(global_vals, cond_vals, fixed_vals, arg_vals)
 end

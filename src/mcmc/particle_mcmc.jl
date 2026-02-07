@@ -526,6 +526,6 @@ Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 # Could tilde_assume!! have tighter type bounds on the arguments, namely a GibbsContext?
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
 Libtask.@might_produce(DynamicPPL.tilde_assume!!)
-Libtask.@might_produce(DynamicPPL.evaluate!!)
+Libtask.@might_produce(DynamicPPL._evaluate!!)
 Libtask.@might_produce(DynamicPPL.init!!)
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true

@@ -66,7 +66,7 @@ function AbstractMCMC.step(
         throw(ArgumentError(err_msg))
     end
     vis = map(vis, initial_params) do vi, strategy
-        last(DynamicPPL.init!!(rng, model, vi, strategy))
+        last(DynamicPPL.init!!(rng, model, vi, strategy, UnlinkAll()))
     end
 
     # Compute initial transition and states.

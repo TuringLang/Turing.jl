@@ -490,7 +490,9 @@ function setparams_varinfo!!(
     params = DynamicPPL.setacc!!(
         params, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
     )
-    return last(DynamicPPL.evaluate!!(model, params))
+    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing MH-in-Gibbs to
+    # use OAVI.
+    return last(DynamicPPL.evaluate_nowarn!!(model, params))
 end
 
 function setparams_varinfo!!(
@@ -498,7 +500,9 @@ function setparams_varinfo!!(
 )
     # The state is basically a VarInfo (plus a constant `priors` field), so we can just
     # return `params`, but first we need to update its logprob.
-    new_vi = last(DynamicPPL.evaluate!!(model, params))
+    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
+    # use OAVI.
+    new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
     return TuringESSState(new_vi, state.priors)
 end
 

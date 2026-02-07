@@ -158,7 +158,13 @@ function Distributions._rand!(
 )
     model = d.model
     varinfo = deepcopy(d.varinfo)
-    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromPrior())
+    _, varinfo = DynamicPPL.init!!(
+        rng,
+        model,
+        varinfo,
+        DynamicPPL.InitFromPrior(),
+        DynamicPPL.get_transform_strategy(varinfo),
+    )
     x .= varinfo[:]
     return x
 end

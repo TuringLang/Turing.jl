@@ -97,9 +97,9 @@ end
                 end
             end
 
-            # Check that evaluate!! and the result it returns are type stable.
+            # Check that evaluate_nowarn!! and the result it returns are type stable.
             conditioned_model = DynamicPPL.contextualize(model, ctx)
-            _, post_eval_varinfo = @inferred DynamicPPL.evaluate!!(
+            _, post_eval_varinfo = @inferred DynamicPPL.evaluate_nowarn!!(
                 conditioned_model, local_varinfo
             )
             for k in keys(post_eval_varinfo)
