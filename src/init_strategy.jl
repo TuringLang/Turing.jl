@@ -29,8 +29,11 @@ end
 
 # TODO: Implement additional checks for certain samplers, e.g.
 # HMC not supporting discrete parameters.
-function _check_model(model::DynamicPPL.Model, ::AbstractMCMC.AbstractSampler)
+function _check_model(model::DynamicPPL.Model)
     return DynamicPPL.check_model(model; error_on_failure=true)
+end
+function _check_model(model::DynamicPPL.Model, ::AbstractMCMC.AbstractSampler)
+    return _check_model(model)
 end
 
 # Similar to InitFromParams, this is just for convenience
