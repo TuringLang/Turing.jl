@@ -58,7 +58,7 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             test_mean_and_std(MH(@varname(x) => LinkedRW(0.5)))
             test_mean_and_std(MH(@varname(y) => LinkedRW(0.5)))
             # this is a random walk in unlinked space
-            test_mean_and_std(MH(@varname(y) => y -> Normal(y, 0.5)))
+            test_mean_and_std(MH(@varname(y) => vnt -> Normal(vnt[@varname(y)], 0.5)))
             test_mean_and_std(MH(@varname(x) => Normal(), @varname(y) => LinkedRW(0.5)))
             test_mean_and_std(MH(@varname(x) => LinkedRW(0.5), @varname(y) => Normal()))
             # this uses AdvancedMH
