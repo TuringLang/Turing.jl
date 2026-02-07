@@ -18,21 +18,32 @@ sampler = Gibbs(
 
 Here `get_cond_dists(vnt::VarNamedTuple)` should be a function that takes a `VarNamedTuple`
 that contains the values of all other variables (apart from `var1` and `var2`), and returns
-the conditional posterior distributions for `var1` and `var2`. `VarNamedTuple`s behave very
-similarly to `Dict{VarName,Any}`s, but are more efficient and more general: you can obtain
-values simply by using, e.g. `vnt[@varname(var3)]`.
+the conditional posterior distributions for `var1` and `var2`.
+
+`VarNamedTuple`s behave very similarly to `Dict{VarName,Any}`s, but are more efficient and
+more general: you can obtain values simply by using, e.g. `vnt[@varname(var3)]`. See
+https://turinglang.org/docs/usage/varnamedtuple/ for more details on `VarNamedTuple`s.
 
 You may, of course, have any number of variables being sampled as a block in this manner, we
 only use two as an example.
 
-The return value of `get_cond_dists` should be one of the following:
+The return value of `get_cond_dists(vnt)` should be one of the following:
 
 - A single `Distribution`, if only one variable is being sampled.
+- A `VarNamedTuple` of `Distribution`s, which represents a mapping from variable names to their
+  conditional posteriors. Please see the documentation linked above for information on how to
+  construct `VarNamedTuple`s.
+
+For convenience, we also allow the following return values (which are internally converted into
+a `VarNamedTuple`):
+
+- A `NamedTuple` of `Distribution`s, which is like the `AbstractDict` case but can be used
+  if all the variable names are single `Symbol`s, e.g.: `(; var1=dist1, var2=dist2)`.
 - An `AbstractDict{<:VarName,<:Distribution}` that maps the variables being sampled to their
   conditional posteriors E.g. `Dict(@varname(var1) => dist1, @varname(var2) => dist2)`.
-- A `NamedTuple` of `Distribution`s, which is like the `AbstractDict` case but can be used
-  if all the variable names are single `Symbol`s, and may be more performant, e.g.:
-  `(; var1=dist1, var2=dist2)`.
+
+Note that the `AbstractDict` case is likely to incur a performance penalty; we recommend using
+`VarNamedTuple`s directly.
 
 # Examples
 
@@ -137,7 +148,7 @@ function Turing.Inference.initialstep(
     ::Random.AbstractRNG,
     model::DynamicPPL.Model,
     ::GibbsConditional,
-    vi::DynamicPPL.AbstractVarInfo;
+    vi::DynamicPPL.VarInfo;
     kwargs...,
 )
     state = DynamicPPL.is_transformed(vi) ? DynamicPPL.invlink(vi, model) : vi
@@ -146,42 +157,72 @@ function Turing.Inference.initialstep(
     return nothing, state
 end
 
+@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarInfo) =
+    DynamicPPL.VarNamedTuple(dists)
+@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarInfo) = dists
+function _to_varnamedtuple(dists::AbstractDict{<:VarName}, state::DynamicPPL.VarInfo)
+    template_vnt = state.values
+    vnt = DynamicPPL.VarNamedTuple()
+    for (vn, dist) in dists
+        top_sym = AbstractPPL.getsym(vn)
+        template = get(template_vnt.data, top_sym, DynamicPPL.NoTemplate())
+        vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, template)
+    end
+    return vnt
+end
+function _to_varnamedtuple(dist::Distribution, state::DynamicPPL.VarInfo)
+    vns = keys(state)
+    if length(vns) > 1
+        msg = (
+            "In GibbsConditional, `get_cond_dists` returned a single distribution," *
+            " but multiple variables ($vns) are being sampled. Please return a" *
+            " VarNamedTuple mapping variable names to distributions instead."
+        )
+        throw(ArgumentError(msg))
+    end
+    vn = only(vns)
+    top_sym = AbstractPPL.getsym(vn)
+    template = get(state.values.data, top_sym, DynamicPPL.NoTemplate())
+    return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
+end
+
+struct InitFromCondDists{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInitStrategy
+    cond_dists::V
+end
+function DynamicPPL.init(
+    rng::Random.AbstractRNG, vn::VarName, ::Distribution, init_strat::InitFromCondDists
+)
+    return DynamicPPL.UntransformedValue(rand(rng, init_strat.cond_dists[vn]))
+end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::GibbsConditional,
-    state::DynamicPPL.AbstractVarInfo;
+    state::DynamicPPL.VarInfo;
     kwargs...,
 )
     # Get all the conditioned variable values from the model context. This is assumed to
     # include a GibbsContext as part of the context stack.
     condvals = build_values_vnt(model)
-    conddists = sampler.get_cond_dists(condvals)
+    # `sampler.get_cond_dists(condvals)` could return many things, unfortunately, so we need
+    # to handle the different cases.
+    #   - just a distribution, in which case we assume there is only one variable being
+    #     sampled, and we can just sample from it directly.
+    #   - a VarNamedTuple of distributions
+    #   - a NamedTuple of distributions
+    #   - an AbstractDict mapping VarNames to distributions
+    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), state)
 
-    # We support three different kinds of return values for `sample.get_cond_dists`, to make
-    # life easier for the user.
-    if conddists isa AbstractDict
-        for (vn, dist) in conddists
-            state = setindex!!(state, rand(rng, dist), vn)
-        end
-    elseif conddists isa NamedTuple
-        for (vn_sym, dist) in pairs(conddists)
-            vn = VarName{vn_sym}()
-            state = setindex!!(state, rand(rng, dist), vn)
-        end
-    else
-        # Single variable case
-        vn = only(keys(state))
-        state = setindex!!(state, rand(rng, conddists), vn)
-    end
-
+    init_strategy = InitFromCondDists(conddists)
+    _, new_state = DynamicPPL.init!!(rng, model, state, init_strategy)
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
     # transition.
-    return nothing, state
+    return nothing, new_state
 end
 
 function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::GibbsConditional, ::Any, params::DynamicPPL.AbstractVarInfo
+    ::DynamicPPL.Model, ::GibbsConditional, ::Any, params::DynamicPPL.VarInfo
 )
     return params
 end
