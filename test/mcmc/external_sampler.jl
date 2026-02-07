@@ -158,13 +158,7 @@ function Distributions._rand!(
 )
     model = d.model
     varinfo = deepcopy(d.varinfo)
-    _, varinfo = DynamicPPL.init!!(
-        rng,
-        model,
-        varinfo,
-        DynamicPPL.InitFromPrior(),
-        DynamicPPL.get_transform_strategy(varinfo),
-    )
+    _, varinfo = DynamicPPL.init!!(rng, model, varinfo, DynamicPPL.InitFromPrior())
     x .= varinfo[:]
     return x
 end
@@ -177,11 +171,7 @@ end
 
 function test_initial_params(model, sampler; kwargs...)
     # Generate some parameters. Doesn't really matter what.
-    vi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
-    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
-    # sometimes `dict` has a key type of Any, which won't work with InitFromParams
-    # as it expects VarName keys
-    vnt = DynamicPPL.get_raw_values(vi)
+    vnt = rand(model)
     init_strategy = DynamicPPL.InitFromParams(vnt)
 
     # Execute the transition with two different RNGs and check that the resulting

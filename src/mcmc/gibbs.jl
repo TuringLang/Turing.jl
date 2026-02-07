@@ -10,7 +10,6 @@ isgibbscomponent(::AbstractSampler) = true
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 
-isgibbscomponent(::IS) = false
 isgibbscomponent(::Prior) = false
 isgibbscomponent(::Emcee) = false
 isgibbscomponent(::SGLD) = false

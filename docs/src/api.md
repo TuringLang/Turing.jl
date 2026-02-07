@@ -73,7 +73,6 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `PolynomialStepsize` | [`Turing.Inference.PolynomialStepsize`](@ref) | Returns a function which generates polynomially decaying step sizes |
 | `HMCDA`              | [`Turing.Inference.HMCDA`](@ref)              | Hamiltonian Monte Carlo with dual averaging                         |
 | `NUTS`               | [`Turing.Inference.NUTS`](@ref)               | No-U-Turn Sampler                                                   |
-| `IS`                 | [`Turing.Inference.IS`](@ref)                 | Importance sampling                                                 |
 | `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
 | `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
 | `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |

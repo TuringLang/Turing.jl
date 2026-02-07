@@ -112,7 +112,6 @@ export
     PolynomialStepsize,
     HMCDA,
     NUTS,
-    IS,
     SMC,
     PG,
     CSMC,

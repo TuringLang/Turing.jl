@@ -116,7 +116,6 @@ end
         (@varname(s), @varname(m), @varname(x)), (NUTS(), NUTS())
     )
     # Invalid samplers
-    @test_throws ArgumentError Gibbs(@varname(s) => IS())
     @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
     @test_throws ArgumentError Gibbs(
         @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
