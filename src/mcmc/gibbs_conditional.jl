@@ -105,7 +105,7 @@ function build_values_vnt(model::DynamicPPL.Model)
     # We need to remove the Gibbs conditioning so that we can get all variables in the
     # accumulator (otherwise those that are conditioned on in `model` will not be included).
     defmodel = replace_gibbs_context(model)
-    _, oavi = DynamicPPL.init!!(defmodel, oavi, init_strat, UnlinkAll())
+    _, oavi = DynamicPPL.init!!(defmodel, oavi, init_strat, DynamicPPL.UnlinkAll())
     global_vals = DynamicPPL.get_raw_values(oavi)
     # Merge them.
     return merge(global_vals, cond_vals, fixed_vals, arg_vals)
