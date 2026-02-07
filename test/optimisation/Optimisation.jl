@@ -1,10 +1,11 @@
 module OptimisationTests
 
-using ..Models: gdemo, gdemo_default
 using AbstractPPL: AbstractPPL
+using Bijectors: Bijectors
+import DifferentiationInterface as DI
 using Distributions
-using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+using ForwardDiff: ForwardDiff
 using LinearAlgebra: Diagonal, I
 using Random: Random
 using Optimization
@@ -12,83 +13,226 @@ using Optimization: Optimization
 using OptimizationBBO: OptimizationBBO
 using OptimizationNLopt: OptimizationNLopt
 using OptimizationOptimJL: OptimizationOptimJL
+using Random: Random
 using ReverseDiff: ReverseDiff
+using StableRNGs: StableRNG
 using StatsBase: StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
 using Test: @test, @testset, @test_throws
 using Turing
+using Turing.Optimisation:
+    ModeResult, InitWithConstraintCheck, satisfies_constraints, make_optim_bounds_and_init
+
+SECOND_ORDER_ADTYPE = DI.SecondOrder(AutoForwardDiff(), AutoForwardDiff())
+GDEMO_DEFAULT = DynamicPPL.TestUtils.demo_assume_observe_literal()
+
+function check_optimisation_result(
+    result::ModeResult,
+    true_values::AbstractDict{<:AbstractPPL.VarName,<:Any},
+    true_logp::Real,
+    check_retcode=true,
+)
+    # Check that `result.params` contains all the keys in `true_values`
+    @test Set(keys(result.params)) == Set(keys(true_values))
+    # Check that their values are close
+    for (vn, val) in pairs(result.params)
+        @test isapprox(val, true_values[vn], atol=0.01)
+    end
+    # Check logp and retcode
+    @test isapprox(result.lp, true_logp, atol=0.01)
+    if check_retcode
+        @test result.optim_result.retcode == Optimization.ReturnCode.Success
+    end
+end
+
+@testset "Initialisation" begin
+    @testset "satisfies_constraints" begin
+        @testset "univariate" begin
+            val = 0.0
+            dist = Normal() # only used for dispatch
+            @test satisfies_constraints(nothing, nothing, val, dist)
+            @test satisfies_constraints(-1.0, nothing, val, dist)
+            @test !satisfies_constraints(1.0, nothing, val, dist)
+            @test satisfies_constraints(nothing, 1.0, val, dist)
+            @test !satisfies_constraints(nothing, -1.0, val, dist)
+            @test satisfies_constraints(-1.0, 1.0, val, dist)
+        end
+
+        @testset "univariate ForwardDiff.Dual" begin
+            val = ForwardDiff.Dual(0.0, 1.0)
+            dist = Normal() # only used for dispatch
+            @test satisfies_constraints(nothing, 0.0, val, dist)
+            @test !satisfies_constraints(nothing, -0.01, val, dist)
+            val = ForwardDiff.Dual(0.0, -1.0)
+            @test satisfies_constraints(0.0, nothing, val, dist)
+            @test !satisfies_constraints(0.01, nothing, val, dist)
+        end
+
+        @testset "multivariate" begin
+            val = [0.3, 0.5, 0.2]
+            dist = Dirichlet(ones(3)) # only used for dispatch
+            @test satisfies_constraints(nothing, nothing, val, dist)
+            @test satisfies_constraints(zeros(3), nothing, val, dist)
+            @test !satisfies_constraints(ones(3), nothing, val, dist)
+            @test satisfies_constraints(nothing, ones(3), val, dist)
+            @test !satisfies_constraints(nothing, zeros(3), val, dist)
+            @test satisfies_constraints(zeros(3), ones(3), val, dist)
+            @test !satisfies_constraints([0.4, 0.0, 0.0], nothing, val, dist)
+            @test !satisfies_constraints(nothing, [1.0, 1.0, 0.1], val, dist)
+        end
+
+        @testset "multivariate ForwardDiff.Dual" begin
+            val = [ForwardDiff.Dual(0.5, 1.0), ForwardDiff.Dual(0.5, -1.0)]
+            dist = Dirichlet(ones(3)) # only used for dispatch
+            @test satisfies_constraints([0.5, 0.5], [0.5, 0.5], val, dist)
+        end
+
+        @testset "Matrix distributions" begin
+            dist = Wishart(3, [0.5 0.0; 0.0 0.5]) # only used for dispatch
+            val = [1.0 0.0; 0.0 1.0]
+            @test satisfies_constraints(zeros(2, 2), ones(2, 2), val, dist)
+            @test satisfies_constraints(nothing, ones(2, 2), val, dist)
+            @test satisfies_constraints(zeros(2, 2), nothing, val, dist)
+            val = [2.0 -1.0; -1.0 2.0]
+            @test !satisfies_constraints(zeros(2, 2), ones(2, 2), val, dist)
+            @test !satisfies_constraints(nothing, ones(2, 2), val, dist)
+            @test !satisfies_constraints(zeros(2, 2), nothing, val, dist)
+        end
+
+        @testset "LKJCholesky" begin
+            dist = LKJCholesky(3, 0.5)
+            val = rand(dist)
+            @test satisfies_constraints(nothing, nothing, val, dist)
+            # Just refuse to handle these.
+            @test_throws ArgumentError satisfies_constraints(
+                zeros(3, 3), nothing, val, dist
+            )
+            @test_throws ArgumentError satisfies_constraints(nothing, ones(3, 3), val, dist)
+        end
+    end
+
+    @testset "errors when constraints can't be satisfied" begin
+        @model function diric()
+            x ~ Dirichlet(ones(2))
+            return 1.0 ~ Normal()
+        end
+        ldf = LogDensityFunction(diric())
+        # These are all impossible constraints for a Dirichlet(ones(2))
+        for (lb, ub) in
+            [([2.0, 2.0], nothing), (nothing, [-1.0, -1.0]), ([0.3, 0.3], [0.1, 0.1])]
+            # unit test the function
+            @test_throws ArgumentError make_optim_bounds_and_init(
+                Random.default_rng(),
+                ldf,
+                InitFromPrior(),
+                VarNamedTuple(; x=lb),
+                VarNamedTuple(; x=ub),
+            )
+            # check that the high-level function also errors
+            @test_throws ArgumentError maximum_likelihood(diric(); lb=(x=lb,), ub=(x=ub,))
+            @test_throws ArgumentError maximum_a_posteriori(diric(); lb=(x=lb,), ub=(x=ub,))
+        end
+
+        # Try to provide reasonable constraints, but bad initial params
+        @model function normal_model()
+            x ~ Normal()
+            return 1.0 ~ Normal(x)
+        end
+        ldf = LogDensityFunction(normal_model())
+        lb = (x=-1.0,)
+        ub = (x=1.0,)
+        bad_init = (x=10.0,)
+        @test_throws ArgumentError make_optim_bounds_and_init(
+            Random.default_rng(),
+            ldf,
+            InitFromParams(bad_init),
+            VarNamedTuple(lb),
+            VarNamedTuple(ub),
+        )
+        @test_throws ArgumentError maximum_likelihood(
+            normal_model(); initial_params=InitFromParams(bad_init), lb=lb, ub=ub
+        )
+        @test_throws ArgumentError maximum_a_posteriori(
+            normal_model(); initial_params=InitFromParams(bad_init), lb=lb, ub=ub
+        )
+    end
+
+    @testset "generation of vector constraints" begin
+        @testset "$dist" for (lb, ub, dist) in (
+            ((x=0.1,), (x=0.5,), Normal()),
+            ((x=0.1,), (x=0.5,), Beta(2, 2)),
+            ((x=[0.1, 0.1],), (x=[0.5, 0.5],), MvNormal(zeros(2), I)),
+            (
+                (x=[0.1, 0.1],),
+                (x=[0.5, 0.5],),
+                product_distribution([Beta(2, 2), Beta(2, 2)]),
+            ),
+            # TODO(penelopeysm): Broken because DynamicPPL.to_vec_transform(dist) fails.
+            # This needs an upstream fix.
+            # ((x=(a=0.1, b=0.1),), (x=(a=0.5, b=0.5),), product_distribution((a=Beta(2, 2), b=Beta(2, 2)))),
+        )
+            @model f() = x ~ dist
+            model = f()
+            maybe_to_vec(x::AbstractVector) = x
+            maybe_to_vec(x) = [x]
+
+            @testset "unlinked" begin
+                ldf = LogDensityFunction(model)
+                lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
+                )
+                @test lb_vec == maybe_to_vec(lb.x)
+                @test ub_vec == maybe_to_vec(ub.x)
+                @test all(init_vec .>= lb_vec)
+                @test all(init_vec .<= ub_vec)
+            end
+
+            @testset "linked" begin
+                vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
+                ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
+                lb_vec, ub_vec, init_vec = make_optim_bounds_and_init(
+                    Random.default_rng(),
+                    ldf,
+                    InitFromPrior(),
+                    VarNamedTuple(lb),
+                    VarNamedTuple(ub),
+                )
+                b = Bijectors.bijector(dist)
+                @test lb_vec ≈ maybe_to_vec(b(lb.x))
+                @test ub_vec ≈ maybe_to_vec(b(ub.x))
+                @test all(init_vec .>= lb_vec)
+                @test all(init_vec .<= ub_vec)
+            end
+        end
+    end
+
+    @testset "forbidding linked + constraints for complicated distributions" begin
+        @testset for dist in (LKJCholesky(3, 1.0), Dirichlet(ones(3)))
+            @model f() = x ~ dist
+            model = f()
+
+            vi = DynamicPPL.link!!(DynamicPPL.VarInfo(model), model)
+            ldf = LogDensityFunction(model, DynamicPPL.getlogjoint, vi)
+            lb = VarNamedTuple(; x=rand(dist))
+            ub = VarNamedTuple()
+
+            @test_throws ArgumentError make_optim_bounds_and_init(
+                Random.default_rng(), ldf, InitFromPrior(), lb, ub
+            )
+            @test_throws ArgumentError maximum_likelihood(model; lb=lb, ub=ub, link=true)
+            @test_throws ArgumentError maximum_a_posteriori(model; lb=lb, ub=ub, link=true)
+        end
+    end
+end
 
 @testset "Optimisation" begin
-
     # The `stats` field is populated only in newer versions of OptimizationOptimJL and
     # similar packages. Hence we end up doing this check a lot
     hasstats(result) = result.optim_result.stats !== nothing
-
-    # Issue: https://discourse.julialang.org/t/two-equivalent-conditioning-syntaxes-giving-different-likelihood-values/100320
-    @testset "OptimLogDensity and contexts" begin
-        @model function model1(x)
-            μ ~ Uniform(0, 2)
-            return x ~ LogNormal(μ, 1)
-        end
-
-        @model function model2()
-            μ ~ Uniform(0, 2)
-            return x ~ LogNormal(μ, 1)
-        end
-
-        x = 1.0
-        w = [1.0]
-
-        @testset "With ConditionContext" begin
-            m1 = model1(x)
-            m2 = model2() | (x=x,)
-            # Doesn't matter if we use getlogjoint or getlogjoint_internal since the
-            # VarInfo isn't linked.
-            ld1 = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogjoint)
-            )
-            ld2 = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m2, DynamicPPL.getlogjoint_internal)
-            )
-            @test ld1(w) == ld2(w)
-        end
-
-        @testset "With prefixes" begin
-            vn = @varname(inner)
-            m1 = prefix(model1(x), vn)
-            m2 = prefix((model2() | (x=x,)), vn)
-            ld1 = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogjoint)
-            )
-            ld2 = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m2, DynamicPPL.getlogjoint_internal)
-            )
-            @test ld1(w) == ld2(w)
-        end
-
-        @testset "Joint, prior, and likelihood" begin
-            m1 = model1(x)
-            a = [0.3]
-            ld_joint = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogjoint)
-            )
-            ld_prior = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogprior)
-            )
-            ld_likelihood = Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getloglikelihood)
-            )
-            @test ld_joint(a) == ld_prior(a) + ld_likelihood(a)
-
-            # test that the prior accumulator is calculating the right thing
-            @test Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogprior)
-            )([0.3]) ≈ -Distributions.logpdf(Uniform(0, 2), 0.3)
-            @test Turing.Optimisation.OptimLogDensity(
-                DynamicPPL.LogDensityFunction(m1, DynamicPPL.getlogprior)
-            )([-0.3]) ≈ -Distributions.logpdf(Uniform(0, 2), -0.3)
-        end
-    end
 
     @testset "errors on invalid model" begin
         @model function invalid_model()
@@ -101,47 +245,39 @@ using Turing
     end
 
     @testset "gdemo" begin
-        """
-            check_success(result, true_value, true_logp, check_retcode=true)
-
-        Check that the `result` returned by optimisation is close to the truth.
-        """
-        function check_optimisation_result(
-            result, true_value, true_logp, check_retcode=true
-        )
-            optimum = result.values.array
-            @test all(isapprox.(optimum - true_value, 0.0, atol=0.01))
-            if check_retcode
-                @test result.optim_result.retcode == Optimization.ReturnCode.Success
-            end
-            @test isapprox(result.lp, true_logp, atol=0.01)
-            # check that the parameter dict matches the NamedArray
-            # NOTE: This test only works for models where all parameters are identity
-            # varnames AND real-valued. Thankfully, this is true for `gdemo`.
-            @test length(only(result.values.dicts)) == length(result.params)
-            for (k, index) in only(result.values.dicts)
-                @test result.params[AbstractPPL.VarName{k}()] == result.values.array[index]
-            end
-        end
-
         @testset "MLE" begin
-            Random.seed!(222)
-            true_value = [0.0625, 1.75]
-            true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
+            true_value = Dict(@varname(s) => 0.0625, @varname(m) => 1.75)
+            true_logp = loglikelihood(GDEMO_DEFAULT, true_value)
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MLE())
+            m1 = Turing.Optimisation.estimate_mode(GDEMO_DEFAULT, MLE())
             m2 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.LBFGS();
+                initial_params=InitFromParams(true_value),
             )
-            m3 = maximum_likelihood(gdemo_default, OptimizationOptimJL.Newton())
+            m3 = maximum_likelihood(
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.Newton();
+                adtype=SECOND_ORDER_ADTYPE,
+            )
             m4 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.BFGS();
+                adtype=AutoReverseDiff(),
             )
             m5 = maximum_likelihood(
-                gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.NelderMead();
+                initial_params=InitFromParams(true_value),
             )
-            m6 = maximum_likelihood(gdemo_default, OptimizationOptimJL.NelderMead())
+            m6 = maximum_likelihood(
+                StableRNG(468), GDEMO_DEFAULT, OptimizationOptimJL.NelderMead()
+            )
 
             check_success(m1)
             check_success(m2)
@@ -163,23 +299,38 @@ using Turing
         end
 
         @testset "MAP" begin
-            Random.seed!(222)
-            true_value = [49 / 54, 7 / 6]
-            true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
+            true_value = Dict(@varname(s) => 49 / 54, @varname(m) => 7 / 6)
+            true_logp = logjoint(GDEMO_DEFAULT, true_value)
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MAP())
+            m1 = Turing.Optimisation.estimate_mode(StableRNG(468), GDEMO_DEFAULT, MAP())
             m2 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.LBFGS(); initial_params=true_value
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.LBFGS();
+                initial_params=InitFromParams(true_value),
             )
-            m3 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.Newton())
+            m3 = maximum_a_posteriori(
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.Newton();
+                adtype=SECOND_ORDER_ADTYPE,
+            )
             m4 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.BFGS(); adtype=AutoReverseDiff()
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.BFGS();
+                adtype=AutoReverseDiff(),
             )
             m5 = maximum_a_posteriori(
-                gdemo_default, OptimizationOptimJL.NelderMead(); initial_params=true_value
+                StableRNG(468),
+                GDEMO_DEFAULT,
+                OptimizationOptimJL.NelderMead();
+                initial_params=InitFromParams(true_value),
             )
-            m6 = maximum_a_posteriori(gdemo_default, OptimizationOptimJL.NelderMead())
+            m6 = maximum_a_posteriori(
+                StableRNG(468), GDEMO_DEFAULT, OptimizationOptimJL.NelderMead()
+            )
 
             check_success(m1)
             check_success(m2)
@@ -201,52 +352,56 @@ using Turing
         end
 
         @testset "MLE with box constraints" begin
-            Random.seed!(222)
-            true_value = [0.0625, 1.75]
-            true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) =
-                check_optimisation_result(result, true_value, true_logp, check_retcode)
+            true_value = Dict(@varname(s) => 0.0625, @varname(m) => 1.75)
+            true_logp = loglikelihood(GDEMO_DEFAULT, true_value)
+            check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            lb = [0.0, 0.0]
-            ub = [2.0, 2.0]
+            lb = (s=0.0, m=0.0)
+            ub = (s=2.0, m=2.0)
+            # We need to disable linking during the optimisation here, because it will
+            # result in NaN's. See the comment on allowed_incorrect_mle below. In fact
+            # even sometimes without linking it still gets NaN's -- we get round that
+            # in these tests by seeding the RNG.
+            kwargs = (; lb=lb, ub=ub, link=false)
 
-            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MLE(); lb=lb, ub=ub)
+            m1 = Turing.Optimisation.estimate_mode(
+                StableRNG(468), GDEMO_DEFAULT, MLE(); kwargs...
+            )
             m2 = maximum_likelihood(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                initial_params=true_value,
-                lb=lb,
-                ub=ub,
+                initial_params=InitFromParams(true_value),
+                kwargs...,
             )
             m3 = maximum_likelihood(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000,
                 abstol=1e-5,
-                lb=lb,
-                ub=ub,
+                kwargs...,
             )
             m4 = maximum_likelihood(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(),
-                lb=lb,
-                ub=ub,
+                kwargs...,
             )
             m5 = maximum_likelihood(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.IPNewton();
-                initial_params=true_value,
-                lb=lb,
-                ub=ub,
+                initial_params=InitFromParams(true_value),
+                adtype=SECOND_ORDER_ADTYPE,
+                kwargs...,
             )
-            m6 = maximum_likelihood(gdemo_default; lb=lb, ub=ub)
+            m6 = maximum_likelihood(StableRNG(468), GDEMO_DEFAULT; kwargs...)
 
             check_success(m1)
             check_success(m2)
-            # BBO retcodes are misconfigured, so skip checking the retcode in this case.
-            # See https://github.com/SciML/Optimization.jl/issues/745
-            check_success(m3, false)
+            check_success(m3)
             check_success(m4)
             check_success(m5)
             check_success(m6)
@@ -261,223 +416,114 @@ using Turing
         end
 
         @testset "MAP with box constraints" begin
-            Random.seed!(222)
-            true_value = [49 / 54, 7 / 6]
-            true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) =
-                check_optimisation_result(result, true_value, true_logp, check_retcode)
+            true_value = Dict(@varname(s) => 49 / 54, @varname(m) => 7 / 6)
+            true_logp = logjoint(GDEMO_DEFAULT, true_value)
+            check_success(result) = check_optimisation_result(result, true_value, true_logp)
 
-            lb = [0.0, 0.0]
-            ub = [2.0, 2.0]
+            lb = (s=0.0, m=0.0)
+            ub = (s=2.0, m=2.0)
+            # We need to disable linking during the optimisation here, because it will
+            # result in NaN's. See the comment on allowed_incorrect_mle below.
+            kwargs = (; lb=lb, ub=ub, link=false)
 
-            m1 = Turing.Optimisation.estimate_mode(gdemo_default, MAP(); lb=lb, ub=ub)
+            m1 = Turing.Optimisation.estimate_mode(
+                StableRNG(468), GDEMO_DEFAULT, MAP(); kwargs...
+            )
             m2 = maximum_a_posteriori(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.LBFGS());
-                initial_params=true_value,
-                lb=lb,
-                ub=ub,
+                initial_params=InitFromParams(true_value),
+                kwargs...,
             )
             m3 = maximum_a_posteriori(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationBBO.BBO_separable_nes();
                 maxiters=100_000,
                 abstol=1e-5,
-                lb=lb,
-                ub=ub,
+                kwargs...,
             )
             m4 = maximum_a_posteriori(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.Fminbox(OptimizationOptimJL.BFGS());
                 adtype=AutoReverseDiff(),
-                lb=lb,
-                ub=ub,
+                kwargs...,
             )
             m5 = maximum_a_posteriori(
-                gdemo_default,
+                StableRNG(468),
+                GDEMO_DEFAULT,
                 OptimizationOptimJL.IPNewton();
-                initial_params=true_value,
-                lb=lb,
-                ub=ub,
+                initial_params=InitFromParams(true_value),
+                adtype=SECOND_ORDER_ADTYPE,
+                kwargs...,
             )
-            m6 = maximum_a_posteriori(gdemo_default; lb=lb, ub=ub)
+            m6 = maximum_a_posteriori(StableRNG(468), GDEMO_DEFAULT; kwargs...)
 
             check_success(m1)
             check_success(m2)
-            # BBO retcodes are misconfigured, so skip checking the retcode in this case.
-            # See https://github.com/SciML/Optimization.jl/issues/745
-            check_success(m3, false)
+            check_success(m3)
             check_success(m4)
             check_success(m5)
             check_success(m6)
 
             @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
             @test !hasstats(m5) || m5.optim_result.stats.iterations <= 1
-
-            @show m2.optim_result.stats
             @test !hasstats(m2) || m2.optim_result.stats.gevals > 0
             @test !hasstats(m3) || m3.optim_result.stats.gevals == 0
             @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
             @test !hasstats(m5) || m5.optim_result.stats.gevals > 0
         end
-
-        @testset "MLE with generic constraints" begin
-            Random.seed!(222)
-            true_value = [0.0625, 1.75]
-            true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) =
-                check_optimisation_result(result, true_value, true_logp, check_retcode)
-
-            # Set two constraints: The first parameter must be non-negative, and the L2 norm
-            # of the parameters must be between 0.5 and 2.
-            cons(res, x, _) = (res .= [x[1], sqrt(sum(x .^ 2))])
-            lcons = [0, 0.5]
-            ucons = [Inf, 2.0]
-            cons_args = (cons=cons, lcons=lcons, ucons=ucons)
-            initial_params = [0.5, -1.0]
-
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MLE(); initial_params=initial_params, cons_args...
-            )
-            m2 = maximum_likelihood(gdemo_default; initial_params=true_value, cons_args...)
-            m3 = maximum_likelihood(
-                gdemo_default,
-                OptimizationOptimJL.IPNewton();
-                initial_params=initial_params,
-                cons_args...,
-            )
-            m4 = maximum_likelihood(
-                gdemo_default,
-                OptimizationOptimJL.IPNewton();
-                initial_params=initial_params,
-                adtype=AutoReverseDiff(),
-                cons_args...,
-            )
-            m5 = maximum_likelihood(
-                gdemo_default; initial_params=initial_params, cons_args...
-            )
-
-            check_success(m1)
-            check_success(m2)
-            check_success(m3)
-            check_success(m4)
-            check_success(m5)
-
-            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
-
-            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
-            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
-
-            expected_error = ArgumentError(
-                "You must provide an initial value when using generic constraints."
-            )
-            @test_throws expected_error maximum_likelihood(gdemo_default; cons_args...)
-        end
-
-        @testset "MAP with generic constraints" begin
-            Random.seed!(222)
-            true_value = [49 / 54, 7 / 6]
-            true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
-            check_success(result, check_retcode=true) =
-                check_optimisation_result(result, true_value, true_logp, check_retcode)
-
-            # Set two constraints: The first parameter must be non-negative, and the L2 norm
-            # of the parameters must be between 0.5 and 2.
-            cons(res, x, _) = (res .= [x[1], sqrt(sum(x .^ 2))])
-            lcons = [0, 0.5]
-            ucons = [Inf, 2.0]
-            cons_args = (cons=cons, lcons=lcons, ucons=ucons)
-            initial_params = [0.5, -1.0]
-
-            m1 = Turing.Optimisation.estimate_mode(
-                gdemo_default, MAP(); initial_params=initial_params, cons_args...
-            )
-            m2 = maximum_a_posteriori(
-                gdemo_default; initial_params=true_value, cons_args...
-            )
-            m3 = maximum_a_posteriori(
-                gdemo_default,
-                OptimizationOptimJL.IPNewton();
-                initial_params=initial_params,
-                cons_args...,
-            )
-            m4 = maximum_a_posteriori(
-                gdemo_default,
-                OptimizationOptimJL.IPNewton();
-                initial_params=initial_params,
-                adtype=AutoReverseDiff(),
-                cons_args...,
-            )
-            m5 = maximum_a_posteriori(
-                gdemo_default; initial_params=initial_params, cons_args...
-            )
-
-            check_success(m1)
-            check_success(m2)
-            check_success(m3)
-            check_success(m4)
-            check_success(m5)
-
-            @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
-
-            @test !hasstats(m3) || m3.optim_result.stats.gevals > 0
-            @test !hasstats(m4) || m4.optim_result.stats.gevals > 0
-
-            expected_error = ArgumentError(
-                "You must provide an initial value when using generic constraints."
-            )
-            @test_throws expected_error maximum_a_posteriori(gdemo_default; cons_args...)
-        end
     end
 
     @testset "StatsBase integration" begin
-        Random.seed!(54321)
-        mle_est = maximum_likelihood(gdemo_default)
-        # Calculated based on the two data points in gdemo_default, [1.5, 2.0]
-        true_values = [0.0625, 1.75]
+        true_s = 0.0625
+        true_m = 1.75
+        true_value = Dict(@varname(s) => true_s, @varname(m) => true_m)
+        true_lp = loglikelihood(GDEMO_DEFAULT, true_value)
+        mle_est = maximum_likelihood(GDEMO_DEFAULT)
 
-        @test coefnames(mle_est) == [:s, :m]
+        @test coefnames(mle_est) == [@varname(s), @varname(m)]
+        @test coefnames(mle_est) == params(mle_est)
 
-        diffs = coef(mle_est).array - [0.0625031; 1.75001]
+        diffs = coef(mle_est) .- [true_s, true_m]
         @test all(isapprox.(diffs, 0.0, atol=0.1))
 
-        infomat = [2/(2 * true_values[1]^2) 0.0; 0.0 2/true_values[1]]
+        infomat = [2/(2 * true_s^2) 0.0; 0.0 2/true_s]
         @test all(isapprox.(infomat - informationmatrix(mle_est), 0.0, atol=0.01))
 
-        vcovmat = [2 * true_values[1]^2/2 0.0; 0.0 true_values[1]/2]
+        @test vcov(mle_est) == inv(informationmatrix(mle_est))
+        vcovmat = [2 * true_s^2/2 0.0; 0.0 true_s/2]
         @test all(isapprox.(vcovmat - vcov(mle_est), 0.0, atol=0.01))
 
         ctable = coeftable(mle_est)
         @test ctable isa StatsBase.CoefTable
 
-        s = stderror(mle_est).array
+        s = stderror(mle_est)
         @test all(isapprox.(s - [0.06250415643292194, 0.17677963626053916], 0.0, atol=0.01))
 
-        @test coefnames(mle_est) == Distributions.params(mle_est)
-        @test vcov(mle_est) == inv(informationmatrix(mle_est))
-
-        @test isapprox(loglikelihood(mle_est), -0.0652883561466624, atol=0.01)
+        @test isapprox(loglikelihood(mle_est), true_lp, atol=0.01)
     end
 
     @testset "Linear regression test" begin
         @model function regtest(x, y)
-            beta ~ MvNormal(Zeros(2), I)
+            beta ~ MvNormal(zeros(2), I)
             mu = x * beta
             return y ~ MvNormal(mu, I)
         end
 
-        Random.seed!(987)
         true_beta = [1.0, -2.2]
-        x = rand(40, 2)
+        x = rand(StableRNG(468), 40, 2)
         y = x * true_beta
 
         model = regtest(x, y)
-        mle = maximum_likelihood(model)
+        mle = maximum_likelihood(StableRNG(468), model)
 
         vcmat = inv(x'x)
-        vcmat_mle = vcov(mle).array
+        vcmat_mle = vcov(mle)
 
-        @test isapprox(mle.values.array, true_beta)
+        @test isapprox(mle.params[@varname(beta)], true_beta)
         @test isapprox(vcmat, vcmat_mle)
     end
 
@@ -491,34 +537,41 @@ using Turing
 
         model_dot = dot_gdemo([1.5, 2.0])
 
-        mle1 = maximum_likelihood(gdemo_default)
+        mle1 = maximum_likelihood(GDEMO_DEFAULT)
         mle2 = maximum_likelihood(model_dot)
 
-        map1 = maximum_a_posteriori(gdemo_default)
+        map1 = maximum_a_posteriori(GDEMO_DEFAULT)
         map2 = maximum_a_posteriori(model_dot)
 
-        @test isapprox(mle1.values.array, mle2.values.array)
-        @test isapprox(map1.values.array, map2.values.array)
+        @test isapprox(mle1.params[@varname(s)], mle2.params[@varname(s)])
+        @test isapprox(mle1.params[@varname(m)], mle2.params[@varname(m)])
+        @test isapprox(map1.params[@varname(s)], map2.params[@varname(s)])
+        @test isapprox(map1.params[@varname(m)], map2.params[@varname(m)])
     end
 
-    # TODO(mhauru): The corresponding Optim.jl test had a note saying that some models
-    # don't work for Tracker and ReverseDiff. Is that still the case?
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-        Random.seed!(23)
-        result_true = DynamicPPL.TestUtils.posterior_optima(model)
+        true_optima = DynamicPPL.TestUtils.posterior_optima(model)
 
         optimizers = [
-            OptimizationOptimJL.LBFGS(),
-            OptimizationOptimJL.NelderMead(),
-            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
+            (false, OptimizationOptimJL.LBFGS()),
+            (false, OptimizationOptimJL.NelderMead()),
+            (true, OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART()),
         ]
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
-            result = maximum_a_posteriori(model, optimizer)
-            vals = result.values
+        @testset "$(nameof(typeof(optimizer)))" for (needs_second_order, optimizer) in
+                                                    optimizers
+            adtype = if needs_second_order
+                SECOND_ORDER_ADTYPE
+            else
+                AutoForwardDiff()
+            end
+            result = maximum_a_posteriori(StableRNG(468), model, optimizer; adtype=adtype)
 
             for vn in DynamicPPL.TestUtils.varnames(model)
-                for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
-                    @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol = 0.05
+                val = AbstractPPL.getvalue(true_optima, vn)
+                for vn_leaf in AbstractPPL.varname_leaves(vn, val)
+                    expected = AbstractPPL.getvalue(true_optima, vn_leaf)
+                    actual = result.params[vn_leaf]
+                    @test expected ≈ actual atol = 0.05
                 end
             end
         end
@@ -541,28 +594,35 @@ using Turing
         DynamicPPL.TestUtils.demo_dot_assume_observe_index,
         DynamicPPL.TestUtils.demo_dot_assume_observe_index_literal,
         DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
+        DynamicPPL.TestUtils.demo_nested_colons,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-        Random.seed!(23)
-        result_true = DynamicPPL.TestUtils.likelihood_optima(model)
+        true_optima = DynamicPPL.TestUtils.likelihood_optima(model)
 
         optimizers = [
-            OptimizationOptimJL.LBFGS(),
-            OptimizationOptimJL.NelderMead(),
-            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
+            (false, OptimizationOptimJL.LBFGS()),
+            (false, OptimizationOptimJL.NelderMead()),
+            (true, OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART()),
         ]
-        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
+        @testset "$(nameof(typeof(optimizer)))" for (needs_second_order, optimizer) in
+                                                    optimizers
             try
-                result = maximum_likelihood(model, optimizer; reltol=1e-3)
-                vals = result.values
+                adtype = if needs_second_order
+                    SECOND_ORDER_ADTYPE
+                else
+                    AutoForwardDiff()
+                end
+                result = maximum_likelihood(model, optimizer; reltol=1e-3, adtype=adtype)
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
-                    for vn_leaf in AbstractPPL.varname_leaves(vn, get(result_true, vn))
+                    val = AbstractPPL.getvalue(true_optima, vn)
+                    for vn_leaf in AbstractPPL.varname_leaves(vn, val)
+                        expected = AbstractPPL.getvalue(true_optima, vn_leaf)
+                        actual = result.params[vn_leaf]
                         if model.f in allowed_incorrect_mle
-                            @test isfinite(get(result_true, vn_leaf))
+                            @test isfinite(actual)
                         else
-                            @test get(result_true, vn_leaf) ≈ vals[Symbol(vn_leaf)] atol =
-                                0.05
+                            @test expected ≈ actual atol = 0.05
                         end
                     end
                 end
@@ -574,6 +634,38 @@ using Turing
                 end
             end
         end
+    end
+
+    @testset "distribution with dynamic support and constraints" begin
+        @model function f()
+            x ~ Uniform(-5, 5)
+            return y ~ truncated(Normal(); lower=x)
+        end
+        # Note that in this testset we don't need to seed RNG because the initial params
+        # are fully specified.
+        inits = (x=0.0, y=2.5)
+        lb = (y=2.0,)
+        # Here, the constraints that are passed to Optimization.jl are not fully 'correct',
+        # because the constraints were determined with a single static value of `x`. Thus,
+        # during the optimization it is possible for `y` to go out of bounds. We check that
+        # such cases are caught.
+        @test_throws DomainError maximum_a_posteriori(
+            f(); initial_params=InitFromParams(inits), lb=lb, link=true
+        )
+        # If there is no linking, then the constraints are no longer incorrect (they are
+        # always static). So the optimization should succeed (it might give silly results,
+        # but that's not our problem).
+        @test maximum_a_posteriori(
+            f(); initial_params=InitFromParams(inits), lb=lb, link=false
+        ) isa ModeResult
+        # If the user wants to disable it, they should be able to.
+        @test maximum_a_posteriori(
+            f();
+            initial_params=InitFromParams(inits),
+            lb=lb,
+            link=true,
+            check_constraints_at_runtime=false,
+        ) isa ModeResult
     end
 
     @testset "using ModeResult to initialise MCMC" begin
@@ -614,7 +706,7 @@ using Turing
         @model demo_dirichlet() = x ~ Dirichlet(2 * ones(3))
         model = demo_dirichlet()
         result = maximum_a_posteriori(model)
-        @test result.values ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
+        @test result.params[@varname(x)] ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
     end
 
     @testset "with :=" begin
@@ -624,32 +716,8 @@ using Turing
         end
         model = demo_track()
         result = maximum_a_posteriori(model)
-        @test result.values[:x] ≈ 0 atol = 1e-1
-        @test result.values[:y] ≈ 100 atol = 1e-1
-    end
-
-    @testset "get ModeResult" begin
-        @model function demo_model(N)
-            half_N = N ÷ 2
-            a ~ arraydist(LogNormal.(fill(0, half_N), 1))
-            b ~ arraydist(LogNormal.(fill(0, N - half_N), 1))
-            covariance_matrix = Diagonal(vcat(a, b))
-            x ~ MvNormal(covariance_matrix)
-            return nothing
-        end
-
-        N = 12
-        m = demo_model(N) | (x=randn(N),)
-        result = maximum_a_posteriori(m)
-        get_a = get(result, :a)
-        get_b = get(result, :b)
-        get_ab = get(result, [:a, :b])
-        @assert keys(get_a) == (:a,)
-        @assert keys(get_b) == (:b,)
-        @assert keys(get_ab) == (:a, :b)
-        @assert get_b[:b] == get_ab[:b]
-        @assert vcat(get_a[:a], get_b[:b]) == result.values.array
-        @assert get(result, :c) == (; :c => Array{Float64}[])
+        @test result.params[@varname(x)] ≈ 0 atol = 1e-1
+        @test result.params[@varname(y)] ≈ 100 atol = 1e-1
     end
 
     @testset "Collinear coeftable" begin
@@ -663,11 +731,11 @@ using Turing
         end
 
         model = collinear(xs, ys)
-        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        mle_estimate = maximum_likelihood(model)
         tab = coeftable(mle_estimate)
-        @assert isnan(tab.cols[2][1])
-        @assert tab.colnms[end] == "Error notes"
-        @assert occursin("singular", tab.cols[end][1])
+        @test isnan(tab.cols[2][1])
+        @test tab.colnms[end] == "Error notes"
+        @test occursin("singular", tab.cols[end][1])
     end
 
     @testset "Negative variance" begin
@@ -681,24 +749,18 @@ using Turing
             @addlogprob! x^2 - y^2
             return nothing
         end
-        m = saddle_model()
-        optim_ld = Turing.Optimisation.OptimLogDensity(
-            DynamicPPL.LogDensityFunction(m, DynamicPPL.getloglikelihood)
-        )
-        vals = Turing.Optimisation.NamedArrays.NamedArray([0.0, 0.0])
         m = Turing.Optimisation.ModeResult(
-            vals,
-            nothing,
-            0.0,
-            optim_ld,
-            Dict{AbstractPPL.VarName,Float64}(@varname(x) => 0.0, @varname(y) => 0.0),
-            false,
             MLE(),
+            DynamicPPL.VarNamedTuple((; x=0.0, y=0.0)),
+            0.0,
+            false,
+            DynamicPPL.LogDensityFunction(saddle_model(), DynamicPPL.getloglikelihood),
+            nothing,
         )
         ct = coeftable(m)
-        @assert isnan(ct.cols[2][1])
-        @assert ct.colnms[end] == "Error notes"
-        @assert occursin("Negative variance", ct.cols[end][1])
+        @test isnan(ct.cols[2][1])
+        @test ct.colnms[end] == "Error notes"
+        @test occursin("Negative variance", ct.cols[end][1])
     end
 
     @testset "Same coeftable with/without numerrors_warnonly" begin
@@ -710,14 +772,14 @@ using Turing
         end
 
         model = extranormal(xs)
-        mle_estimate = Turing.Optimisation.estimate_mode(model, MLE())
+        mle_estimate = maximum_likelihood(model)
         warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=true)
         no_warnonly_coeftable = coeftable(mle_estimate; numerrors_warnonly=false)
-        @assert warnonly_coeftable.cols == no_warnonly_coeftable.cols
-        @assert warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
-        @assert warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
-        @assert warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
-        @assert warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
+        @test warnonly_coeftable.cols == no_warnonly_coeftable.cols
+        @test warnonly_coeftable.colnms == no_warnonly_coeftable.colnms
+        @test warnonly_coeftable.rownms == no_warnonly_coeftable.rownms
+        @test warnonly_coeftable.pvalcol == no_warnonly_coeftable.pvalcol
+        @test warnonly_coeftable.teststatcol == no_warnonly_coeftable.teststatcol
     end
 end
 

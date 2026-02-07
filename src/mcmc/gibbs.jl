@@ -10,7 +10,6 @@ isgibbscomponent(::AbstractSampler) = true
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
 
-isgibbscomponent(::IS) = false
 isgibbscomponent(::Prior) = false
 isgibbscomponent(::Emcee) = false
 isgibbscomponent(::SGLD) = false
@@ -134,7 +133,11 @@ end
 
 # Tilde pipeline
 function DynamicPPL.tilde_assume!!(
-    context::GibbsContext, right::Distribution, vn::VarName, vi::DynamicPPL.AbstractVarInfo
+    context::GibbsContext,
+    right::Distribution,
+    vn::VarName,
+    template::Any,
+    vi::DynamicPPL.AbstractVarInfo,
 )
     child_context = DynamicPPL.childcontext(context)
 
@@ -170,7 +173,7 @@ function DynamicPPL.tilde_assume!!(
 
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.
-        DynamicPPL.tilde_assume!!(child_context, right, vn, vi)
+        DynamicPPL.tilde_assume!!(child_context, right, vn, template, vi)
     elseif has_conditioned_gibbs(context, vn)
         # This branch means that a different sampler is supposed to handle this
         # variable. From the perspective of this sampler, this variable is
@@ -188,10 +191,15 @@ function DynamicPPL.tilde_assume!!(
         # being used by the current sampler.
         value, new_global_vi = DynamicPPL.tilde_assume!!(
             # child_context might be a PrefixContext so we have to be careful to not
-            # overwrite it.
-            DynamicPPL.setleafcontext(child_context, DynamicPPL.InitContext()),
+            # overwrite it. We assume that the new variable should just be sampled in
+            # unlinked space.
+            DynamicPPL.setleafcontext(
+                child_context,
+                DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()),
+            ),
             right,
             vn,
+            template,
             get_global_varinfo(context),
         )
         set_global_varinfo!(context, new_global_vi)
@@ -205,12 +213,15 @@ end
 Return a new, conditioned model for a component of a Gibbs sampler.
 
 # Arguments
+#
 - `model::DynamicPPL.Model`: The model to condition.
+
 - `target_variables::AbstractVector{<:VarName}`: The target variables of the component
-sampler. These will _not_ be conditioned.
+  sampler. These will _not_ be conditioned.
+
 - `varinfo::DynamicPPL.AbstractVarInfo`: Values for all variables in the model. All the
-values in `varinfo` but not in `target_variables` will be conditioned to the values they
-have in `varinfo`.
+  values in `varinfo` but not in `target_variables` will be conditioned to the values they
+  have in `varinfo`.
 
 # Returns
 - A new model with the variables _not_ in `target_variables` conditioned.
@@ -295,19 +306,6 @@ end
 
 get_varinfo(state::GibbsState) = state.vi
 
-"""
-Initialise a VarInfo for the Gibbs sampler.
-
-This is straight up copypasta from DynamicPPL's src/sampler.jl. It is repeated here to
-support calling both step and step_warmup as the initial step. DynamicPPL initialstep is
-incompatible with step_warmup.
-"""
-function initial_varinfo(rng, model, spl, initial_params::DynamicPPL.AbstractInitStrategy)
-    vi = Turing.Inference.default_varinfo(rng, model, spl)
-    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params)
-    return vi
-end
-
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -318,7 +316,7 @@ function AbstractMCMC.step(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    vi = initial_varinfo(rng, model, spl, initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,
@@ -344,7 +342,7 @@ function AbstractMCMC.step_warmup(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    vi = initial_varinfo(rng, model, spl, initial_params)
+    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
 
     vi, states = gibbs_initialstep_recursive(
         rng,
@@ -478,19 +476,33 @@ function setparams_varinfo!!(
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::MH, state::MHState, params::AbstractVarInfo
+    model::DynamicPPL.Model, spl::MH, ::AbstractVarInfo, params::AbstractVarInfo
 )
-    # Re-evaluate to update the logprob.
-    new_vi = last(DynamicPPL.evaluate!!(model, params))
-    return MHState(new_vi, DynamicPPL.getlogjoint_internal(new_vi))
+    # Setting `params` into `state` really just means using `params` itself, but we
+    # need to update the logprob. We also need to be a bit more careful, because
+    # the `state` here carries a VAIMAcc, which is needed for the MH step() function
+    # but may not be present in `params`. So we need to make sure that the value
+    # we return from this function also has a VAIMAcc which corresponds to the
+    # values in `params`. Likewise with the other MH-specific accumulators.
+    params = DynamicPPL.setacc!!(params, DynamicPPL.RawValueAccumulator(false))
+    params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator())
+    params = DynamicPPL.setacc!!(
+        params, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
+    )
+    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing MH-in-Gibbs to
+    # use OAVI.
+    return last(DynamicPPL.evaluate_nowarn!!(model, params))
 end
 
 function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::ESS, state::AbstractVarInfo, params::AbstractVarInfo
+    model::DynamicPPL.Model, ::ESS, state::TuringESSState, params::AbstractVarInfo
 )
-    # The state is already a VarInfo, so we can just return `params`, but first we need to
-    # update its logprob.
-    return last(DynamicPPL.evaluate!!(model, params))
+    # The state is basically a VarInfo (plus a constant `priors` field), so we can just
+    # return `params`, but first we need to update its logprob.
+    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
+    # use OAVI.
+    new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
+    return TuringESSState(new_vi, state.priors)
 end
 
 function setparams_varinfo!!(
@@ -537,39 +549,28 @@ variables, and one might need it to be linked while the other doesn't.
 """
 function match_linking!!(varinfo_local, prev_state_local, model)
     prev_varinfo_local = get_varinfo(prev_state_local)
-    was_linked = DynamicPPL.is_transformed(prev_varinfo_local)
-    is_linked = DynamicPPL.is_transformed(varinfo_local)
-    if was_linked && !is_linked
-        varinfo_local = DynamicPPL.link!!(varinfo_local, model)
-    elseif !was_linked && is_linked
-        varinfo_local = DynamicPPL.invlink!!(varinfo_local, model)
+    # Get a set of all previously linked variables
+    linked_vns = Set{VarName}()
+    unlinked_vns = Set{VarName}()
+    for vn in keys(prev_varinfo_local)
+        if DynamicPPL.is_transformed(prev_varinfo_local, vn)
+            push!(linked_vns, vn)
+        else
+            push!(unlinked_vns, vn)
+        end
     end
-    # TODO(mhauru) The above might run into trouble if some variables are linked and others
-    # are not. `is_transformed(varinfo)` returns an `all` over the individual variables. This could
-    # especially be a problem with dynamic models, where new variables may get introduced,
-    # but also in cases where component samplers have partial overlap in their target
-    # variables. The below is how I would like to implement this, but DynamicPPL at this
-    # time does not support linking individual variables selected by `VarName`. It soon
-    # should though, so come back to this.
-    # Issue ref: https://github.com/TuringLang/Turing.jl/issues/2401
-    # prev_links_dict = Dict(vn => DynamicPPL.is_transformed(prev_varinfo_local, vn) for vn in keys(prev_varinfo_local))
-    # any_linked = any(values(prev_links_dict))
-    # for vn in keys(varinfo_local)
-    #     was_linked = if haskey(prev_varinfo_local, vn)
-    #         prev_links_dict[vn]
-    #     else
-    #         # If the old state didn't have this variable, we assume it was linked if _any_
-    #         # of the variables of the old state were linked.
-    #         any_linked
-    #     end
-    #     is_linked = DynamicPPL.is_transformed(varinfo_local, vn)
-    #     if was_linked && !is_linked
-    #         varinfo_local = DynamicPPL.invlink!!(varinfo_local, vn)
-    #     elseif !was_linked && is_linked
-    #         varinfo_local = DynamicPPL.link!!(varinfo_local, vn)
-    #     end
-    # end
-    return varinfo_local
+    transform_strategy = if isempty(unlinked_vns)
+        # All variables were linked
+        DynamicPPL.LinkAll()
+    elseif isempty(linked_vns)
+        # No variables were linked
+        DynamicPPL.UnlinkAll()
+    else
+        DynamicPPL.LinkSome(
+            linked_vns, DynamicPPL.UnlinkSome(unlinked_vns, DynamicPPL.LinkAll())
+        )
+    end
+    return DynamicPPL.update_link_status!!(varinfo_local, transform_strategy, model)
 end
 
 """
@@ -602,7 +603,7 @@ function gibbs_step_recursive(
     # Construct the conditional model and the varinfo that this sampler should use.
     conditioned_model, context = make_conditional(model, varnames, global_vi)
     vi = DynamicPPL.subset(global_vi, varnames)
-    vi = match_linking!!(vi, state, model)
+    vi = match_linking!!(vi, state, conditioned_model)
 
     # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not
     # sampled by other samplers, we don't need to `setparams`, but could rather simply

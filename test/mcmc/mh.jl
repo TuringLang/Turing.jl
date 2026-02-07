@@ -7,14 +7,14 @@ using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Inference: Inference
 
 using ..Models: gdemo_default, MoGtest_default
 using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
 
-GKernel(var) = (x) -> Normal(x, sqrt.(var))
+GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
 
 @testset "mh.jl" begin
     @info "Starting MH tests"
@@ -22,29 +22,102 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
 
     @testset "mh constructor" begin
         N = 10
-        s1 = MH((:s, InverseGamma(2, 3)), (:m, GKernel(3.0)))
-        s2 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0))
-        s3 = MH()
-        s4 = MH([1.0 0.1; 0.1 1.0])
+        s1 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0, @varname(m)))
+        s2 = MH()
+        s3 = MH([1.0 0.1; 0.1 1.0])
 
         c1 = sample(gdemo_default, s1, N)
         c2 = sample(gdemo_default, s2, N)
         c3 = sample(gdemo_default, s3, N)
+
+        s4 = Gibbs(:m => MH(), :s => MH())
         c4 = sample(gdemo_default, s4, N)
-
-        s5 = Gibbs(:m => MH(), :s => MH())
-        c5 = sample(gdemo_default, s5, N)
-
-        # s6 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.RandomWalkProposal))
-        # c6 = sample(gdemo_default, s6, N)
-
-        # NOTE: Broken because MH doesn't really follow the `logdensity` interface, but calls
-        # it with `NamedTuple` instead of `AbstractVector`.
-        # s7 = externalsampler(MH(gdemo_default, proposal_type=AdvancedMH.StaticProposal))
-        # c7 = sample(gdemo_default, s7, N)
     end
 
-    @testset "mh inference" begin
+    @testset "basic accuracy tests" begin
+        @testset "linking and Jacobian" begin
+            # This model has no likelihood, it's mainly here to test that linking and
+            # Jacobians work fine.
+            @model function f()
+                x ~ Normal()
+                return y ~ Beta(2, 2)
+            end
+            function test_mean_and_std(spl)
+                @testset let spl = spl
+                    chn = sample(StableRNG(468), f(), spl, 20_000)
+                    @test mean(chn[:x]) ≈ mean(Normal()) atol = 0.1
+                    @test std(chn[:x]) ≈ std(Normal()) atol = 0.1
+                    @test mean(chn[:y]) ≈ mean(Beta(2, 2)) atol = 0.1
+                    @test std(chn[:y]) ≈ std(Beta(2, 2)) atol = 0.1
+                end
+            end
+            test_mean_and_std(MH())
+            test_mean_and_std(MH(@varname(x) => Normal(1.0)))
+            test_mean_and_std(MH(@varname(y) => Uniform(0, 1)))
+            test_mean_and_std(MH(@varname(x) => Normal(1.0), @varname(y) => Uniform(0, 1)))
+            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5)))
+            test_mean_and_std(MH(@varname(y) => LinkedRW(0.5)))
+            # this is a random walk in unlinked space
+            test_mean_and_std(MH(@varname(y) => vnt -> Normal(vnt[@varname(y)], 0.5)))
+            test_mean_and_std(MH(@varname(x) => Normal(), @varname(y) => LinkedRW(0.5)))
+            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5), @varname(y) => Normal()))
+            # this uses AdvancedMH
+            test_mean_and_std(MH([1.0 0.1; 0.1 1.0]))
+        end
+
+        @testset "bad proposals" begin
+            errmsg = "The initial parameters have zero probability density"
+
+            @model f() = x ~ Normal()
+            # Here we give `x` a constrained proposal. Any samples of `x` that fall outside
+            # of it will get a proposal density of -Inf, so should be rejected
+            fspl = MH(@varname(x) => Uniform(-1, 1))
+            # We now start the chain outside the proposal region. The point of this test is 
+            # to make sure that we throw a sensible error.
+            @test_throws errmsg sample(f(), fspl, 2; initial_params=InitFromParams((; x=2)))
+
+            # Same here, except that now it's the proposal that's bad, not the initial
+            # parameters.
+            @model g() = x ~ Beta(2, 2)
+            gspl = MH(@varname(x) => Uniform(-2, -1))
+            @test_throws errmsg sample(g(), gspl, 2; initial_params=InitFromPrior())
+        end
+
+        @testset "with unspecified priors that depend on other variables" begin
+            @model function f()
+                a ~ Normal()
+                x ~ Normal(0.0)
+                y ~ Normal(x)
+                return 2.0 ~ Normal(y)
+            end
+            # If we don't specify a proposal for `y`, it will be sampled from `Normal(x)`.
+            # However, we need to be careful here since the value of `x` varies! This testset is
+            # essentially a test to check that `MHUnspecifiedPriorAccumulator` is doing
+            # the right thing, i.e., it correctly accumulates the prior for the evaluation that
+            # we're interested in.
+            chn = sample(StableRNG(468), f(), MH(@varname(a) => Normal()), 10000)
+            @test mean(chn[:a]) ≈ 0.0 atol = 0.05
+            @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
+            @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
+
+            # Note that if we additionally don't specify a proposal for `a`, then it will defer
+            # to InitFromPrior for all variables, and its prior *is* Normal(). So we can do
+            # this:
+            chn2 = sample(StableRNG(468), f(), MH(), 10000)
+            # and it should actually give us exactly the same results as above.
+            #
+            # This test *does* depend on internal implementation details of MH and is a bit
+            # brittle. If it fails, you should check that the values are still approximately
+            # correct (i.e. 0, 2/3, and 4/3). If they are still correct, then it probably just
+            # means that the internal implementation details have changed, and this test can
+            # just be updated (or removed).
+            @test mean(chn2[:a]) ≈ mean(chn[:a])
+            @test mean(chn2[:x]) ≈ mean(chn[:x])
+            @test mean(chn2[:y]) ≈ mean(chn[:y])
+        end
+    end
+
+    @testset "with demo models" begin
         # Set the initial parameters, because if we get unlucky with the initial state,
         # these chains are too short to converge to reasonable numbers.
         discard_initial = 1_000
@@ -59,7 +132,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
 
         @testset "gdemo_default with custom proposals" begin
-            alg = MH((:s, InverseGamma(2, 3)), (:m, GKernel(1.0)))
+            alg = MH(:s => InverseGamma(2, 3), :m => GKernel(1.0, @varname(m)))
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
@@ -77,12 +150,10 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         @testset "MoGtest_default with Gibbs" begin
             gibbs = Gibbs(
                 (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
-                @varname(mu1) => MH((:mu1, GKernel(1))),
-                @varname(mu2) => MH((:mu2, GKernel(1))),
+                @varname(mu1) => MH(:mu1 => GKernel(1, @varname(mu1))),
+                @varname(mu2) => MH(:mu2 => GKernel(1, @varname(mu2))),
             )
-            initial_params = InitFromParams((
-                mu1=1.0, mu2=1.0, z1=0.0, z2=0.0, z3=1.0, z4=1.0
-            ))
+            initial_params = InitFromParams((mu1=1.0, mu2=1.0, z1=0, z2=0, z3=1, z4=1))
             chain = sample(
                 StableRNG(seed),
                 MoGtest_default,
@@ -95,64 +166,11 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         end
     end
 
-    # Test MH shape passing.
-    @testset "shape" begin
-        @model function M(mu, sigma, observable)
-            z ~ MvNormal(mu, sigma)
-
-            m = Array{Float64}(undef, 1, 2)
-            m[1] ~ Normal(0, 1)
-            m[2] ~ InverseGamma(2, 1)
-            s ~ InverseGamma(2, 1)
-
-            observable ~ Bernoulli(cdf(Normal(), z' * z))
-
-            1.5 ~ Normal(m[1], m[2])
-            -1.5 ~ Normal(m[1], m[2])
-
-            1.5 ~ Normal(m[1], s)
-            return 2.0 ~ Normal(m[1], s)
-        end
-
-        model = M(zeros(2), I, 1)
-        sampler = MH()
-
-        dt, vt = Inference.dist_val_tuple(sampler, DynamicPPL.VarInfo(model))
-
-        @test dt[:z] isa AdvancedMH.StaticProposal{false,<:MvNormal}
-        @test dt[:m] isa
-            AdvancedMH.StaticProposal{false,Vector{ContinuousUnivariateDistribution}}
-        @test dt[:m].proposal[1] isa Normal && dt[:m].proposal[2] isa InverseGamma
-        @test dt[:s] isa AdvancedMH.StaticProposal{false,<:InverseGamma}
-
-        @test vt[:z] isa Vector{Float64} && length(vt[:z]) == 2
-        @test vt[:m] isa Vector{Float64} && length(vt[:m]) == 2
-        @test vt[:s] isa Float64
-
-        chain = sample(model, MH(), 10)
-
-        @test chain isa MCMCChains.Chains
-    end
-
-    @testset "proposal matrix" begin
+    @testset "with proposal matrix" begin
         mat = [1.0 -0.05; -0.05 1.0]
-
-        prop1 = mat # Matrix only constructor
-        prop2 = AdvancedMH.RandomWalkProposal(MvNormal(mat)) # Explicit proposal constructor
-
-        spl1 = MH(prop1)
-        spl2 = MH(prop2)
-
-        # Test that the two constructors are equivalent.
-        @test spl1.proposals.proposal.μ == spl2.proposals.proposal.μ
-        @test spl1.proposals.proposal.Σ.mat == spl2.proposals.proposal.Σ.mat
-
-        # Test inference.
+        spl1 = MH(mat)
         chain1 = sample(StableRNG(seed), gdemo_default, spl1, 2_000)
-        chain2 = sample(StableRNG(seed), gdemo_default, spl2, 2_000)
-
         check_gdemo(chain1)
-        check_gdemo(chain2)
     end
 
     @testset "gibbs MH proposal matrix" begin
@@ -178,7 +196,7 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
         # with small-valued VC matrix to check if we only see very small steps
         vc_μ = convert(Array, 1e-4 * I(2))
         vc_σ = convert(Array, 1e-4 * I(2))
-        alg_small = Gibbs(:μ => MH((:μ, vc_μ)), :σ => MH((:σ, vc_σ)))
+        alg_small = Gibbs(:μ => MH(vc_μ), :σ => MH(vc_σ))
         alg_big = MH()
         chn_small = sample(StableRNG(seed), mod, alg_small, 1_000)
         chn_big = sample(StableRNG(seed), mod, alg_big, 1_000)
@@ -222,55 +240,6 @@ GKernel(var) = (x) -> Normal(x, sqrt.(var))
                 end
             end
         end
-    end
-
-    @testset "MH link/invlink" begin
-        vi_base = DynamicPPL.VarInfo(gdemo_default)
-
-        # Don't link when no proposals are given since we're using priors
-        # as proposals.
-        vi = deepcopy(vi_base)
-        spl = MH()
-        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
-        @test !DynamicPPL.is_transformed(vi)
-
-        # Link if proposal is `AdvancedHM.RandomWalkProposal`
-        vi = deepcopy(vi_base)
-        d = length(vi_base[:])
-        spl = MH(AdvancedMH.RandomWalkProposal(MvNormal(zeros(d), I)))
-        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
-        @test DynamicPPL.is_transformed(vi)
-
-        # Link if ALL proposals are `AdvancedHM.RandomWalkProposal`.
-        vi = deepcopy(vi_base)
-        spl = MH(:s => AdvancedMH.RandomWalkProposal(Normal()))
-        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
-        @test DynamicPPL.is_transformed(vi)
-
-        # Don't link if at least one proposal is NOT `RandomWalkProposal`.
-        # TODO: make it so that only those that are using `RandomWalkProposal`
-        # are linked! I.e. resolve https://github.com/TuringLang/Turing.jl/issues/1583.
-        # https://github.com/TuringLang/Turing.jl/pull/1582#issuecomment-817148192
-        vi = deepcopy(vi_base)
-        spl = MH(
-            :m => AdvancedMH.StaticProposal(Normal()),
-            :s => AdvancedMH.RandomWalkProposal(Normal()),
-        )
-        vi = Turing.Inference.maybe_link!!(vi, spl, spl.proposals, gdemo_default)
-        @test !DynamicPPL.is_transformed(vi)
-    end
-
-    @testset "`filldist` proposal (issue #2180)" begin
-        @model demo_filldist_issue2180() = x ~ MvNormal(zeros(3), I)
-        chain = sample(
-            StableRNG(seed),
-            demo_filldist_issue2180(),
-            MH(AdvancedMH.RandomWalkProposal(filldist(Normal(), 3))),
-            10_000,
-        )
-        check_numerical(
-            chain, [Symbol("x[1]"), Symbol("x[2]"), Symbol("x[3]")], [0, 0, 0]; atol=0.2
-        )
     end
 end
 

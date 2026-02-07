@@ -22,53 +22,71 @@ Mean
 """
 struct ESS <: AbstractSampler end
 
+struct TuringESSState{V<:DynamicPPL.AbstractVarInfo,VNT<:DynamicPPL.VarNamedTuple}
+    vi::V
+    priors::VNT
+end
+get_varinfo(state::TuringESSState) = state.vi
+
 # always accept in the first step
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    ::ESS,
-    vi::AbstractVarInfo;
+    ::ESS;
     discard_sample=false,
+    initial_params,
     kwargs...,
 )
-    for vn in keys(vi)
-        dist = getdist(vi, vn)
+    vi = DynamicPPL.VarInfo()
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
+    prior_acc = DynamicPPL.PriorDistributionAccumulator()
+    prior_accname = DynamicPPL.accumulator_name(prior_acc)
+    vi = DynamicPPL.setacc!!(vi, prior_acc)
+    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll())
+    priors = DynamicPPL.getacc(vi, Val(prior_accname)).values
+
+    for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, vi
+    return transition, TuringESSState(vi, priors)
 end
 
 function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     ::ESS,
-    vi::AbstractVarInfo;
+    state::TuringESSState;
     discard_sample=false,
     kwargs...,
 )
     # obtain previous sample
+    vi = state.vi
     f = vi[:]
 
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
-    oldstate = EllipticalSliceSampling.ESSState(f, DynamicPPL.getloglikelihood(vi), nothing)
+    wrapped_state = EllipticalSliceSampling.ESSState(
+        f, DynamicPPL.getloglikelihood(vi), nothing
+    )
 
     # compute next state
-    sample, state = AbstractMCMC.step(
+    sample, new_wrapped_state = AbstractMCMC.step(
         rng,
-        EllipticalSliceSampling.ESSModel(ESSPrior(model, vi), ESSLikelihood(model, vi)),
+        EllipticalSliceSampling.ESSModel(
+            ESSPrior(model, vi, state.priors), ESSLikelihood(model, vi)
+        ),
         EllipticalSliceSampling.ESS(),
-        oldstate,
+        wrapped_state,
     )
 
     # update sample and log-likelihood
-    vi = DynamicPPL.unflatten(vi, sample)
-    vi = DynamicPPL.setloglikelihood!!(vi, state.loglikelihood)
+    vi = DynamicPPL.unflatten!!(vi, sample)
+    vi = DynamicPPL.setloglikelihood!!(vi, new_wrapped_state.loglikelihood)
 
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, vi
+    return transition, TuringESSState(vi, state.priors)
 end
 
 # Prior distribution of considered random variable
@@ -77,13 +95,15 @@ struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
     varinfo::V
     μ::T
 
-    function ESSPrior(model::Model, varinfo::AbstractVarInfo)
-        vns = keys(varinfo)
-        μ = mapreduce(vcat, vns) do vn
-            dist = getdist(varinfo, vn)
-            EllipticalSliceSampling.isgaussian(typeof(dist)) ||
-                error("[ESS] only supports Gaussian prior distributions")
-            DynamicPPL.tovec(mean(dist))
+    function ESSPrior(
+        model::Model, varinfo::AbstractVarInfo, priors::DynamicPPL.VarNamedTuple
+    )
+        μ = mapreduce(vcat, priors; init=Float64[]) do pair
+            prior_dist = pair.second
+            EllipticalSliceSampling.isgaussian(typeof(prior_dist)) || error(
+                "[ESS] only supports Gaussian prior distributions, but found $(typeof(prior_dist))",
+            )
+            DynamicPPL.tovec(mean(prior_dist))
         end
         return new{typeof(model),typeof(varinfo),typeof(μ)}(model, varinfo, μ)
     end
@@ -94,7 +114,9 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    _, vi = DynamicPPL.init!!(rng, p.model, p.varinfo, DynamicPPL.InitFromPrior())
+    _, vi = DynamicPPL.init!!(
+        rng, p.model, p.varinfo, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
+    )
     return vi[:]
 end
 

@@ -11,13 +11,9 @@ using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
-using NamedArrays: NamedArrays
-using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
-
-using Accessors: Accessors
 
 using Printf: Printf
 using Random: Random
@@ -45,6 +41,7 @@ end
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
+include("init_strategy.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/Variational.jl")
@@ -73,6 +70,8 @@ using DynamicPPL:
     conditioned,
     to_submodel,
     LogDensityFunction,
+    VarNamedTuple,
+    @vnt,
     @addlogprob!,
     InitFromPrior,
     InitFromUniform,
@@ -102,6 +101,7 @@ export
     # Samplers - Turing.Inference
     Prior,
     MH,
+    LinkedRW,
     Emcee,
     ESS,
     Gibbs,
@@ -112,7 +112,6 @@ export
     PolynomialStepsize,
     HMCDA,
     NUTS,
-    IS,
     SMC,
     PG,
     CSMC,
@@ -166,12 +165,16 @@ export
     InitFromPrior,
     InitFromUniform,
     InitFromParams,
+    # VNT,
+    VarNamedTuple,
+    @vnt,
     # Point estimates - Turing.Optimisation
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,
     maximum_likelihood,
     MAP,
     MLE,
+    get_vector_params,
     # Chain save/resume
     loadstate,
     # kwargs in SMC
