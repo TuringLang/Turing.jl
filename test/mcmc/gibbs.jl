@@ -23,9 +23,13 @@ using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
-    # Varnames in `transition` should be subsumed by those in `parent_varnames`.
+    # Varnames in `transition` should be subsumed by those in `parent_varnames`; but
+    # sometimes `densify!!` can introduce varnames that are joined together (e.g. s[1] and
+    # s[2] becomes s), so we need to specialcase that.... ugly.
     for vn in keys(transition.params)
-        @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
+        @test vn == @varname(m) ||
+            vn == @varname(s) ||
+            any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
     end
 end
 
