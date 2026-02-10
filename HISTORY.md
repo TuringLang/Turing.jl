@@ -1,5 +1,40 @@
 # 0.43.0
 
+## DynamicPPL 0.40 and `VarNamedTuple`
+
+DynamicPPL v0.40 is a major overhaul of the internal data structure.
+Most notably, cases where we might once have used `Dict{VarName}` or `NamedTuple` have all been replaced with a single data structure, called `VarNamedTuple`.
+
+This provides substantial benefits in terms of robustness and performance.
+
+However, it does place some constraints on Turing models.
+Specifically:
+
+  - Arrays whose elements are random variables should have a constant size and type. For example, the following will no longer work:
+    
+    ```julia
+    x = Float64[]
+    for i in 1:10
+        push!(x, 0.0)
+        x[i] ~ Normal()
+    end
+    ```
+    
+    This only applies to arrays on the left-hand side of tilde-statements. In general, there are no restrictions on the code that you can use outside of tilde-statements.
+
+  - Likewise, arrays of random variables should ideally have a constant size from iteration to iteration. That means a model like this will fail sometimes (*but* see below):
+    
+    ```julia
+    n ~ Poisson(2.0)
+    x = Vector{Float64}(undef, n)
+    for i in 1:n
+        x[i] ~ Normal()
+    end
+    ```
+    
+    *Technically speaking*: Inference (e.g. MCMC sampling) on this model will still work, but if you want to use `returned` or `predict`, both of the following conditions must hold true: (1) you must use FlexiChains.jl; (2) all elements of `x` must be random variables, i.e., you cannot have a mixture of `x[i]`'s being random variables and observed.
+  - TODO
+
 ## Optimisation interface
 
 Turing.jl's optimisation interface has been completely overhauled in this release.
@@ -42,6 +77,17 @@ Documentation on this matter will be forthcoming.
 
 The `IS` sampler has been removed (its behaviour was in fact exactly the same as `Prior`).
 To see an example of importance sampling (via `Prior()` and then subsequent reweighting), see e.g. [this issue](https://github.com/TuringLang/Turing.jl/issues/2767).
+
+## `MH` sampler
+
+The interface of the MH sampler is slightly different.
+It no longer accepts `AdvancedMH` proposals, and is now more flexible: you can specify proposals for individual `VarName`s (not just top-level symbols), and any unspecified `VarName`s will be drawn from the prior, instead of being silently ignored.
+It is also faster than before (by around 30% on simple models).
+
+## `GibbsConditional`
+
+When defining a conditional posterior, instead of being provided with a Dict of values, the function must now take a `VarNamedTuple` containing the values.
+Note that indexing into a `VarNamedTuple` is very similar to indexing into a `Dict`; however, it is more flexible since you can use syntax such as `x[1:2]` even if `x[1]` and `x[2]` are separate variables in the model.
 
 # 0.42.8
 
