@@ -23,7 +23,6 @@ using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
-    # Varnames in `transition` should be subsumed by those in `parent_varnames`.
     for vn in keys(transition.params)
         @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
     end
@@ -97,9 +96,9 @@ end
                 end
             end
 
-            # Check that evaluate!! and the result it returns are type stable.
+            # Check that evaluate_nowarn!! and the result it returns are type stable.
             conditioned_model = DynamicPPL.contextualize(model, ctx)
-            _, post_eval_varinfo = @inferred DynamicPPL.evaluate!!(
+            _, post_eval_varinfo = @inferred DynamicPPL.evaluate_nowarn!!(
                 conditioned_model, local_varinfo
             )
             for k in keys(post_eval_varinfo)
@@ -116,7 +115,6 @@ end
         (@varname(s), @varname(m), @varname(x)), (NUTS(), NUTS())
     )
     # Invalid samplers
-    @test_throws ArgumentError Gibbs(@varname(s) => IS())
     @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
     @test_throws ArgumentError Gibbs(
         @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
@@ -499,12 +497,11 @@ end
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
 
+            θ = zeros(2)
             if b == 0
-                θ = Vector{Float64}(undef, 1)
                 θ[1] ~ Normal(0.0, 1.0)
                 y_obs ~ Normal(θ[1], 0.5)
             else
-                θ = Vector{Float64}(undef, 2)
                 θ[1] ~ Normal(0.0, 1.0)
                 θ[2] ~ Normal(0.0, 1.0)
                 y_obs ~ Normal(θ[1] + θ[2], 0.5)
@@ -514,11 +511,7 @@ end
         # Run the sampler - focus on testing that it works rather than exact convergence
         model = dynamic_bernoulli_normal(2.0)
         chn = sample(
-            StableRNG(42),
-            model,
-            Gibbs(:b => MH(), :θ => HMC(0.1, 10)),
-            1000;
-            discard_initial=500,
+            StableRNG(42), model, Gibbs(:b => MH(), :θ => MH()), 1000; discard_initial=500
         )
 
         # Test that sampling completes without error
@@ -550,103 +543,9 @@ end
         end
     end
 
-    @testset "PG with variable number of observations" begin
-        # When sampling from a model with Particle Gibbs, it is mandatory for
-        # the number of observations to be the same in all particles, since the
-        # observations trigger particle resampling.
-        #
-        # Up until Turing v0.39, `x ~ dist` statements where `x` was the
-        # responsibility of a different (non-PG) Gibbs subsampler used to not
-        # count as an observation. Instead, the log-probability `logpdf(dist, x)`
-        # would be manually added to the VarInfo's `logp` field and included in the
-        # weighting for the _following_ observation.
-        #
-        # In Turing v0.40, this is now changed: `x ~ dist` uses tilde_observe!!
-        # which thus triggers resampling. Thus, for example, the following model
-        # does not work any more:
-        #
-        #   @model function f()
-        #       a ~ Poisson(2.0)
-        #       x = Vector{Float64}(undef, a)
-        #       for i in eachindex(x)
-        #           x[i] ~ Normal()
-        #       end
-        #   end
-        #   sample(f(), Gibbs(:a => PG(10), :x => MH()), 1000)
-        #
-        # because the number of observations in each particle depends on the value
-        # of `a`.
-        #
-        # This testset checks that ways of working around such a situation.
-
-        function test_dynamic_bernoulli(chain)
-            means = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 2.0)
-            stds = Dict(:b => 0.5, "x[1]" => 1.0, "x[2]" => 1.0)
-            for vn in keys(means)
-                @test isapprox(mean(skipmissing(chain[:, vn, 1])), means[vn]; atol=0.15)
-                @test isapprox(std(skipmissing(chain[:, vn, 1])), stds[vn]; atol=0.15)
-            end
-        end
-
-        # TODO(DPPL0.37/penelopeysm): decide what to do with these tests
-        @testset "Coalescing multiple observations into one" begin
-            # Instead of observing x[1] and x[2] separately, we lump them into a
-            # single distribution.
-            @model function dynamic_bernoulli()
-                b ~ Bernoulli()
-                if b
-                    dists = [Normal(1.0)]
-                else
-                    dists = [Normal(1.0), Normal(2.0)]
-                end
-                return x ~ product_distribution(dists)
-            end
-            model = dynamic_bernoulli()
-            # This currently fails because if the global varinfo has `x` with length 2,
-            # and the particle sampler has `b = true`, it attempts to calculate the
-            # log-likelihood of a length-2 vector with respect to a length-1
-            # distribution.
-            @test_throws DimensionMismatch chain = sample(
-                StableRNG(468),
-                model,
-                Gibbs(:b => PG(10), :x => ESS()),
-                2000;
-                discard_initial=100,
-            )
-            # test_dynamic_bernoulli(chain)
-        end
-
-        @testset "Inserting @addlogprob!" begin
-            # On top of observing x[i], we also add in extra 'observations'
-            @model function dynamic_bernoulli_2()
-                b ~ Bernoulli()
-                x_length = b ? 1 : 2
-                x = Vector{Float64}(undef, x_length)
-                for i in 1:x_length
-                    x[i] ~ Normal(i, 1.0)
-                end
-                if length(x) == 1
-                    # This value is the expectation value of logpdf(Normal(), x) where x ~ Normal().
-                    # See discussion in
-                    # https://github.com/TuringLang/Turing.jl/pull/2629#discussion_r2237323817
-                    @addlogprob!(-1.418849)
-                end
-            end
-            model = dynamic_bernoulli_2()
-            chain = sample(
-                StableRNG(468),
-                model,
-                Gibbs(:b => PG(20), :x => ESS()),
-                2000;
-                discard_initial=100,
-            )
-            test_dynamic_bernoulli(chain)
-        end
-    end
-
     @testset "Demo model" begin
         @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-            vns = DynamicPPL.TestUtils.varnames(model)
+            vns = (@varname(m), @varname(s))
             samplers = [
                 Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
                 Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
@@ -829,14 +728,7 @@ end
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
         spl = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
-        vns = (
-            @varname(z[1]),
-            @varname(z[2]),
-            @varname(z[3]),
-            @varname(z[4]),
-            @varname(mu1),
-            @varname(mu2)
-        )
+        vns = (@varname(z), @varname(mu1), @varname(mu2))
         # `step`
         transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)

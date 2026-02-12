@@ -100,7 +100,7 @@ function AbstractMCMC.sample(
     discard_initial=-1,
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
@@ -168,7 +168,9 @@ function find_initial_params(
             @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
 
         # Resample and try again.
-        _, varinfo = DynamicPPL.init!!(rng, model, varinfo, init_strategy)
+        _, varinfo = DynamicPPL.init!!(
+            rng, model, varinfo, init_strategy, DynamicPPL.LinkAll()
+        )
     end
 
     # if we failed to find valid initial parameters, error
@@ -274,7 +276,7 @@ function AbstractMCMC.step(
     # Update variables
     vi = state.vi
     if t.stat.is_accept
-        vi = DynamicPPL.unflatten(vi, t.z.θ)
+        vi = DynamicPPL.unflatten!!(vi, t.z.θ)
     end
 
     # Compute next transition and state.

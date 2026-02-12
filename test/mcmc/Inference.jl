@@ -29,7 +29,6 @@ using Turing
             samplers = (
                 HMC(0.1, 7),
                 PG(10),
-                IS(),
                 MH(),
                 Gibbs(:s => PG(3), :m => HMC(0.4, 8)),
                 Gibbs(:s => HMC(0.1, 5), :m => ESS()),
@@ -391,18 +390,10 @@ using Turing
             return x
         end
 
-        is = IS()
         smc = SMC()
         pg = PG(10)
 
         N = 1_000
-
-        # For IS, we need to calculate the logevidence ourselves
-        res_is = sample(StableRNG(seed), test(), is, N)
-        @test all(isone, res_is[:x])
-        # below is more numerically stable than log(mean(exp.(res_is[:loglikelihood])))
-        is_logevidence = logsumexp(res_is[:loglikelihood]) - log(N)
-        @test is_logevidence ≈ 2 * log(0.5)
 
         # For SMC, the chain stores the collective logevidence of the sampled trajectories
         # as a statistic (which is the same for all 'iterations'). So we can just pick the
@@ -634,7 +625,7 @@ using Turing
         end
         # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
-        @test sample(e(), IS(), 100) isa MCMCChains.Chains
+        @test sample(e(), Prior(), 100) isa MCMCChains.Chains
     end
 end
 

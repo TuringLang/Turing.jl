@@ -14,12 +14,14 @@ function AbstractMCMC.step(
     kwargs...,
 )
     accs = DynamicPPL.AccumulatorTuple((
-        DynamicPPL.ValuesAsInModelAccumulator(true),
+        DynamicPPL.RawValueAccumulator(true),
         DynamicPPL.LogPriorAccumulator(),
         DynamicPPL.LogLikelihoodAccumulator(),
     ))
     vi = DynamicPPL.OnlyAccsVarInfo(accs)
-    _, vi = DynamicPPL.init!!(rng, model, vi, DynamicPPL.InitFromPrior())
+    _, vi = DynamicPPL.init!!(
+        rng, model, vi, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
+    )
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi)
     return transition, nothing
 end

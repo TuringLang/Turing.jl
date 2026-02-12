@@ -119,13 +119,13 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     return AbstractMCMC.mcmcsample(
         rng,
         model,
         sampler,
         N;
-        initial_params=_convert_initial_params(initial_params),
+        initial_params=Turing._convert_initial_params(initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,
@@ -145,7 +145,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     return AbstractMCMC.mcmcsample(
         rng,
         model,
@@ -153,7 +153,7 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
-        initial_params=map(_convert_initial_params, initial_params),
+        initial_params=map(Turing._convert_initial_params, initial_params),
         chain_type=chain_type,
         progress=progress,
         kwargs...,

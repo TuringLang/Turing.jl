@@ -43,20 +43,19 @@ struct DynamicNUTSState{L,C,M,S}
     stepsize::S
 end
 
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    spl::DynamicNUTS,
-    vi::DynamicPPL.AbstractVarInfo;
+    spl::DynamicNUTS;
+    initial_params,
     kwargs...,
 )
-    # Ensure that initial sample is in unconstrained space.
-    if !DynamicPPL.is_transformed(vi)
-        vi = DynamicPPL.link!!(vi, model)
-        vi = last(DynamicPPL.evaluate!!(model, vi))
-    end
-
     # Define log-density function.
+    # TODO(penelopeysm) We need to check that the initial parameters are valid. Same as how
+    # we do it for HMC
+    _, vi = DynamicPPL.init!!(
+        rng, model, DynamicPPL.VarInfo(), initial_params, DynamicPPL.LinkAll()
+    )
     ℓ = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
     )

@@ -1,3 +1,94 @@
+# 0.43.0
+
+## DynamicPPL 0.40 and `VarNamedTuple`
+
+DynamicPPL v0.40 is a major overhaul of the internal data structure.
+Most notably, cases where we might once have used `Dict{VarName}` or `NamedTuple` have all been replaced with a single data structure, called `VarNamedTuple`.
+
+This provides substantial benefits in terms of robustness and performance.
+
+However, it does place some constraints on Turing models.
+Specifically:
+
+  - Arrays whose elements are random variables should have a constant size and type. For example, the following will no longer work:
+    
+    ```julia
+    x = Float64[]
+    for i in 1:10
+        push!(x, 0.0)
+        x[i] ~ Normal()
+    end
+    ```
+    
+    This only applies to arrays on the left-hand side of tilde-statements. In general, there are no restrictions on the code that you can use outside of tilde-statements.
+
+  - Likewise, arrays of random variables should ideally have a constant size from iteration to iteration. That means a model like this will fail sometimes (*but* see below):
+    
+    ```julia
+    n ~ Poisson(2.0)
+    x = Vector{Float64}(undef, n)
+    for i in 1:n
+        x[i] ~ Normal()
+    end
+    ```
+    
+    *Technically speaking*: Inference (e.g. MCMC sampling) on this model will still work, but if you want to use `returned` or `predict`, both of the following conditions must hold true: (1) you must use FlexiChains.jl; (2) all elements of `x` must be random variables, i.e., you cannot have a mixture of `x[i]`'s being random variables and observed.
+  - TODO
+
+## Optimisation interface
+
+Turing.jl's optimisation interface has been completely overhauled in this release.
+The aim of this has been to provide users with a more consistent and principled way of specifying constraints.
+
+The crux of the issue is that Optimization.jl expects vectorised inputs, whereas Turing models are more high-level: they have named variables which may be scalars, vectors, or in general anything.
+Prior to this version, Turing's interface required the user to provide the vectorised inputs 'raw', which is both unintuitive and error-prone (especially when considering that optimisation may run in linked or unlinked space).
+
+Going forward, initial parameters for optimisation are specified using `AbstractInitStrategy`.
+If specific parameters are provided (via `InitFromParams`), these must be in model space (i.e. untransformed).
+This directly mimics the interface for MCMC sampling that has been in place since v0.41.
+
+Furthermore, lower and upper bounds (if desired) must be specified as either a NamedTuple or an AbstractDict{<:VarName}.
+Bounds are always provided in model space; Turing will handle the transformation of these bounds to linked space if necessary.
+Constraints are respected when creating initial parameters for optimisation: if the `AbstractInitStrategy` provided is incompatible with the constraints (for example `InitFromParams((; x = 2.0))` but `x` is constrained to be between `[0, 1]`), an error will be raised.
+
+Here is a (very simplified) example of the new interface:
+
+```julia
+using Turing
+@model f() = x ~ Beta(2, 2)
+maximum_a_posteriori(
+    f();
+    # All of the following are in unlinked space.
+    initial_params=InitFromParams((; x=0.3)),
+    lb=(; x=0.1),
+    ub=(; x=0.4),
+)
+```
+
+For more information, please see the docstring of `estimate_mode`.
+
+Note that in some cases, the translation of bounds to linked space may not be well-defined.
+This is especially true for distributions where the samples have elements that are not independent (for example, Dirichlet, or LKJCholesky).
+In these cases, Turing will raise an error if bounds are provided.
+Users who wish to perform optimisation with such constraints should directly use `LogDensityFunction` and Optimization.jl.
+Documentation on this matter will be forthcoming.
+
+## `IS` sampler
+
+The `IS` sampler has been removed (its behaviour was in fact exactly the same as `Prior`).
+To see an example of importance sampling (via `Prior()` and then subsequent reweighting), see e.g. [this issue](https://github.com/TuringLang/Turing.jl/issues/2767).
+
+## `MH` sampler
+
+The interface of the MH sampler is slightly different.
+It no longer accepts `AdvancedMH` proposals, and is now more flexible: you can specify proposals for individual `VarName`s (not just top-level symbols), and any unspecified `VarName`s will be drawn from the prior, instead of being silently ignored.
+It is also faster than before (by around 30% on simple models).
+
+## `GibbsConditional`
+
+When defining a conditional posterior, instead of being provided with a Dict of values, the function must now take a `VarNamedTuple` containing the values.
+Note that indexing into a `VarNamedTuple` is very similar to indexing into a `Dict`; however, it is more flexible since you can use syntax such as `x[1:2]` even if `x[1]` and `x[2]` are separate variables in the model.
+
 # 0.42.8
 
 Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callback`.
