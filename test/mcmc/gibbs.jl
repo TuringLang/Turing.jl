@@ -23,13 +23,8 @@ using Turing.Inference: AdvancedHMC, AdvancedMH
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
 
 function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
-    # Varnames in `transition` should be subsumed by those in `parent_varnames`; but
-    # sometimes `densify!!` can introduce varnames that are joined together (e.g. s[1] and
-    # s[2] becomes s), so we need to specialcase that.... ugly.
     for vn in keys(transition.params)
-        @test vn == @varname(m) ||
-            vn == @varname(s) ||
-            any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
+        @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
     end
 end
 
@@ -550,7 +545,7 @@ end
 
     @testset "Demo model" begin
         @testset verbose = true "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-            vns = DynamicPPL.TestUtils.varnames(model)
+            vns = (@varname(m), @varname(s))
             samplers = [
                 Gibbs(@varname(s) => NUTS(), @varname(m) => NUTS()),
                 Gibbs(@varname(s) => NUTS(), @varname(m) => HMC(0.01, 4)),
@@ -733,14 +728,7 @@ end
         rng = Random.default_rng()
         model = MoGtest_default_z_vector
         spl = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
-        vns = (
-            @varname(z[1]),
-            @varname(z[2]),
-            @varname(z[3]),
-            @varname(z[4]),
-            @varname(mu1),
-            @varname(mu2)
-        )
+        vns = (@varname(z), @varname(mu1), @varname(mu2))
         # `step`
         transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)
