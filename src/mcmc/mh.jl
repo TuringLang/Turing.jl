@@ -169,11 +169,14 @@ struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInit
     return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
     should return an `UntransformedValue`)."
     proposals::V
+    "Whether to print the proposals as they are being sampled"
+    verbose::Bool
 end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, prior::Distribution, strategy::InitFromProposals
 )
     if haskey(strategy.proposals, vn)
+        strategy.verbose && @info "varname $vn: proposal $(strategy.proposals[vn][2])"
         # this is the proposal that the user wanted
         is_linkedrw, dist = strategy.proposals[vn]
         if is_linkedrw
@@ -185,6 +188,7 @@ function DynamicPPL.init(
             return DynamicPPL.UntransformedValue(rand(rng, dist))
         end
     else
+        strategy.verbose && @info "varname $vn: no proposal specified, drawing from prior"
         # No proposal was specified for this variable, so we sample from the prior.
         return DynamicPPL.UntransformedValue(rand(rng, prior))
     end
@@ -227,7 +231,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
                 proposals, proposal_dist, vn, raw_vals.data[AbstractPPL.getsym(vn)]
             )
         end
-        return InitFromProposals(proposals)
+        return InitFromProposals(proposals, false)
     end
     all_vns = Set{VarName}(_to_varname(pair[1]) for pair in vn_proposal_pairs)
     linkedrw_vns = Set{VarName}(
@@ -247,6 +251,7 @@ function AbstractMCMC.step(
     spl::MH;
     initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
+    verbose=true,
     kwargs...,
 )
     # Generate and return initial parameters. We need to use VAIMAcc because that will
@@ -301,6 +306,17 @@ function AbstractMCMC.step(
             " different proposal distribution." *
             " Your initial values were:\n\n$init_str\n",
         )
+    end
+
+    # We evaluate the model once with the sampler's init strategy and print all the
+    # proposals that were used. This helps the user detect cases where the proposals are
+    # silently ignored (e.g. because the VarName in the proposal doesn't match the VarName
+    # in the model).
+    if verbose && init_strategy isa InitFromProposals
+        @info "When sampling with MH, the following proposals will be used at each step.\nThis output can be disabled by passing `verbose=false` to `sample()`."
+        verbose_init_strategy = InitFromProposals(init_strategy.proposals, true)
+        oavi = DynamicPPL.OnlyAccsVarInfo(()) # No need to accumulate anything
+        DynamicPPL.init!!(rng, model, oavi, verbose_init_strategy, DynamicPPL.UnlinkAll())
     end
 
     transition =
