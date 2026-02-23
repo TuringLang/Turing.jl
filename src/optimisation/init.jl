@@ -245,7 +245,7 @@ function DynamicPPL.accumulate_assume!!(
     return acc
 end
 function DynamicPPL.accumulate_observe!!(
-    acc::ConstraintAccumulator, ::Distribution, ::Any, ::Union{VarName,Nothing}
+    acc::ConstraintAccumulator, ::Distribution, ::Any, ::Union{VarName,Nothing}, ::Any
 )
     return acc
 end

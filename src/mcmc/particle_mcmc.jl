@@ -499,7 +499,7 @@ function DynamicPPL.accumulate_assume!!(
     return acc
 end
 function DynamicPPL.accumulate_observe!!(
-    acc::ProduceLogLikelihoodAccumulator, right, left, vn
+    acc::ProduceLogLikelihoodAccumulator, right, left, vn, template
 )
     return DynamicPPL.acclogp(acc, Distributions.loglikelihood(right, left))
 end
