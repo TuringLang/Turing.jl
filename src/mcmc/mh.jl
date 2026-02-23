@@ -283,14 +283,19 @@ function AbstractMCMC.step(
     initial_log_proposal_density = log_proposal_density(
         vi, init_strategy, initial_unspecified_priors
     )
-    if initial_log_proposal_density == -Inf
+    if initial_log_proposal_density == -Inf || isnan(initial_log_proposal_density)
         io = IOContext(IOBuffer(), :color => true)
         show(io, "text/plain", initial_raw_values)
         init_str = String(take!(io.io))
+        prob_dens_string = if initial_log_proposal_density == -Inf
+            "zero"
+        else
+            "NaN"
+        end
         error(
-            "The initial parameters have zero probability density under the proposal" *
-            " distribution (for example, an initial value of `x=2.0` for a" *
-            " proposal `@varname(x) => Uniform(0, 1)`. This will cause the" *
+            "The initial parameters have a $prob_dens_string probability density under" *
+            " the proposal distribution (for example, an initial value of `x=2.0`" *
+            " for a proposal `@varname(x) => Uniform(0, 1)`. This will cause the" *
             " sampler to get stuck at the initial parameters. Consider specifying" *
             " different initial parameters (e.g. via `InitFromParams`) or using a" *
             " different proposal distribution." *
