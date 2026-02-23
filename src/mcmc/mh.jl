@@ -89,9 +89,10 @@ spl = MH(
 ```
 
 **Note that when using conditional proposals, the values obtained by indexing into the
-`VarNamedTuple` are always in unlinked space.** Sometimes, you may want to define a random-walk
-proposal in linked space. For this, you can use `LinkedRW` as a proposal, which takes a
-covariance matrix as an argument:
+`VarNamedTuple` are always in untransformed space, which are constrained to the support of
+the distribution.** Sometimes, you may want to define a random-walk proposal in
+unconstrained (i.e. 'linked') space. For this, you can use `LinkedRW` as a proposal, which
+takes a covariance matrix as an argument:
 
 ```julia
 using LinearAlgebra: Diagonal
@@ -103,10 +104,11 @@ spl = MH(
 
 In the above example, `LinkedRW(Diagonal([0.25]))` defines a random-walk proposal for `m` in
 linked space. This is in fact the same as the conditional proposal above, because `m` is
-already unconstrained, and so linked space and unlinked space are the same for this
-variable. However, `s` is constrained to be positive, and so using a `LinkedRW` proposal for
-`s` would be different from using a normal proposal in unlinked space (`LinkedRW` will
-ensure that the proposals for `s` always remain positive in unlinked space).
+already unconstrained, and so the unconstraining transformation is the identity.
+
+However, `s` is constrained to be positive, and so using a `LinkedRW` proposal for `s` would
+be different from using a normal proposal in untransformed space (`LinkedRW` will ensure
+that the proposals for `s` always remain positive in untransformed space).
 
 ```julia
 spl = MH(
