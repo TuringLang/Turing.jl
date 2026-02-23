@@ -179,8 +179,7 @@ function DynamicPPL.init(
         if is_linkedrw
             transform = DynamicPPL.from_linked_vec_transform(prior)
             linked_vec = rand(rng, dist)
-            sz = hasmethod(size, Tuple{typeof(prior)}) ? size(prior) : ()
-            return DynamicPPL.LinkedVectorValue(linked_vec, transform, sz)
+            return DynamicPPL.LinkedVectorValue(linked_vec, transform)
         else
             # Static or conditional proposal in untransformed space.
             return DynamicPPL.UntransformedValue(rand(rng, dist))
