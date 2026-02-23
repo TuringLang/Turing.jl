@@ -450,10 +450,11 @@ function DynamicPPL.tilde_observe!!(
     right::Distribution,
     left,
     vn::Union{VarName,Nothing},
+    template::Any,
     vi::AbstractVarInfo,
 )
     vi = get_trace_local_varinfo()
-    left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
+    left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, template, vi)
     set_trace_local_varinfo(vi)
     return left, vi
 end

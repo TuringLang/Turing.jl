@@ -177,10 +177,11 @@ function DynamicPPL.tilde_observe!!(
     right::Distribution,
     left,
     vn::Union{VarName,Nothing},
+    template::Any,
     vi::AbstractVarInfo,
 )
     left, vi = DynamicPPL.tilde_observe!!(
-        DynamicPPL.childcontext(context), right, left, vn, vi
+        DynamicPPL.childcontext(context), right, left, vn, template, vi
     )
     check_adtype(context, vi)
     return left, vi

@@ -183,7 +183,7 @@ function DynamicPPL.tilde_assume!!(
         # Note that tilde_observe!! will trigger resampling in particle methods
         # for variables that are handled by other Gibbs component samplers.
         val = get_conditioned_gibbs(context, vn)
-        DynamicPPL.tilde_observe!!(child_context, right, val, vn, vi)
+        DynamicPPL.tilde_observe!!(child_context, right, val, vn, template, vi)
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
