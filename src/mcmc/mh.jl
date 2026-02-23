@@ -46,7 +46,7 @@ This implies the use of static proposals for each variable. If a variable is not
 its prior distribution is used as the proposal.
 
 ```julia
-# Use a static proposal for s² (which happens to be the same as the prior) and a static
+# Use a static proposal for s (which happens to be the same as the prior) and a static
 # proposal for m (note that this isn't a random walk proposal).
 spl = MH(
     # This happens to be the same as the prior
