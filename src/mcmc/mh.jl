@@ -158,7 +158,7 @@ struct LinkedRW{C}
 end
 
 """
-    InitFromProposals(proposals::VarNamedTuple)
+    InitFromProposals(proposals::VarNamedTuple, verbose::Bool)
 
 An initialisation strategy that samples variables from user-defined proposal distributions.
 If a proposal distribution is not found in `proposals`, then we defer to sampling from the
