@@ -5,6 +5,7 @@ using Distributions:
     Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal, Normal, sample
 using DynamicPPL: DynamicPPL
 using LinearAlgebra: I
+using Logging: Logging
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @testset, @test_throws
@@ -115,6 +116,34 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             @test mean(chn2[:x]) ≈ mean(chn[:x])
             @test mean(chn2[:y]) ≈ mean(chn[:y])
         end
+    end
+
+    @testset "info statements about proposals" begin
+        @model function f()
+            x = zeros(2)
+            x[1] ~ Normal()
+            return x[2] ~ Normal()
+        end
+
+        spl = MH(@varname(x[1]) => Normal(), @varname(x[2]) => Normal())
+        @test_logs (:info, r"varname x\[1\]: proposal .*Normal") (
+            :info, r"varname x\[2\]: proposal .*Normal"
+        ) match_mode = :any sample(f(), spl, 2; progress=false)
+
+        spl = MH(@varname(x) => MvNormal(zeros(2), I))
+        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
+            :info, r"varname x\[2\]: no proposal specified"
+        ) match_mode = :any sample(f(), spl, 2; progress=false)
+
+        spl = MH(@varname(x.a) => Normal(), @varname(x[2]) => Normal())
+        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
+            :info, r"varname x\[2\]: proposal .*Normal"
+        ) match_mode = :any sample(f(), spl, 2; progress=false)
+
+        # Check that verbose=false disables it
+        @test_logs min_level = Logging.Info sample(
+            f(), spl, 2; progress=false, verbose=false
+        )
     end
 
     @testset "with demo models" begin

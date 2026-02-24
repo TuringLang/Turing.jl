@@ -89,9 +89,10 @@ spl = MH(
 ```
 
 **Note that when using conditional proposals, the values obtained by indexing into the
-`VarNamedTuple` are always in unlinked space.** Sometimes, you may want to define a random-walk
-proposal in linked space. For this, you can use `LinkedRW` as a proposal, which takes a
-covariance matrix as an argument:
+`VarNamedTuple` are always in untransformed space, which are constrained to the support of
+the distribution.** Sometimes, you may want to define a random-walk proposal in
+unconstrained (i.e. 'linked') space. For this, you can use `LinkedRW` as a proposal, which
+takes a covariance matrix as an argument:
 
 ```julia
 using LinearAlgebra: Diagonal
@@ -103,10 +104,11 @@ spl = MH(
 
 In the above example, `LinkedRW(Diagonal([0.25]))` defines a random-walk proposal for `m` in
 linked space. This is in fact the same as the conditional proposal above, because `m` is
-already unconstrained, and so linked space and unlinked space are the same for this
-variable. However, `s` is constrained to be positive, and so using a `LinkedRW` proposal for
-`s` would be different from using a normal proposal in unlinked space (`LinkedRW` will
-ensure that the proposals for `s` always remain positive in unlinked space).
+already unconstrained, and so the unconstraining transformation is the identity.
+
+However, `s` is constrained to be positive, and so using a `LinkedRW` proposal for `s` would
+be different from using a normal proposal in untransformed space (`LinkedRW` will ensure
+that the proposals for `s` always remain positive in untransformed space).
 
 ```julia
 spl = MH(
@@ -156,7 +158,7 @@ struct LinkedRW{C}
 end
 
 """
-    InitFromProposals(proposals::VarNamedTuple)
+    InitFromProposals(proposals::VarNamedTuple, verbose::Bool)
 
 An initialisation strategy that samples variables from user-defined proposal distributions.
 If a proposal distribution is not found in `proposals`, then we defer to sampling from the
@@ -169,11 +171,14 @@ struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInit
     return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
     should return an `UntransformedValue`)."
     proposals::V
+    "Whether to print the proposals as they are being sampled"
+    verbose::Bool
 end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, prior::Distribution, strategy::InitFromProposals
 )
     if haskey(strategy.proposals, vn)
+        strategy.verbose && @info "varname $vn: proposal $(strategy.proposals[vn][2])"
         # this is the proposal that the user wanted
         is_linkedrw, dist = strategy.proposals[vn]
         if is_linkedrw
@@ -185,6 +190,7 @@ function DynamicPPL.init(
             return DynamicPPL.UntransformedValue(rand(rng, dist))
         end
     else
+        strategy.verbose && @info "varname $vn: no proposal specified, drawing from prior"
         # No proposal was specified for this variable, so we sample from the prior.
         return DynamicPPL.UntransformedValue(rand(rng, prior))
     end
@@ -227,7 +233,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
                 proposals, proposal_dist, vn, raw_vals.data[AbstractPPL.getsym(vn)]
             )
         end
-        return InitFromProposals(proposals)
+        return InitFromProposals(proposals, false)
     end
     all_vns = Set{VarName}(_to_varname(pair[1]) for pair in vn_proposal_pairs)
     linkedrw_vns = Set{VarName}(
@@ -247,6 +253,7 @@ function AbstractMCMC.step(
     spl::MH;
     initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
+    verbose=true,
     kwargs...,
 )
     # Generate and return initial parameters. We need to use VAIMAcc because that will
@@ -303,6 +310,17 @@ function AbstractMCMC.step(
         )
     end
 
+    # We evaluate the model once with the sampler's init strategy and print all the
+    # proposals that were used. This helps the user detect cases where the proposals are
+    # silently ignored (e.g. because the VarName in the proposal doesn't match the VarName
+    # in the model).
+    if verbose && init_strategy isa InitFromProposals
+        @info "When sampling with MH, the following proposals will be used at each step.\nThis output can be disabled by passing `verbose=false` to `sample()`."
+        verbose_init_strategy = InitFromProposals(init_strategy.proposals, true)
+        oavi = DynamicPPL.OnlyAccsVarInfo(()) # No need to accumulate anything
+        DynamicPPL.init!!(rng, model, oavi, verbose_init_strategy, DynamicPPL.UnlinkAll())
+    end
+
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
     return transition, vi
@@ -356,6 +374,7 @@ function AbstractMCMC.step(
         log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors) -
         log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
     )
+    isnan(log_a) && @warn "MH log-acceptance probability is NaN; sample will be rejected"
 
     # Decide whether to accept.
     accepted, vi = if -Random.randexp(rng) < log_a
