@@ -1,6 +1,7 @@
 module AquaTests
 
 using Aqua: Aqua
+using Libtask: Libtask
 using Turing
 
 # We test ambiguities separately because it catches a lot of problems in dependencies but we
