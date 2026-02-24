@@ -40,9 +40,6 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
-[sources]
-DynamicPPL = {rev = "breaking", url = "https://github.com/TuringLang/DynamicPPL.jl"}
-
 [compat]
 ADTypes = "1"
 AbstractMCMC = "5.13"
