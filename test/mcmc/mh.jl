@@ -8,7 +8,7 @@ using LinearAlgebra: I
 using Logging: Logging
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset, @test_throws
+using Test: @test, @testset, @test_throws, @test_logs
 using Turing
 using Turing.Inference: Inference
 
