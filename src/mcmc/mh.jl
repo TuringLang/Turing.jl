@@ -297,10 +297,10 @@ function AbstractMCMC.step(
         prob_dens_string = if initial_log_proposal_density == -Inf
             "zero"
         else
-            "NaN"
+            "a NaN"
         end
         error(
-            "The initial parameters have a $prob_dens_string probability density under" *
+            "The initial parameters have $prob_dens_string probability density under" *
             " the proposal distribution (for example, an initial value of `x=2.0`" *
             " for a proposal `@varname(x) => Uniform(0, 1)`. This will cause the" *
             " sampler to get stuck at the initial parameters. Consider specifying" *

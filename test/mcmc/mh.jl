@@ -101,20 +101,11 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
             @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
 
-            # Note that if we additionally don't specify a proposal for `a`, then it will defer
-            # to InitFromPrior for all variables, and its prior *is* Normal(). So we can do
-            # this:
+            # This should work too.
             chn2 = sample(StableRNG(468), f(), MH(), 10000)
-            # and it should actually give us exactly the same results as above.
-            #
-            # This test *does* depend on internal implementation details of MH and is a bit
-            # brittle. If it fails, you should check that the values are still approximately
-            # correct (i.e. 0, 2/3, and 4/3). If they are still correct, then it probably just
-            # means that the internal implementation details have changed, and this test can
-            # just be updated (or removed).
-            @test mean(chn2[:a]) ≈ mean(chn[:a])
-            @test mean(chn2[:x]) ≈ mean(chn[:x])
-            @test mean(chn2[:y]) ≈ mean(chn[:y])
+            @test mean(chn[:a]) ≈ 0.0 atol = 0.05
+            @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
+            @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
         end
     end
 
