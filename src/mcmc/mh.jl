@@ -178,9 +178,15 @@ function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, prior::Distribution, strategy::InitFromProposals
 )
     if haskey(strategy.proposals, vn)
-        strategy.verbose && @info "varname $vn: proposal $(strategy.proposals[vn][2])"
         # this is the proposal that the user wanted
         is_linkedrw, dist = strategy.proposals[vn]
+        if strategy.verbose
+            if is_linkedrw
+                @info "varname $vn: proposal is a LinkedRW with covariance matrix $(dist.Σ)"
+            else
+                @info "varname $vn: proposal $(strategy.proposals[vn][2])"
+            end
+        end
         if is_linkedrw
             transform = DynamicPPL.from_linked_vec_transform(prior)
             linked_vec = rand(rng, dist)
