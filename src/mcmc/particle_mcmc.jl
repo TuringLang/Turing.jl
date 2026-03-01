@@ -537,3 +537,23 @@ Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 Libtask.@might_produce(DynamicPPL.evaluate!!)
 Libtask.@might_produce(DynamicPPL.init!!)
 Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
+
+# We need these to automatically catch any submodels whose bodies aren't inlined. See
+# https://github.com/TuringLang/Turing.jl/issues/2772. The line that marks ANY function with
+# the signature f(::Model, ::AbstractVarInfo, ...) might seem completely overkill. However,
+# in practice, the only function that will have this signature is the model evaluation
+# function itself (which currently has the signature model.f(model, varinfo,
+# model.args...)). Of course, there are other functions like logjoint(model, varinfo) that
+# also have this signature, but those are unlikely to be found inside the body of a model,
+# so marking those as might_produce should not cause any real performance issues in particle
+# MCMC.
+# Furthermore, note that these are not sufficient for submodels that have keyword arguments.
+# Those need to be handled by the user in the same way that top-level models with keyword
+# arguments do (i.e. by marking the submodel function itself with @might_produce). We
+# currently don't have a check for this, but it would be good to do so.
+Libtask.@might_produce(DynamicPPL._evaluate!!)
+function Libtask.might_produce(
+    ::Type{<:Tuple{<:Any,<:DynamicPPL.Model,<:DynamicPPL.AbstractVarInfo,Vararg}}
+)
+    return true
+end

@@ -1,3 +1,11 @@
+# 0.42.9
+
+Mark extra methods with `Libtask.might_produce` in order to prevent inlining from affecting the correctness of particle methods on models with submodels.
+(Prior to this patch, if your submodel contained observations and was not inlined by the compiler, this could potentially lead to silent wrong results when using SMC or PG.)
+
+Note that if your submodel takes keyword arguments, you must still use `Libtask.@might_produce` yourself, just like if the top-level model has keyword arguments.
+See the patch notes for v0.42.5 for more details.
+
 # 0.42.8
 
 Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callback`.
