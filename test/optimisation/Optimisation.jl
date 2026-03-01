@@ -125,7 +125,6 @@ using Turing
         end
 
         @testset "MLE" begin
-            Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
@@ -163,7 +162,6 @@ using Turing
         end
 
         @testset "MAP" begin
-            Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result) = check_optimisation_result(result, true_value, true_logp)
@@ -201,7 +199,6 @@ using Turing
         end
 
         @testset "MLE with box constraints" begin
-            Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result, check_retcode=true) =
@@ -261,7 +258,6 @@ using Turing
         end
 
         @testset "MAP with box constraints" begin
-            Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result, check_retcode=true) =
@@ -322,7 +318,6 @@ using Turing
         end
 
         @testset "MLE with generic constraints" begin
-            Random.seed!(222)
             true_value = [0.0625, 1.75]
             true_logp = loglikelihood(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result, check_retcode=true) =
@@ -375,7 +370,6 @@ using Turing
         end
 
         @testset "MAP with generic constraints" begin
-            Random.seed!(222)
             true_value = [49 / 54, 7 / 6]
             true_logp = logjoint(gdemo_default, (s=true_value[1], m=true_value[2]))
             check_success(result, check_retcode=true) =
@@ -431,7 +425,6 @@ using Turing
     end
 
     @testset "StatsBase integration" begin
-        Random.seed!(54321)
         mle_est = maximum_likelihood(gdemo_default)
         # Calculated based on the two data points in gdemo_default, [1.5, 2.0]
         true_values = [0.0625, 1.75]
@@ -466,7 +459,6 @@ using Turing
             return y ~ MvNormal(mu, I)
         end
 
-        Random.seed!(987)
         true_beta = [1.0, -2.2]
         x = rand(40, 2)
         y = x * true_beta
@@ -504,7 +496,6 @@ using Turing
     # TODO(mhauru): The corresponding Optim.jl test had a note saying that some models
     # don't work for Tracker and ReverseDiff. Is that still the case?
     @testset "MAP for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-        Random.seed!(23)
         result_true = DynamicPPL.TestUtils.posterior_optima(model)
 
         optimizers = [
@@ -543,7 +534,6 @@ using Turing
         DynamicPPL.TestUtils.demo_assume_matrix_observe_matrix_index,
     ]
     @testset "MLE for $(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
-        Random.seed!(23)
         result_true = DynamicPPL.TestUtils.likelihood_optima(model)
 
         optimizers = [

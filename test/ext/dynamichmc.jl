@@ -1,4 +1,4 @@
-module DynamicHMCTests
+iiimodule DynamicHMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
@@ -10,9 +10,9 @@ using Random: Random
 using Turing
 
 @testset "TuringDynamicHMCExt" begin
-    Random.seed!(100)
+    rng = Xoshiro(100)
     spl = externalsampler(DynamicHMC.NUTS())
-    chn = sample(gdemo_default, spl, 10_000)
+    chn = sample(rng, gdemo_default, spl, 10_000)
     check_gdemo(chn)
 end
 
