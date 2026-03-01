@@ -181,6 +181,21 @@ end
         @test mean(chain2[:x]) ≈ 7.5 atol = 0.2
     end
 
+    @testset "correctness with submodels that aren't inlined" begin
+        # cf. https://github.com/TuringLang/Turing.jl/issues/2772
+        @model function inner(y, x)
+            @noinline
+            return y ~ Normal(x)
+        end
+        @model function nested(y)
+            x ~ Normal()
+            return a ~ to_submodel(inner(y, x))
+        end
+        m1 = nested(1.0)
+        chn = sample(StableRNG(468), m1, PG(10), 500)
+        @test mean(chn[:x]) ≈ 0.5 atol = 0.05
+    end
+
     @testset "refuses to run threadsafe eval" begin
         # PG can't run models that have nondeterministic evaluation order,
         # so it should refuse to run models marked as threadsafe.
