@@ -1,4 +1,8 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"

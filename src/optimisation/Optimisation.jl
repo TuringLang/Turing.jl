@@ -127,15 +127,16 @@ end
 function Base.show(io::IO, ::MIME"text/plain", m::ModeResult)
     printstyled(io, "ModeResult\n"; bold=true)
     # typeof avoids the parentheses in the printed output
-    println(io, "  ├ estimator : $(typeof(m.estimator))")
-    println(io, "  ├ lp        : $(m.lp)")
+    println(io, "  ├ estimator    : $(typeof(m.estimator))")
+    println(io, "  ├ lp           : $(m.lp)")
     entries = length(m.params) == 1 ? "entry" : "entries"
-    println(io, "  ├ params    : VarNamedTuple with $(length(m.params)) $(entries)")
+    println(io, "  ├ params       : VarNamedTuple with $(length(m.params)) $(entries)")
     for (i, (vn, val)) in enumerate(pairs(m.params))
         tree_char = i == length(m.params) ? "└" : "├"
-        println(io, "  │             $(tree_char) $vn => $(val)")
+        println(io, "  │                $(tree_char) $vn => $(val)")
     end
-    print(io, "  └ linked    : $(m.linked)")
+    println(io, "  │ linked       : $(m.linked)")
+    print(io, "  └ (2 more fields: optim_result, ldf)")
     return nothing
 end
 
