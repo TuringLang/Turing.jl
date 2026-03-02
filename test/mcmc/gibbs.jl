@@ -262,10 +262,8 @@ end
     sampler2 = Gibbs(
         @varname(s) => MH(), @varname(s) => MH(), @varname(s) => MH(), @varname(m) => ESS()
     )
-    rng1 = Xoshiro(23)
-    chain1 = sample(rng1, gdemo_default, sampler1, 10)
-    rng2 = Xoshiro(23)
-    chain2 = sample(rng2, gdemo_default, sampler1, 10)
+    chain1 = sample(Xoshiro(23), gdemo_default, sampler1, 10)
+    chain2 = sample(Xoshiro(23), gdemo_default, sampler1, 10)
     @test chain1.value == chain2.value
 end
 
