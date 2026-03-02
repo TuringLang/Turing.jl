@@ -1,4 +1,5 @@
 import DifferentiationInterface as DI
+import Bijectors.VectorBijectors: optic_vec
 
 """
     vector_names_and_params(m::ModeResult)
@@ -20,32 +21,36 @@ function vector_names_and_params(m::ModeResult)
     # To ensure that this is always the case, we will have to create a LogDensityFunction
     # and then use its stored ranges to extract the parameters in the correct order. This
     # LDF will have to be created in unlinked space.
-    #
-    # TODO(penelopeysm): This needs to be done in a "better" way using DynamicPPL
-    # functionality. Note that, if https://github.com/TuringLang/DynamicPPL.jl/pull/1178
-    # goes through, the value vector can just be generated using
-    # `first(DynamicPPL.rand_with_logdensity(m.ldf, InitFromParams(m.params)))`. The
-    # varnames, though, are a hot mess. See the TODO below.
     ldf = LogDensityFunction(m.ldf.model)
     vns = Vector{VarName}(undef, LogDensityProblems.dimension(ldf))
-    vals = Vector{Any}(undef, LogDensityProblems.dimension(ldf))
-    for vn in keys(m.params)
-        range = if AbstractPPL.getoptic(vn) === identity
-            ldf._iden_varname_ranges[AbstractPPL.getsym(vn)].range
-        else
-            ldf._varname_ranges[vn].range
+
+    # Evaluate the model to get the vectorised parameters in the right order.
+    accs = DynamicPPL.OnlyAccsVarInfo(
+        DynamicPPL.PriorDistributionAccumulator(), DynamicPPL.VectorParamAccumulator(ldf)
+    )
+    _, accs = DynamicPPL.init!!(
+        ldf.model, accs, InitFromParams(m.params), DynamicPPL.UnlinkAll()
+    )
+    vector_params = DynamicPPL.get_vector_params(accs)
+
+    # Figure out the VarNames.
+    priors = DynamicPPL.get_priors(accs)
+    vector_varnames = Vector{VarName}(undef, length(vector_params))
+    for (vn, dist) in pairs(priors)
+        range = ldf._varname_ranges[vn].range
+        optics = optic_vec(dist)
+        # Really shouldn't happen, but catch in case optic_vec isn't properly defined
+        if any(isnothing, optics)
+            error(
+                "The sub-optics for the distribution $dist are not defined. This is a bug in Turing; please file an issue at https://github.com/TuringLang/Turing.jl/issues.",
+            )
         end
-        # TODO(penelopeysm): This assumes that tovec and varname_leaves return the same
-        # number of sub-elements in the same order --- which is NOT true for things like
-        # Cholesky factors --- so this is a bug! We COULD use `varname_and_value_leaves` but
-        # that would just be a different kind of bug because LDF uses tovec for
-        # vectorisation!! https://github.com/TuringLang/Turing.jl/issues/2734
-        val = m.params[vn]
-        vns[range] = collect(AbstractPPL.varname_leaves(vn, val))
-        vals[range] = DynamicPPL.tovec(val)
+        vns = map(optic -> AbstractPPL.append_optic(vn, optic), optics)
+        vector_varnames[range] = vns
     end
+
     # Concretise
-    return [x for x in vns], [x for x in vals]
+    return [x for x in vector_varnames], [x for x in vector_params]
 end
 
 # Various StatsBase methods for ModeResult

@@ -40,6 +40,9 @@ StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
+[sources]
+Bijectors = {url = "https://github.com/TuringLang/Bijectors.jl", rev = "py/vec"}
+
 [compat]
 ADTypes = "1"
 AbstractMCMC = "5.13"
@@ -49,14 +52,14 @@ AdvancedPS = "0.7.2"
 AdvancedVI = "0.6"
 Aqua = "0.8"
 BangBang = "0.4"
-Bijectors = "0.14, 0.15"
+Bijectors = "0.15.17"
 Clustering = "0.14, 0.15"
 Combinatorics = "1"
 DifferentiationInterface = "0.7"
 Distributions = "0.25"
 DistributionsAD = "0.6.3"
 DynamicHMC = "2.1.6, 3.0"
-DynamicPPL = "0.40.2"
+DynamicPPL = "0.40.3"
 FiniteDifferences = "0.10.8, 0.11, 0.12"
 ForwardDiff = "0.10.12 - 0.10.32, 0.10, 1"
 HypothesisTests = "0.11"

@@ -1,6 +1,8 @@
 [deps]
+Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
+DynamicPPL = "366bfd00-2699-11ea-058f-f148b4cae6d8"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"

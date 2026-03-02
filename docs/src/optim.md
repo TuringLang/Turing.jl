@@ -46,6 +46,7 @@ map_estimate.params[@varname(x)]
 ```
 
 If you need a vectorised form of the parameters, you can use `vector_names_and_params`, which return a tuple of two vectors: one of `VarName`s and one of the corresponding parameter values.
+(Note that these values are *always* returned in untransformed space.)
 
 ```@example 1
 vector_names_and_params(map_estimate)
@@ -98,7 +99,17 @@ maximum_likelihood(model; adtype=AutoMooncake())
 
 By default, Turing transforms model parameters to an unconstrained space before optimising (`link=true`).
 This avoids discontinuities where the log-density drops to `-Inf` outside the support of a distribution.
-Note that the returned parameter values are always in the original (untransformed) space, regardless of the `link` setting.
+Note that the parameter values returned are always in the original (untransformed) space, regardless of the `link` setting.
+
+::: {.callout-note}
+
+## What does 'unconstrained' really mean?
+
+Note that the transformation to unconstrained space refers to the support of the *original* distribution prior to any optimisation constraints being applied.
+For example, a parameter `x ~ Beta(2, 2)` will be transformed from the original space of `(0, 1)` to the unconstrained space of `(-Inf, Inf)` (via the logit transform).
+However, it is possible that the optimisation still proceeds in a constrained space, if constraints on the parameter are specified via `lb` or `ub`.
+For example, if we specify `lb=0.0` and `ub=0.2` for the same parameter, then the optimisation will proceed in the constrained space of `(-Inf, logit(0.2))`.
+:::
 
 If you want to optimise in the original parameter space instead, set `link=false`.
 
@@ -106,7 +117,7 @@ If you want to optimise in the original parameter space instead, set `link=false
 maximum_a_posteriori(model; link=false)
 ```
 
-This is usually only useful under very specific circumstances, namely when your model contains distributions for which the mapping from model space to linked space is dependent on another parameter's value.
+This is usually only useful under very specific circumstances, namely when your model contains distributions for which the mapping from model space to unconstrained space is dependent on another parameter's value.
 
 ### Box constraints
 
