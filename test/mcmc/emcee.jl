@@ -26,7 +26,7 @@ using Turing
         @info "Testing emcee with large number of iterations"
         spl = Emcee(10, 2.0)
         n_samples = 10_000
-        chain = sample(rng, gdemo_default, spl, n_samples)
+        chain = sample(StableRNG(5), gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
 
