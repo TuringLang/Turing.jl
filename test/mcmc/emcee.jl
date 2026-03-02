@@ -11,7 +11,7 @@ using Turing
 
 @testset "emcee.jl" begin
     @testset "gdemo" begin
-        rng = Xoshiro(9876)
+        rng = StableRNG(9876)
 
         n_samples = 1000
         n_walkers = 250
