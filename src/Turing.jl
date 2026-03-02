@@ -174,7 +174,7 @@ export
     maximum_likelihood,
     MAP,
     MLE,
-    get_vector_params,
+    vector_names_and_params,
     # Chain save/resume
     loadstate,
     # kwargs in SMC

@@ -17,7 +17,7 @@ using StatsAPI: StatsAPI
 using Statistics: Statistics
 using LinearAlgebra: LinearAlgebra
 
-export maximum_a_posteriori, maximum_likelihood, MAP, MLE, get_vector_params
+export maximum_a_posteriori, maximum_likelihood, MAP, MLE, vector_names_and_params
 
 include("init.jl")
 

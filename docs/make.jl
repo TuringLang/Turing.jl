@@ -31,6 +31,7 @@ makedocs(;
             "Variational " => "api/Variational.md",
             "RandomMeasures " => "api/RandomMeasures.md",
         ],
+        "Optimisation" => "optim.md",
     ],
     checkdocs=:exports,
     doctest=false,

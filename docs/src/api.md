@@ -168,10 +168,10 @@ LogPoisson
 
 See the [mode estimation tutorial](https://turinglang.org/docs/tutorials/docs-17-mode-estimation/) for more information.
 
-| Exported symbol        | Documentation                                      | Description                                   |
-|:---------------------- |:-------------------------------------------------- |:--------------------------------------------- |
-| `maximum_a_posteriori` | [`Turing.Optimisation.maximum_a_posteriori`](@ref) | Find a MAP estimate for a model               |
-| `maximum_likelihood`   | [`Turing.Optimisation.maximum_likelihood`](@ref)   | Find a MLE estimate for a model               |
-| `MAP`                  | [`Turing.Optimisation.MAP`](@ref)                  | Type to use with Optim.jl for MAP estimation  |
-| `MLE`                  | [`Turing.Optimisation.MLE`](@ref)                  | Type to use with Optim.jl for MLE estimation  |
-| `get_vector_params`    | [`Turing.Optimisation.get_vector_params`](@ref)    | Extract parameter names and values as vectors |
+| Exported symbol           | Documentation                                         | Description                                   |
+|:------------------------- |:----------------------------------------------------- |:--------------------------------------------- |
+| `maximum_a_posteriori`    | [`Turing.Optimisation.maximum_a_posteriori`](@ref)    | Find a MAP estimate for a model               |
+| `maximum_likelihood`      | [`Turing.Optimisation.maximum_likelihood`](@ref)      | Find a MLE estimate for a model               |
+| `MAP`                     | [`Turing.Optimisation.MAP`](@ref)                     | Type to use with Optim.jl for MAP estimation  |
+| `MLE`                     | [`Turing.Optimisation.MLE`](@ref)                     | Type to use with Optim.jl for MLE estimation  |
+| `vector_names_and_params` | [`Turing.Optimisation.vector_names_and_params`](@ref) | Extract parameter names and values as vectors |

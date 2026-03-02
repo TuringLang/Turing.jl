@@ -106,7 +106,7 @@ Documentation on this matter will be forthcoming.
 The return type from an optimisation procedure, `ModeResult`, has been substantially reworked:
 
   - `ModeResult.params` is now a `VarNamedTuple` (previously an `AbstractDict{<:VarName}`). Parameters can be accessed via e.g. `m.params[@varname(x)]`.
-  - The `values::NamedArray` field has been removed. Use `get_vector_params(m)` (newly exported) to obtain `(Vector{VarName}, Vector{values})`.
+  - The `values::NamedArray` field has been removed. Use `vector_names_and_params(m)` (newly exported) to obtain `(Vector{VarName}, Vector{values})`.
   - `Base.get(m::ModeResult, ...)` has been removed; use `m.params[@varname(x)]` instead.
   - `StatsBase.coef` now returns a plain `Vector` (not a `NamedArray`).
   - `StatsBase.coefnames` now returns a `Vector{VarName}` (not strings or symbols).
