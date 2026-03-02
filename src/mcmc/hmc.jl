@@ -1,6 +1,7 @@
 abstract type Hamiltonian <: AbstractSampler end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
+Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
 ###
 ### Sampler states

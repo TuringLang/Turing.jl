@@ -27,13 +27,27 @@ function _convert_initial_params(@nospecialize(_::Any))
     throw(ArgumentError(errmsg))
 end
 
-# TODO: Implement additional checks for certain samplers, e.g.
-# HMC not supporting discrete parameters.
-function _check_model(model::DynamicPPL.Model)
-    return DynamicPPL.check_model(model; error_on_failure=true)
+allow_discrete_variables(sampler::AbstractMCMC.AbstractSampler) = true
+function _check_model(model::DynamicPPL.Model, fail_if_discrete::Bool)
+    result = DynamicPPL.check_model(
+        model; error_on_failure=false, fail_if_discrete=fail_if_discrete
+    )
+    if !result
+        throw(
+            ArgumentError(
+                "The model $(model.f) has one or more issues that may cause inference to fail. Please see the warnings above for details.\n\nIf you think that this is a false positive, you can disable this by passing the `check_model=false` keyword argument to `sample` or the mode estimation functions. Please also consider opening an issue.\n",
+            ),
+        )
+    end
 end
-function _check_model(model::DynamicPPL.Model, ::AbstractMCMC.AbstractSampler)
-    return _check_model(model)
+function _check_model(model::DynamicPPL.Model, sampler::AbstractMCMC.AbstractSampler)
+    # This is hit by MCMC
+    return _check_model(model, !allow_discrete_variables(sampler))
+end
+function _check_model(model::DynamicPPL.Model)
+    # Optimisation hits this. TODO: We allow discrete variables now, but that does depend on
+    # the optimisation algorithm, surely?
+    return _check_model(model, false)
 end
 
 # Similar to InitFromParams, this is just for convenience

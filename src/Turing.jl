@@ -41,7 +41,7 @@ end
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
-include("init_strategy.jl")
+include("common.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/Variational.jl")
