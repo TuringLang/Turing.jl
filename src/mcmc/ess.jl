@@ -43,7 +43,7 @@ function AbstractMCMC.step(
     prior_accname = DynamicPPL.accumulator_name(prior_acc)
     vi = DynamicPPL.setacc!!(vi, prior_acc)
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll())
-    priors = DynamicPPL.getacc(vi, Val(prior_accname)).values
+    priors = DynamicPPL.get_priors(vi)
 
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
