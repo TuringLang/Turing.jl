@@ -34,9 +34,9 @@ using Turing
         nwalkers = 250
         spl = Emcee(nwalkers, 2.0)
 
-        rng1 = StableRNG(1234)
+        rng1 = Xoshiro(1234)
         chain1 = sample(rng1, gdemo_default, spl, 1)
-        rng2 = StableRNG(1234)
+        rng2 = Xoshiro(1234)
         chain2 = sample(rng2, gdemo_default, spl, 1)
         @test Array(chain1) == Array(chain2)
 

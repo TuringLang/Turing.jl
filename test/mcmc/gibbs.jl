@@ -262,9 +262,9 @@ end
     sampler2 = Gibbs(
         @varname(s) => MH(), @varname(s) => MH(), @varname(s) => MH(), @varname(m) => ESS()
     )
-    rng1 = StableRNG(23)
+    rng1 = Xoshiro(23)
     chain1 = sample(rng1, gdemo_default, sampler1, 10)
-    rng2 = StableRNG(23)
+    rng2 = Xoshiro(23)
     chain2 = sample(rng2, gdemo_default, sampler1, 10)
     @test chain1.value == chain2.value
 end
@@ -681,7 +681,7 @@ end
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)
                 sampler = Gibbs(@varname(s) => hmc, @varname(m) => hmc)
-                rng = Xoshiro(42)
+                rng = StableRNG(42)
                 chain = sample(
 		    rng,
                     model,
@@ -744,7 +744,7 @@ end
             end
 
             # `sample`
-            rng = Xoshiro(42)
+            rng = StableRNG(42)
             chain = sample(rng, model, spl, 1_000; progress=false)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
@@ -822,7 +822,7 @@ end
         end
 
         # Sample!
-        rng = Xoshiro(42)
+        rng = StableRNG(42)
         chain = sample(rng, MoGtest_default, spl, 1000; progress=false)
         check_MoGtest_default(chain; atol=0.2)
     end
@@ -848,7 +848,7 @@ end
         end
 
         # Sample!
-        rng = Xoshiro(42)
+        rng = StableRNG(42)
         chain = sample(rng, model, spl, 1000; progress=false)
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
@@ -885,7 +885,7 @@ end
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
             sampler = Gibbs(@varname(m1) => sampler_inner, @varname(m2) => sampler_inner)
-            rng = Xoshiro(42)
+            rng = StableRNG(42)
             chain = sample(
                rng,  model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
             )
