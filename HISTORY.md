@@ -1,3 +1,11 @@
+# 0.42.9
+
+Improve handling of model evaluator functions with Libtask.
+
+This means that when running SMC or PG on a model with keyword arguments, you no longer need to use `@might_produce` (see patch notes of v0.42.5 for more details on this).
+
+It also means that submodels with observations inside will now be reliably handled by the SMC/PG samplers, which was not the case before (the observations were only picked up if the submodel was inlined by the Julia compiler, which could lead to correctness issues).
+
 # 0.42.8
 
 Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callback`.
