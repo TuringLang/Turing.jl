@@ -161,24 +161,57 @@ end
         @test mean(c[:x]) > 0.7
     end
 
-    # https://github.com/TuringLang/Turing.jl/issues/2007
     @testset "keyword argument handling" begin
         @model function kwarg_demo(y; n=0.0)
             x ~ Normal(n)
             return y ~ Normal(x)
         end
-        @test_throws "Models with keyword arguments" sample(kwarg_demo(5.0), PG(20), 10)
 
-        # Check that enabling `might_produce` does allow sampling
-        @might_produce kwarg_demo
         chain = sample(StableRNG(468), kwarg_demo(5.0), PG(20), 1000)
         @test chain isa MCMCChains.Chains
         @test mean(chain[:x]) ≈ 2.5 atol = 0.2
 
-        # Check that the keyword argument's value is respected
         chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(20), 1000)
         @test chain2 isa MCMCChains.Chains
         @test mean(chain2[:x]) ≈ 7.5 atol = 0.2
+    end
+
+    @testset "submodels without kwargs" begin
+        @model function inner(y, x)
+            # Mark as noinline explicitly to make sure that behaviour is not reliant on the
+            # Julia compiler inlining it.
+            # See https://github.com/TuringLang/Turing.jl/issues/2772
+            @noinline
+            return y ~ Normal(x)
+        end
+        @model function nested(y)
+            x ~ Normal()
+            return a ~ to_submodel(inner(y, x))
+        end
+        m1 = nested(1.0)
+        chn = sample(StableRNG(468), m1, PG(10), 1000)
+        @test mean(chn[:x]) ≈ 0.5 atol = 0.1
+    end
+
+    @testset "submodels with kwargs" begin
+        @model function inner_kwarg(y; n=0.0)
+            @noinline # See above
+            x ~ Normal(n)
+            return y ~ Normal(x)
+        end
+        @model function outer_kwarg1()
+            return a ~ to_submodel(inner_kwarg(5.0))
+        end
+        m1 = outer_kwarg1()
+        chn1 = sample(StableRNG(468), m1, PG(10), 1000)
+        @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.2
+
+        @model function outer_kwarg2(n)
+            return a ~ to_submodel(inner_kwarg(5.0; n=n))
+        end
+        m2 = outer_kwarg2(10.0)
+        chn2 = sample(StableRNG(468), m2, PG(10), 1000)
+        @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.2
     end
 
     @testset "refuses to run threadsafe eval" begin
