@@ -55,7 +55,6 @@ using Turing
     end
 
     @testset "logevidence" begin
-        rng = StableRNG(100)
 
         @model function test()
             a ~ Normal(0, 1)
@@ -67,7 +66,7 @@ using Turing
             return x
         end
 
-        chains_smc = sample(rng, test(), SMC(), 100)
+        chains_smc = sample(StableRNG(100), test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
         # For SMC, the chain stores the collective logevidence of the sampled trajectories

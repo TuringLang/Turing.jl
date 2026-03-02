@@ -695,9 +695,9 @@ end
 
                 # "Ground truth" samples.
                 # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
-                Random.seed!(rng, 42)
+                
                 chain_true = sample(
-		    rng,
+		    StableRNG(42),
                     model,
                     NUTS(),
                     MCMCThreads(),
