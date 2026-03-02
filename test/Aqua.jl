@@ -4,8 +4,9 @@ using Aqua: Aqua
 using Libtask: Libtask
 using Turing
 
-# We test ambiguities separately because it catches a lot of problems in dependencies but we
-# test it for Turing.
+# We test ambiguities specifically only for Turing, because testing ambiguities for all
+# packages in the environment leads to a lot of ambiguities from dependencies that we cannot
+# control.
 #
 # `Libtask.might_produce` is excluded because the `@might_produce` macro generates a lot of
 # ambiguities that will never happen in practice.

@@ -89,6 +89,14 @@ It is also faster than before (by around 30% on simple models).
 When defining a conditional posterior, instead of being provided with a Dict of values, the function must now take a `VarNamedTuple` containing the values.
 Note that indexing into a `VarNamedTuple` is very similar to indexing into a `Dict`; however, it is more flexible since you can use syntax such as `x[1:2]` even if `x[1]` and `x[2]` are separate variables in the model.
 
+# 0.42.9
+
+Improve handling of model evaluator functions with Libtask.
+
+This means that when running SMC or PG on a model with keyword arguments, you no longer need to use `@might_produce` (see patch notes of v0.42.5 for more details on this).
+
+It also means that submodels with observations inside will now be reliably handled by the SMC/PG samplers, which was not the case before (the observations were only picked up if the submodel was inlined by the Julia compiler, which could lead to correctness issues).
+
 # 0.42.8
 
 Add support for `TensorBoardLogger.jl` via `AbstractMCMC.mcmc_callback`.

@@ -130,7 +130,6 @@ function AbstractMCMC.sample(
 )
     check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
-    check_model_kwargs(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
         rng,
@@ -145,28 +144,6 @@ function AbstractMCMC.sample(
     )
 end
 
-function check_model_kwargs(model::DynamicPPL.Model)
-    if !isempty(model.defaults)
-        # If there are keyword arguments, we need to check that the user has
-        # accounted for this by overloading `might_produce`.
-        might_produce = Libtask.might_produce(typeof((Core.kwcall, NamedTuple(), model.f)))
-        if !might_produce
-            io = IOBuffer()
-            ctx = IOContext(io, :color => true)
-            print(
-                ctx,
-                "Models with keyword arguments need special treatment to be used" *
-                " with particle methods. Please run:\n\n",
-            )
-            printstyled(
-                ctx, "    Turing.@might_produce($(model.f))"; bold=true, color=:blue
-            )
-            print(ctx, "\n\nbefore sampling from this model with particle methods.\n")
-            error(String(take!(io)))
-        end
-    end
-end
-
 function Turing.Inference.initialstep(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -176,7 +153,6 @@ function Turing.Inference.initialstep(
     discard_sample=false,
     kwargs...,
 )
-    check_model_kwargs(model)
     # Reset the VarInfo.
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
     vi = DynamicPPL.empty!!(vi)
@@ -300,7 +276,6 @@ function Turing.Inference.initialstep(
     kwargs...,
 )
     error_if_threadsafe_eval(model)
-    check_model_kwargs(model)
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
 
     # Create a new set of particles
@@ -527,6 +502,9 @@ Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 # Could tilde_assume!! have tighter type bounds on the arguments, namely a GibbsContext?
 # That's the only thing that makes tilde_assume calls result in tilde_observe calls.
 Libtask.@might_produce(DynamicPPL.tilde_assume!!)
-Libtask.@might_produce(DynamicPPL._evaluate!!)
-Libtask.@might_produce(DynamicPPL.init!!)
-Libtask.might_produce(::Type{<:Tuple{<:DynamicPPL.Model,Vararg}}) = true
+
+# This handles all models and submodel evaluator functions (including those with keyword
+# arguments). The key to this is realising that all model evaluator functions take
+# DynamicPPL.Model as an argument, so we can just check for that. See
+# https://github.com/TuringLang/Libtask.jl/issues/217.
+Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
