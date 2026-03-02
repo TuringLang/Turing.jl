@@ -314,18 +314,13 @@ using Turing
             return priors
         end
 
-        @test_throws ErrorException chain = sample(
-            StableRNG(seed), gauss2(; x=x), PG(10), 10
+        chain = sample(StableRNG(seed), gauss2(; x=x), PG(10), 10)
+        chain = sample(StableRNG(seed), gauss2(; x=x), SMC(), 10)
+        chain = sample(
+            StableRNG(seed), gauss2(DynamicPPL.TypeWrap{Vector{Float64}}; x=x), PG(10), 10
         )
-        @test_throws ErrorException chain = sample(
-            StableRNG(seed), gauss2(; x=x), SMC(), 10
-        )
-
-        @test_throws ErrorException chain = sample(
-            StableRNG(seed), gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), PG(10), 10
-        )
-        @test_throws ErrorException chain = sample(
-            StableRNG(seed), gauss2(DynamicPPL.TypeWrap{Vector{Float64}}(); x=x), SMC(), 10
+        chain = sample(
+            StableRNG(seed), gauss2(DynamicPPL.TypeWrap{Vector{Float64}}; x=x), SMC(), 10
         )
 
         @model function gauss3(x, (::Type{TV})=Vector{Float64}) where {TV}
