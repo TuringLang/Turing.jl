@@ -35,11 +35,11 @@ using Turing
                 Gibbs(:s => HMC(0.1, 5), :m => ESS()),
             )
             for sampler in samplers
-                Random.seed!(5)
-                chain1 = sample(model, sampler, MCMCThreads(), 10, 4)
+                rng1 = StableRNG(5)
+                chain1 = sample(rng1, model, sampler, MCMCThreads(), 10, 4)
 
-                Random.seed!(5)
-                chain2 = sample(model, sampler, MCMCThreads(), 10, 4)
+                rng2 = StableRNG(5)
+                chain2 = sample(rng2, model, sampler, MCMCThreads(), 10, 4)
 
                 # For HMC, the first step does not have stats, so we need to use isequal to
                 # avoid comparing `missing`s

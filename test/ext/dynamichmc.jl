@@ -6,13 +6,13 @@ using Test: @test, @testset
 using Distributions: sample
 using DynamicHMC: DynamicHMC
 using DynamicPPL: DynamicPPL
-using Random: Random
+using Random: Random, Xoshiro
 using Turing
 
 @testset "TuringDynamicHMCExt" begin
-    Random.seed!(100)
+    rng = Xoshiro(100)
     spl = externalsampler(DynamicHMC.NUTS())
-    chn = sample(gdemo_default, spl, 10_000)
+    chn = sample(rng, gdemo_default, spl, 10_000)
     check_gdemo(chn)
 end
 

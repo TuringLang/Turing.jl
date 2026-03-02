@@ -13,7 +13,7 @@ using Distributions: InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
-using Random: Random
+using Random: Random, Xoshiro
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using Test: @inferred, @test, @test_broken, @test_throws, @testset
@@ -262,10 +262,10 @@ end
     sampler2 = Gibbs(
         @varname(s) => MH(), @varname(s) => MH(), @varname(s) => MH(), @varname(m) => ESS()
     )
-    Random.seed!(23)
-    chain1 = sample(gdemo_default, sampler1, 10)
-    Random.seed!(23)
-    chain2 = sample(gdemo_default, sampler1, 10)
+    rng1 = StableRNG(23)
+    chain1 = sample(rng1, gdemo_default, sampler1, 10)
+    rng2 = StableRNG(23)
+    chain2 = sample(rng2, gdemo_default, sampler1, 10)
     @test chain1.value == chain2.value
 end
 
@@ -681,8 +681,9 @@ end
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)
                 sampler = Gibbs(@varname(s) => hmc, @varname(m) => hmc)
-                Random.seed!(42)
+                rng = Xoshiro(42)
                 chain = sample(
+		    rng,
                     model,
                     sampler,
                     MCMCThreads(),
@@ -696,8 +697,9 @@ end
 
                 # "Ground truth" samples.
                 # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
-                Random.seed!(42)
+                Random.seed!(rng, 42)
                 chain_true = sample(
+		    rng,
                     model,
                     NUTS(),
                     MCMCThreads(),
@@ -742,8 +744,8 @@ end
             end
 
             # `sample`
-            Random.seed!(42)
-            chain = sample(model, spl, 1_000; progress=false)
+            rng = Xoshiro(42)
+            chain = sample(rng, model, spl, 1_000; progress=false)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
 
@@ -820,8 +822,8 @@ end
         end
 
         # Sample!
-        Random.seed!(42)
-        chain = sample(MoGtest_default, spl, 1000; progress=false)
+        rng = Xoshiro(42)
+        chain = sample(rng, MoGtest_default, spl, 1000; progress=false)
         check_MoGtest_default(chain; atol=0.2)
     end
 
@@ -846,8 +848,8 @@ end
         end
 
         # Sample!
-        Random.seed!(42)
-        chain = sample(model, spl, 1000; progress=false)
+        rng = Xoshiro(42)
+        chain = sample(rng, model, spl, 1000; progress=false)
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
@@ -883,9 +885,9 @@ end
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
             sampler = Gibbs(@varname(m1) => sampler_inner, @varname(m2) => sampler_inner)
-            Random.seed!(42)
+            rng = Xoshiro(42)
             chain = sample(
-                model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
+               rng,  model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
             )
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
             check_logp_correct(sampler_inner)
