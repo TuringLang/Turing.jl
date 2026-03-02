@@ -55,7 +55,6 @@ using Turing
     end
 
     @testset "logevidence" begin
-
         @model function test()
             a ~ Normal(0, 1)
             x ~ Bernoulli(1)

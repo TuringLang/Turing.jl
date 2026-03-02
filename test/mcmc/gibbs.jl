@@ -681,7 +681,7 @@ end
                 sampler = Gibbs(@varname(s) => hmc, @varname(m) => hmc)
                 rng = StableRNG(42)
                 chain = sample(
-		    rng,
+                    rng,
                     model,
                     sampler,
                     MCMCThreads(),
@@ -695,9 +695,9 @@ end
 
                 # "Ground truth" samples.
                 # TODO: Replace with closed-form sampling once that is implemented in DynamicPPL.
-                
+
                 chain_true = sample(
-		    StableRNG(42),
+                    StableRNG(42),
                     model,
                     NUTS(),
                     MCMCThreads(),
@@ -885,7 +885,7 @@ end
             sampler = Gibbs(@varname(m1) => sampler_inner, @varname(m2) => sampler_inner)
             rng = StableRNG(42)
             chain = sample(
-               rng,  model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
+                rng, model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
             )
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
             check_logp_correct(sampler_inner)

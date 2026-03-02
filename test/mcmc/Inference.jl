@@ -10,6 +10,7 @@ import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
 import Random
+using Random: Xoshiro
 import ReverseDiff
 using StableRNGs: StableRNG
 using StatsFuns: logsumexp
@@ -35,10 +36,10 @@ using Turing
                 Gibbs(:s => HMC(0.1, 5), :m => ESS()),
             )
             for sampler in samplers
-                rng1 = StableRNG(5)
+                rng1 = Xoshiro(5)
                 chain1 = sample(rng1, model, sampler, MCMCThreads(), 10, 4)
 
-                rng2 = StableRNG(5)
+                rng2 = Xoshiro(5)
                 chain2 = sample(rng2, model, sampler, MCMCThreads(), 10, 4)
 
                 # For HMC, the first step does not have stats, so we need to use isequal to
