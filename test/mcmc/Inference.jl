@@ -595,7 +595,7 @@ using Turing
             return x ~ Normal(x, 1)
         end
 
-        @test_throws ErrorException sample(
+        @test_throws ArgumentError sample(
             StableRNG(seed), demo_repeated_varname(), NUTS(), 10; check_model=true
         )
         # Make sure that disabling the check also works.
@@ -609,7 +609,7 @@ using Turing
         @model function demo_incorrect_missing(y)
             return y[1:1] ~ MvNormal(zeros(1), I)
         end
-        @test_throws ErrorException sample(
+        @test_throws ArgumentError sample(
             StableRNG(seed), demo_incorrect_missing([missing]), NUTS(), 10; check_model=true
         )
     end

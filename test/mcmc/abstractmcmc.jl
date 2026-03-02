@@ -10,17 +10,18 @@ using Turing
     # Set up a model for which check_model errors.
     @model f() = x ~ Normal()
     model = f()
-    Turing._check_model(::typeof(model)) = error("nope")
+    spl = NUTS()
+    Turing._check_model(::typeof(model), ::typeof(spl)) = error("nope")
     # Make sure that default sampling does throw the error.
-    @test_throws "nope" sample(model, NUTS(), 100)
-    @test_throws "nope" sample(model, NUTS(), MCMCThreads(), 100, 2)
-    @test_throws "nope" sample(model, NUTS(), MCMCSerial(), 100, 2)
-    @test_throws "nope" sample(model, NUTS(), MCMCDistributed(), 100, 2)
+    @test_throws "nope" sample(model, spl, 10)
+    @test_throws "nope" sample(model, spl, MCMCThreads(), 10, 2)
+    @test_throws "nope" sample(model, spl, MCMCSerial(), 10, 2)
+    @test_throws "nope" sample(model, spl, MCMCDistributed(), 10, 2)
     # Now disable the check and make sure sampling works.
-    @test sample(model, NUTS(), 100; check_model=false) isa Any
-    @test sample(model, NUTS(), MCMCThreads(), 100, 2; check_model=false) isa Any
-    @test sample(model, NUTS(), MCMCSerial(), 100, 2; check_model=false) isa Any
-    @test sample(model, NUTS(), MCMCDistributed(), 100, 2; check_model=false) isa Any
+    @test sample(model, spl, 10; check_model=false) isa Any
+    @test sample(model, spl, MCMCThreads(), 10, 2; check_model=false) isa Any
+    @test sample(model, spl, MCMCSerial(), 10, 2; check_model=false) isa Any
+    @test sample(model, spl, MCMCDistributed(), 10, 2; check_model=false) isa Any
 end
 
 @testset "Initial parameters" begin
