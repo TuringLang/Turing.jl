@@ -26,9 +26,14 @@ mutable struct TracedModel{M<:Model,T<:Tuple,NT<:NamedTuple} <:
     model::M
     # TODO(penelopeysm): I don't like that this is an abstract type. However, the problem is
     # that the type of VarInfo can change during execution, especially with PG-inside-Gibbs
-    # when you have to muck with merging VarInfos from different sub-conditioned models. I
-    # do think that this can be solved. I would recommend that if you have time try to
-    # change this back into a type parameter, see what breaks in CI, and try to fix it.
+    # when you have to muck with merging VarInfos from different sub-conditioned models.
+    #
+    # However, I don't think that this is actually a problem in practice. Whenever we do
+    # Libtask.get_taped_globals, that is already type unstable anyway, so accessing this
+    # field here is not going to cause extra type instability. This change is associated
+    # with Turing v0.43, and I benchmarked on v0.42 vs v0.43, and v0.43 is actually faster
+    # (probably due to underlying changes in DynamicPPL), so I'm not really bothered by
+    # this.
     varinfo::AbstractVarInfo
     resample::Bool
     fargs::T
