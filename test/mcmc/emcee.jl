@@ -11,13 +11,10 @@ using Turing
 
 @testset "emcee.jl" begin
     @testset "gdemo" begin
-        rng = StableRNG(9876)
-
         n_samples = 1000
         n_walkers = 250
-
         spl = Emcee(n_walkers, 2.0)
-        chain = sample(rng, gdemo_default, spl, n_samples)
+        chain = sample(StableRNG(9876), gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
 

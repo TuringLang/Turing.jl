@@ -578,9 +578,8 @@ end
                 # Sampler to use for Gibbs components.
                 hmc = HMC(0.1, 32)
                 sampler = Gibbs(@varname(s) => hmc, @varname(m) => hmc)
-                rng = StableRNG(42)
                 chain = sample(
-                    rng,
+                    StableRNG(42),
                     model,
                     sampler,
                     MCMCThreads(),
@@ -625,14 +624,13 @@ end
     end
 
     @testset "multiple varnames" begin
-        rng = Random.default_rng()
-
         @testset "with both `s` and `m` as random" begin
             model = gdemo(1.5, 2.0)
             vns = (@varname(s), @varname(m))
             spl = Gibbs(vns => MH())
 
             # `step`
+            rng = Random.default_rng()
             transition, state = AbstractMCMC.step(rng, model, spl)
             check_transition_varnames(transition, vns)
             for _ in 1:5
@@ -641,8 +639,7 @@ end
             end
 
             # `sample`
-            rng = StableRNG(42)
-            chain = sample(rng, model, spl, 1_000; progress=false)
+            chain = sample(StableRNG(42), model, spl, 1_000; progress=false)
             check_numerical(chain, [:s, :m], [49 / 24, 7 / 6]; atol=0.4)
         end
 
@@ -652,6 +649,7 @@ end
             spl = Gibbs(vns => MH())
 
             # `step`
+            rng = Random.default_rng()
             transition, state = AbstractMCMC.step(rng, model, spl)
             check_transition_varnames(transition, vns)
             for _ in 1:5
@@ -695,7 +693,6 @@ end
     end
 
     @testset "CSMC + ESS" begin
-        rng = Random.default_rng()
         model = MoGtest_default
         spl = Gibbs(
             (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
@@ -711,6 +708,7 @@ end
             @varname(mu2)
         )
         # `step`
+        rng = Random.default_rng()
         transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)
         for _ in 1:5
@@ -719,17 +717,16 @@ end
         end
 
         # Sample!
-        rng = StableRNG(42)
-        chain = sample(rng, MoGtest_default, spl, 1000; progress=false)
+        chain = sample(StableRNG(42), MoGtest_default, spl, 1000; progress=false)
         check_MoGtest_default(chain; atol=0.2)
     end
 
     @testset "CSMC + ESS (usage of implicit varname)" begin
-        rng = Random.default_rng()
         model = MoGtest_default_z_vector
         spl = Gibbs(@varname(z) => CSMC(15), @varname(mu1) => ESS(), @varname(mu2) => ESS())
         vns = (@varname(z), @varname(mu1), @varname(mu2))
         # `step`
+        rng = Random.default_rng()
         transition, state = AbstractMCMC.step(rng, model, spl)
         check_transition_varnames(transition, vns)
         for _ in 1:5
@@ -738,8 +735,7 @@ end
         end
 
         # Sample!
-        rng = StableRNG(42)
-        chain = sample(rng, model, spl, 1000; progress=false)
+        chain = sample(StableRNG(42), model, spl, 1000; progress=false)
         check_MoGtest_default_z_vector(chain; atol=0.2)
     end
 
@@ -775,9 +771,14 @@ end
         ]
         @testset "$(sampler_inner)" for sampler_inner in samplers_inner
             sampler = Gibbs(@varname(m1) => sampler_inner, @varname(m2) => sampler_inner)
-            rng = StableRNG(42)
             chain = sample(
-                rng, model, sampler, 1000; discard_initial=1000, thinning=10, n_adapts=0
+                StableRNG(42),
+                model,
+                sampler,
+                1000;
+                discard_initial=1000,
+                thinning=10,
+                n_adapts=0,
             )
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
             check_logp_correct(sampler_inner)

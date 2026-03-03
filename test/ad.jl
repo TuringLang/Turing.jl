@@ -253,8 +253,9 @@ end
                 conditioned_model = Turing.Inference.make_conditional(
                     model, varnames, deepcopy(global_vi)
                 )
-                rng = StableRNG(123)
-                @test run_ad(model, adtype; test=true, benchmark=false) isa Any
+                @test run_ad(
+                    model, adtype; rng=StableRNG(123), test=true, benchmark=false
+                ) isa Any
             end
         end
     end
