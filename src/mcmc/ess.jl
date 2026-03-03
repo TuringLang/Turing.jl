@@ -89,6 +89,9 @@ function AbstractMCMC.step(
     return transition, TuringESSState(vi, state.priors)
 end
 
+_vec(x::Real) = [x]
+_vec(x::AbstractArray) = vec(x)
+
 # Prior distribution of considered random variable
 struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
     model::M
@@ -103,7 +106,7 @@ struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
             EllipticalSliceSampling.isgaussian(typeof(prior_dist)) || error(
                 "[ESS] only supports Gaussian prior distributions, but found $(typeof(prior_dist))",
             )
-            vec(mean(prior_dist))
+            _vec(mean(prior_dist))
         end
         return new{typeof(model),typeof(varinfo),typeof(μ)}(model, varinfo, μ)
     end
