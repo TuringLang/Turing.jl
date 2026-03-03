@@ -2,6 +2,7 @@ module Optimisation
 
 using ..Turing
 using AbstractPPL: AbstractPPL, VarName
+using Bijectors: Bijectors
 using DynamicPPL: DynamicPPL, VarInfo, LogDensityFunction, VarNamedTuple
 using DocStringExtensions: TYPEDFIELDS
 using LogDensityProblems: LogDensityProblems
@@ -245,7 +246,7 @@ supplied in unlinked space, but the optimisation is run by default in linked spa
 Sometimes it is possible to translate constraints from unlinked space to linked space: for
 example, for `x ~ Beta(2, 2)`, lower bounds in unlinked space can be translated to lower
 bounds in linked space via the logit transform (specificallly, by calling
-`to_linked_vec_transform(Beta(2, 2))`.
+`Bijectors.VectorBijectors.to_linked_vec(Beta(2, 2))`.
 
 However, if a user supplies a constraint on a Dirichlet variable, there is no well-defined
 mapping of unlinked constraints to linked space. In such cases, Turing will throw an error

@@ -98,7 +98,14 @@ maximum_likelihood(model; adtype=AutoMooncake())
 ### Linked vs unlinked optimisation
 
 By default, Turing transforms model parameters to an unconstrained space before optimising (`link=true`).
-This avoids discontinuities where the log-density drops to `-Inf` outside the support of a distribution.
+There are two reasons why one might want to do this:
+
+ 1. This avoids discontinuities where the log-density drops to `-Inf` outside the support of a distribution.
+ 2. But more importantly, this avoids situations where the original sample contains values that depend on each other.
+    For example, in a `Dirichlet` distribution, the parameters must sum to 1.
+    That means that if we do not perform linking, these parameters cannot be varied completely independently, which can lead to numerical issues.
+    In contrast, when linking is performed, the parameters are transformed into a (shorter) vector of parameters that are completely unconstrained and independent.
+
 Note that the parameter values returned are always in the original (untransformed) space, regardless of the `link` setting.
 
 ::: {.callout-note}

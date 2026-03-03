@@ -219,9 +219,9 @@ function DynamicPPL.accumulate_assume!!(
     transform =
         if DynamicPPL.target_transform(acc.transform_strategy, vn) isa
             DynamicPPL.DynamicLink
-            DynamicPPL.to_linked_vec_transform(dist)
+            Bijectors.VectorBijectors.to_linked_vec(dist)
         elseif DynamicPPL.target_transform(acc.transform_strategy, vn) isa DynamicPPL.Unlink
-            DynamicPPL.to_vec_transform(dist)
+            Bijectors.VectorBijectors.to_vec(dist)
         else
             error(
                 "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
