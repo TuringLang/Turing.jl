@@ -8,3 +8,7 @@ OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
+
+[sources]
+Bijectors = {url = "https://github.com/TuringLang/Bijectors.jl", rev = "py/vec2"}
+DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/vec"}
