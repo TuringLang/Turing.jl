@@ -2,6 +2,7 @@ module RandomMeasuresTests
 
 using Distributions: Normal, sample
 using Random: Random
+using StableRNGs: StableRNG
 using Test: @test, @testset
 using Turing
 using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
@@ -48,13 +49,12 @@ using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
         end
 
         # Generate some test data.
-        Random.seed!(1)
-        data = vcat(randn(10), randn(10) .- 5, randn(10) .+ 10)
+        rng = StableRNG(1)
+        data = vcat(randn(rng, 10), randn(rng, 10) .- 5, randn(rng, 10) .+ 10)
         data .-= mean(data)
         data /= std(data)
 
         # MCMC sampling
-        Random.seed!(2)
         iterations = 500
         model_fun = infiniteGMM(data)
         chain = sample(model_fun, SMC(), iterations)

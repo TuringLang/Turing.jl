@@ -4,19 +4,20 @@ using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using Distributions: sample
 using DynamicPPL: DynamicPPL
-using Random: Random
+using Random: Random, Xoshiro
+using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "emcee.jl" begin
     @testset "gdemo" begin
-        Random.seed!(9876)
+        rng = StableRNG(9876)
 
         n_samples = 1000
         n_walkers = 250
 
         spl = Emcee(n_walkers, 2.0)
-        chain = sample(gdemo_default, spl, n_samples)
+        chain = sample(rng, gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
 
@@ -25,7 +26,7 @@ using Turing
         @info "Testing emcee with large number of iterations"
         spl = Emcee(10, 2.0)
         n_samples = 10_000
-        chain = sample(gdemo_default, spl, n_samples)
+        chain = sample(StableRNG(5), gdemo_default, spl, n_samples)
         check_gdemo(chain)
     end
 
@@ -33,10 +34,10 @@ using Turing
         nwalkers = 250
         spl = Emcee(nwalkers, 2.0)
 
-        Random.seed!(1234)
-        chain1 = sample(gdemo_default, spl, 1)
-        Random.seed!(1234)
-        chain2 = sample(gdemo_default, spl, 1)
+        rng1 = Xoshiro(1234)
+        chain1 = sample(rng1, gdemo_default, spl, 1)
+        rng2 = Xoshiro(1234)
+        chain2 = sample(rng2, gdemo_default, spl, 1)
         @test Array(chain1) == Array(chain2)
 
         initial_nt = DynamicPPL.InitFromParams((s=2.0, m=1.0))
