@@ -92,8 +92,8 @@ struct SMC{R} <: ParticleInference
 end
 
 """
-SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
-SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
+    SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 
@@ -356,7 +356,8 @@ end
 """
     get_trace_local_varinfo()
 
-Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`.
+Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`. This function
+is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_varinfo()
     trace = Libtask.get_taped_globals(Any).other
@@ -371,6 +372,8 @@ Get the `resample` flag stored in the 'taped globals' of a `Libtask.TapedTask`.
 This indicates whether new variable values should be sampled from the prior or not. For
 example, in SMC, this is true for all particles; in PG, this is true for all particles
 except the reference particle, whose trajectory must be reproduced exactly.
+
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_resampled()
     trace = Libtask.get_taped_globals(Any).other
@@ -381,6 +384,8 @@ end
     get_trace_local_rng()
 
 Get the RNG stored in the 'taped globals' of a `Libtask.TapedTask`, if one exists.
+
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_rng()
     return Libtask.get_taped_globals(Any).rng
@@ -393,6 +398,8 @@ Set the `varinfo` stored in Libtask's taped globals. The 'other' taped global in
 is expected to be an `AdvancedPS.Trace`.
 
 Returns `nothing`.
+
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function set_trace_local_varinfo(vi::AbstractVarInfo)
     trace = Libtask.get_taped_globals(Any).other
