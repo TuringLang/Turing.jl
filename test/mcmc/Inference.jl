@@ -6,6 +6,7 @@ using Distributions: Bernoulli, Beta, InverseGamma, Normal
 using Distributions: sample
 using AbstractMCMC: AbstractMCMC
 import DynamicPPL
+using DynamicPPL: filldist
 import ForwardDiff
 using LinearAlgebra: I
 import MCMCChains
