@@ -188,7 +188,7 @@ function DynamicPPL.init(
             end
         end
         if is_linkedrw
-            transform = DynamicPPL.from_linked_vec_transform(prior)
+            transform = Bijectors.VectorBijectors.from_linked_vec(prior)
             linked_vec = rand(rng, dist)
             return DynamicPPL.LinkedVectorValue(linked_vec, transform)
         else

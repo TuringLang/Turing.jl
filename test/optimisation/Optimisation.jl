@@ -167,14 +167,14 @@ end
                 (x=[0.5, 0.5],),
                 product_distribution([Beta(2, 2), Beta(2, 2)]),
             ),
-            # TODO(penelopeysm): Broken because DynamicPPL.to_vec_transform(dist) fails.
-            # This needs an upstream fix.
-            # ((x=(a=0.1, b=0.1),), (x=(a=0.5, b=0.5),), product_distribution((a=Beta(2, 2), b=Beta(2, 2)))),
+            (
+                (x=(a=0.1, b=0.1),),
+                (x=(a=0.5, b=0.5),),
+                product_distribution((a=Beta(2, 2), b=Beta(2, 2))),
+            ),
         )
             @model f() = x ~ dist
             model = f()
-            maybe_to_vec(x::AbstractVector) = x
-            maybe_to_vec(x) = [x]
 
             @testset "unlinked" begin
                 ldf = LogDensityFunction(model)
@@ -185,8 +185,8 @@ end
                     VarNamedTuple(lb),
                     VarNamedTuple(ub),
                 )
-                @test lb_vec == maybe_to_vec(lb.x)
-                @test ub_vec == maybe_to_vec(ub.x)
+                @test lb_vec == Bijectors.VectorBijectors.to_vec(dist)(lb.x)
+                @test ub_vec == Bijectors.VectorBijectors.to_vec(dist)(ub.x)
                 @test all(init_vec .>= lb_vec)
                 @test all(init_vec .<= ub_vec)
             end
@@ -201,9 +201,8 @@ end
                     VarNamedTuple(lb),
                     VarNamedTuple(ub),
                 )
-                b = Bijectors.bijector(dist)
-                @test lb_vec ≈ maybe_to_vec(b(lb.x))
-                @test ub_vec ≈ maybe_to_vec(b(ub.x))
+                @test lb_vec ≈ Bijectors.VectorBijectors.to_linked_vec(dist)(lb.x)
+                @test ub_vec ≈ Bijectors.VectorBijectors.to_linked_vec(dist)(ub.x)
                 @test all(init_vec .>= lb_vec)
                 @test all(init_vec .<= ub_vec)
             end
