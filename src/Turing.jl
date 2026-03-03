@@ -1,7 +1,7 @@
 module Turing
 
 using Reexport, ForwardDiff
-using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
+using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains
@@ -144,8 +144,8 @@ export
     LogPoisson,
     # Tools to work with Distributions
     I,  # LinearAlgebra
-    filldist,  # DistributionsAD
-    arraydist,  # DistributionsAD
+    filldist, # DynamicPPL
+    arraydist, # DynamicPPL
     NamedDist,  # DynamicPPL
     # Predictions - DynamicPPL
     predict,

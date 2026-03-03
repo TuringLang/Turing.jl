@@ -16,7 +16,6 @@ using DynamicPPL:
     Model,
     DefaultContext
 using Distributions, Libtask, Bijectors
-using DistributionsAD: VectorOfMultivariate
 using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp

@@ -11,7 +11,6 @@ links = InterLinks(
     "AbstractMCMC" => "https://turinglang.org/AbstractMCMC.jl/stable/",
     "ADTypes" => "https://sciml.github.io/ADTypes.jl/stable/",
     "AdvancedVI" => "https://turinglang.org/AdvancedVI.jl/stable/",
-    "DistributionsAD" => "https://turinglang.org/DistributionsAD.jl/stable/",
     "OrderedCollections" => "https://juliacollections.github.io/OrderedCollections.jl/stable/",
     "Distributions" => "https://juliastats.org/Distributions.jl/stable/",
 )

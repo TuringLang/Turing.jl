@@ -157,12 +157,12 @@ LogPoisson
 
 ### Tools to work with distributions
 
-| Exported symbol | Documentation                          | Description                                                    |
-|:--------------- |:-------------------------------------- |:-------------------------------------------------------------- |
-| `I`             | [`LinearAlgebra.I`](@extref)           | Identity matrix                                                |
-| `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
-| `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
-| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |
+| Exported symbol | Documentation                     | Description                                                    |
+|:--------------- |:--------------------------------- |:-------------------------------------------------------------- |
+| `I`             | [`LinearAlgebra.I`](@extref)      | Identity matrix                                                |
+| `filldist`      | [`DynamicPPL.filldist`](@extref)  | Create a product distribution from a distribution and integers |
+| `arraydist`     | [`DynamicPPL.arraydist`](@extref) | Create a product distribution from an array of distributions   |
+| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref) | A distribution that carries the name of the variable           |
 
 ### Point estimates
 
