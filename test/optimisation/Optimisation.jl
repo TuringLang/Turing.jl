@@ -708,6 +708,21 @@ end
         @test result.params[@varname(x)] ≈ mode(Dirichlet(2 * ones(3))) atol = 0.2
     end
 
+    @testset "vector_names_and_params with LKJCholesky" begin
+        # In the past this used to be inconsistent because the names would have length 6,
+        # but the params would have length 9 (because the Cholesky factor of a 3x3 matrix
+        # has 6 free parameters, but is represented as a 3x3 matrix). See
+        # https://github.com/TuringLang/Turing.jl/issues/2734. This was largely fixed by
+        # adoption of Bijectors.VectorBijectors, so this is just a regression test to make
+        # sure it doesn't break again.
+        @model demo_lkj() = x ~ LKJCholesky(3, 1.0)
+        model = demo_lkj()
+        result = maximum_a_posteriori(model)
+        nms, ps = vector_names_and_params(result)
+        @test length(nms) == 6
+        @test length(ps) == 6
+    end
+
     @testset "with :=" begin
         @model function demo_track()
             x ~ Normal()
