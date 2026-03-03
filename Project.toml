@@ -39,10 +39,6 @@ StatsAPI = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsFuns = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 
-[sources]
-Bijectors = {url = "https://github.com/TuringLang/Bijectors.jl", rev = "py/vec2"}
-DynamicPPL = {url = "https://github.com/TuringLang/DynamicPPL.jl", rev = "py/vec"}
-
 [weakdeps]
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 
@@ -67,7 +63,7 @@ Distributions = "0.25.77"
 DistributionsAD = "0.6"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.40.3"
+DynamicPPL = "0.40.6"
 EllipticalSliceSampling = "0.5, 1, 2"
 ForwardDiff = "0.10.3, 1"
 Libtask = "0.9.14"

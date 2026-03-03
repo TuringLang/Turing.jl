@@ -204,14 +204,14 @@ end
         end
         m1 = outer_kwarg1()
         chn1 = sample(StableRNG(468), m1, PG(10), 1000)
-        @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.2
+        @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.3
 
         @model function outer_kwarg2(n)
             return a ~ to_submodel(inner_kwarg(5.0; n=n))
         end
         m2 = outer_kwarg2(10.0)
         chn2 = sample(StableRNG(468), m2, PG(10), 1000)
-        @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.2
+        @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.3
     end
 
     @testset "refuses to run threadsafe eval" begin

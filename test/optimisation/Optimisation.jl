@@ -239,8 +239,8 @@ end
             return x ~ Beta()
         end
         m = invalid_model()
-        @test_throws ErrorException maximum_likelihood(m)
-        @test_throws ErrorException maximum_a_posteriori(m)
+        @test_throws ArgumentError maximum_likelihood(m)
+        @test_throws ArgumentError maximum_a_posteriori(m)
     end
 
     @testset "gdemo" begin
