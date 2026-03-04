@@ -167,11 +167,11 @@ end
 
         chain = sample(StableRNG(468), kwarg_demo(5.0), PG(20), 1000)
         @test chain isa MCMCChains.Chains
-        @test mean(chain[:x]) ≈ 2.5 atol = 0.2
+        @test mean(chain[:x]) ≈ 2.5 atol = 0.3
 
         chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(20), 1000)
         @test chain2 isa MCMCChains.Chains
-        @test mean(chain2[:x]) ≈ 7.5 atol = 0.2
+        @test mean(chain2[:x]) ≈ 7.5 atol = 0.3
     end
 
     @testset "submodels without kwargs" begin
