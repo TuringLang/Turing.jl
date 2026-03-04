@@ -76,7 +76,9 @@ using DynamicPPL:
     InitFromPrior,
     InitFromUniform,
     InitFromParams,
-    setthreadsafe
+    setthreadsafe,
+    filldist,
+    arraydist
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 using Libtask: might_produce, @might_produce

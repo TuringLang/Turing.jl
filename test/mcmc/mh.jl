@@ -3,7 +3,7 @@ module MHTests
 using AdvancedMH: AdvancedMH
 using Distributions:
     Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal, Normal, sample
-using DynamicPPL: DynamicPPL
+using DynamicPPL: DynamicPPL, filldist
 using LinearAlgebra: I
 using Logging: Logging
 using Random: Random
