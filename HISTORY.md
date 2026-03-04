@@ -11,7 +11,7 @@ However, it does place some constraints on Turing models.
 Specifically, the types of **containers that can include random variables** are now more limited:
 if `x[i] ~ dist` is a random variable, then `x` must obey the following criteria:
 
-  - They must be arrays. Dicts and other containers are currently unsupported (we have [an issue to track this](https://github.com/TuringLang/DynamicPPL.jl/issues/1263)). If you really need this functionality, please open an issue and let us know; we can try to make it a priority.
+  - They must be `AbstractArray`s. Dicts and other containers are currently unsupported (we have [an issue to track this](https://github.com/TuringLang/DynamicPPL.jl/issues/1263)). If you really need this functionality, please open an issue and let us know; we can try to make it a priority.
     
     ```julia
     @model function f()
@@ -36,7 +36,7 @@ if `x[i] ~ dist` is a random variable, then `x` must obey the following criteria
     ```
 
 However, please note that this only applies to **containers that contain random variables on the left-hand side of tilde-statements.**
-In general, there are no restrictions on containers of *observed* data, or containers that are not used in tilde-statements.
+In general, there are no restrictions on containers of *observed* data, containers that are not used in tilde-statements, or containers that are *themselves* random variables (e.g. `x ~ MvNormal(...)`).
 
   - Likewise, arrays of random variables should ideally have a constant size from iteration to iteration. That means a model like this will fail sometimes (*but* see below):
     
@@ -52,6 +52,31 @@ In general, there are no restrictions on containers of *observed* data, or conta
 
 `VarNamedTuple` and `@vnt` are now re-exported from Turing directly.
 There is a docs page explaining how to use and create `VarNamedTuple`s, which [can be found here](https://turinglang.org/docs/usage/varnamedtuple/).
+
+## Conditioning and fixing
+
+When providing conditioned or fixed variables to Turing models, we recommend that you use a `VarNamedTuple` to do so.
+The main benefit of this is that it correctly captures the structure of arrays of random variables.
+In the past, this used to depend on whether you specified variables exactly as they were seen in the model: for example, if the model had `x ~ MvNormal(zeros(2), I)`, and you conditioned separately on `x[1]` and `x[2]`, the conditioned variables would be silently ignored.
+There were also similar inconsistencies with colons in variable names.
+
+With a VarNamedTuple-based approach, both should be equivalent: you can do
+
+```julia
+vnt1 = @vnt begin
+    @template x = zeros(2)
+    x[1] := 1.0
+    x[2] := 2.0
+end
+cond_model = model() | vnt1
+
+vnt2 = @vnt begin
+    x := [1.0, 2.0]
+end
+cond_model = model() | vnt2
+```
+
+and both should work correctly.
 
 ## Optimisation interface
 
@@ -138,6 +163,11 @@ Additional changes:
   - MH now reports whether each proposal was `accepted` in the chain stats.
   - At the start of sampling, MH logs `@info` messages showing which proposal is used for each variable (disable with `verbose=false`). This helps detect misspecified proposals.
   - MH validates initial parameters against the proposal distribution; if they have zero or NaN probability, a clear error is thrown.
+
+## Gibbs sampler
+
+Both the compilation and runtime of Gibbs sampling should now be significantly faster.
+(This is largely due to the underlying changes in DynamicPPL's data structures.)
 
 ## HMC / NUTS
 
