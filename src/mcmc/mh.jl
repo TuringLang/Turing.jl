@@ -150,12 +150,19 @@ MH() = MH(Returns(DynamicPPL.InitFromPrior()), DynamicPPL.UnlinkAll(), Set{VarNa
     LinkedRW(cov_matrix)
 
 Define a random-walk proposal in linked space with the given covariance matrix. Note that
-the covariance matrix must correspond exactly to the size of the variable in linked space.
+the size of the covariance matrix must correspond exactly to the size of the variable in
+linked space.
+
+    LinkedRW(variance::Real)
+
+If a `Real` variance is provided, `LinkedRW` will just generate a covariance matrix of
+`variance * LinearAlgebra.I`.
 """
 struct LinkedRW{C}
     "The covariance matrix to use for the random-walk proposal in linked space."
     cov_matrix::C
 end
+LinkedRW(var::Real) = LinkedRW(var * I)
 
 """
     InitFromProposals(proposals::VarNamedTuple, verbose::Bool)
