@@ -150,6 +150,12 @@ Previously, this would silently proceed.
 When defining a conditional posterior, instead of being provided with a Dict of values, the function must now take a `VarNamedTuple` containing the values.
 Note that indexing into a `VarNamedTuple` is very similar to indexing into a `Dict`; however, it is more flexible since you can use syntax such as `x[1:2]` even if `x[1]` and `x[2]` are separate variables in the model.
 
+## `filldist` and `arraydist`
+
+These two convenience functions are now imported and re-exported from DynamicPPL, rather than DistributionsAD.jl.
+They are now just wrappers around `Distributions.product_distribution`, instead of the specialised implementations that were in DistributionsAD.jl.
+DistributionsAD.jl is for all intents and purposes deprecated: it is no longer a dependency in the Turing stack.
+
 # 0.42.9
 
 Improve handling of model evaluator functions with Libtask.
