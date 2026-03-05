@@ -79,6 +79,14 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
 | `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
 
+### Data structures
+
+| Exported symbol | Documentation                               | Description                         |
+|:--------------- |:------------------------------------------- |:----------------------------------- |
+| `@vnt`          | [`DynamicPPL.@vnt`](@extref)                | Generate a `VarNameTuple`           |
+| `VarNamedTuple` | [`DynamicPPL.VarNamedTuple`](@extref)       | A mapping from `VarName`s to values |
+| `OrderedDict`   | [`OrderedCollections.OrderedDict`](@extref) | An ordered dictionary               |
+
 ### DynamicPPL utilities
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
@@ -95,7 +103,6 @@ Please see the [generated quantities](https://turinglang.org/docs/tutorials/usag
 | `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model                |
 | `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                             |
 | `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                           |
-| `OrderedDict`              | [`OrderedCollections.OrderedDict`](@extref)                                                                                  | An ordered dictionary                                   |
 
 ### Initialisation strategies
 
