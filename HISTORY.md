@@ -7,7 +7,7 @@ Most notably, cases where we might once have used `Dict{VarName}` or `NamedTuple
 
 This provides substantial benefits in terms of robustness and performance.
 
-However, it does place some constraints on Turing models.
+However, it does place some constraints on Turing models, and introduces some breaking changes to the user interface.
 Specifically, the types of **containers that can include random variables** are now more limited:
 if `x[i] ~ dist` is a random variable, then `x` must obey the following criteria:
 
