@@ -1,3 +1,191 @@
+# 0.43.0
+
+## DynamicPPL 0.40 and `VarNamedTuple`
+
+DynamicPPL v0.40 includes a major overhaul of Turing's internal data structures.
+Most notably, cases where we might once have used `Dict{VarName}` or `NamedTuple` have all been replaced with a single data structure, called `VarNamedTuple`.
+
+This provides substantial benefits in terms of robustness and performance.
+
+However, it does place some constraints on Turing models.
+Specifically, the types of **containers that can include random variables** are now more limited:
+if `x[i] ~ dist` is a random variable, then `x` must obey the following criteria:
+
+  - They must be `AbstractArray`s. Dicts and other containers are currently unsupported (we have [an issue to track this](https://github.com/TuringLang/DynamicPPL.jl/issues/1263)). If you really need this functionality, please open an issue and let us know; we can try to make it a priority.
+    
+    ```julia
+    @model function f()
+        # Allowed
+        x = Array{Float64}(undef, 1)
+        x[1] ~ Normal()
+    
+        # Forbidden
+        x = Dict{Int,Float64}()
+        return x[1] ~ Normal()
+    end
+    ```
+
+  - They must not be resized between calls to `~`. The following is forbidden (you should initialise `x` to the correct size before the loop):
+    
+    ```julia
+    x = Float64[]
+    for i in 1:10
+        push!(x, 0.0)
+        x[i] ~ Normal()
+    end
+    ```
+
+However, please note that this only applies to **containers that contain random variables on the left-hand side of tilde-statements.**
+In general, there are no restrictions on containers of *observed* data, containers that are not used in tilde-statements, or containers that are *themselves* random variables (e.g. `x ~ MvNormal(...)`).
+
+  - Likewise, arrays of random variables should ideally have a constant size from iteration to iteration. That means a model like this will fail sometimes (*but* see below):
+    
+    ```julia
+    n ~ Poisson(2.0)
+    x = Vector{Float64}(undef, n)
+    for i in 1:n
+        x[i] ~ Normal()
+    end
+    ```
+    
+    *Technically speaking*: Inference (e.g. MCMC sampling) on this model will still work, but if you want to use `returned` or `predict`, both of the following conditions must hold true: (1) you must use FlexiChains.jl; (2) all elements of `x` must be random variables, i.e., you cannot have a mixture of `x[i]`'s being random variables and observed.
+
+`VarNamedTuple` and `@vnt` are now re-exported from Turing directly.
+There is a docs page explaining how to use and create `VarNamedTuple`s, which [can be found here](https://turinglang.org/docs/usage/varnamedtuple/).
+
+## Conditioning and fixing
+
+When providing conditioned or fixed variables to Turing models, we recommend that you use a `VarNamedTuple` to do so.
+The main benefit of this is that it correctly captures the structure of arrays of random variables.
+In the past, this used to depend on whether you specified variables exactly as they were seen in the model: for example, if the model had `x ~ MvNormal(zeros(2), I)`, and you conditioned separately on `x[1]` and `x[2]`, the conditioned variables would be silently ignored.
+There were also similar inconsistencies with colons in variable names.
+
+With a VarNamedTuple-based approach, both should be equivalent: you can do
+
+```julia
+vnt1 = @vnt begin
+    @template x = zeros(2)
+    x[1] := 1.0
+    x[2] := 2.0
+end
+cond_model = model() | vnt1
+
+vnt2 = @vnt begin
+    x := [1.0, 2.0]
+end
+cond_model = model() | vnt2
+```
+
+and both should work correctly.
+
+## Optimisation interface
+
+Turing.jl's optimisation interface has been completely overhauled in this release.
+The aim of this has been to provide users with a more consistent and principled way of specifying constraints.
+
+The crux of the issue is that Optimization.jl expects vectorised inputs, whereas Turing models are more high-level: they have named variables which may be scalars, vectors, or in general anything.
+Prior to this version, Turing's interface required the user to provide the vectorised inputs 'raw', which is both unintuitive and error-prone (especially when considering that optimisation may run in linked or unlinked space).
+
+Going forward, initial parameters for optimisation are specified using `AbstractInitStrategy` (for more information about this, please see [the docs on MCMC sampling](https://turinglang.org/docs/usage/sampling-options/#specifying-initial-parameters)).
+If specific parameters are provided (via `InitFromParams`), these must be in model space (i.e. untransformed).
+This directly mimics the interface for MCMC sampling that has been in place since v0.41.
+
+Furthermore, lower and upper bounds (if desired) can be specified as `VarNamedTuple`s using the `lb` and `ub` keyword arguments.
+Bounds are always provided in model space; Turing will handle the transformation of these bounds to linked space if necessary.
+Constraints are respected when creating initial parameters for optimisation: if the `AbstractInitStrategy` provided is incompatible with the constraints (for example `InitFromParams((; x = 2.0))` but `x` is constrained to be between `[0, 1]`), an error will be raised.
+
+Here is a (very simplified) example of the new interface:
+
+```julia
+using Turing
+@model f() = x ~ Beta(2, 2)
+maximum_a_posteriori(
+    f();
+    # All of the following are in unlinked space.
+    # We use NamedTuples here for simplicity, but you can use
+    # VarNamedTuple or Dict{<:VarName} as well (internally they
+    # will be converted to VarNamedTuple).
+    initial_params=InitFromParams((; x=0.3)),
+    lb=(; x=0.1),
+    ub=(; x=0.4),
+)
+```
+
+For more information, please see the docstring of `estimate_mode`.
+
+Note that in some cases, the translation of bounds to linked space may not be well-defined.
+This is especially true for distributions where the samples have elements that are not independent (for example, Dirichlet, or LKJCholesky).
+**In these cases, Turing will raise an error if bounds are provided.**
+Users who wish to perform optimisation with such constraints should directly use `LogDensityFunction` and Optimization.jl.
+Documentation on this matter will be forthcoming.
+
+### Other changes to the optimisation interface
+
+  - `estimate_mode`, `maximum_a_posteriori`, and `maximum_likelihood` now accept an optional `rng` first argument for reproducible initialisation.
+  - New keyword argument `link::Bool=true` controls whether to optimise in linked (transformed) space.
+  - New keyword argument `check_constraints_at_runtime::Bool=true` enables runtime constraint checking during model evaluation.
+  - Generic (non-box) constraints via `cons`, `lcons`, `ucons` are no longer supported. Users who need these should use `LogDensityFunction` and Optimization.jl directly.
+
+### `ModeResult` changes
+
+The return type from an optimisation procedure, `ModeResult`, has been substantially reworked:
+
+  - `ModeResult.params` is now a `VarNamedTuple` (previously an `AbstractDict{<:VarName}`). Parameters can be accessed via e.g. `m.params[@varname(x)]`.
+  - The `values::NamedArray` field has been removed. Use `vector_names_and_params(m)` (newly exported) to obtain `(Vector{VarName}, Vector{values})`.
+  - `Base.get(m::ModeResult, ...)` has been removed; use `m.params[@varname(x)]` instead.
+  - `StatsBase.coef` now returns a plain `Vector` (not a `NamedArray`).
+  - `StatsBase.coefnames` now returns a `Vector{VarName}` (not strings or symbols).
+  - `StatsBase.informationmatrix`: the `hessian_function` keyword argument has been replaced by `adtype::ADTypes.AbstractADType` (default `AutoForwardDiff()`). Hessian computation uses DifferentiationInterface under the hood.
+
+## `IS` sampler
+
+The `IS` sampler has been removed (its behaviour was in fact exactly the same as `Prior`).
+To see an example of importance sampling (via `Prior()` and then subsequent reweighting), see e.g. [this issue](https://github.com/TuringLang/Turing.jl/issues/2767).
+
+## `MH` sampler
+
+The interface of the MH sampler is slightly different.
+It no longer accepts `AdvancedMH` proposals, and is now more flexible: you can specify proposals for individual `VarName`s (not just top-level symbols), and any unspecified `VarName`s will be drawn from the prior, instead of being silently ignored.
+It is also faster than before (by around 30% on simple models).
+
+Additional changes:
+
+  - A new type `LinkedRW` allows specifying random-walk proposals in linked (unconstrained) space, e.g. `MH(@varname(x) => LinkedRW(cov_matrix))`.
+
+  - Callable (conditional) proposals now receive a `VarNamedTuple` of the full parameter state, rather than a single scalar. For example:
+    
+    ```julia
+    # Old
+    MH(:m => x -> Normal(x, 1))
+    # New
+    MH(@varname(m) => (vnt -> Normal(vnt[@varname(m)], 1)))
+    ```
+  - MH now reports whether each proposal was `accepted` in the chain stats.
+  - At the start of sampling, MH logs `@info` messages showing which proposal is used for each variable (disable with `verbose=false`). This helps detect misspecified proposals.
+  - MH validates initial parameters against the proposal distribution; if they have zero or NaN probability, a clear error is thrown.
+
+## Gibbs sampler
+
+Both the compilation and runtime of Gibbs sampling should now be significantly faster.
+(This is largely due to the underlying changes in DynamicPPL's data structures.)
+
+## HMC / NUTS
+
+HMC-family samplers now check for discrete variables before sampling begins.
+If a model contains discrete variables (e.g. `x ~ Categorical(...)`) and an HMC sampler is used, an `ArgumentError` is thrown immediately.
+Previously, this would silently proceed.
+
+## `GibbsConditional`
+
+When defining a conditional posterior, instead of being provided with a Dict of values, the function must now take a `VarNamedTuple` containing the values.
+Note that indexing into a `VarNamedTuple` is very similar to indexing into a `Dict`; however, it is more flexible since you can use syntax such as `x[1:2]` even if `x[1]` and `x[2]` are separate variables in the model.
+
+## `filldist` and `arraydist`
+
+These two convenience functions are now imported and re-exported from DynamicPPL, rather than DistributionsAD.jl.
+They are now just wrappers around `Distributions.product_distribution`, instead of the specialised implementations that were in DistributionsAD.jl.
+DistributionsAD.jl is for all intents and purposes deprecated: it is no longer a dependency in the Turing stack.
+
 # 0.42.9
 
 Improve handling of model evaluator functions with Libtask.

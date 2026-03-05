@@ -8,7 +8,6 @@ using Test, Turing, AbstractMCMC, Random, Distributions, LinearAlgebra
 end
 
 @testset "AbstractMCMC Callbacks Interface" begin
-    rng = Random.default_rng()
     model = test_normals()
 
     samplers = [
@@ -24,7 +23,10 @@ end
     for (name, sampler) in samplers
         @testset "$name" begin
             t1, s1 = AbstractMCMC.step(
-                rng, model, sampler; initial_params=Turing.Inference.init_strategy(sampler)
+                Random.default_rng(),
+                model,
+                sampler;
+                initial_params=Turing.Inference.init_strategy(sampler),
             )
 
             # ParamsWithStats returns named params (not θ[i])
@@ -46,6 +48,7 @@ end
     # NUTS second step has full AHMC transition metrics
     @testset "NUTS Transition Metrics" begin
         sampler = NUTS(10, 0.65)
+        rng = Random.default_rng()
         t1, s1 = AbstractMCMC.step(
             rng, model, sampler; initial_params=Turing.Inference.init_strategy(sampler)
         )

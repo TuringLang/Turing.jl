@@ -73,7 +73,6 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `PolynomialStepsize` | [`Turing.Inference.PolynomialStepsize`](@ref) | Returns a function which generates polynomially decaying step sizes |
 | `HMCDA`              | [`Turing.Inference.HMCDA`](@ref)              | Hamiltonian Monte Carlo with dual averaging                         |
 | `NUTS`               | [`Turing.Inference.NUTS`](@ref)               | No-U-Turn Sampler                                                   |
-| `IS`                 | [`Turing.Inference.IS`](@ref)                 | Importance sampling                                                 |
 | `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
 | `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
 | `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
@@ -158,20 +157,21 @@ LogPoisson
 
 ### Tools to work with distributions
 
-| Exported symbol | Documentation                          | Description                                                    |
-|:--------------- |:-------------------------------------- |:-------------------------------------------------------------- |
-| `I`             | [`LinearAlgebra.I`](@extref)           | Identity matrix                                                |
-| `filldist`      | [`DistributionsAD.filldist`](@extref)  | Create a product distribution from a distribution and integers |
-| `arraydist`     | [`DistributionsAD.arraydist`](@extref) | Create a product distribution from an array of distributions   |
-| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref)      | A distribution that carries the name of the variable           |
+| Exported symbol | Documentation                     | Description                                                    |
+|:--------------- |:--------------------------------- |:-------------------------------------------------------------- |
+| `I`             | [`LinearAlgebra.I`](@extref)      | Identity matrix                                                |
+| `filldist`      | [`DynamicPPL.filldist`](@extref)  | Create a product distribution from a distribution and integers |
+| `arraydist`     | [`DynamicPPL.arraydist`](@extref) | Create a product distribution from an array of distributions   |
+| `NamedDist`     | [`DynamicPPL.NamedDist`](@extref) | A distribution that carries the name of the variable           |
 
 ### Point estimates
 
 See the [mode estimation tutorial](https://turinglang.org/docs/tutorials/docs-17-mode-estimation/) for more information.
 
-| Exported symbol        | Documentation                                      | Description                                  |
-|:---------------------- |:-------------------------------------------------- |:-------------------------------------------- |
-| `maximum_a_posteriori` | [`Turing.Optimisation.maximum_a_posteriori`](@ref) | Find a MAP estimate for a model              |
-| `maximum_likelihood`   | [`Turing.Optimisation.maximum_likelihood`](@ref)   | Find a MLE estimate for a model              |
-| `MAP`                  | [`Turing.Optimisation.MAP`](@ref)                  | Type to use with Optim.jl for MAP estimation |
-| `MLE`                  | [`Turing.Optimisation.MLE`](@ref)                  | Type to use with Optim.jl for MLE estimation |
+| Exported symbol           | Documentation                                         | Description                                   |
+|:------------------------- |:----------------------------------------------------- |:--------------------------------------------- |
+| `maximum_a_posteriori`    | [`Turing.Optimisation.maximum_a_posteriori`](@ref)    | Find a MAP estimate for a model               |
+| `maximum_likelihood`      | [`Turing.Optimisation.maximum_likelihood`](@ref)      | Find a MLE estimate for a model               |
+| `MAP`                     | [`Turing.Optimisation.MAP`](@ref)                     | Type to use with Optim.jl for MAP estimation  |
+| `MLE`                     | [`Turing.Optimisation.MLE`](@ref)                     | Type to use with Optim.jl for MLE estimation  |
+| `vector_names_and_params` | [`Turing.Optimisation.vector_names_and_params`](@ref) | Extract parameter names and values as vectors |

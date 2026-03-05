@@ -322,6 +322,17 @@ using Turing
             failing_model(), NUTS(), 10; progress=false
         )
     end
+
+    @testset "check_model fails with discrete variables" begin
+        @model function discrete_model()
+            return x ~ Categorical([0.5, 0.5])
+        end
+
+        for spl in (HMC(0.1, 10), NUTS())
+            @test_throws ArgumentError Turing._check_model(discrete_model(), spl)
+            @test_throws ArgumentError sample(discrete_model(), spl, 10)
+        end
+    end
 end
 
 end

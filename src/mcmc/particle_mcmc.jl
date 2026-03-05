@@ -2,6 +2,8 @@
 ### Particle Filtering and Particle MCMC Samplers.
 ###
 
+using Accessors: Accessors
+
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
     if DynamicPPL.requires_threadsafe(model)
         throw(
@@ -19,10 +21,20 @@ struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
 
-struct TracedModel{V<:AbstractVarInfo,M<:Model,T<:Tuple,NT<:NamedTuple} <:
-       AdvancedPS.AbstractTuringLibtaskModel
+mutable struct TracedModel{M<:Model,T<:Tuple,NT<:NamedTuple} <:
+               AdvancedPS.AbstractGenericModel
     model::M
-    varinfo::V
+    # TODO(penelopeysm): I don't like that this is an abstract type. However, the problem is
+    # that the type of VarInfo can change during execution, especially with PG-inside-Gibbs
+    # when you have to muck with merging VarInfos from different sub-conditioned models.
+    #
+    # However, I don't think that this is actually a problem in practice. Whenever we do
+    # Libtask.get_taped_globals, that is already type unstable anyway, so accessing this
+    # field here is not going to cause extra type instability. This change is associated
+    # with Turing v0.43, and I benchmarked on v0.42 vs v0.43, and v0.43 is actually faster
+    # (probably due to underlying changes in DynamicPPL), so I'm not really bothered by
+    # this.
+    varinfo::AbstractVarInfo
     resample::Bool
     fargs::T
     kwargs::NT
@@ -85,8 +97,8 @@ struct SMC{R} <: ParticleInference
 end
 
 """
-SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
-SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
+    SMC([resampler = AdvancedPS.ResampleWithESSThreshold()])
+    SMC([resampler = AdvancedPS.resample_systematic, ]threshold)
 
 Create a sequential Monte Carlo sampler of type [`SMC`](@ref).
 
@@ -121,7 +133,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     kwargs...,
 )
-    check_model && _check_model(model, sampler)
+    check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
     # need to add on the `nparticles` keyword argument for `initialstep` to make use of
     return AbstractMCMC.mcmcsample(
@@ -152,6 +164,7 @@ function Turing.Inference.initialstep(
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
+        # her
         [AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
         rng,
@@ -348,15 +361,11 @@ end
 """
     get_trace_local_varinfo()
 
-Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`.
+Get the varinfo stored in the 'taped globals' of a `Libtask.TapedTask`. This function
+is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_varinfo()
-    trace = try
-        Libtask.get_taped_globals(Any).other
-    catch e
-        e == KeyError(:task_variable) ? nothing : rethrow(e)
-    end
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    trace = Libtask.get_taped_globals(Any).other
     return trace.model.f.varinfo::AbstractVarInfo
 end
 
@@ -368,24 +377,20 @@ Get the `resample` flag stored in the 'taped globals' of a `Libtask.TapedTask`.
 This indicates whether new variable values should be sampled from the prior or not. For
 example, in SMC, this is true for all particles; in PG, this is true for all particles
 except the reference particle, whose trajectory must be reproduced exactly.
+
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_resampled()
-    trace = try
-        Libtask.get_taped_globals(Any).other
-    catch e
-        e == KeyError(:task_variable) ? nothing : rethrow(e)
-    end
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
+    trace = Libtask.get_taped_globals(Any).other
     return trace.model.f.resample::Bool
 end
 
 """
     get_trace_local_rng()
 
-Get the `Trace` local rng if one exists.
+Get the RNG stored in the 'taped globals' of a `Libtask.TapedTask`, if one exists.
 
-If executed within a `TapedTask`, return the `rng` stored in the "taped globals" of the
-task, otherwise return `vi`.
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function get_trace_local_rng()
     return Libtask.get_taped_globals(Any).rng
@@ -398,18 +403,17 @@ Set the `varinfo` stored in Libtask's taped globals. The 'other' taped global in
 is expected to be an `AdvancedPS.Trace`.
 
 Returns `nothing`.
+
+This function is meant to be called from *inside* the TapedTask itself.
 """
 function set_trace_local_varinfo(vi::AbstractVarInfo)
     trace = Libtask.get_taped_globals(Any).other
-    trace === nothing && error("No trace found in Libtask globals; this should not happen.")
-    model = trace.model
-    model = Accessors.@set model.f.varinfo = vi
-    trace.model = model
+    trace.model.f.varinfo = vi
     return nothing
 end
 
 function DynamicPPL.tilde_assume!!(
-    ctx::ParticleMCMCContext, dist::Distribution, vn::VarName, vi::AbstractVarInfo
+    ::ParticleMCMCContext, dist::Distribution, vn::VarName, template::Any, ::AbstractVarInfo
 )
     # Get all the info we need from the trace, namely, the stored VarInfo, and whether
     # we need to sample a new value or use the existing one.
@@ -418,11 +422,11 @@ function DynamicPPL.tilde_assume!!(
     resample = get_trace_local_resampled()
     # Modify the varinfo as appropriate.
     dispatch_ctx = if ~haskey(vi, vn) || resample
-        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior())
+        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
     else
         DynamicPPL.DefaultContext()
     end
-    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, vi)
+    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
     # Set the varinfo back in the trace.
     set_trace_local_varinfo(vi)
     return x, vi
@@ -433,10 +437,11 @@ function DynamicPPL.tilde_observe!!(
     right::Distribution,
     left,
     vn::Union{VarName,Nothing},
+    template::Any,
     vi::AbstractVarInfo,
 )
     vi = get_trace_local_varinfo()
-    left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, vi)
+    left, vi = DynamicPPL.tilde_observe!!(DefaultContext(), right, left, vn, template, vi)
     set_trace_local_varinfo(vi)
     return left, vi
 end
@@ -476,12 +481,12 @@ function DynamicPPL.acclogp(acc1::ProduceLogLikelihoodAccumulator, val)
 end
 
 function DynamicPPL.accumulate_assume!!(
-    acc::ProduceLogLikelihoodAccumulator, val, logjac, vn, right
+    acc::ProduceLogLikelihoodAccumulator, val, tval, logjac, vn, right, template
 )
     return acc
 end
 function DynamicPPL.accumulate_observe!!(
-    acc::ProduceLogLikelihoodAccumulator, right, left, vn
+    acc::ProduceLogLikelihoodAccumulator, right, left, vn, template
 )
     return DynamicPPL.acclogp(acc, Distributions.loglikelihood(right, left))
 end

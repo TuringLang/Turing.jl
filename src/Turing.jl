@@ -1,7 +1,7 @@
 module Turing
 
 using Reexport, ForwardDiff
-using DistributionsAD, Bijectors, StatsFuns, SpecialFunctions
+using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions, MCMCChains
@@ -11,13 +11,9 @@ using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
 using LogDensityProblems: LogDensityProblems
-using NamedArrays: NamedArrays
-using Accessors: Accessors
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
-
-using Accessors: Accessors
 
 using Printf: Printf
 using Random: Random
@@ -45,6 +41,7 @@ end
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
+include("common.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
 include("variational/Variational.jl")
@@ -73,11 +70,15 @@ using DynamicPPL:
     conditioned,
     to_submodel,
     LogDensityFunction,
+    VarNamedTuple,
+    @vnt,
     @addlogprob!,
     InitFromPrior,
     InitFromUniform,
     InitFromParams,
-    setthreadsafe
+    setthreadsafe,
+    filldist,
+    arraydist
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 using Libtask: might_produce, @might_produce
@@ -102,6 +103,7 @@ export
     # Samplers - Turing.Inference
     Prior,
     MH,
+    LinkedRW,
     Emcee,
     ESS,
     Gibbs,
@@ -112,7 +114,6 @@ export
     PolynomialStepsize,
     HMCDA,
     NUTS,
-    IS,
     SMC,
     PG,
     CSMC,
@@ -145,8 +146,8 @@ export
     LogPoisson,
     # Tools to work with Distributions
     I,  # LinearAlgebra
-    filldist,  # DistributionsAD
-    arraydist,  # DistributionsAD
+    filldist, # DynamicPPL
+    arraydist, # DynamicPPL
     NamedDist,  # DynamicPPL
     # Predictions - DynamicPPL
     predict,
@@ -166,12 +167,16 @@ export
     InitFromPrior,
     InitFromUniform,
     InitFromParams,
+    # VNT,
+    VarNamedTuple,
+    @vnt,
     # Point estimates - Turing.Optimisation
     # The MAP and MLE exports are only needed for the Optim.jl interface.
     maximum_a_posteriori,
     maximum_likelihood,
     MAP,
     MLE,
+    vector_names_and_params,
     # Chain save/resume
     loadstate,
     # kwargs in SMC

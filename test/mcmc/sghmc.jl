@@ -21,9 +21,8 @@ using Turing
     end
 
     @testset "sghmc inference" begin
-        rng = StableRNG(123)
         alg = SGHMC(; learning_rate=0.02, momentum_decay=0.5)
-        chain = sample(rng, gdemo_default, alg, 10_000)
+        chain = sample(StableRNG(123), gdemo_default, alg, 10_000)
         check_gdemo(chain; atol=0.1)
     end
 
@@ -39,9 +38,9 @@ end
     end
 
     @testset "sgld inference" begin
-        rng = StableRNG(1)
-
-        chain = sample(rng, gdemo_default, SGLD(; stepsize=PolynomialStepsize(0.5)), 20_000)
+        chain = sample(
+            StableRNG(1), gdemo_default, SGLD(; stepsize=PolynomialStepsize(0.5)), 20_000
+        )
         check_gdemo(chain; atol=0.25)
 
         # Weight samples by step sizes (cf section 4.2 in the paper by Welling and Teh)

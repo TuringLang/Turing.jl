@@ -11,9 +11,8 @@ using StableRNGs: StableRNG
 using Turing
 
 @testset "TuringDynamicHMCExt" begin
-    rng = StableRNG(100)
     spl = externalsampler(DynamicHMC.NUTS())
-    chn = sample(rng, gdemo_default, spl, 10_000)
+    chn = sample(StableRNG(100), gdemo_default, spl, 10_000)
     check_gdemo(chn)
 end
 

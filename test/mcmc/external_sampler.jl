@@ -151,7 +151,7 @@ end
 
 Base.length(d::ModelDistribution) = length(d.varinfo[:])
 function Distributions._logpdf(d::ModelDistribution, x::AbstractVector)
-    return logprior(d.model, DynamicPPL.unflatten(d.varinfo, x))
+    return logprior(d.model, DynamicPPL.unflatten!!(d.varinfo, x))
 end
 function Distributions._rand!(
     rng::Random.AbstractRNG, d::ModelDistribution, x::AbstractVector{<:Real}
@@ -170,9 +170,9 @@ function initialize_mh_with_prior_proposal(model)
 end
 
 function test_initial_params(model, sampler; kwargs...)
-    # Generate some parameters.
-    dict = DynamicPPL.values_as(DynamicPPL.VarInfo(model), Dict)
-    init_strategy = DynamicPPL.InitFromParams(dict)
+    # Generate some parameters. Doesn't really matter what.
+    vnt = rand(model)
+    init_strategy = DynamicPPL.InitFromParams(vnt)
 
     # Execute the transition with two different RNGs and check that the resulting
     # parameter values are the same. This ensures that the `initial_params` are
