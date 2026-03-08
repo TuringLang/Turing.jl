@@ -131,11 +131,18 @@ function AbstractMCMC.sample(
     chain_type=DEFAULT_CHAIN_TYPE,
     initial_params=Turing.Inference.init_strategy(sampler),
     progress=PROGRESS[],
+    discard_initial=0,
+    thinning=1,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
-    # need to add on the `nparticles` keyword argument for `initialstep` to make use of
+    # SMC does not produce a Markov chain, so discard_initial and thinning do not apply.
+    # We consume these keyword arguments here to prevent them from being passed to
+    # AbstractMCMC.mcmcsample, which would cause a BoundsError (#1811).
+    if discard_initial > 0 || thinning > 1
+        @warn "SMC samplers do not support `discard_initial` or `thinning`. These keyword arguments will be ignored."
+    end
     return AbstractMCMC.mcmcsample(
         rng,
         model,

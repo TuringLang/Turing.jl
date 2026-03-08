@@ -89,6 +89,26 @@ using Turing
         model = setthreadsafe(f(randn(10)), true)
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
+
+    @testset "discard_initial and thinning are ignored" begin
+        @model function normal()
+            a ~ Normal(4, 5)
+            3 ~ Normal(a, 2)
+            b ~ Normal(a, 1)
+            1.5 ~ Normal(b, 2)
+            return a, b
+        end
+
+        chn = sample(normal(), SMC(), 10; discard_initial=5)
+        @test size(chn, 1) == 10
+        @test chn isa MCMCChains.Chains
+        chn2 = sample(normal(), SMC(), 10; thinning=3)
+        @test size(chn2, 1) == 10
+        @test chn2 isa MCMCChains.Chains
+        chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
+        @test size(chn3, 1) == 10
+        @test chn3 isa MCMCChains.Chains
+    end
 end
 
 @testset "PG" begin
