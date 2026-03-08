@@ -1,6 +1,10 @@
-# 0.43.0
+# 0.43.1
 
-## DynamicPPL 0.40 and `VarNamedTuple`
+### Bug fixes
+
+* Ignore `discard_initial` and `thinning` for `SMC` samplers to prevent a `BoundsError` when these arguments are provided. (#2784)
+
+# 0.43.0## DynamicPPL 0.40 and `VarNamedTuple`
 
 DynamicPPL v0.40 includes a major overhaul of Turing's internal data structures.
 Most notably, cases where we might once have used `Dict{VarName}` or `NamedTuple` have all been replaced with a single data structure, called `VarNamedTuple`.

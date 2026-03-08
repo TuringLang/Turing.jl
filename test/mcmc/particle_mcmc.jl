@@ -6,7 +6,7 @@ using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multin
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @test_throws, @testset
+using Test: @test, @test_logs, @test_throws, @testset
 using Turing
 
 @testset "SMC" begin
@@ -99,12 +99,17 @@ using Turing
             return a, b
         end
 
+        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)
         @test size(chn, 1) == 10
         @test chn isa MCMCChains.Chains
+        
+        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; thinning=3)
         chn2 = sample(normal(), SMC(), 10; thinning=3)
         @test size(chn2, 1) == 10
         @test chn2 isa MCMCChains.Chains
+        
+        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
         chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
         @test size(chn3, 1) == 10
         @test chn3 isa MCMCChains.Chains
