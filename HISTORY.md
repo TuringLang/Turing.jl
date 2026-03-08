@@ -1,3 +1,7 @@
+# 0.43.1
+
+Ignore `discard_initial` and `thinning` for `SMC` samplers to prevent a `BoundsError` when these arguments are provided.
+
 # 0.43.0
 
 ## DynamicPPL 0.40 and `VarNamedTuple`
