@@ -127,6 +127,23 @@ end
     @test_throws MethodError Gibbs("x" => NUTS())
 end
 
+@testset "Missing Gibbs samplers throw error" begin
+    @model function gdemo_missing(x, y)
+        s² ~ InverseGamma(2, 3)
+        m ~ Normal(0, sqrt(s²))
+        x ~ Normal(m, sqrt(s²))
+        y ~ Normal(m, sqrt(s²))
+    end
+    model = gdemo_missing(1.5, 2.0)
+
+    # If a variable has no component sampler it is never updated.
+    @test_throws ArgumentError sample(model, Gibbs(:m => MH()), 10)
+
+    # We should be able to skip the check if we want to.
+    @test sample(model, Gibbs(:m => MH()), 10; check_model=false, progress=false) isa
+        MCMCChains.Chains
+end
+
 # Test that the samplers are being called in the correct order, on the correct target
 # variables.
 #
