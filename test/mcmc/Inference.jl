@@ -7,6 +7,7 @@ using Distributions: sample
 using AbstractMCMC: AbstractMCMC
 import DynamicPPL
 using DynamicPPL: filldist
+using FlexiChains: VNChain
 import ForwardDiff
 using LinearAlgebra: I
 import Random
@@ -613,7 +614,7 @@ using Turing
         end
         # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
-        @test sample(e(), Prior(), 100) isa MCMCChains.Chains
+        @test sample(e(), Prior(), 100) isa VNChain
     end
 end
 
