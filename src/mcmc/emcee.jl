@@ -133,7 +133,7 @@ function AbstractMCMC.bundle_samples(
     chains = map(1:n_walkers) do i
         this_walker_samples = [s[i] for s in samples]
         AbstractMCMC.bundle_samples(
-            this_walker_samples, model, spl, state, $Tchain; kwargs...
+            this_walker_samples, model, spl, state, VNChain; kwargs...
         )
     end
     return AbstractMCMC.chainscat(chains...)
