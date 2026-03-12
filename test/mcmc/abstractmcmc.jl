@@ -120,7 +120,7 @@ end
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            c = sample(
+            chn = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -165,7 +165,7 @@ end
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            c = sample(
+            chn = sample(
                 model,
                 spl,
                 MCMCThreads(),

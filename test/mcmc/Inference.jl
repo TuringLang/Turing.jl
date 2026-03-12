@@ -9,7 +9,7 @@ using AbstractMCMC: AbstractMCMC
 import AdvancedMH
 import DynamicPPL
 using DynamicPPL: filldist
-using FlexiChains: VNChain
+using FlexiChains: FlexiChains, VNChain
 import ForwardDiff
 using LinearAlgebra: I
 import Random
