@@ -64,6 +64,9 @@ export Hamiltonian,
 
 const DEFAULT_CHAIN_TYPE = VNChain
 
+# Extended in chains extensions
+function loadstate end
+
 include("abstractmcmc.jl")
 include("repeat_sampler.jl")
 include("external_sampler.jl")
