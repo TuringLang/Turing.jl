@@ -1,4 +1,3 @@
-
 module AdvancedVITests
 
 using ..Models: gdemo_default
@@ -6,17 +5,16 @@ using ..NumericalTests: check_gdemo
 
 using AdvancedVI
 using Bijectors: Bijectors
-using Distributions: Dirichlet, Normal
+using FlexiChains: FlexiChain, Parameter
 using LinearAlgebra
-using MCMCChains: Chains
 using Random
-using ReverseDiff
+import ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Variational
 
-begin
+@testset verbose = true "variational/vi.jl" begin
     adtype = AutoReverseDiff()
     operator = AdvancedVI.ClipScale()
 
@@ -103,8 +101,12 @@ begin
         )
 
         N = 1000
-        samples = transpose(rand(rng, q, N))
-        chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
+        # 2 * N matrix
+        samples = rand(rng, q, N)
+        samples_dict = Dict(
+            Parameter(@varname(s)) => samples[1, :], Parameter(@varname(m)) => samples[2, :]
+        )
+        chn = VNChain(N, 1, samples_dict)
 
         check_gdemo(chn; atol=0.5)
     end

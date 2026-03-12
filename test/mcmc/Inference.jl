@@ -7,9 +7,9 @@ using Distributions: sample
 using AbstractMCMC: AbstractMCMC
 import DynamicPPL
 using DynamicPPL: filldist
+using FlexiChains: FlexiChains, VNChain
 import ForwardDiff
 using LinearAlgebra: I
-import MCMCChains
 import Random
 using Random: Xoshiro
 import ReverseDiff
@@ -42,9 +42,7 @@ using Turing
                 rng2 = Xoshiro(5)
                 chain2 = sample(rng2, model, sampler, MCMCThreads(), 10, 4)
 
-                # For HMC, the first step does not have stats, so we need to use isequal to
-                # avoid comparing `missing`s
-                @test isequal(chain1.value, chain2.value)
+                @test FlexiChains.has_same_data(chain1, chain2)
             end
 
             # Should also be stable with an explicit RNG
@@ -57,7 +55,7 @@ using Turing
                 Random.seed!(rng, local_seed)
                 chain2 = sample(rng, model, sampler, MCMCThreads(), 10, 4)
 
-                @test isequal(chain1.value, chain2.value)
+                @test FlexiChains.has_same_data(chain1, chain2)
             end
         end
 
@@ -85,28 +83,32 @@ using Turing
 
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
-            @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
-            chn2 = sample(demo(), StaticSampler(), 10; initial_state=loadstate(chn1))
-            xval = chn1[:x][1]
-            @test all(chn2[:x] .== xval)
+            @test FlexiChains.last_sampler_state(chn1) isa
+                AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test length(FlexiChains.last_sampler_state(chn1)) == 1
+            chn2 = sample(demo(), StaticSampler(), 10; initial_state=only(loadstate(chn1)))
+            xval = chn1[@varname(x)][1]
+            @test all(chn2[@varname(x)] .== xval)
         end
 
         @testset "multiple-chain" for nchains in [1, 3]
             chn1 = sample(
                 demo(), StaticSampler(), MCMCThreads(), 10, nchains; save_state=true
             )
-            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
-            @test length(chn1.info.samplerstate) == nchains
+            @test FlexiChains.last_sampler_state(chn1) isa
+                AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test length(FlexiChains.last_sampler_state(chn1)) == nchains
+            niters = 10
             chn2 = sample(
                 demo(),
                 StaticSampler(),
                 MCMCThreads(),
-                10,
+                niters,
                 nchains;
                 initial_state=loadstate(chn1),
             )
-            xval = chn1[:x][1, :]
-            @test all(i -> chn2[:x][i, :] == xval, 1:10)
+            xval = chn1[@varname(x), iter=1]
+            @test all(i -> chn2[@varname(x), iter=i] == xval, 1:niters)
         end
     end
 
@@ -119,12 +121,12 @@ using Turing
         check_gdemo(chn1)
 
         chn1_contd = sample(
-            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=only(loadstate(chn1))
         )
         check_gdemo(chn1_contd)
 
         chn1_contd2 = sample(
-            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=loadstate(chn1)
+            StableRNG(seed), gdemo_default, alg1, 2_000; initial_state=only(loadstate(chn1))
         )
         check_gdemo(chn1_contd2)
 
@@ -139,7 +141,7 @@ using Turing
         check_gdemo(chn2)
 
         chn2_contd = sample(
-            StableRNG(seed), gdemo_default, alg2, 2_000; initial_state=loadstate(chn2)
+            StableRNG(seed), gdemo_default, alg2, 2_000; initial_state=only(loadstate(chn2))
         )
         check_gdemo(chn2_contd)
 
@@ -154,7 +156,7 @@ using Turing
         check_gdemo(chn3)
 
         chn3_contd = sample(
-            StableRNG(seed), gdemo_default, alg3, 5_000; initial_state=loadstate(chn3)
+            StableRNG(seed), gdemo_default, alg3, 5_000; initial_state=only(loadstate(chn3))
         )
         check_gdemo(chn3_contd)
     end
@@ -164,16 +166,16 @@ using Turing
 
         @testset "Single-threaded vanilla" begin
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), N)
-            @test chains isa MCMCChains.Chains
-            @test mean(chains, :s) ≈ 3 atol = 0.11
-            @test mean(chains, :m) ≈ 0 atol = 0.1
+            @test chains isa VNChain
+            @test mean(chains[@varname(s)]) ≈ 3 atol = 0.11
+            @test mean(chains[@varname(m)]) ≈ 0 atol = 0.1
         end
 
         @testset "Multi-threaded" begin
             chains = sample(StableRNG(seed), gdemo_d(), Prior(), MCMCThreads(), N, 4)
-            @test chains isa MCMCChains.Chains
-            @test mean(chains, :s) ≈ 3 atol = 0.11
-            @test mean(chains, :m) ≈ 0 atol = 0.1
+            @test chains isa VNChain
+            @test mean(chains[@varname(s)]) ≈ 3 atol = 0.11
+            @test mean(chains[@varname(m)]) ≈ 0 atol = 0.1
         end
 
         @testset "accumulators are set correctly" begin
@@ -187,39 +189,29 @@ using Turing
                 return nothing
             end
             chain = sample(coloneq(), Prior(), N)
-            @test chain isa MCMCChains.Chains
-            @test all(x -> x == 1.0, chain[:z])
+            @test chain isa VNChain
+            @test all(x -> x == 1.0, chain[@varname(z)])
             # And for the same reason we should also make sure that the logp
             # components are correctly calculated.
-            @test isapprox(chain[:logprior], logpdf.(Normal(), chain[:x]))
-            @test isapprox(chain[:loglikelihood], logpdf.(Normal.(chain[:x]), 10.0))
+            @test isapprox(chain[:logprior], logpdf.(Normal(), chain[@varname(x)]))
+            @test isapprox(
+                chain[:loglikelihood], logpdf.(Normal.(chain[@varname(x)]), 10.0)
+            )
             @test isapprox(chain[:logjoint], chain[:logprior] .+ chain[:loglikelihood])
             # And that the outcome is not influenced by the likelihood
-            @test mean(chain, :x) ≈ 0.0 atol = 0.1
-        end
-    end
-
-    @testset "chain ordering" begin
-        for alg in (Prior(), Emcee(10, 2.0))
-            chain_sorted = sample(StableRNG(seed), gdemo_default, alg, 1; sort_chain=true)
-            @test names(MCMCChains.get_sections(chain_sorted, :parameters)) == [:m, :s]
-
-            chain_unsorted = sample(
-                StableRNG(seed), gdemo_default, alg, 1; sort_chain=false
-            )
-            @test names(MCMCChains.get_sections(chain_unsorted, :parameters)) == [:s, :m]
+            @test mean(chain[@varname(x)]) ≈ 0.0 atol = 0.1
         end
     end
 
     @testset "chain iteration numbers" begin
         for alg in (Prior(), Emcee(10, 2.0))
             chain = sample(StableRNG(seed), gdemo_default, alg, 10)
-            @test range(chain) == 1:10
+            @test FlexiChains.iter_indices(chain) == 1:10
 
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10; discard_initial=5, thinning=2
             )
-            @test range(chain) == range(6; step=2, length=10)
+            @test FlexiChains.iter_indices(chain) == range(6; step=2, length=10)
         end
     end
 
@@ -241,8 +233,8 @@ using Turing
         check_numerical(res2, [:y], [0.5]; atol=0.1)
 
         # Check that all xs are 1.
-        @test all(isone, res1[:x])
-        @test all(isone, res2[:x])
+        @test all(isone, res1[@varname(x)])
+        @test all(isone, res2[@varname(x)])
     end
 
     @testset "beta binomial" begin
@@ -268,9 +260,9 @@ using Turing
         chn_p = sample(StableRNG(seed), testbb(obs), pg, 2_000)
         chn_g = sample(StableRNG(seed), testbb(obs), gibbs, 2_000)
 
-        check_numerical(chn_s, [:p], [meanp]; atol=0.05)
-        check_numerical(chn_p, [:x], [meanp]; atol=0.1)
-        check_numerical(chn_g, [:x], [meanp]; atol=0.1)
+        check_numerical(chn_s, [@varname(p)], [meanp]; atol=0.05)
+        check_numerical(chn_p, [@varname(x)], [meanp]; atol=0.1)
+        check_numerical(chn_g, [@varname(x)], [meanp]; atol=0.1)
     end
 
     @testset "forbid global" begin
@@ -396,12 +388,12 @@ using Turing
         # as a statistic (which is the same for all 'iterations'). So we can just pick the
         # first one.
         res_smc = sample(StableRNG(seed), test(), smc, N)
-        @test all(isone, res_smc[:x])
+        @test all(isone, res_smc[@varname(x)])
         smc_logevidence = first(res_smc[:logevidence])
         @test smc_logevidence ≈ 2 * log(0.5)
 
         res_pg = sample(StableRNG(seed), test(), pg, 100)
-        @test all(isone, res_pg[:x])
+        @test all(isone, res_pg[@varname(x)])
     end
 
     @testset "sample" begin
@@ -622,7 +614,7 @@ using Turing
         end
         # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
-        @test sample(e(), Prior(), 100) isa MCMCChains.Chains
+        @test sample(e(), Prior(), 100) isa VNChain
     end
 end
 

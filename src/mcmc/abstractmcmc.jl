@@ -107,25 +107,6 @@ function AbstractMCMC.sample(
     )
 end
 
-"""
-    loadstate(chain::MCMCChains.Chains)
-
-Load the final state of the sampler from a `MCMCChains.Chains` object.
-
-To save the final state of the sampler, you must use `sample(...; save_state=true)`. If this
-argument was not used during sampling, calling `loadstate` will throw an error.
-"""
-function loadstate(chain::MCMCChains.Chains)
-    if !haskey(chain.info, :samplerstate)
-        throw(
-            ArgumentError(
-                "the chain object does not contain the final state of the sampler; to save the final state you must sample with `save_state=true`",
-            ),
-        )
-    end
-    return chain.info[:samplerstate]
-end
-
 # TODO(penelopeysm): Remove initialstep and generalise MCMC sampling procedures
 function initialstep end
 
