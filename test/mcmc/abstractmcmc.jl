@@ -140,7 +140,7 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            @test all(!ismissing.(c[@varname(s)]))
+            @test !any(ismissing, c[@varname(s)])
             @test all(c[@varname(m)] .== -1)
         end
     end

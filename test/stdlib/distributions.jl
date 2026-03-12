@@ -36,10 +36,9 @@ function check_dist_numerical(
 end
 
 @testset "distributions.jl" begin
-    rng = StableRNG(12345)
     @testset "distributions functions" begin
         ns = 10
-        logitp = randn(rng)
+        logitp = randn()
         d1 = BinomialLogit(ns, logitp)
         d2 = Binomial(ns, logistic(logitp))
         k = 3
@@ -50,7 +49,7 @@ end
         d = OrderedLogistic(-2, [-1, 1])
 
         n = 1_000_000
-        y = rand(rng, d, n)
+        y = rand(d, n)
         K = length(d.cutpoints) + 1
         p = [mean(==(k), y) for k in 1:K]          # empirical probs
         pmf = [exp(logpdf(d, k)) for k in 1:K]
@@ -157,13 +156,10 @@ end
 
                             @model m() = x ~ dist
 
-                            seed = if dist isa GeneralizedExtremeValue
-                                # GEV is prone to giving really wacky results that are quite
-                                # seed-dependent.
-                                StableRNG(469)
-                            else
-                                StableRNG(468)
-                            end
+                            # Note: GeneralizedExtremeValue is prone to giving really wacky
+                            # results that are quite seed-dependent. Do not hesitate to
+                            # change the seed if the test fails, even by a large margin.
+                            seed = StableRNG(468)
                             chn = sample(
                                 seed, m(), HMC(0.05, 20), n_samples; progress=false
                             )
