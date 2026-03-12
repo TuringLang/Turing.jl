@@ -2,6 +2,7 @@ module TuringAbstractMCMCTests
 
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL
+using FlexiChains: Extra
 using Random: AbstractRNG
 using Test: @test, @testset, @test_throws
 using Turing
@@ -55,13 +56,12 @@ end
         model = coinflip()
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
-            varinfos = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(varinfos)
-            @test varinfo[@varname(p)] == 0.2
-            @test DynamicPPL.getlogjoint(varinfo) == lptrue
+            chn = sample(model, spl, 1; initial_params=inits, progress=false)
+            @test only(chn[@varname(p)]) == 0.2
+            @test only(chn[Extra(:logjoint)]) == lptrue
 
             # parallel sampling
-            c = sample(
+            chn = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -70,11 +70,8 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                varinfo = only(c)
-                @test varinfo[@varname(p)] == 0.2
-                @test DynamicPPL.getlogjoint(varinfo) == lptrue
-            end
+            @test all(chn[@varname(p)] .== 0.2)
+            @test all(chn[Extra(:logjoint)] .== lptrue)
         end
 
         # check that Vector no longer works
@@ -98,14 +95,13 @@ end
             InitFromParams(Dict(@varname(s) => 4, @varname(m) => -1)),
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(chain)
-            @test varinfo[@varname(s)] == 4
-            @test varinfo[@varname(m)] == -1
-            @test DynamicPPL.getlogjoint(varinfo) == lptrue
+            chn = sample(model, spl, 1; initial_params=inits, progress=false)
+            @test only(chn[@varname(s)]) == 4
+            @test only(chn[@varname(m)]) == -1
+            @test only(chn[Extra(:logjoint)]) == lptrue
 
             # parallel sampling
-            c = sample(
+            chn = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -114,12 +110,9 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                varinfo = only(c)
-                @test varinfo[@varname(s)] == 4
-                @test varinfo[@varname(m)] == -1
-                @test DynamicPPL.getlogjoint(varinfo) == lptrue
-            end
+            @test all(chn[@varname(s)] .== 4)
+            @test all(chn[@varname(m)] .== -1)
+            @test all(chn[Extra(:logjoint)] .== lptrue)
         end
 
         # set only m = -1
@@ -134,9 +127,8 @@ end
             Dict(@varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(chain)
-            @test !ismissing(varinfo[@varname(s)])
-            @test varinfo[@varname(m)] == -1
+            @test !ismissing(only(chain[@varname(s)]))
+            @test only(chain[@varname(m)]) == -1
 
             # parallel sampling
             c = sample(
@@ -148,11 +140,8 @@ end
                 initial_params=fill(inits, 10),
                 progress=false,
             )
-            for c in chains
-                varinfo = only(c)
-                @test !ismissing(varinfo[@varname(s)])
-                @test varinfo[@varname(m)] == -1
-            end
+            @test all(!ismissing.(c[@varname(s)]))
+            @test all(c[@varname(m)] .== -1)
         end
     end
 end

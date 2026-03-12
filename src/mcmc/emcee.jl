@@ -118,12 +118,12 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.bundle_samples(
-    samples::Vector{<:Vector},
+    transitions::Vector{<:AbstractVector},
     model::DynamicPPL.Model,
     spl::Emcee,
-    state::EmceeState,
-    ::Type{VNChain},
-    kwargs...,
+    last_sampler_state::EmceeState,
+    chain_type::Type{FlexiChain{VarName}};
+    _kwargs...,
 )
     n_walkers = _get_n_walkers(spl)
     chains = map(1:n_walkers) do i
