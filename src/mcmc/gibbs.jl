@@ -306,10 +306,10 @@ end
 
 get_varinfo(state::GibbsState) = state.vi
 
-function check_all_variables_handled(vi, spl::Gibbs)
+function check_all_variables_handled(vns, spl::Gibbs)
     handled_vars = Iterators.flatten(spl.varnames)
     missing_vars = [
-        vn for vn in keys(vi) if !any(hv -> AbstractPPL.subsumes(hv, vn), handled_vars)
+        vn for vn in vns if !any(hv -> AbstractPPL.subsumes(hv, vn), handled_vars)
     ]
     if !isempty(missing_vars)
         msg =
@@ -320,15 +320,10 @@ function check_all_variables_handled(vi, spl::Gibbs)
 end
 
 function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)
+    # TODO(penelopeysm): Could be smarter: subsamplers may not allow discrete variables.
     Turing._check_model(model, !Turing.allow_discrete_variables(spl))
-    _, vi = DynamicPPL.init!!(
-        Random.default_rng(),
-        model,
-        DynamicPPL.VarInfo(),
-        DynamicPPL.InitFromPrior(),
-        DynamicPPL.UnlinkAll(),
-    )
-    check_all_variables_handled(vi, spl)
+    varnames = keys(rand(model))
+    check_all_variables_handled(varnames, spl)
 end
 
 function AbstractMCMC.step(
