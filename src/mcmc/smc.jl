@@ -178,7 +178,7 @@ function StatsBase.sample(rng::AbstractRNG, particles::ParticleContainer)
     return sample(rng, particles.values, weights(particles))
 end
 
-function resample!(rng::AbstractRNG, particles::ParticleContainer, weights::Weights)
+function resample!(rng::AbstractRNG, particles::ParticleContainer, weights::StatsBase.Weights)
     idx = sample_ancestors(rng, weights.values)
     @. particles = Particle($split!(rng, particles.values[idx]))
 end
@@ -253,7 +253,7 @@ function StatsBase.sample(rng::AbstractRNG, particles::ReferencedContainer)
     return sample(rng, particles.values, weights(particles))
 end
 
-function resample!(rng::AbstractRNG, ref::ReferencedContainer, weights::Weights)
+function resample!(rng::AbstractRNG, ref::ReferencedContainer, weights::StatsBase.Weights)
     idx = sample_ancestors(rng, weights.values, length(ref.particles))
     @. ref.particles = Particle($split!(rng, ref.values[idx]))
     return ref
@@ -397,7 +397,7 @@ See [`SMC`](@ref) for details on the Sequential Monte Carlo kernel.
 chain = sample(model, PG(SMC(0.5), 128), 10_000)
 ```
 """
-struct ParticleGibbs{T<:AbstractSMC} <: AbstractMCMC.AbstractSampler
+struct ParticleGibbs{T<:SMC} <: AbstractMCMC.AbstractSampler
     kernel::T
     N::Int
 end

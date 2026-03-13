@@ -23,6 +23,7 @@ using Random: AbstractRNG
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet, OrderedDict
+using StatsBase
 
 import ADTypes
 import AbstractMCMC
@@ -35,6 +36,7 @@ import AdvancedPS
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
+import Random123
 import MCMCChains
 import StatsBase: predict
 

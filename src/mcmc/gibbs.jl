@@ -534,11 +534,12 @@ function setparams_varinfo!!(
     return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor, state.ldf)
 end
 
-function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::PG, state::PGState, params::AbstractVarInfo
-)
-    return PGState(params, state.rng)
-end
+# TODO: not sure what to do here... I'll get there eventually
+# function setparams_varinfo!!(
+#     ::DynamicPPL.Model, ::PG, state::PGState, params::AbstractVarInfo
+# )
+#     return PGState(params, state.rng)
+# end
 
 """
     match_linking!!(varinfo_local, prev_state_local, model)
