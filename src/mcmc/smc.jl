@@ -43,7 +43,7 @@ end
 
 # if score is nothing, the varinfo is caught up and there's no need to update
 set_varinfo!(::TracedModel, ::Nothing) = nothing
-set_varinfo!(trace::TracedModel, ::Real) = (trace.varinfo = task_local_storage(:varinfo); )
+set_varinfo!(trace::TracedModel, ::Real) = (trace.varinfo = task_local_storage(:varinfo))
 
 struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.LogProbAccumulator{T}
     logp::T
@@ -111,7 +111,12 @@ function DynamicPPL.tilde_assume!!(
 end
 
 function DynamicPPL.tilde_observe!!(
-    ::SMCContext, dist::Distribution, val, vn::Union{VarName,Nothing}, template, vi::AbstractVarInfo
+    ::SMCContext,
+    dist::Distribution,
+    val,
+    vn::Union{VarName,Nothing},
+    template,
+    vi::AbstractVarInfo,
 )
     val, vi = DynamicPPL.tilde_observe!!(DefaultContext(), dist, val, vn, template, vi)
     task_local_storage(:varinfo, vi)
@@ -178,7 +183,9 @@ function StatsBase.sample(rng::AbstractRNG, particles::ParticleContainer)
     return sample(rng, particles.values, weights(particles))
 end
 
-function resample!(rng::AbstractRNG, particles::ParticleContainer, weights::StatsBase.Weights)
+function resample!(
+    rng::AbstractRNG, particles::ParticleContainer, weights::StatsBase.Weights
+)
     idx = sample_ancestors(rng, weights.values)
     @. particles = Particle($split!(rng, particles.values[idx]))
 end
@@ -210,7 +217,7 @@ Base.keys(pc::ReferencedContainer) = LinearIndices(pc.values)
 
 Base.iterate(pc::ReferencedContainer) = iterate(pc.particles)
 
-function Base.iterate(pc::ReferencedContainer, i)    
+function Base.iterate(pc::ReferencedContainer, i)
     i == length(pc) && return (pc.reference, i + 1)
     return iterate(pc.particles, i)
 end
@@ -222,7 +229,7 @@ end
 
 function Base.collect(pc::ReferencedContainer)
     particles = Vector{eltype(pc.particles)}(undef, length(pc))
-    particles[1:end-1] = @views(pc.particles)
+    particles[1:(end - 1)] = @views(pc.particles)
     particles[end] = pc.reference
     return particles
 end
@@ -231,14 +238,14 @@ Base.getproperty(pc::ReferencedContainer, s::Symbol) = _getproperty(pc, Val(s))
 
 function _getproperty(pc::ReferencedContainer{PT}, ::Val{:values}) where {PT}
     values = Vector{PT}(undef, length(pc.particles) + 1)
-    values[1:end-1] = @views(pc.particles.values)
+    values[1:(end - 1)] = @views(pc.particles.values)
     values[end] = pc.reference.value
     return values
 end
 
-function _getproperty(pc::ReferencedContainer{PT,WT}, ::Val{:log_weights}) where {PT, WT}
+function _getproperty(pc::ReferencedContainer{PT,WT}, ::Val{:log_weights}) where {PT,WT}
     log_weights = Vector{WT}(undef, length(pc.particles) + 1)
-    log_weights[1:end-1] = @views(pc.particles.log_weights)
+    log_weights[1:(end - 1)] = @views(pc.particles.log_weights)
     log_weights[end] = pc.reference.logw
     return log_weights
 end
@@ -289,7 +296,7 @@ end
 function initialize(
     rng::AbstractRNG, model::DynamicPPL.Model, sampler::SMC, N::Integer, ref
 )
-    particles, is_done = if isnothing(ref)
+    return particles, is_done = if isnothing(ref)
         initialize(rng, model, sampler, N)
     else
         particles, is_done = initialize(rng, model, sampler, N - 1)
@@ -324,11 +331,7 @@ function reweight!(particles, ::AbstractMCMC.MCMCThreads)
     return all(num_done)
 end
 
-function maybe_resample!(
-    rng::AbstractRNG,
-    particles,
-    resampler::AbstractResampler
-)
+function maybe_resample!(rng::AbstractRNG, particles, resampler::AbstractResampler)
     weights = StatsBase.weights(particles)
     rs_flag = should_resample(weights, resampler)
     rs_flag && resample!(rng, particles, weights)
@@ -343,7 +346,7 @@ function rejuvenate!(
     ::AbstractMCMC.AbstractMCMCEnsemble,
     ::Bool,
     ::Integer;
-    kwargs...
+    kwargs...,
 )
     return particles
 end
@@ -354,7 +357,7 @@ function smcsample(
     sampler::SMC,
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer;
-    ref=nothing
+    ref=nothing,
 )
     particles, is_done = initialize(rng, model, sampler, N, ref)
     iter = 0
@@ -374,7 +377,7 @@ function AbstractMCMC.sample(
     sampler::SMC,
     N::Integer;
     ensemble::AbstractMCMC.AbstractMCMCEnsemble=MCMCSerial(),
-    kwargs...
+    kwargs...,
 )
     return smcsample(rng, model, sampler, ensemble, N; kwargs...)
 end
@@ -405,12 +408,9 @@ end
 const PG{T} = ParticleGibbs{T}
 
 function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::ParticleGibbs;
-    kwargs...,
+    rng::AbstractRNG, model::DynamicPPL.Model, sampler::ParticleGibbs; kwargs...
 )
-    particles = smcsample(rng, model, sampler.kernel, MCMCSerial(), sampler.N);
+    particles = smcsample(rng, model, sampler.kernel, MCMCSerial(), sampler.N)
     state = sample(rng, particles)
     return get_varinfo(state), state
 end
