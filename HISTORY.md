@@ -1,3 +1,8 @@
+# 0.43.2
+
+Throw an `ArgumentError` when a `Gibbs` sampler is missing component samplers for any variable in the model.
+This check can be bypassed by passing `check_model=false` to `sample`.
+
 # 0.43.1
 
 Ignore `discard_initial` and `thinning` for `SMC` samplers to prevent a `BoundsError` when these arguments are provided.
