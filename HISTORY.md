@@ -1,3 +1,7 @@
+# 0.44.0
+
+[...]
+
 # 0.43.2
 
 Throw an `ArgumentError` when a `Gibbs` sampler is missing component samplers for any variable in the model.
