@@ -323,7 +323,7 @@ function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)
     # TODO(penelopeysm): Could be smarter: subsamplers may not allow discrete variables.
     Turing._check_model(model, !Turing.allow_discrete_variables(spl))
     varnames = keys(rand(model))
-    check_all_variables_handled(varnames, spl)
+    return check_all_variables_handled(varnames, spl)
 end
 
 function AbstractMCMC.step(

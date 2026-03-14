@@ -132,7 +132,7 @@ end
         s² ~ InverseGamma(2, 3)
         m ~ Normal(0, sqrt(s²))
         x ~ Normal(m, sqrt(s²))
-        y ~ Normal(m, sqrt(s²))
+        return y ~ Normal(m, sqrt(s²))
     end
     model = gdemo_missing(1.5, 2.0)
 
