@@ -51,19 +51,18 @@ jobs:
           - version: '1'
             os: macos-latest
             num_threads: 1
-          # Minimum supported Julia version
-          - version: 'min'
+          # 1.10
+          - version: 'lts'
             os: ubuntu-latest
             num_threads: 1
-          # Minimum supported Julia version, multithreaded
-          - version: 'min'
+          # 1.10, multithreaded
+          - version: 'lts'
             os: ubuntu-latest
             num_threads: 2
-          # TODO(mhauru) Start running 'pre' again once it differs from '1'.
           # Pre-release Julia version
-          # - version: 'pre'
-          #   os: ubuntu-latest
-          #   num_threads: 1
+          - version: 'pre'
+            os: ubuntu-latest
+            num_threads: 1
 
     steps:
       - name: Print matrix variables
