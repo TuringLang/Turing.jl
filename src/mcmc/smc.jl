@@ -441,6 +441,10 @@ end
 
 const PG = ParticleGibbs
 
+# parity the original interface
+PG(N::Int, threshold::Real) = PG(SMC(threshold), N)
+PG(N::Int) = PG(N, 0.5)
+
 function AbstractMCMC.step(
     rng::AbstractRNG, model::DynamicPPL.Model, sampler::ParticleGibbs; kwargs...
 )
