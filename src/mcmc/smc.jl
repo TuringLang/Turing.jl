@@ -1,6 +1,7 @@
 ####
 #### Combining DynamicPPL and Libtask.
 ####
+using StatsFuns: softmax
 
 mutable struct TracedModel{T<:TapedTask}
     const task::T
