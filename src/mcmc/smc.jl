@@ -383,7 +383,7 @@ function smcsample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer;
     ref=nothing,
-    kwargs...
+    kwargs...,
 )
     particles, is_done = initialize(rng, model, sampler, N, ref)
     iter = 0
