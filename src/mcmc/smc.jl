@@ -1,7 +1,7 @@
 ####
 #### Combining DynamicPPL and Libtask.
 ####
-using StatsFuns: softmax
+using StatsFuns: softmax, logsumexp
 
 mutable struct TracedModel{T<:TapedTask}
     const task::T
@@ -193,6 +193,10 @@ function resample!(
     @. particles = Particle($split!(rng, particles.values[idx]))
 end
 
+function logevidence(particles::ParticleContainer)
+    return logsumexp(particles.log_weights) - log(length(particles))
+end
+
 # TODO: optimize this for the love of god
 function split!(rng::AbstractRNG, particles::Vector{<:TracedModel})
     children = deepcopy.(particles)
@@ -269,6 +273,10 @@ function resample!(rng::AbstractRNG, ref::ReferencedContainer, weights::StatsBas
     return ref
 end
 
+function logevidence(particles::ReferencedContainer)
+    return logsumexp(particles.log_weights) - log(length(particles))
+end
+
 ####
 #### Generic Sequential Monte Carlo sampler.
 ####
@@ -341,6 +349,19 @@ function maybe_resample!(rng::AbstractRNG, particles, resampler::AbstractResampl
     return rs_flag
 end
 
+# for referenced particle sets, rejuvenate all but the reference trajectory
+function rejuvenate!(
+    rng::AbstractRNG,
+    ref::ReferencedContainer,
+    kernel,
+    parallel::AbstractMCMC.AbstractMCMCEnsemble,
+    rs_flag::Bool,
+    iter::Integer;
+    kwargs...,
+)
+    return rejuvenate!(rng, ref.particles, kernel, parallel, rs_flag, iter)
+end
+
 # leave out rejuvenation for now, we'll cross that bridge when we get there
 function rejuvenate!(
     ::AbstractRNG,
@@ -354,6 +375,7 @@ function rejuvenate!(
     return particles
 end
 
+# TODO: add custom logging like is done for AbstractMCMC
 function smcsample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -361,6 +383,7 @@ function smcsample(
     ensemble::AbstractMCMC.AbstractMCMCEnsemble,
     N::Integer;
     ref=nothing,
+    kwargs...
 )
     particles, is_done = initialize(rng, model, sampler, N, ref)
     iter = 0
@@ -373,16 +396,24 @@ function smcsample(
     return particles
 end
 
-# this doesn't return an MCMCChain which kinda blows, but whatever
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     sampler::SMC,
     N::Integer;
     ensemble::AbstractMCMC.AbstractMCMCEnsemble=MCMCSerial(),
+    chain_type::Any=DEFAULT_CHAIN_TYPE,
     kwargs...,
 )
-    return smcsample(rng, model, sampler, ensemble, N; kwargs...)
+    # perform a particle sweep
+    particles = smcsample(rng, model, sampler, ensemble, N; kwargs...)
+    stats = (; logevidence=logevidence(particles))
+
+    # convert to readable format and bundle samples
+    sample = map(
+        x -> DynamicPPL.ParamsWithStats(get_varinfo(x.value), model, stats), particles
+    )
+    return AbstractMCMC.bundle_samples(sample, model, sampler, particles, chain_type)
 end
 
 ####
@@ -408,17 +439,18 @@ struct ParticleGibbs{T<:SMC} <: AbstractMCMC.AbstractSampler
     N::Int
 end
 
-const PG{T} = ParticleGibbs{T}
+const PG = ParticleGibbs
 
 function AbstractMCMC.step(
     rng::AbstractRNG, model::DynamicPPL.Model, sampler::ParticleGibbs; kwargs...
 )
-    particles = smcsample(rng, model, sampler.kernel, MCMCSerial(), sampler.N)
-    state = sample(rng, particles)
-    return get_varinfo(state), state
+    particles = smcsample(rng, model, sampler.kernel, AbstractMCMC.MCMCSerial(), sampler.N)
+    state = StatsBase.sample(rng, particles)
+    stats = (; logevidence=logevidence(particles))
+    sample = DynamicPPL.ParamsWithStats(get_varinfo(state), model, stats)
+    return sample, state
 end
 
-# NOTE: this needs some TLC, not sure how I can better integrate
 function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -427,8 +459,15 @@ function AbstractMCMC.step(
     kwargs...,
 )
     particles = smcsample(
-        rng, model, sampler.kernel, MCMCSerial(), sampler.N; ref=deepcopy(state)
+        rng,
+        model,
+        sampler.kernel,
+        AbstractMCMC.MCMCSerial(),
+        sampler.N;
+        ref=deepcopy(state),
     )
-    state = sample(rng, particles)
-    return get_varinfo(state), state
+    state = StatsBase.sample(rng, particles)
+    stats = (; logevidence=logevidence(particles))
+    sample = DynamicPPL.ParamsWithStats(get_varinfo(state), model, stats)
+    return sample, state
 end
