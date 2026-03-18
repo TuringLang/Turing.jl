@@ -96,7 +96,9 @@ struct SMCContext <: DynamicPPL.AbstractContext end
 
 function init_context(rng::AbstractRNG, vi::VarInfo, vn::VarName)
     if ~haskey(vi, vn)
-        return DynamicPPL.InitContext(rng, DynamicPPL.InitFromPrior(), vi.transform_strategy)
+        return DynamicPPL.InitContext(
+            rng, DynamicPPL.InitFromPrior(), vi.transform_strategy
+        )
     else
         return DynamicPPL.DefaultContext()
     end
