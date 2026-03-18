@@ -12,16 +12,10 @@ using Turing
 @testset "SMC" begin
     @testset "constructor" begin
         s = SMC()
-        @test s.resampler == ResampleWithESSThreshold()
+        @test s.resampler == AlwaysResample()
 
         s = SMC(0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-
-        s = SMC(resample_multinomial, 0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-
-        s = SMC(resample_systematic)
-        @test s.resampler === resample_systematic
+        @test s.resampler === ESSResampler(0.6)
     end
 
     @testset "models" begin
@@ -119,26 +113,8 @@ using Turing
 end
 
 @testset "PG" begin
-    @testset "constructor" begin
-        s = PG(10)
-        @test s.nparticles == 10
-        @test s.resampler == ResampleWithESSThreshold()
-
-        s = PG(60, 0.6)
-        @test s.nparticles == 60
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-
-        s = PG(80, resample_multinomial, 0.6)
-        @test s.nparticles == 80
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-
-        s = PG(100, resample_systematic)
-        @test s.nparticles == 100
-        @test s.resampler === resample_systematic
-    end
-
     @testset "chain log-density metadata" begin
-        test_chain_logp_metadata(PG(10))
+        test_chain_logp_metadata(PG(SMC(), 10))
     end
 
     @testset "logevidence" begin
@@ -152,7 +128,7 @@ end
             return x
         end
 
-        chains_pg = sample(StableRNG(468), test(), PG(10), 100)
+        chains_pg = sample(StableRNG(468), test(), PG(SMC(), 10), 100)
 
         @test all(isone, chains_pg[:x])
         pg_logevidence = mean(chains_pg[:logevidence])
@@ -163,7 +139,7 @@ end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598
     @testset "reference particle" begin
-        c = sample(gdemo_default, PG(1), 1_000)
+        c = sample(gdemo_default, PG(SMC(), 1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
     end
@@ -181,7 +157,7 @@ end
                 @addlogprob! 0.0
             end
         end
-        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        c = sample(StableRNG(468), addlogprob_demo(), PG(SMC(), 10), 100)
         # Result should be biased towards x > 0.
         @test mean(c[:x]) > 0.7
     end
@@ -192,11 +168,11 @@ end
             return y ~ Normal(x)
         end
 
-        chain = sample(StableRNG(468), kwarg_demo(5.0), PG(20), 1000)
+        chain = sample(StableRNG(468), kwarg_demo(5.0), PG(SMC(), 20), 1000)
         @test chain isa MCMCChains.Chains
         @test mean(chain[:x]) ≈ 2.5 atol = 0.3
 
-        chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(20), 1000)
+        chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(SMC(), 20), 1000)
         @test chain2 isa MCMCChains.Chains
         @test mean(chain2[:x]) ≈ 7.5 atol = 0.3
     end
@@ -214,7 +190,7 @@ end
             return a ~ to_submodel(inner(y, x))
         end
         m1 = nested(1.0)
-        chn = sample(StableRNG(468), m1, PG(10), 1000)
+        chn = sample(StableRNG(468), m1, PG(SMC(), 10), 1000)
         @test mean(chn[:x]) ≈ 0.5 atol = 0.1
     end
 
@@ -228,14 +204,14 @@ end
             return a ~ to_submodel(inner_kwarg(5.0))
         end
         m1 = outer_kwarg1()
-        chn1 = sample(StableRNG(468), m1, PG(10), 1000)
+        chn1 = sample(StableRNG(468), m1, PG(SMC(), 10), 1000)
         @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.3
 
         @model function outer_kwarg2(n)
             return a ~ to_submodel(inner_kwarg(5.0; n=n))
         end
         m2 = outer_kwarg2(10.0)
-        chn2 = sample(StableRNG(468), m2, PG(10), 1000)
+        chn2 = sample(StableRNG(468), m2, PG(SMC(), 10), 1000)
         @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.3
     end
 
@@ -249,7 +225,7 @@ end
             end
         end
         model = setthreadsafe(f(randn(10)), true)
-        @test_throws ArgumentError sample(model, PG(10), 100)
+        @test_throws ArgumentError sample(model, PG(SMC(), 10), 100)
     end
 end
 
