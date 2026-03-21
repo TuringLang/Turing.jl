@@ -3,7 +3,6 @@ module SGHMCTests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 using ..SamplerTestUtils: test_chain_logp_metadata
-using DynamicPPL.TestUtils.AD: run_ad
 using DynamicPPL.TestUtils: DEMO_MODELS
 using DynamicPPL: DynamicPPL
 using Distributions: sample
