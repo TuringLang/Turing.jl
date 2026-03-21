@@ -143,34 +143,29 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler_wrapper::ExternalSampler{unconstrained};
     initial_state=nothing,
-    initial_params, # passed through from sample
+    initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
 ) where {unconstrained}
     sampler = sampler_wrapper.sampler
 
-    # Initialise varinfo with initial params and link the varinfo if needed.
+    # Initialise varinfo and link if needed. Use Random.default_rng() here because the
+    # params in the varinfo don't matter; it's only used for structure
     tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
-    _, varinfo = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, tfm_strategy)
-
-    # We need to extract the vectorised initial_params, because the later call to
-    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
-    # to be a vector.
-    initial_params_vector = varinfo[:]
+    _, varinfo = DynamicPPL.init!!(
+        Random.default_rng(), model, VarInfo(), initial_params, tfm_strategy
+    )
 
     # Construct LogDensityFunction
     f = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
     )
+    x = rand(rng, f, initial_params)
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     _, state_inner = if initial_state === nothing
         AbstractMCMC.step(
-            rng,
-            AbstractMCMC.LogDensityModel(f),
-            sampler;
-            initial_params=initial_params_vector,
-            kwargs...,
+            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params=x, kwargs...
         )
 
     else
@@ -179,7 +174,7 @@ function AbstractMCMC.step(
             AbstractMCMC.LogDensityModel(f),
             sampler,
             initial_state;
-            initial_params=initial_params_vector,
+            initial_params=x,
             kwargs...,
         )
     end

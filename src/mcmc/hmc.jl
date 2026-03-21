@@ -152,26 +152,19 @@ end
 
 function find_initial_params(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    varinfo::DynamicPPL.AbstractVarInfo,
+    ldf::DynamicPPL.LogDensityFunction,
     hamiltonian::AHMC.Hamiltonian,
     init_strategy::DynamicPPL.AbstractInitStrategy;
     max_attempts::Int=1000,
 )
-    varinfo = deepcopy(varinfo)  # Don't mutate
-
     for attempts in 1:max_attempts
-        theta = varinfo[:]
+        theta = rand(rng, ldf, init_strategy)
+
         z = AHMC.phasepoint(rng, theta, hamiltonian)
-        isfinite(z) && return varinfo, z
+        isfinite(z) && return theta, z
 
         attempts == 10 &&
             @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
-
-        # Resample and try again.
-        _, varinfo = DynamicPPL.init!!(
-            rng, model, varinfo, init_strategy, DynamicPPL.LinkAll()
-        )
     end
 
     # if we failed to find valid initial parameters, error
@@ -180,45 +173,37 @@ function find_initial_params(
     )
 end
 
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    spl::Hamiltonian,
-    vi_original::AbstractVarInfo;
-    # the initial_params kwarg is always passed on from sample(), cf. DynamicPPL
-    # src/sampler.jl, so we don't need to provide a default value here
+    spl::Hamiltonian;
     initial_params::DynamicPPL.AbstractInitStrategy,
     nadapts=0,
     discard_sample=false,
     verbose::Bool=true,
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = DynamicPPL.link(vi_original, model)
-
-    # Extract parameters.
-    theta = vi[:]
+    # TODO(penelopeysm): Need a VarInfo solely for Gibbs purposes. This is stupid. We should
+    # get rid of Gibbs needing a VarInfo, then get rid of this VarInfo, then get rid of the
+    # `vi` argument to LogDensityFunction and just pass LinkAll().
+    # Note that we use Random.default_rng() here as the actual params in the VarInfo are
+    # useless.
+    _, vi = DynamicPPL.init!!(
+        Random.default_rng(), model, VarInfo(), initial_params, DynamicPPL.LinkAll()
+    )
+    ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll(); adtype=spl.adtype
+    )
 
     # Create a Hamiltonian.
     metricT = getmetricT(spl)
-    metric = metricT(length(theta))
-    ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
-    )
+    metric = metricT(LogDensityProblems.dimension(ldf))
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # Note that there is already one round of 'initialisation' before we reach this step,
-    # inside DynamicPPL's `AbstractMCMC.step` implementation. That leads to a possible issue
-    # that this `find_initial_params` function might override the parameters set by the
-    # user.
-    # Luckily for us, `find_initial_params` always checks if the logp and its gradient are
-    # finite. If it is already finite with the params inside the current `vi`, it doesn't
-    # attempt to find new ones. This means that the parameters passed to `sample()` will be
-    # respected instead of being overridden here.
-    vi, z = find_initial_params(rng, model, vi, hamiltonian, initial_params)
-    theta = vi[:]
+    # Get initial parameters
+    theta, z = find_initial_params(rng, ldf, hamiltonian, initial_params)
 
     # Find good eps if not provided one
     if iszero(spl.ϵ)
@@ -236,6 +221,7 @@ function Turing.Inference.initialstep(
     else
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
+    vi = DynamicPPL.unflatten!!(vi, theta)
     state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
@@ -399,51 +385,51 @@ Arguments:
     If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 """
-struct NUTS{AD,metricT<:AHMC.AbstractMetric} <: AdaptiveHamiltonian
+struct NUTS{AD,metricT<:AHMC.AbstractMetric,R<:Real} <: AdaptiveHamiltonian
     n_adapts::Int         # number of samples with adaption for ϵ
-    δ::Float64        # target accept rate
+    δ::R        # target accept rate
     max_depth::Int         # maximum tree depth
-    Δ_max::Float64
-    ϵ::Float64     # (initial) step size
+    Δ_max::R
+    ϵ::R     # (initial) step size
     adtype::AD
 end
 
 function NUTS(
     n_adapts::Int,
-    δ::Float64,
+    δ::R,
     max_depth::Int,
-    Δ_max::Float64,
-    ϵ::Float64,
+    Δ_max::R,
+    ϵ::R,
     ::Type{metricT};
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-) where {metricT}
-    return NUTS{typeof(adtype),metricT}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
+) where {metricT,R<:Real}
+    return NUTS{typeof(adtype),metricT,R}(n_adapts, δ, max_depth, Δ_max, ϵ, adtype)
 end
 
-function NUTS(n_adapts::Int, δ::Float64, ::Tuple{}; kwargs...)
+function NUTS(n_adapts::Int, δ::Real, ::Tuple{}; kwargs...)
     return NUTS(n_adapts, δ; kwargs...)
 end
 
 function NUTS(
     n_adapts::Int,
-    δ::Float64;
+    δ::R;
     max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    Δ_max::R=1000.0,
+    init_ϵ::R=0.0,
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
+) where {R<:Real}
     return NUTS(n_adapts, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
 end
 
 function NUTS(
-    δ::Float64;
+    δ::R;
     max_depth::Int=10,
-    Δ_max::Float64=1000.0,
-    init_ϵ::Float64=0.0,
+    Δ_max::R=1000.0,
+    init_ϵ::R=0.0,
     metricT=AHMC.DiagEuclideanMetric,
     adtype::ADTypes.AbstractADType=Turing.DEFAULT_ADTYPE,
-)
+) where {R<:Real}
     return NUTS(-1, δ, max_depth, Δ_max, init_ϵ, metricT; adtype=adtype)
 end
 

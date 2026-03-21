@@ -51,18 +51,23 @@ function AbstractMCMC.step(
     kwargs...,
 )
     # Define log-density function.
-    # TODO(penelopeysm) We need to check that the initial parameters are valid. Same as how
-    # we do it for HMC
     _, vi = DynamicPPL.init!!(
-        rng, model, DynamicPPL.VarInfo(), initial_params, DynamicPPL.LinkAll()
+        Random.default_rng(),
+        model,
+        DynamicPPL.VarInfo(),
+        initial_params,
+        DynamicPPL.LinkAll(),
     )
     ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
+        model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll(); adtype=spl.adtype
     )
+    # TODO(penelopeysm) We need to check that the initial parameters are valid. Same as how
+    # we do it for HMC
+    x = rand(rng, ℓ, initial_params)
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng, ℓ, 0; initialization=(q=vi[:],), reporter=DynamicHMC.NoProgressReport()
+        rng, ℓ, 0; initialization=(q=x,), reporter=DynamicHMC.NoProgressReport()
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
