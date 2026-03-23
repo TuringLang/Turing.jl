@@ -149,28 +149,17 @@ function AbstractMCMC.step(
 ) where {unconstrained}
     sampler = sampler_wrapper.sampler
 
-    # Initialise varinfo with initial params and link the varinfo if needed.
-    tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
-    _, varinfo = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, tfm_strategy)
-
-    # We need to extract the vectorised initial_params, because the later call to
-    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
-    # to be a vector.
-    initial_params_vector = varinfo[:]
-
     # Construct LogDensityFunction
+    tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     f = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
+        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=sampler_wrapper.adtype
     )
+    x = find_initial_params_ldf(rng, f, initial_params)
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     _, state_inner = if initial_state === nothing
         AbstractMCMC.step(
-            rng,
-            AbstractMCMC.LogDensityModel(f),
-            sampler;
-            initial_params=initial_params_vector,
-            kwargs...,
+            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params=x, kwargs...
         )
 
     else
@@ -179,7 +168,7 @@ function AbstractMCMC.step(
             AbstractMCMC.LogDensityModel(f),
             sampler,
             initial_state;
-            initial_params=initial_params_vector,
+            initial_params=x,
             kwargs...,
         )
     end
@@ -191,7 +180,13 @@ function AbstractMCMC.step(
         new_stats = AbstractMCMC.getstats(state_inner)
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
     end
-    return (new_transition, TuringState(state_inner, varinfo, new_parameters, f))
+
+    # TODO(penelopeysm): this varinfo is only needed for Gibbs. The external sampler itself
+    # has no use for it. Get rid of this as soon as possible.
+    vi = DynamicPPL.link!!(VarInfo(model), model)
+    vi = DynamicPPL.unflatten!!(vi, x)
+
+    return (new_transition, TuringState(state_inner, vi, new_parameters, f))
 end
 
 function AbstractMCMC.step(
