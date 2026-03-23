@@ -1,3 +1,8 @@
+# 0.43.3
+
+Unify parameter initialisation for HMC and external samplers.
+External samplers (like HMC) now attempt multiple times to generate valid initial parameters, instead of just taking the first set of parameters.
+
 # 0.43.2
 
 Throw an `ArgumentError` when a `Gibbs` sampler is missing component samplers for any variable in the model.
