@@ -338,12 +338,7 @@ function estimate_mode(
     # Generate a LogDensityFunction first. We do this first because we want to use the
     # info stored in the LDF to generate the initial parameters and constraints in the
     # correct order.
-    vi = VarInfo(model)
-    vi = if link
-        DynamicPPL.link!!(vi, model)
-    else
-        vi
-    end
+    tfm_strategy = link ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     getlogdensity = logprob_func(estimator)
     accs = if check_constraints_at_runtime
         (logprob_accs(estimator)..., ConstraintCheckAccumulator(lb, ub))
@@ -352,7 +347,7 @@ function estimate_mode(
     end
     # Note that we don't need adtype to construct the LDF, because it's specified inside the
     # OptimizationProblem.
-    ldf = LogDensityFunction(model, getlogdensity, vi, accs)
+    ldf = LogDensityFunction(model, getlogdensity, tfm_strategy, accs)
 
     # Generate bounds and initial parameters in the unlinked or linked space as requested.
     lb_vec, ub_vec, inits_vec = make_optim_bounds_and_init(
