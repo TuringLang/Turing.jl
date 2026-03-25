@@ -2,6 +2,7 @@ module HMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
+import AbstractMCMC
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL
