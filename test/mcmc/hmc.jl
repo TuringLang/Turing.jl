@@ -297,12 +297,8 @@ using Turing
         spls = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
         @testset "$(spl)" for spl in spls
             # Construct a HMC state by taking a single step
-            hmc_state = Turing.Inference.initialstep(
-                Random.default_rng(),
-                gdemo_default,
-                spl,
-                DynamicPPL.VarInfo(gdemo_default);
-                initial_params=InitFromUniform(),
+            hmc_state = AbstractMCMC.step(
+                Random.default_rng(), gdemo_default, spl; initial_params=InitFromUniform()
             )[2]
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
