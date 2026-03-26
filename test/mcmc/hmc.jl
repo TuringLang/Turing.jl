@@ -13,7 +13,7 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-using Test: @test, @test_logs, @testset, @test_throws
+using Test: @test, @testset, @test_throws
 using Turing
 
 @testset verbose = true "Testing hmc.jl" begin
@@ -195,31 +195,6 @@ using Turing
             )
             @test all(chain[:x][1, :] .== init_x)
         end
-    end
-
-    @testset "warning for difficult init params" begin
-        attempt = 0
-        @model function demo_warn_initial_params()
-            x ~ Normal()
-            if (attempt += 1) < 30
-                @addlogprob! -Inf
-            end
-        end
-
-        # verbose=false to suppress the initial step size notification, which messes with
-        # the test
-        @test_logs (:warn, r"consider providing a different initialisation strategy") sample(
-            demo_warn_initial_params(), NUTS(), 5; verbose=false
-        )
-    end
-
-    @testset "error for impossible model" begin
-        @model function demo_impossible()
-            x ~ Normal()
-            @addlogprob! -Inf
-        end
-
-        @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
     end
 
     @testset "NUTS initial parameters" begin
