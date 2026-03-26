@@ -3,6 +3,13 @@
 Unify parameter initialisation for HMC and external samplers.
 External samplers (like HMC) now attempt multiple times to generate valid initial parameters, instead of just taking the first set of parameters.
 
+Re-exports `set_logprob_type!` from DynamicPPL to allow users to control the base log-probability type used when evaluating Turing models.
+For example, calling `set_logprob_type!(Float32)` will mean that Turing will use `Float32` for log-probability calculations, only promoting if there is something in the model that causes it to be (e.g. a distribution that returns `Float64` log-probabilities).
+Note that this is a compile-time preference: for it to take effect you will have to restart your Julia session after calling `set_logprob_type!`.
+
+Furthermore, note that sampler support for non-`Float64` log-probabilities is currently limited.
+Although DynamicPPL promises not promote float types unnecessarily, many samplers, including HMC and NUTS, still use `Float64` internally and thus will cause log-probabilities and parameters to be promoted to `Float64`, even if the model itself uses `Float32`.
+
 # 0.43.2
 
 Throw an `ArgumentError` when a `Gibbs` sampler is missing component samplers for any variable in the model.

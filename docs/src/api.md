@@ -46,6 +46,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `setthreadsafe`      | [`DynamicPPL.setthreadsafe`](@extref)      | Mark a model as requiring threadsafe evaluation                                              |
 | `might_produce`      | [`Libtask.might_produce`](@extref)         | Mark a method signature as potentially calling `Libtask.produce`                             |
 | `@might_produce`     | [`Libtask.@might_produce`](@extref)        | Mark a function name as potentially calling `Libtask.produce`                                |
+| `set_logprob_type!`  | [`DynamicPPL.set_logprob_type!`](@extref)  | Set the base log-probability type used during evaluation of Turing models                    |
 
 ### Inference
 
@@ -81,11 +82,11 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Data structures
 
-| Exported symbol | Documentation                               | Description                         |
-|:--------------- |:------------------------------------------- |:----------------------------------- |
-| `@vnt`          | [`DynamicPPL.@vnt`](@extref)                | Generate a `VarNameTuple`           |
-| `VarNamedTuple` | [`DynamicPPL.VarNamedTuple`](@extref)       | A mapping from `VarName`s to values |
-| `OrderedDict`   | [`OrderedCollections.OrderedDict`](@extref) | An ordered dictionary               |
+| Exported symbol | Documentation                                        | Description                         |
+|:--------------- |:---------------------------------------------------- |:----------------------------------- |
+| `@vnt`          | [`DynamicPPL.VarNamedTuples.@vnt`](@extref)          | Generate a `VarNameTuple`           |
+| `VarNamedTuple` | [`DynamicPPL.VarNamedTuples.VarNamedTuple`](@extref) | A mapping from `VarName`s to values |
+| `OrderedDict`   | [`OrderedCollections.OrderedDict`](@extref)          | An ordered dictionary               |
 
 ### DynamicPPL utilities
 
