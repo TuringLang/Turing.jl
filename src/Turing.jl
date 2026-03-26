@@ -78,7 +78,9 @@ using DynamicPPL:
     InitFromParams,
     setthreadsafe,
     filldist,
-    arraydist
+    arraydist,
+    set_logprob_type!
+
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 using Libtask: might_produce, @might_produce
@@ -163,6 +165,8 @@ export
     fix,
     unfix,
     OrderedDict, # OrderedCollections
+    # Log-prob types in accumulators
+    set_logprob_type!,
     # Initialisation strategies for models
     InitFromPrior,
     InitFromUniform,

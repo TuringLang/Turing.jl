@@ -51,26 +51,22 @@ struct SGHMCState{L,V<:AbstractVector{<:Real},T<:AbstractVector{<:Real}}
     velocity::T
 end
 
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
-    spl::SGHMC,
-    vi::AbstractVarInfo;
+    spl::SGHMC;
+    initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
 )
-    # Transform the samples to unconstrained space.
-    if !DynamicPPL.is_transformed(vi)
-        vi = DynamicPPL.link!!(vi, model)
-    end
-
-    # Compute initial sample and state.
-    ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
+    tfm_strategy = DynamicPPL.LinkAll()
+    ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
     )
-    initial_params = vi[:]
-    sample = discard_sample ? nothing : DynamicPPL.ParamsWithStats(initial_params, ℓ)
-    state = SGHMCState(ℓ, initial_params, zero(vi[:]))
+    x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
+
+    sample = discard_sample ? nothing : DynamicPPL.ParamsWithStats(x, ldf)
+    state = SGHMCState(ldf, x, zero(x))
 
     return sample, state
 end
@@ -189,31 +185,27 @@ struct SGLDState{L,V<:AbstractVector{<:Real}}
     step::Int
 end
 
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
-    spl::SGLD,
-    vi::AbstractVarInfo;
+    spl::SGLD;
+    initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
 )
-    # Transform the samples to unconstrained space.
-    if !DynamicPPL.is_transformed(vi)
-        vi = DynamicPPL.link!!(vi, model)
-    end
-
-    # Create first sample and state.
-    ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
+    tfm_strategy = DynamicPPL.LinkAll()
+    ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
     )
-    initial_params = vi[:]
+    x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
+
     transition = if discard_sample
         nothing
     else
         stats = (; SGLD_stepsize=zero(spl.stepsize(0)))
-        DynamicPPL.ParamsWithStats(initial_params, ℓ, stats)
+        DynamicPPL.ParamsWithStats(x, ldf, stats)
     end
-    state = SGLDState(ℓ, initial_params, 1)
+    state = SGLDState(ldf, x, 1)
 
     return transition, state
 end

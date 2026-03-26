@@ -50,26 +50,23 @@ function AbstractMCMC.step(
     initial_params,
     kwargs...,
 )
-    # Define log-density function.
-    # TODO(penelopeysm) We need to check that the initial parameters are valid. Same as how
-    # we do it for HMC
-    _, vi = DynamicPPL.init!!(
-        rng, model, DynamicPPL.VarInfo(), initial_params, DynamicPPL.LinkAll()
+    # Construct LogDensityFunction
+    tfm_strategy = DynamicPPL.LinkAll()
+    ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
     )
-    ℓ = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
-    )
+    x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng, ℓ, 0; initialization=(q=vi[:],), reporter=DynamicHMC.NoProgressReport()
+        rng, ldf, 0; initialization=(q=x,), reporter=DynamicHMC.NoProgressReport()
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
 
     # Create first sample and state.
-    sample = DynamicPPL.ParamsWithStats(Q.q, ℓ)
-    state = DynamicNUTSState(ℓ, Q, steps.H.κ, steps.ϵ)
+    sample = DynamicPPL.ParamsWithStats(Q.q, ldf)
+    state = DynamicNUTSState(ldf, Q, steps.H.κ, steps.ϵ)
 
     return sample, state
 end

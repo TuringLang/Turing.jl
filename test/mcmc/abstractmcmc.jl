@@ -2,8 +2,9 @@ module TuringAbstractMCMCTests
 
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL
-using Random: AbstractRNG
-using Test: @test, @testset, @test_throws
+using LogDensityProblems: LogDensityProblems
+using Random: AbstractRNG, Random, Xoshiro
+using Test: @test, @testset, @test_throws, @test_logs
 using Turing
 
 @testset "Disabling check_model" begin
@@ -22,6 +23,58 @@ using Turing
     @test sample(model, spl, MCMCThreads(), 10, 2; check_model=false) isa Any
     @test sample(model, spl, MCMCSerial(), 10, 2; check_model=false) isa Any
     @test sample(model, spl, MCMCDistributed(), 10, 2; check_model=false) isa Any
+end
+
+@testset "find_initial_params_ldf" begin
+    @testset "basic interface" begin
+        @model function normal_model()
+            x ~ Normal(0, 1)
+            return y ~ Normal(x, 1)
+        end
+        @testset for init_strategy in
+                     (InitFromPrior(), InitFromUniform(), InitFromParams((x=0.5, y=-0.3)))
+            model = normal_model()
+            ldf = DynamicPPL.LogDensityFunction(
+                model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll()
+            )
+            rng = Xoshiro(468)
+            x = Turing.Inference.find_initial_params_ldf(rng, ldf, init_strategy)
+            @test x isa AbstractVector{<:Real}
+            @test length(x) == LogDensityProblems.dimension(ldf)
+        end
+    end
+
+    @testset "warning for difficult init params" begin
+        attempt = 0
+        @model function demo_warn_initial_params()
+            x ~ Normal()
+            if (attempt += 1) < 30
+                @addlogprob! -Inf
+            end
+        end
+        ldf = DynamicPPL.LogDensityFunction(
+            demo_warn_initial_params(),
+            DynamicPPL.getlogjoint_internal,
+            DynamicPPL.LinkAll(),
+        )
+        @test_logs (:warn, r"consider providing a different initialisation strategy") Turing.Inference.find_initial_params_ldf(
+            Xoshiro(468), ldf, InitFromUniform()
+        )
+    end
+
+    @testset "errors after max_attempts" begin
+        @model function impossible_model()
+            x ~ Normal()
+            @addlogprob! -Inf
+        end
+        model = impossible_model()
+        ldf = DynamicPPL.LogDensityFunction(
+            model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll()
+        )
+        @test_throws ErrorException Turing.Inference.find_initial_params_ldf(
+            Xoshiro(468), ldf, InitFromUniform()
+        )
+    end
 end
 
 @testset "Initial parameters" begin
