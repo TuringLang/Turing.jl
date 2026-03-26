@@ -55,7 +55,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
     spl::SGHMC;
-    initial_params,
+    initial_params::AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
 )
@@ -189,7 +189,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::Model,
     spl::SGLD;
-    initial_params,
+    initial_params::AbstractInitStrategy,
     discard_sample=false,
     kwargs...,
 )
