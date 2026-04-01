@@ -714,11 +714,16 @@ end
                 my_vec[1] ~ Normal()
                 return my_vec
             end
-            @model function vect_outer()
+            @model function vect_middle()
                 x ~ to_submodel(vect_inner())
                 return y ~ Normal(x[1], 1)
             end
-            sample(vect_outer(), Gibbs(@varname(x) => MH(), @varname(y) => MH()), 10)
+            @model function vect_outer()
+                a ~ to_submodel(vect_middle())
+                return z ~ Normal(a)
+            end
+            sample(vect_middle(), Gibbs(@varname(x) => MH(), @varname(y) => MH()), 10)
+            sample(vect_outer(), Gibbs(@varname(a) => MH(), @varname(z) => MH()), 10)
         end
     end
 

@@ -200,9 +200,7 @@ function DynamicPPL.tilde_assume!!(
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
         value, new_global_vi = DynamicPPL.tilde_assume!!(
-            # child_context might be a PrefixContext so we have to be careful to not
-            # overwrite it. We assume that the new variable should just be sampled in
-            # unlinked space.
+            # We assume that the new variable should just be sampled in unlinked space.
             DynamicPPL.setleafcontext(
                 child_context,
                 DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()),
