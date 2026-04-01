@@ -1,3 +1,7 @@
+# 0.43.4
+
+Fix some missing `Base.copy` implementations on internal structs.
+
 # 0.43.3
 
 Unify parameter initialisation for HMC and external samplers.

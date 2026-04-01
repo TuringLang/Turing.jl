@@ -461,17 +461,14 @@ end
 # model evaluation should have happened with `s.transform_strategy`, any variables that are
 # marked by `s.transform_strategy` as being linked should generate a LinkedVectorValue here.
 const MH_ACC_NAME = :MHLinkedValues
-struct StoreLinkedValues end
-function (s::StoreLinkedValues)(val, tval::DynamicPPL.LinkedVectorValue, logjac, vn, dist)
+function store_linked_values(val, tval::DynamicPPL.LinkedVectorValue, logjac, vn, dist)
     return DynamicPPL.get_internal_value(tval)
 end
-function (s::StoreLinkedValues)(
-    val, ::DynamicPPL.AbstractTransformedValue, logjac, vn, dist
-)
+function store_linked_values(val, ::DynamicPPL.AbstractTransformedValue, logjac, vn, dist)
     return DynamicPPL.DoNotAccumulate()
 end
 function MHLinkedValuesAccumulator()
-    return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(StoreLinkedValues())
+    return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(store_linked_values)
 end
 
 # Accumulator to store priors for any variables that were not given an explicit proposal.
@@ -479,6 +476,9 @@ end
 const MH_PRIOR_ACC_NAME = :MHUnspecifiedPriors
 struct StoreUnspecifiedPriors
     vns_with_proposal::Set{VarName}
+end
+function Base.copy(s::StoreUnspecifiedPriors)
+    return StoreUnspecifiedPriors(Base.copy(s.vns_with_proposal))
 end
 function (s::StoreUnspecifiedPriors)(val, tval, logjac, vn, dist::Distribution)
     return if vn in s.vns_with_proposal
