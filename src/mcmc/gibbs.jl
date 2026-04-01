@@ -131,6 +131,11 @@ function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
     return num_target > 0
 end
 
+# Copied from DynamicPPL to avoid having to export
+optic_skip_length(::AbstractPPL.Iden) = 0
+optic_skip_length(c::AbstractPPL.Index) = 1 + optic_skip_length(c.child)
+optic_skip_length(c::AbstractPPL.Property) = 1 + optic_skip_length(c.child)
+
 # Tilde pipeline
 function DynamicPPL.tilde_assume!!(
     context::GibbsContext,
@@ -169,7 +174,12 @@ function DynamicPPL.tilde_assume!!(
     # This is already implemented in
     # https://github.com/TuringLang/DynamicPPL.jl/pull/885/ but not yet
     # released. Exciting!
-    vn, child_context = DynamicPPL.prefix_and_strip_contexts(child_context, vn)
+    child_context, aggregated_prefixes = DynamicPPL.extract_prefixes(child_context)
+    if aggregated_prefixes !== nothing
+        vn = AbstractPPL.prefix(vn, aggregated_prefixes)
+        n = optic_skip_length(AbstractPPL.getoptic(aggregated_prefixes)) + 1
+        template = DynamicPPL.SkipTemplate{n}(template)
+    end
 
     return if is_target_varname(context, vn)
         # Fall back to the default behavior.

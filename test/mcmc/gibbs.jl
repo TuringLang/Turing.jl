@@ -707,6 +707,19 @@ end
         @test sample(model, spl, 10) isa MCMCChains.Chains
         spl = Gibbs((@varname(a.x), @varname(b.x), @varname(x)) => MH())
         @test sample(model, spl, 10) isa MCMCChains.Chains
+
+        @testset "regression test for #2798" begin
+            @model function vect_inner()
+                my_vec = zeros(2)
+                my_vec[1] ~ Normal()
+                return my_vec
+            end
+            @model function vect_outer()
+                x ~ to_submodel(vect_inner())
+                return y ~ Normal(x[1], 1)
+            end
+            sample(vect_outer(), Gibbs(@varname(x) => MH(), @varname(y) => MH()), 10)
+        end
     end
 
     @testset "CSMC + ESS" begin

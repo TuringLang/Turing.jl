@@ -1,3 +1,7 @@
+# 0.43.5
+
+Fix incorrect handling of VarNamedTuple templates inside submodels when sampling with Gibbs.
+
 # 0.43.4
 
 Fix some missing `Base.copy` implementations on internal structs.
