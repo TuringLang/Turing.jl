@@ -317,9 +317,11 @@ function make_optim_bounds_and_init(
     # ranges stored in the LDF.
     constraint_acc = DynamicPPL.getacc(vi, Val(CONSTRAINT_ACC_NAME))
     nelems = LogDensityProblems.dimension(ldf)
-    inits = fill(NaN, nelems)
-    lb = fill(-Inf, nelems)
-    ub = fill(Inf, nelems)
+    # TODO(penelopeysm) This should really be exported
+    et = eltype(DynamicPPL.get_input_vector_type(ldf))
+    inits = fill(et(NaN), nelems)
+    lb = fill(et(-Inf), nelems)
+    ub = fill(et(Inf), nelems)
     for (vn, init_val) in constraint_acc.init_vecs
         range = _get_ldf_range(ldf, vn)
         inits[range] = init_val

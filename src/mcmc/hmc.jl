@@ -150,41 +150,10 @@ function AbstractMCMC.sample(
     end
 end
 
-function find_initial_params(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    varinfo::DynamicPPL.AbstractVarInfo,
-    hamiltonian::AHMC.Hamiltonian,
-    init_strategy::DynamicPPL.AbstractInitStrategy;
-    max_attempts::Int=1000,
-)
-    varinfo = deepcopy(varinfo)  # Don't mutate
-
-    for attempts in 1:max_attempts
-        theta = varinfo[:]
-        z = AHMC.phasepoint(rng, theta, hamiltonian)
-        isfinite(z) && return varinfo, z
-
-        attempts == 10 &&
-            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
-
-        # Resample and try again.
-        _, varinfo = DynamicPPL.init!!(
-            rng, model, varinfo, init_strategy, DynamicPPL.LinkAll()
-        )
-    end
-
-    # if we failed to find valid initial parameters, error
-    return error(
-        "failed to find valid initial parameters in $(max_attempts) tries. See https://turinglang.org/docs/uri/initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
-    )
-end
-
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    spl::Hamiltonian,
-    vi_original::AbstractVarInfo;
+    spl::Hamiltonian;
     # the initial_params kwarg is always passed on from sample(), cf. DynamicPPL
     # src/sampler.jl, so we don't need to provide a default value here
     initial_params::DynamicPPL.AbstractInitStrategy,
@@ -193,32 +162,19 @@ function Turing.Inference.initialstep(
     verbose::Bool=true,
     kwargs...,
 )
-    # Transform the samples to unconstrained space and compute the joint log probability.
-    vi = DynamicPPL.link(vi_original, model)
-
-    # Extract parameters.
-    theta = vi[:]
-
-    # Create a Hamiltonian.
-    metricT = getmetricT(spl)
-    metric = metricT(length(theta))
+    # Create a Hamiltonian
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
+        model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll(); adtype=spl.adtype
     )
+    metricT = getmetricT(spl)
+    metric = metricT(LogDensityProblems.dimension(ldf))
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
     hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 
-    # Note that there is already one round of 'initialisation' before we reach this step,
-    # inside DynamicPPL's `AbstractMCMC.step` implementation. That leads to a possible issue
-    # that this `find_initial_params` function might override the parameters set by the
-    # user.
-    # Luckily for us, `find_initial_params` always checks if the logp and its gradient are
-    # finite. If it is already finite with the params inside the current `vi`, it doesn't
-    # attempt to find new ones. This means that the parameters passed to `sample()` will be
-    # respected instead of being overridden here.
-    vi, z = find_initial_params(rng, model, vi, hamiltonian, initial_params)
-    theta = vi[:]
+    # Find initial values
+    theta = find_initial_params_ldf(rng, ldf, initial_params)
+    z = AHMC.phasepoint(rng, theta, hamiltonian)
 
     # Find good eps if not provided one
     if iszero(spl.ϵ)
@@ -236,6 +192,12 @@ function Turing.Inference.initialstep(
     else
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
+
+    # TODO(penelopeysm): this varinfo is only needed for Gibbs. HMC itself has no use for
+    # it. Get rid of this as soon as possible.
+    vi = DynamicPPL.link!!(VarInfo(model), model)
+    vi = DynamicPPL.unflatten!!(vi, theta)
+
     state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state

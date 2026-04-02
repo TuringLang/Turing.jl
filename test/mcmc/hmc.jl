@@ -2,6 +2,7 @@ module HMCTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
+import AbstractMCMC
 using Bijectors: Bijectors
 using Distributions: Bernoulli, Beta, Categorical, Dirichlet, Normal, Wishart, sample
 using DynamicPPL: DynamicPPL
@@ -12,7 +13,7 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-using Test: @test, @test_logs, @testset, @test_throws
+using Test: @test, @testset, @test_throws
 using Turing
 
 @testset verbose = true "Testing hmc.jl" begin
@@ -196,31 +197,6 @@ using Turing
         end
     end
 
-    @testset "warning for difficult init params" begin
-        attempt = 0
-        @model function demo_warn_initial_params()
-            x ~ Normal()
-            if (attempt += 1) < 30
-                @addlogprob! -Inf
-            end
-        end
-
-        # verbose=false to suppress the initial step size notification, which messes with
-        # the test
-        @test_logs (:warn, r"consider providing a different initialisation strategy") sample(
-            demo_warn_initial_params(), NUTS(), 5; verbose=false
-        )
-    end
-
-    @testset "error for impossible model" begin
-        @model function demo_impossible()
-            x ~ Normal()
-            @addlogprob! -Inf
-        end
-
-        @test_throws ErrorException sample(demo_impossible(), NUTS(), 5)
-    end
-
     @testset "NUTS initial parameters" begin
         @model function f()
             x ~ Normal()
@@ -297,12 +273,8 @@ using Turing
         spls = [HMC(0.1, 10), HMCDA(0.8, 0.75), NUTS(0.5), NUTS(0, 0.5)]
         @testset "$(spl)" for spl in spls
             # Construct a HMC state by taking a single step
-            hmc_state = Turing.Inference.initialstep(
-                Random.default_rng(),
-                gdemo_default,
-                spl,
-                DynamicPPL.VarInfo(gdemo_default);
-                initial_params=InitFromUniform(),
+            hmc_state = AbstractMCMC.step(
+                Random.default_rng(), gdemo_default, spl; initial_params=InitFromUniform()
             )[2]
             # Check that we can obtain the current step size
             @test Turing.Inference.getstepsize(spl, hmc_state) isa Float64
