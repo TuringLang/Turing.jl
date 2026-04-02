@@ -175,8 +175,8 @@ struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInit
     "A mapping of VarNames to Tuple{Bool,Distribution}s that they should be sampled from. If
     the VarName is not in this VarNamedTuple, then it will be sampled from the prior. The
     Bool indicates whether the proposal is in linked space (true, i.e., the strategy should
-    return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
-    should return an `UntransformedValue`)."
+    return a linked vector value); or in untransformed space (false, i.e., the strategy
+    should return an untransformed value)."
     proposals::V
     "Whether to print the proposals as they are being sampled"
     verbose::Bool
@@ -195,12 +195,11 @@ function DynamicPPL.init(
             end
         end
         if is_linkedrw
-            transform = Bijectors.VectorBijectors.from_linked_vec(prior)
             linked_vec = rand(rng, dist)
-            return DynamicPPL.LinkedVectorValue(linked_vec, transform)
+            return DynamicPPL.TransformedValue(linked_vec, DynamicPPL.DynamicLink())
         else
             # Static or conditional proposal in untransformed space.
-            return DynamicPPL.UntransformedValue(rand(rng, dist))
+            return DynamicPPL.TransformedValue(rand(rng, dist), DynamicPPL.NoTransform())
         end
     else
         strategy.verbose && @info "varname $vn: no proposal specified, drawing from prior"
@@ -459,12 +458,15 @@ end
 
 # Accumulator to store linked values; but only the ones that have a LinkedRW proposal. Since
 # model evaluation should have happened with `s.transform_strategy`, any variables that are
-# marked by `s.transform_strategy` as being linked should generate a LinkedVectorValue here.
+# marked by `s.transform_strategy` as being linked should generate a
+# TransformedValue{V,DynamicLink} here.
 const MH_ACC_NAME = :MHLinkedValues
-function store_linked_values(val, tval::DynamicPPL.LinkedVectorValue, logjac, vn, dist)
+function store_linked_values(
+    val, tval::DynamicPPL.TransformedValue{V,DynamicPPL.DynamicLink}, logjac, vn, dist
+) where {V}
     return DynamicPPL.get_internal_value(tval)
 end
-function store_linked_values(val, ::DynamicPPL.AbstractTransformedValue, logjac, vn, dist)
+function store_linked_values(val, ::DynamicPPL.TransformedValue, logjac, vn, dist)
     return DynamicPPL.DoNotAccumulate()
 end
 function MHLinkedValuesAccumulator()
