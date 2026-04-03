@@ -14,7 +14,7 @@ using AdvancedVI:
 using ADTypes
 using Bijectors: Bijectors
 using Distributions
-using DynamicPPL: DynamicPPL
+using DynamicPPL: DynamicPPL, LogDensityFunction
 using LinearAlgebra
 using LogDensityProblems: LogDensityProblems
 using Random
@@ -43,8 +43,8 @@ requires_unconstrained_space(::AdvancedVI.FisherMinBatchMatch) = true
 
 """
     q_initialize_scale(
-        [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model,
+        rng::Random.AbstractRNG,
+        ldf::DynamicPPL.LogDensityFunction,
         location::AbstractVector,
         scale::AbstractMatrix,
         basedist::Distributions.UnivariateDistribution;
@@ -53,7 +53,7 @@ requires_unconstrained_space(::AdvancedVI.FisherMinBatchMatch) = true
         reduce_factor::Real = one(eltype(scale)) / 2
     )
 
-Given an initial location-scale distribution `q` formed by `location`, `scale`, and `basedist`, shrink `scale` until the expectation of log-densities of `model` taken over `q` are finite.
+Given an initial location-scale distribution `q` formed by `location`, `scale`, and `basedist`, shrink `scale` until the expectation of log-densities of `ldf` taken over `q` are finite.
 If the log-densities are not finite even after `num_max_trials`, throw an error.
 
 For reference, a location-scale distribution \$q\$ formed by `location`, `scale`, and `basedist` is a distribution where its sampling process \$z \\sim q\$ can be represented as
@@ -63,7 +63,7 @@ z = scale * u + location
 ```
 
 # Arguments
-- `model`: The target `DynamicPPL.Model`.
+- `ldf`: The target log-density function.
 - `location`: The location parameter of the initialization.
 - `scale`: The scale parameter of the initialization.
 - `basedist`: The base distribution of the location-scale family.
@@ -78,7 +78,7 @@ z = scale * u + location
 """
 function q_initialize_scale(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
+    ldf::LogDensityFunction,
     location::AbstractVector,
     scale::AbstractMatrix,
     basedist::Distributions.UnivariateDistribution;
@@ -86,15 +86,16 @@ function q_initialize_scale(
     num_max_trials::Int=10,
     reduce_factor::Real=one(eltype(scale)) / 2,
 )
-    prob = DynamicPPL.LogDensityFunction(model)
-    ℓπ = Base.Fix1(LogDensityProblems.logdensity, prob)
-
+    num_max_trials > 0 || error("num_max_trials must be a positive integer")
     n_trial = 0
     while true
         q = AdvancedVI.MvLocationScale(location, scale, basedist)
-        b = Bijectors.bijector(model)
-        q_trans = Bijectors.transformed(q, Bijectors.inverse(b))
-        energy = mean(ℓπ, eachcol(rand(rng, q_trans, num_samples)))
+        energy = mean(
+            map(1:num_samples) do _
+                z = rand(rng, q)
+                LogDensityProblems.logdensity(ldf, z)
+            end,
+        )
 
         if isfinite(energy)
             return scale
@@ -109,15 +110,15 @@ end
 
 """
     q_locationscale(
-        [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model;
+        rng::Random.AbstractRNG,
+        ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:Diagonal,<:LowerTriangular} = nothing,
         meanfield::Bool = true,
         basedist::Distributions.UnivariateDistribution = Normal()
     )
 
-Find a numerically non-degenerate variational distribution `q` for approximating the  target `model` within the location-scale variational family formed by the type of `scale` and `basedist`.
+Find a numerically non-degenerate variational distribution `q` for approximating the target `LogDensityFunction` within the location-scale variational family formed by the type of `scale` and `basedist`.
 
 The distribution can be manually specified by setting `location`, `scale`, and `basedist`.
 Otherwise, it chooses a Gaussian with zero-mean and scale `0.6*I` (covariance of `0.6^2*I`) by default.
@@ -133,7 +134,7 @@ z = scale * u + location
 ```
 
 # Arguments
-- `model`: The target `DynamicPPL.Model`.
+- `ldf`: The target log-density function.
 
 # Keyword Arguments
 - `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
@@ -144,22 +145,18 @@ z = scale * u + location
 The remaining keywords are passed to `q_initialize_scale`.
 
 # Returns 
-- `q::Bijectors.TransformedDistribution`: A `AdvancedVI.LocationScale` distribution matching the support of `model`.
+- An `AdvancedVI.LocationScale` distribution matching the support of `ldf`.
 """
 function q_locationscale(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model;
+    ldf::LogDensityFunction;
     location::Union{Nothing,<:AbstractVector}=nothing,
     scale::Union{Nothing,<:Diagonal,<:LowerTriangular}=nothing,
     meanfield::Bool=true,
     basedist::Distributions.UnivariateDistribution=Normal(),
     kwargs...,
 )
-    varinfo = DynamicPPL.VarInfo(model)
-    # Use linked `varinfo` to determine the correct number of parameters.
-    # TODO: Replace with `length` once this is implemented for `VarInfo`.
-    varinfo_linked = DynamicPPL.link(varinfo, model)
-    num_params = length(varinfo_linked[:])
+    num_params = LogDensityProblems.dimension(ldf)
 
     μ = if isnothing(location)
         zeros(num_params)
@@ -171,11 +168,11 @@ function q_locationscale(
     L = if isnothing(scale)
         if meanfield
             q_initialize_scale(
-                rng, model, μ, Diagonal(fill(0.6, num_params)), basedist; kwargs...
+                rng, ldf, μ, Diagonal(fill(0.6, num_params)), basedist; kwargs...
             )
         else
             L0 = LowerTriangular(Matrix{Float64}(0.6 * I, num_params, num_params))
-            q_initialize_scale(rng, model, μ, L0, basedist; kwargs...)
+            q_initialize_scale(rng, ldf, μ, L0, basedist; kwargs...)
         end
     else
         @assert size(scale) == (num_params, num_params) "Dimensions of the provided scale matrix, $(size(scale)), does not match the dimension of the target distribution, $(num_params)."
@@ -185,32 +182,26 @@ function q_locationscale(
             LowerTriangular(Matrix(scale))
         end
     end
-    q = AdvancedVI.MvLocationScale(μ, L, basedist)
-    b = Bijectors.bijector(model)
-    return Bijectors.transformed(q, Bijectors.inverse(b))
-end
-
-function q_locationscale(model::DynamicPPL.Model; kwargs...)
-    return q_locationscale(Random.default_rng(), model; kwargs...)
+    return AdvancedVI.MvLocationScale(μ, L, basedist)
 end
 
 """
     q_meanfield_gaussian(
-        [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model;
+        rng::Random.AbstractRNG,
+        ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:Diagonal} = nothing,
         kwargs...
     )
 
-Find a numerically non-degenerate mean-field Gaussian `q` for approximating the  target `model`.
+Find a numerically non-degenerate mean-field Gaussian `q` for approximating the target `ldf::LogDensityFunction`.
 
 If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `Diagonal` scale matrix (the "mean-field" approximation) no larger than `0.6*I` (covariance of `0.6^2*I`).
 This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
 Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 
 # Arguments
-- `model`: The target `DynamicPPL.Model`.
+- `ldf`: The target log-density function.
 
 # Keyword Arguments
 - `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
@@ -219,41 +210,37 @@ Whether the default choice is used or not, the `scale` may be adjusted via `q_in
 The remaining keyword arguments are passed to `q_locationscale`.
 
 # Returns 
-- `q::Bijectors.TransformedDistribution`: A `AdvancedVI.LocationScale` distribution matching the support of `model`.
+- An `AdvancedVI.LocationScale` distribution matching the support of `ldf`.
 """
 function q_meanfield_gaussian(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model;
+    ldf::LogDensityFunction,
     location::Union{Nothing,<:AbstractVector}=nothing,
     scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
 )
     return q_locationscale(
-        rng, model; location, scale, meanfield=true, basedist=Normal(), kwargs...
+        rng, ldf; location, scale, meanfield=true, basedist=Normal(), kwargs...
     )
-end
-
-function q_meanfield_gaussian(model::DynamicPPL.Model; kwargs...)
-    return q_meanfield_gaussian(Random.default_rng(), model; kwargs...)
 end
 
 """
     q_fullrank_gaussian(
-        [rng::Random.AbstractRNG,]
-        model::DynamicPPL.Model;
+        rng::Random.AbstractRNG,
+        ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:LowerTriangular} = nothing,
         kwargs...
     )
 
-Find a numerically non-degenerate Gaussian `q` with a scale with full-rank factors (traditionally referred to as a "full-rank family") for approximating the target `model`.
+Find a numerically non-degenerate Gaussian `q` with a scale with full-rank factors (traditionally referred to as a "full-rank family") for approximating the target `ldf::LogDensityFunction`.
 
 If the `scale` set as `nothing`, the default value will be a zero-mean Gaussian with a `LowerTriangular` scale matrix (resulting in a covariance with "full-rank" factors) no larger than `0.6*I` (covariance of `0.6^2*I`).
 This guarantees that the samples from the initial variational approximation will fall in the range of (-2, 2) with 99.9% probability, which mimics the behavior of the `Turing.InitFromUniform()` strategy.
 Whether the default choice is used or not, the `scale` may be adjusted via `q_initialize_scale` so that the log-densities of `model` are finite over the samples from `q`.
 
 # Arguments
-- `model`: The target `DynamicPPL.Model`.
+- `ldf`: The target log-density function.
 
 # Keyword Arguments
 - `location`: The location parameter of the initialization. If `nothing`, a vector of zeros is used.
@@ -262,23 +249,86 @@ Whether the default choice is used or not, the `scale` may be adjusted via `q_in
 The remaining keyword arguments are passed to `q_locationscale`.
 
 # Returns 
-- `q::Bijectors.TransformedDistribution`: A `AdvancedVI.LocationScale` distribution matching the support of `model`.
+- An `AdvancedVI.LocationScale` distribution matching the support of `ldf`.
 """
 function q_fullrank_gaussian(
     rng::Random.AbstractRNG,
-    model::DynamicPPL.Model;
+    ldf::LogDensityFunction,
     location::Union{Nothing,<:AbstractVector}=nothing,
     scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
 )
     return q_locationscale(
-        rng, model; location, scale, meanfield=false, basedist=Normal(), kwargs...
+        rng, ldf; location, scale, meanfield=false, basedist=Normal(), kwargs...
     )
 end
 
-function q_fullrank_gaussian(model::DynamicPPL.Model; kwargs...)
-    return q_fullrank_gaussian(Random.default_rng(), model; kwargs...)
+"""
+    VIResult(ldf, q, info, state)
+
+- `ldf`: A [`DynamicPPL.LogDensityFunction`](@extref) corresponding to the target model (the
+  original model can be accessed as `ldf.model`). If the VI process was run in unconstrained
+  space, this LogDensityFunction will also be in unconstrained space.
+- `q`: Output variational distribution of `algorithm`. Note that, as above, this will
+  typically also be in unconstrained space.
+- `state`: Collection of states used by `algorithm`. This can be used to resume from a past
+  call to `vi`.
+- `info`: Information generated while executing `algorithm`.
+"""
+struct VIResult{L<:LogDensityFunction,Q<:Distribution,I<:AbstractArray{<:NamedTuple},S}
+    ldf::L
+    q::Q
+    info::I
+    state::S
 end
+
+function Base.show(io::IO, ::MIME"text/plain", r::VIResult)
+    printstyled(io, "VIResult\n"; bold=true)
+    println(io, "  ├ q    : $(nameof(typeof(r.q)))")
+    n_iters = length(r.info)
+    iters_str = n_iters == 1 ? "iteration" : "iterations"
+    if n_iters > 0
+        last_info = r.info[end]
+        println(io, "  ├ info : $(n_iters) $(iters_str)")
+        for (i, (k, v)) in enumerate(pairs(last_info))
+            tree_char = i == length(last_info) ? "└" : "├"
+            println(io, "  │        $(tree_char) $k = $v (last iteration)")
+        end
+    else
+        println(io, "  ├ info         : 0 iterations")
+    end
+    print(io, "  └ (2 more fields: state, ldf)")
+    return nothing
+end
+
+"""
+    Base.rand(rng::Random.AbstractRNG, res::VIResult, sz...)
+
+Draw a sample, or array of samples, from the variational distribution `q` in `res`. Each
+sample is a [`DynamicPPL.VarNamedTuple`](@ref) containing parameter values (in original,
+untransformed space).
+"""
+function Base.rand(rng::Random.AbstractRNG, res::VIResult, sz::Integer...)
+    # TODO(penelopeysm): This is 'correct', but perhaps slow as it reevaluates the model
+    # prod(sz...) times. Note that if the LDF has fixed transforms, we could get away with
+    # not reevaluating the model -- this is an opportunity for future optimisation.
+    function to_vnt(v::AbstractVector)
+        accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(true))
+        init_strat = DynamicPPL.InitFromVector(v, res.ldf)
+        _, accs = DynamicPPL.init!!(
+            res.ldf.model, accs, init_strat, res.ldf.transform_strategy
+        )
+        return DynamicPPL.get_raw_values(accs)
+    end
+    if sz == ()
+        return to_vnt(rand(rng, res.q))
+    else
+        # re. stack: https://github.com/TuringLang/AdvancedVI.jl/issues/245
+        x = stack(rand(rng, res.q, sz...))
+        return map(to_vnt, eachslice(x; dims=ntuple(i -> i + 1, length(sz))))
+    end
+end
+Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, sz...)
 
 """
     vi(
@@ -305,7 +355,8 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
-- `q`: The initial variational approximation.
+- `initial_approx`: The function to generate an initial variational approximation.
+  Existing choices in Turing are [`q_locationscale`](@ref), [`q_meanfield_gaussian`](@ref), and [`q_fullrank_gaussian`](@ref).
 - `max_iter`: Maximum number of steps.
 - Any additional arguments are passed on to `AdvancedVI.optimize`.
 
@@ -314,20 +365,19 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 - `algorithm`: Variational inference algorithm. The default is `KLMinRepGradProxDescent`, please refer to [AdvancedVI docs](https://turinglang.org/AdvancedVI.jl/stable/) for all the options.
 - `show_progress`: Whether to show the progress bar.
 - `unconstrained`: Whether to transform the posterior to be unconstrained for running the variational inference algorithm. If `true`, then the output `q` will be wrapped into a `Bijectors.TransformedDistribution` with the transformation matching the support of the posterior. The default value depends on the chosen `algorithm`.
-- Any additional keyword arguments are passed on to `AdvancedVI.optimize`.
+- Any additional keyword arguments are passed on both to the function `initial_approx`, and also to `AdvancedVI.optimize`.
 
 
 See the docs of `AdvancedVI.optimize` for additional keyword arguments.
 
 # Returns 
-- `q`: Output variational distribution of `algorithm`.
-- `state`: Collection of states used by `algorithm`. This can be used to resume from a past call to `vi`.
-- `info`: Information generated while executing `algorithm`.
+
+A [`VIResult`](@ref) object: please see its docstring for information.
 """
 function vi(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    q,
+    initial_approx,
     max_iter::Int,
     args...;
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
@@ -338,37 +388,19 @@ function vi(
     show_progress::Bool=PROGRESS[],
     kwargs...,
 )
-    prob, q, trans = if unconstrained
-        if !(q isa Bijectors.TransformedDistribution)
-            throw(
-                ArgumentError(
-                    "The algorithm $(algorithm) operates in an unconstrained space. Therefore, the initial variational approximation is expected to be a Bijectors.TransformedDistribution of an unconstrained distribution.",
-                ),
-            )
-        end
-        vi = DynamicPPL.VarInfo(model)
-        vi = DynamicPPL.link!!(vi, model)
-        prob = DynamicPPL.LogDensityFunction(
-            model, DynamicPPL.getlogjoint_internal, vi; adtype
-        )
-        prob, q.dist, q.transform
-    else
-        prob = DynamicPPL.LogDensityFunction(model; adtype)
-        prob, q, nothing
-    end
+    transform_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
+    prob = LogDensityFunction(
+        model, DynamicPPL.getlogjoint_internal, transform_strategy; adtype
+    )
+    q = initial_approx(rng, prob; kwargs...)
     q, info, state = AdvancedVI.optimize(
         rng, algorithm, max_iter, prob, q, args...; show_progress=show_progress, kwargs...
     )
-    q = if unconstrained
-        Bijectors.TransformedDistribution(q, trans)
-    else
-        q
-    end
-    return q, info, state
+    return VIResult(prob, q, info, state)
 end
 
-function vi(model::DynamicPPL.Model, q, max_iter::Int; kwargs...)
-    return vi(Random.default_rng(), model, q, max_iter; kwargs...)
+function vi(model::DynamicPPL.Model, initial_approx, max_iter::Int; kwargs...)
+    return vi(Random.default_rng(), model, initial_approx, max_iter; kwargs...)
 end
 
 end
