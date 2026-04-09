@@ -271,19 +271,7 @@ function AbstractMCMC.step(
     # Generate and return initial parameters. We need to use VAIMAcc because that will
     # generate the VNT for us that provides the values (as opposed to `vi.values` which
     # stores `AbstractTransformedValues`).
-    #
-    # TODO(penelopeysm): This in fact could very well be OnlyAccsVarInfo. Indeed, if you
-    # only run MH, OnlyAccsVarInfo already works right now. The problem is that using MH
-    # inside Gibbs needs a full VarInfo.
-    #
-    # see e.g.
-    #    @model f() = x ~ Beta(2, 2)
-    #    sample(f(), MH(:x => LinkedRW(0.4)), 100_000; progress=false)
-    # with full VarInfo:
-    #    2.302728 seconds (18.81 M allocations: 782.125 MiB, 9.00% gc time)
-    # with OnlyAccsVarInfo:
-    #    1.196674 seconds (18.51 M allocations: 722.256 MiB, 5.11% gc time)
-    vi = DynamicPPL.VarInfo()
+    vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
@@ -342,7 +330,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::MH,
-    old_vi::DynamicPPL.AbstractVarInfo;
+    old_vi::DynamicPPL.OnlyAccsVarInfo;
     discard_sample=false,
     kwargs...,
 )
@@ -359,7 +347,7 @@ function AbstractMCMC.step(
     )
 
     # Evaluate the model with a new proposal.
-    new_vi = DynamicPPL.VarInfo()
+    new_vi = DynamicPPL.OnlyAccsVarInfo()
     new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(false))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
@@ -386,7 +374,13 @@ function AbstractMCMC.step(
         log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors) -
         log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
     )
-    isnan(log_a) && @warn "MH log-acceptance probability is NaN; sample will be rejected"
+    if isnan(log_a)
+        @warn "MH log-acceptance probability is NaN; sample will be rejected"
+        @info new_lp
+        @info old_lp
+        @info log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors)
+        @info log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
+    end
 
     # Decide whether to accept.
     accepted, vi = if -Random.randexp(rng) < log_a
@@ -401,7 +395,7 @@ end
 
 """
     log_proposal_density(
-        old_vi::DynamicPPL.AbstractVarInfo,
+        old_vi::DynamicPPL.OnlyAccsVarInfo,
         init_strategy_given_new::DynamicPPL.AbstractInitStrategy,
         old_unspecified_priors::DynamicPPL.VarNamedTuple
     )
@@ -421,14 +415,14 @@ from:
   distribution.
 """
 function log_proposal_density(
-    vi::DynamicPPL.AbstractVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
+    vi::DynamicPPL.OnlyAccsVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
 )
     # All samples were drawn from the prior -- in this case g(x|x') = g(x) = prior
     # probability of x.
     return DynamicPPL.getlogprior(vi)
 end
 function log_proposal_density(
-    vi::DynamicPPL.AbstractVarInfo,
+    vi::DynamicPPL.OnlyAccsVarInfo,
     strategy::InitFromProposals,
     unspecified_priors::DynamicPPL.VarNamedTuple,
 )

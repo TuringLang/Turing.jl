@@ -33,70 +33,70 @@ can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(DynamicPPL.childc
 # - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
 #   rather than the `observe` pipeline for the conditioned variables.
 """
-    GibbsContext(target_varnames, global_varinfo, context)
+    GibbsContext(target_varnames, global_vnt, context)
 
 A context used in the implementation of the Turing.jl Gibbs sampler.
 
 There will be one `GibbsContext` for each iteration of a component sampler.
 
-`target_varnames` is a a tuple of `VarName`s that the current component sampler
-is sampling. For those `VarName`s, `GibbsContext` will just pass `tilde_assume!!`
-calls to its child context. For other variables, their values will be fixed to
-the values they have in `global_varinfo`.
+`target_varnames` is a a tuple of `VarName`s that the current component sampler is sampling.
+For those `VarName`s, `GibbsContext` will just pass `tilde_assume!!` calls to its child
+context. For other variables, their values will be fixed to the values they have in
+`global_vnt`.
 
 # Fields
 $(FIELDS)
 """
 struct GibbsContext{
-    VNs<:Tuple{Vararg{VarName}},GVI<:Ref{<:AbstractVarInfo},Ctx<:DynamicPPL.AbstractContext
+    VNs<:Tuple{Vararg{VarName}},
+    GV<:Ref{<:DynamicPPL.VarNamedTuple},
+    Ctx<:DynamicPPL.AbstractContext,
 } <: DynamicPPL.AbstractParentContext
     """
     the VarNames being sampled
     """
     target_varnames::VNs
     """
-    a `Ref` to the global `AbstractVarInfo` object that holds values for all variables, both
-    those fixed and those being sampled. We use a `Ref` because this field may need to be
-    updated if new variables are introduced.
+    a `Ref` to the global `VarNamedTuple` object that holds raw values for all variables,
+    both those fixed and those being sampled. We use a `Ref` because this field may need
+    to be updated if new variables are introduced.
     """
-    global_varinfo::GVI
+    global_vnt::GV
     """
     the child context that tilde calls will eventually be passed onto.
     """
     context::Ctx
 
-    function GibbsContext(target_varnames, global_varinfo, context)
+    function GibbsContext(target_varnames, global_vnt, context)
         if !can_be_wrapped(context)
             error("GibbsContext can only wrap a leaf or prefix context, not a $(context).")
         end
         target_varnames = tuple(target_varnames...)  # Allow vectors.
-        return new{typeof(target_varnames),typeof(global_varinfo),typeof(context)}(
-            target_varnames, global_varinfo, context
+        return new{typeof(target_varnames),typeof(global_vnt),typeof(context)}(
+            target_varnames, global_vnt, context
         )
     end
 end
 
-function GibbsContext(target_varnames, global_varinfo)
-    return GibbsContext(target_varnames, global_varinfo, DynamicPPL.DefaultContext())
+function GibbsContext(target_varnames, global_vnt)
+    return GibbsContext(target_varnames, global_vnt, DynamicPPL.DefaultContext())
 end
 
 DynamicPPL.childcontext(context::GibbsContext) = context.context
 function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
-    return GibbsContext(
-        context.target_varnames, Ref(context.global_varinfo[]), childcontext
-    )
+    return GibbsContext(context.target_varnames, context.global_vnt, childcontext)
 end
 
-get_global_varinfo(context::GibbsContext) = context.global_varinfo[]
+get_global_vnt(context::GibbsContext) = context.global_vnt[]
 
-function set_global_varinfo!(context::GibbsContext, new_global_varinfo)
-    context.global_varinfo[] = new_global_varinfo
+function set_global_vnt!(context::GibbsContext, new_global_varinfo)
+    context.global_vnt[] = new_global_varinfo
     return nothing
 end
 
 # has and get
 function has_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.haskey(get_global_varinfo(context), vn)
+    return DynamicPPL.haskey(get_global_vnt(context), vn)
 end
 function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     num_conditioned = count(Iterators.map(Base.Fix1(has_conditioned_gibbs, context), vns))
@@ -110,7 +110,7 @@ function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarNa
 end
 
 function get_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return get_global_varinfo(context)[vn]
+    return get_global_vnt(context)[vn]
 end
 function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
     return map(Base.Fix1(get_conditioned_gibbs, context), vns)
@@ -189,7 +189,7 @@ function DynamicPPL.tilde_assume!!(
         # variable. From the perspective of this sampler, this variable is
         # conditioned on, so we can just treat it as an observation.
         # The only catch is that the value that we need is to be obtained from
-        # the global VarInfo (since the local VarInfo has no knowledge of it).
+        # the global VNT (since the local VarInfo has no knowledge of it).
         # Note that tilde_observe!! will trigger resampling in particle methods
         # for variables that are handled by other Gibbs component samplers.
         val = get_conditioned_gibbs(context, vn)
@@ -199,50 +199,49 @@ function DynamicPPL.tilde_assume!!(
         # presumably a new variable that should be sampled from its prior. We need to add
         # this new variable to the global `varinfo` of the context, but not to the local one
         # being used by the current sampler.
-        value, new_global_vi = DynamicPPL.tilde_assume!!(
-            # We assume that the new variable should just be sampled in unlinked space.
-            DynamicPPL.setleafcontext(
-                child_context,
-                DynamicPPL.InitContext(DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()),
-            ),
-            right,
-            vn,
-            template,
-            get_global_varinfo(context),
-        )
-        set_global_varinfo!(context, new_global_vi)
+        #
+        # TODO(penelopeysm): How is the RNG controlled here?
+        value = rand(right)
+        vnt = get_global_vnt(context)
+        vnt = DynamicPPL.templated_setindex!!(vnt, value, vn, template)
+        set_global_vnt!(context, vnt)
+        # Return the value (so that it can be used in the model), plus the unmodified local
+        # varinfo
         value, vi
     end
 end
 
 """
-    make_conditional(model, target_variables, varinfo)
+    make_conditional(model, target_variables, global_vnt)
 
 Return a new, conditioned model for a component of a Gibbs sampler.
 
 # Arguments
-#
+
 - `model::DynamicPPL.Model`: The model to condition.
 
 - `target_variables::AbstractVector{<:VarName}`: The target variables of the component
   sampler. These will _not_ be conditioned.
 
-- `varinfo::DynamicPPL.AbstractVarInfo`: Values for all variables in the model. All the
-  values in `varinfo` but not in `target_variables` will be conditioned to the values they
-  have in `varinfo`.
+- `global_vnt::DynamicPPL.VarNamedTuple`: Raw values for all variables in the model, which
+  are used for all variables that are *not* in `target_variables`.
 
 # Returns
+
 - A new model with the variables _not_ in `target_variables` conditioned.
+
 - The `GibbsContext` object that will be used to condition the variables. This is necessary
 because evaluation can mutate its `global_varinfo` field, which we need to access later.
 """
 function make_conditional(
-    model::DynamicPPL.Model, target_variables::AbstractVector{<:VarName}, varinfo
+    model::DynamicPPL.Model,
+    target_variables::AbstractVector{<:VarName},
+    global_vnt::DynamicPPL.VarNamedTuple,
 )
     # Insert the `GibbsContext` just before the leaf.
     # 1. Extract the `leafcontext` from `model` and wrap in `GibbsContext`.
     gibbs_context_inner = GibbsContext(
-        target_variables, Ref(varinfo), DynamicPPL.leafcontext(model.context)
+        target_variables, Ref(global_vnt), DynamicPPL.leafcontext(model.context)
     )
     # 2. Set the leaf context to be the `GibbsContext` wrapping `leafcontext(model.context)`.
     gibbs_context = DynamicPPL.setleafcontext(model.context, gibbs_context_inner)
@@ -307,12 +306,10 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
 
-struct GibbsState{V<:DynamicPPL.AbstractVarInfo,S}
-    vi::V
+struct GibbsState{V<:DynamicPPL.VarNamedTuple,S}
+    vnt::V
     states::S
 end
-
-get_varinfo(state::GibbsState) = state.vi
 
 function check_all_variables_handled(vns, spl::Gibbs)
     handled_vars = Iterators.flatten(spl.varnames)
@@ -370,20 +367,23 @@ function AbstractMCMC.step_warmup(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
+    # Sample a set of initial values
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
+    vnt = DynamicPPL.get_raw_values(accs)
 
-    vi, states = gibbs_initialstep_recursive(
+    vnt, states = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
         varnames,
         samplers,
-        vi;
+        vnt;
         initial_params=initial_params,
         kwargs...,
     )
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, GibbsState(vi, states)
+    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    return transition, GibbsState(vnt, states)
 end
 
 """
@@ -400,21 +400,21 @@ function gibbs_initialstep_recursive(
     step_function::Function,
     varname_vecs,
     samplers,
-    vi,
+    vnt,
     states=();
     initial_params,
     kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
-        return vi, states
+        return vnt, states
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    conditioned_model, context = make_conditional(model, varnames, vi)
+    conditioned_model, context = make_conditional(model, varnames, vnt)
 
     # Take initial step with the current sampler.
     _, new_state = step_function(
@@ -427,12 +427,12 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
-    new_vi_local = get_varinfo(new_state)
+    new_vnt_local = gibbs_get_raw_values(new_state)
     # Merge in any new variables that were introduced during the step, but that
     # were not in the domain of the current sampler.
-    vi = merge(vi, get_global_varinfo(context))
+    vnt = merge(vnt, get_global_vnt(context))
     # Merge the new values for all the variables sampled by the current sampler.
-    vi = merge(vi, new_vi_local)
+    vnt = merge(vnt, new_vnt_local)
 
     states = (states..., new_state)
     return gibbs_initialstep_recursive(
@@ -441,11 +441,29 @@ function gibbs_initialstep_recursive(
         step_function,
         varname_vecs_tail,
         samplers_tail,
-        vi,
+        vnt,
         states;
         initial_params=initial_params,
         kwargs...,
     )
+end
+
+# TODO(penelopeysm) This should go in DynamicPPL
+function new_pws_from_vnt(model::DynamicPPL.Model, vnt::DynamicPPL.VarNamedTuple)
+    accs = DynamicPPL.OnlyAccsVarInfo(
+        DynamicPPL.LogPriorAccumulator(),
+        DynamicPPL.LogLikelihoodAccumulator(),
+        DynamicPPL.RawValueAccumulator(true),
+    )
+    init = DynamicPPL.InitFromParams(vnt, nothing)
+    accs = last(DynamicPPL.init!!(model, accs, init, DynamicPPL.UnlinkAll()))
+    params = DynamicPPL.densify!!(DynamicPPL.get_raw_values(accs))
+    stats = (
+        logprior=DynamicPPL.getlogprior(accs),
+        loglikelihood=DynamicPPL.getloglikelihood(accs),
+        logjoint=DynamicPPL.getlogjoint(accs),
+    )
+    return DynamicPPL.ParamsWithStats(params, stats)
 end
 
 function AbstractMCMC.step(
@@ -456,17 +474,17 @@ function AbstractMCMC.step(
     discard_sample=false,
     kwargs...,
 )
-    vi = get_varinfo(state)
     varnames = spl.varnames
     samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vi, states = gibbs_step_recursive(
-        rng, model, AbstractMCMC.step, varnames, samplers, states, vi; kwargs...
+    vnt, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step, varnames, samplers, states, state.vnt; kwargs...
     )
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, GibbsState(vi, states)
+
+    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    return transition, GibbsState(vnt, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -477,128 +495,154 @@ function AbstractMCMC.step_warmup(
     discard_sample=false,
     kwargs...,
 )
-    vi = get_varinfo(state)
     varnames = spl.varnames
     samplers = spl.samplers
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vi, states = gibbs_step_recursive(
-        rng, model, AbstractMCMC.step_warmup, varnames, samplers, states, vi; kwargs...
+    vnt, states = gibbs_step_recursive(
+        rng,
+        model,
+        AbstractMCMC.step_warmup,
+        varnames,
+        samplers,
+        states,
+        state.vnt;
+        kwargs...,
     )
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, GibbsState(vi, states)
+    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    return transition, GibbsState(vnt, states)
 end
 
 """
-    setparams_varinfo!!(model::DynamicPPL.Model, sampler::AbstractSampler, state, params::AbstractVarInfo)
+    Turing.Inference.gibbs_get_raw_values(state)
 
-A lot like AbstractMCMC.setparams!!, but instead of taking a vector of parameters, takes an
-`AbstractVarInfo` object. Also takes the `sampler` as an argument. By default, falls back to
-`AbstractMCMC.setparams!!(model, state, params[:])`.
+Return a `VarNamedTuple` containing the raw values of all variables in the sampler state.
 """
-function setparams_varinfo!!(
-    model::DynamicPPL.Model, ::AbstractSampler, state, params::AbstractVarInfo
-)
-    return AbstractMCMC.setparams!!(model, state, params[:])
+function gibbs_get_raw_values(state::AbstractVarInfo)
+    return DynamicPPL.get_raw_values(state)
 end
-
-function setparams_varinfo!!(
-    model::DynamicPPL.Model, spl::MH, ::AbstractVarInfo, params::AbstractVarInfo
-)
-    # Setting `params` into `state` really just means using `params` itself, but we
-    # need to update the logprob. We also need to be a bit more careful, because
-    # the `state` here carries a VAIMAcc, which is needed for the MH step() function
-    # but may not be present in `params`. So we need to make sure that the value
-    # we return from this function also has a VAIMAcc which corresponds to the
-    # values in `params`. Likewise with the other MH-specific accumulators.
-    params = DynamicPPL.setacc!!(params, DynamicPPL.RawValueAccumulator(false))
-    params = DynamicPPL.setacc!!(params, MHLinkedValuesAccumulator())
-    params = DynamicPPL.setacc!!(
-        params, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
+function gibbs_get_raw_values(state::HMCState)
+    # In general this needs reevaluation (unless the LDF has all fixed transforms --
+    # DynamicPPL handles this.)
+    pws = DynamicPPL.ParamsWithStats(
+        state.z.θ, state.ldf; include_log_probs=false, include_colon_eq=false
     )
-    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing MH-in-Gibbs to
-    # use OAVI.
-    return last(DynamicPPL.evaluate_nowarn!!(model, params))
+    return pws.params
 end
 
-function setparams_varinfo!!(
-    model::DynamicPPL.Model, ::ESS, state::TuringESSState, params::AbstractVarInfo
+"""
+    Turing.Inference.gibbs_update_state!!(
+        sampler::AbstractSampler, state, model::Model, global_vals::VarNamedTuple
+    )
+
+Update the state of a Gibbs component sampler to be consistent with the new values in
+`global_vals`. The exact meaning of this depends on what the sampler state contains.
+"""
+function gibbs_update_state!!(
+    spl::MH,
+    state::AbstractVarInfo,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
 )
+    # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
+    # the accumulator part of the state. We do need to reevaluate the model though
+    # because it's necessary for the log-probability to be updated to reflect the new
+    # values in `global_vals`. If we don't do that, the MH acceptance step will return
+    # wrong results.
+    #
+    # In order to make sure that our logjacs are consistent with what the sampler expects,
+    # we can use `spl.transform_strategy` here.
+    #
+    # TODO(penelopeysm): Is the `nothing` fallback OK, or do we need InitFromPrior as 
+    # a fallback? In the latter case, how do we control `rng`?
+    init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
+    return last(DynamicPPL.init!!(model, state, init_strat, spl.transform_strategy))
+end
+
+function gibbs_update_state!!(
+    ::ESS,
+    state::TuringESSState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    return error("TODO: not implemented")
     # The state is basically a VarInfo (plus a constant `priors` field), so we can just
     # return `params`, but first we need to update its logprob.
     # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
     # use OAVI.
-    new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
-    return TuringESSState(new_vi, state.priors)
+    # new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
+    # return TuringESSState(new_vi, state.priors)
 end
 
-function setparams_varinfo!!(
-    model::DynamicPPL.Model,
+function gibbs_update_state!!(
     sampler::ExternalSampler,
     state::TuringState,
-    params::AbstractVarInfo,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
 )
+    return error("TODO: not implemented")
+    # new_ldf = DynamicPPL.LogDensityFunction(
+    #     model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
+    # )
+    # new_inner_state = AbstractMCMC.setparams!!(
+    #     AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
+    # )
+    # return TuringState(new_inner_state, params, params[:], new_ldf)
+end
+
+function gibbs_update_state!!(
+    spl::Hamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    # Need to reevaluate to extract the correct vectorised params.
+    ldf = state.ldf
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(ldf))
+    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
+    _, accs = DynamicPPL.init!!(ldf.model, accs, init_strategy, ldf.transform_strategy)
+    new_params = DynamicPPL.get_vector_params(accs)
+    # Update the state with this. We need to update the parameters themselves, but we
+    # also need to take care to update the Hamiltonian (because the other parameters have
+    # changed, the LDF in the state is no longer valid).
+    #
+    # Note that we need to use `model` here rather than `ldf.model`. The reason is because
+    # `model` is the newly 'conditioned' model (to be precise, it has a GibbsContext inside
+    # it) which contains the newly updated values in `global_vals`. In contrast, `ldf.model`
+    # is the old one.
+    #
+    # Using `_state.vector_vnt` allows us to avoid reevaluating the model when constructing
+    # the LDF. This is a bit of a hack and could be improved if we had an even lower-level
+    # way of constructing an LDF. It also assumes that the structure of `model` (i.e., the
+    # newly conditioned model) and `ldf.model` (the previous one) is the same, but that's
+    # probably a reasonable assumption to make for HMC.
     new_ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
+        model, ldf._getlogdensity, state._vector_vnt; adtype=ldf.adtype
     )
-    new_inner_state = AbstractMCMC.setparams!!(
-        AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
+    metricT = getmetricT(spl)
+    metric = metricT(LogDensityProblems.dimension(new_ldf))
+    lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
+    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
+    new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
+    # Apart from the Hamiltonian, we also need to update the position variables. It would be
+    # nice to do this without mutating, but it's probably fine for now.
+    state.z.θ .= new_params
+    return HMCState(
+        state.i,
+        state.kernel,
+        new_hamiltonian,
+        state.z,
+        state.adaptor,
+        new_ldf,
+        state._vector_vnt,
     )
-    return TuringState(new_inner_state, params, params[:], new_ldf)
 end
 
-function setparams_varinfo!!(
-    model::DynamicPPL.Model, sampler::Hamiltonian, state::HMCState, params::AbstractVarInfo
+function gibbs_update_state!!(
+    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
-    θ_new = params[:]
-    hamiltonian = get_hamiltonian(model, sampler, params, state, length(θ_new))
-
-    # Update the parameter values in `state.z`.
-    # TODO: Avoid mutation
-    z = state.z
-    resize!(z.θ, length(θ_new))
-    z.θ .= θ_new
-    return HMCState(params, state.i, state.kernel, hamiltonian, z, state.adaptor, state.ldf)
-end
-
-function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::PG, state::PGState, params::AbstractVarInfo
-)
-    return PGState(params, state.rng)
-end
-
-"""
-    match_linking!!(varinfo_local, prev_state_local, model)
-
-Make sure the linked/invlinked status of varinfo_local matches that of the previous
-state for this sampler. This is relevant when multiple samplers are sampling the same
-variables, and one might need it to be linked while the other doesn't.
-"""
-function match_linking!!(varinfo_local, prev_state_local, model)
-    prev_varinfo_local = get_varinfo(prev_state_local)
-    # Get a set of all previously linked variables
-    linked_vns = Set{VarName}()
-    unlinked_vns = Set{VarName}()
-    for vn in keys(prev_varinfo_local)
-        if DynamicPPL.is_transformed(prev_varinfo_local, vn)
-            push!(linked_vns, vn)
-        else
-            push!(unlinked_vns, vn)
-        end
-    end
-    transform_strategy = if isempty(unlinked_vns)
-        # All variables were linked
-        DynamicPPL.LinkAll()
-    elseif isempty(linked_vns)
-        # No variables were linked
-        DynamicPPL.UnlinkAll()
-    else
-        DynamicPPL.LinkSome(
-            linked_vns, DynamicPPL.UnlinkSome(unlinked_vns, DynamicPPL.LinkAll())
-        )
-    end
-    return DynamicPPL.update_link_status!!(varinfo_local, transform_strategy, model)
+    return error("TODO: not implemented")
 end
 
 """
@@ -615,34 +659,24 @@ function gibbs_step_recursive(
     varname_vecs,
     samplers,
     states,
-    global_vi,
+    global_vnt,
     new_states=();
     kwargs...,
 )
     # End recursion.
     if isempty(varname_vecs) && isempty(samplers) && isempty(states)
-        return global_vi, new_states
+        return global_vnt, new_states
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
     state, states_tail... = states
 
-    # Construct the conditional model and the varinfo that this sampler should use.
-    conditioned_model, context = make_conditional(model, varnames, global_vi)
-    vi = DynamicPPL.subset(global_vi, varnames)
-    vi = match_linking!!(vi, state, conditioned_model)
-
-    # TODO(mhauru) The below may be overkill. If the varnames for this sampler are not
-    # sampled by other samplers, we don't need to `setparams`, but could rather simply
-    # recompute the log probability. More over, in some cases the recomputation could also
-    # be avoided, if e.g. the previous sampler has done all the necessary work already.
-    # However, we've judged that doing any caching or other tricks to avoid this now would
-    # be premature optimization. In most use cases of Gibbs a single model call here is not
-    # going to be a significant expense anyway.
-    # Set the state of the current sampler, accounting for any changes made by other
+    # Construct the conditional model that this sampler should use.
+    conditioned_model, context = make_conditional(model, varnames, global_vnt)
+    # Update the sampler's state based on global values that were provided by other
     # samplers.
-    state = setparams_varinfo!!(conditioned_model, sampler, state, vi)
+    state = gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
 
     # Take a step with the local sampler. We don't need the actual sample, only the state.
     # Note that we pass `discard_sample=true` after `kwargs...`, because AbstractMCMC will
@@ -652,10 +686,9 @@ function gibbs_step_recursive(
         rng, conditioned_model, sampler, state; kwargs..., discard_sample=true
     )
 
-    new_vi_local = get_varinfo(new_state)
-    # Merge the latest values for all the variables in the current sampler.
-    new_global_vi = merge(get_global_varinfo(context), new_vi_local)
-    new_global_vi = DynamicPPL.setlogp!!(new_global_vi, DynamicPPL.getlogp(new_vi_local))
+    # The current sampler will return some raw values, which we update the global VNT with.
+    new_vnt_local = gibbs_get_raw_values(new_state)
+    new_global_vnt = merge(get_global_vnt(context), new_vnt_local)
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(
@@ -665,7 +698,7 @@ function gibbs_step_recursive(
         varname_vecs_tail,
         samplers_tail,
         states_tail,
-        new_global_vi,
+        new_global_vnt,
         new_states;
         kwargs...,
     )

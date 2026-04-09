@@ -109,9 +109,7 @@ function build_values_vnt(model::DynamicPPL.Model)
     # model.args is a NamedTuple
     arg_vals = DynamicPPL.VarNamedTuple(model.args)
     # Extract values from the GibbsContext itself, as a VNT.
-    init_strat = DynamicPPL.InitFromParams(
-        get_gibbs_global_varinfo(context).values, nothing
-    )
+    init_strat = DynamicPPL.InitFromParams(get_gibbs_global_vnt(context), nothing)
     oavi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
     # We need to remove the Gibbs conditioning so that we can get all variables in the
     # accumulator (otherwise those that are conditioned on in `model` will not be included).
@@ -131,13 +129,13 @@ function replace_gibbs_context(m::DynamicPPL.Model)
     return DynamicPPL.contextualize(m, replace_gibbs_context(m.context))
 end
 
-function get_gibbs_global_varinfo(context::GibbsContext)
-    return get_global_varinfo(context)
+function get_gibbs_global_vnt(context::GibbsContext)
+    return get_global_vnt(context)
 end
-function get_gibbs_global_varinfo(context::DynamicPPL.AbstractParentContext)
-    return get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
+function get_gibbs_global_vnt(context::DynamicPPL.AbstractParentContext)
+    return get_gibbs_global_vnt(DynamicPPL.childcontext(context))
 end
-function get_gibbs_global_varinfo(::DynamicPPL.AbstractContext)
+function get_gibbs_global_vnt(::DynamicPPL.AbstractContext)
     msg = """No GibbsContext found in context stack. Are you trying to use \
         GibbsConditional outside of Gibbs?
         """
@@ -192,7 +190,9 @@ end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, ::Distribution, init_strat::InitFromCondDists
 )
-    return DynamicPPL.UntransformedValue(rand(rng, init_strat.cond_dists[vn]))
+    return DynamicPPL.TransformedValue(
+        rand(rng, init_strat.cond_dists[vn]), DynamicPPL.NoTransform()
+    )
 end
 
 function AbstractMCMC.step(
@@ -221,8 +221,8 @@ function AbstractMCMC.step(
     return nothing, new_state
 end
 
-function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::GibbsConditional, ::Any, params::DynamicPPL.VarInfo
+function gibbs_update_state!!(
+    ::GibbsConditional, ::Any, ::DynamicPPL.Model, global_vnt::DynamicPPL.VarNamedTuple
 )
-    return params
+    return global_vnt
 end
