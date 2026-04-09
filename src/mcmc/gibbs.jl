@@ -63,7 +63,7 @@ function gibbs_recompute_ldf_and_params(
     model::DynamicPPL.Model,
     vector_vnt::DynamicPPL.VarNamedTuple,
     global_vals::DynamicPPL.VarNamedTuple,
-    extra_accs::NTuple{N<:DynamicPPL.AbstractAccumulator}=(),
+    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
     new_ldf = DynamicPPL.LogDensityFunction(
         model, old_ldf._getlogdensity, vector_vnt; adtype=old_ldf.adtype
