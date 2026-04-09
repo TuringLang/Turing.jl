@@ -39,6 +39,46 @@ Each sampler should implement a method for its respective state type.
 """
 function gibbs_update_state!! end
 
+"""
+    gibbs_recompute_ldf_and_params(
+        old_ldf, model, vector_vnt, global_vals, extra_accs
+    )
+
+Shared helper that is used in `gibbs_update_state!!` for any sampler that uses a
+LogDensityFunction.
+
+Creates a new `LogDensityFunction` from the newly conditioned `model` (using a cached
+`vector_vnt` to avoid an extra model evaluation), then reevaluates the model to obtain the
+correct vectorised parameters corresponding to the raw values in `global_vals`.
+
+If extra information is needed (e.g. log-probabilities), `extra_accs` can be used to pass in
+other accumulators to be used in the same model evaluation, to avoid having to recompute
+them later.
+
+Returns `(new_ldf, new_params, accs)` where `accs` is the accumulator VarInfo after
+evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
+"""
+function gibbs_recompute_ldf_and_params(
+    old_ldf::DynamicPPL.LogDensityFunction,
+    model::DynamicPPL.Model,
+    vector_vnt::DynamicPPL.VarNamedTuple,
+    global_vals::DynamicPPL.VarNamedTuple,
+    extra_accs::NTuple{N<:DynamicPPL.AbstractAccumulator}=(),
+) where {N}
+    new_ldf = DynamicPPL.LogDensityFunction(
+        model, old_ldf._getlogdensity, vector_vnt; adtype=old_ldf.adtype
+    )
+    accs = DynamicPPL.OnlyAccsVarInfo(
+        DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...
+    )
+    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
+    _, accs = DynamicPPL.init!!(
+        new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
+    )
+    new_params = DynamicPPL.get_vector_params(accs)
+    return new_ldf, new_params, accs
+end
+
 ###############################
 # Gibbs implementation itself #
 ###############################

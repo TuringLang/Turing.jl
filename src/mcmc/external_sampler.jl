@@ -219,23 +219,14 @@ function gibbs_get_raw_values(state::TuringState)
 end
 
 function gibbs_update_state!!(
-    sampler::ExternalSampler,
+    ::ExternalSampler,
     state::TuringState,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # Same pattern as HMC: construct a new LDF with the newly conditioned model.
-    old_ldf = state.ldf
-    new_ldf = DynamicPPL.LogDensityFunction(
-        model, old_ldf._getlogdensity, state._vector_vnt; adtype=old_ldf.adtype
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(
+        state.ldf, model, state._vector_vnt, global_vals
     )
-    # Reevaluate to get the correct vectorised params.
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(new_ldf))
-    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
-    _, accs = DynamicPPL.init!!(
-        new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
-    )
-    new_params = DynamicPPL.get_vector_params(accs)
     # Update the inner sampler's state with the new parameters.
     new_inner_state = AbstractMCMC.setparams!!(
         AbstractMCMC.LogDensityModel(new_ldf), state.state, new_params

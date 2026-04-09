@@ -197,23 +197,16 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # In `state`, we need to update basically everything except for the priors. We
-    # can start by reevaluating the model to collect all the info we need.
-    accs = DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.VectorParamAccumulator(state.ldf), DynamicPPL.LogLikelihoodAccumulator()
+    # We need to update everything in `state` except for the priors (which are constant). We
+    # pass an extra LogLikelihoodAccumulator here so that we can calculate the new loglike in
+    # one pass.
+    new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
+        state.ldf,
+        model,
+        state._vector_vnt,
+        global_vals,
+        (DynamicPPL.LogLikelihoodAccumulator(),),
     )
-    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
-    # Note: use new model here (not state.ldf.model) to account for changes in other
-    # variables' values.
-    _, accs = DynamicPPL.init!!(model, accs, init_strategy, state.ldf.transform_strategy)
-
-    # Construct a new LDF. We use the state's cached _vector_vnt here: the alternative would
-    # be to reconstruct it in the reevaluation above. This assumes that the structure of the
-    # model doesn't change from one Gibbs iteration to the next.
-    new_ldf = DynamicPPL.LogDensityFunction(
-        model, state.ldf._getlogdensity, state._vector_vnt
-    )
-    new_params = DynamicPPL.get_vector_params(accs)
     new_loglike = DynamicPPL.getloglikelihood(accs)
     return TuringESSState(new_ldf, new_params, new_loglike, state.priors, state._vector_vnt)
 end
