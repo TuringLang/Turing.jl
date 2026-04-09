@@ -286,16 +286,15 @@ function Base.show(io::IO, ::MIME"text/plain", r::VIResult)
     printstyled(io, "VIResult\n"; bold=true)
     println(io, "  ├ q    : $(nameof(typeof(r.q)))")
     n_iters = length(r.info)
-    iters_str = n_iters == 1 ? "iteration" : "iterations"
+    println(io, "  ├ info : $(length(r.info))-element $(typeof(r.info))")
     if n_iters > 0
+        println(io, "  │        final iteration:")
         last_info = r.info[end]
-        println(io, "  ├ info : $(n_iters) $(iters_str)")
         for (i, (k, v)) in enumerate(pairs(last_info))
             tree_char = i == length(last_info) ? "└" : "├"
-            println(io, "  │        $(tree_char) $k = $v (last iteration)")
+            println(io, "  │         $(tree_char) $k = $v")
         end
     else
-        println(io, "  ├ info         : 0 iterations")
     end
     print(io, "  └ (2 more fields: state, ldf)")
     return nothing
