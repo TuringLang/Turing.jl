@@ -408,20 +408,22 @@ function AbstractMCMC.step(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    _, vi = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, DynamicPPL.UnlinkAll())
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
+    vnt = DynamicPPL.get_raw_values(accs)
 
-    vi, states = gibbs_initialstep_recursive(
+    vnt, states = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step,
         varnames,
         samplers,
-        vi;
+        vnt;
         initial_params=initial_params,
         kwargs...,
     )
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, GibbsState(vi, states)
+    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    return transition, GibbsState(vnt, states)
 end
 
 function AbstractMCMC.step_warmup(
