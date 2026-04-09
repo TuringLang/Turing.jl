@@ -374,13 +374,7 @@ function AbstractMCMC.step(
         log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors) -
         log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
     )
-    if isnan(log_a)
-        @warn "MH log-acceptance probability is NaN; sample will be rejected"
-        @info new_lp
-        @info old_lp
-        @info log_proposal_density(old_vi, init_strategy_given_new, old_unspecified_priors)
-        @info log_proposal_density(new_vi, init_strategy_given_old, new_unspecified_priors)
-    end
+    isnan(log_a) && @warn "MH log-acceptance probability is NaN; sample will be rejected"
 
     # Decide whether to accept.
     accepted, vi = if -Random.randexp(rng) < log_a
