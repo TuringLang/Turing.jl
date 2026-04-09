@@ -597,29 +597,30 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # Need to reevaluate to extract the correct vectorised params.
-    ldf = state.ldf
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(ldf))
-    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
-    _, accs = DynamicPPL.init!!(ldf.model, accs, init_strategy, ldf.transform_strategy)
-    new_params = DynamicPPL.get_vector_params(accs)
-    # Update the state with this. We need to update the parameters themselves, but we
-    # also need to take care to update the Hamiltonian (because the other parameters have
-    # changed, the LDF in the state is no longer valid).
-    #
-    # Note that we need to use `model` here rather than `ldf.model`. The reason is because
-    # `model` is the newly 'conditioned' model (to be precise, it has a GibbsContext inside
-    # it) which contains the newly updated values in `global_vals`. In contrast, `ldf.model`
-    # is the old one.
+    # We need to start by creating a new LDF with the values in `global_vals`. In
+    # particular, we need to use `model` here rather than `state.ldf.model`. The reason is
+    # because `model` is the newly 'conditioned' model (to be precise, it has a GibbsContext
+    # inside it) which contains the newly updated values in `global_vals`. In contrast,
+    # `state.ldf.model` is the old one.
     #
     # Using `_state.vector_vnt` allows us to avoid reevaluating the model when constructing
     # the LDF. This is a bit of a hack and could be improved if we had an even lower-level
     # way of constructing an LDF. It also assumes that the structure of `model` (i.e., the
     # newly conditioned model) and `ldf.model` (the previous one) is the same, but that's
     # probably a reasonable assumption to make for HMC.
+    old_ldf = state.ldf
     new_ldf = DynamicPPL.LogDensityFunction(
-        model, ldf._getlogdensity, state._vector_vnt; adtype=ldf.adtype
+        model, old_ldf._getlogdensity, state._vector_vnt; adtype=old_ldf.adtype
     )
+    # Now reevaluate the model to extract the correct vectorised params.
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(new_ldf))
+    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
+    _, accs = DynamicPPL.init!!(
+        new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
+    )
+    new_params = DynamicPPL.get_vector_params(accs)
+    # Update the state with this. We need to update the parameters themselves, but we
+    # also need to take care to update the Hamiltonian (because that depends on the LDF).
     metricT = getmetricT(spl)
     metric = metricT(LogDensityProblems.dimension(new_ldf))
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
