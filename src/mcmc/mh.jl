@@ -204,7 +204,7 @@ function DynamicPPL.init(
     else
         strategy.verbose && @info "varname $vn: no proposal specified, drawing from prior"
         # No proposal was specified for this variable, so we sample from the prior.
-        return DynamicPPL.UntransformedValue(rand(rng, prior))
+        return DynamicPPL.TransformedValue(rand(rng, prior), DynamicPPL.NoTransform())
     end
 end
 

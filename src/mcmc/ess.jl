@@ -22,11 +22,21 @@ Mean
 """
 struct ESS <: AbstractSampler end
 
-struct TuringESSState{V<:DynamicPPL.AbstractVarInfo,VNT<:DynamicPPL.VarNamedTuple}
-    vi::V
-    priors::VNT
+struct TuringESSState{
+    L<:DynamicPPL.LogDensityFunction,
+    P<:AbstractVector{<:Real},
+    R<:Real,
+    Va<:DynamicPPL.VarNamedTuple,
+    Vb<:DynamicPPL.VarNamedTuple,
+}
+    ldf::L
+    params::P
+    loglikelihood::R
+    priors::Va
+    # Minor optimisation: we cache a VNT storing vectorised values here to avoid having to
+    # reconstruct it each time in `gibbs_update_state!!`.
+    _vector_vnt::Vb
 end
-get_varinfo(state::TuringESSState) = state.vi
 
 # always accept in the first step
 function AbstractMCMC.step(
@@ -37,18 +47,33 @@ function AbstractMCMC.step(
     initial_params,
     kwargs...,
 )
+    # Add some extra accumulators so that we can compute everything we need to in one pass.
     oavi = DynamicPPL.OnlyAccsVarInfo()
-    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
     oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.PriorDistributionAccumulator())
+    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
+    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.VectorValueAccumulator())
     _, oavi = DynamicPPL.init!!(rng, model, oavi, initial_params, DynamicPPL.UnlinkAll())
-    priors = DynamicPPL.get_priors(oavi)
 
+    # Check that priors are all Gaussian
+    priors = DynamicPPL.get_priors(oavi)
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(oavi, model)
-    return transition, TuringESSState(oavi, priors)
+
+    # Set up a LogDensityFunction which evaluates the model's log-likelihood.
+    # TODO(penelopeysm): We could conceivably use fixed transforms here because every prior
+    # distribution is Gaussian, which by definition must have a fixed bijector. Need to
+    # benchmark to see if it's worth it.
+    loglike_ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, oavi)
+    # And the corresponding vector of params, and the likelihood at this point
+    vecvals = DynamicPPL.get_vector_values(oavi)
+    vector_params = DynamicPPL.internal_values_as_vector(vecvals)
+    loglike = DynamicPPL.getloglikelihood(oavi)
+
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(oavi)
+    state = TuringESSState(loglike_ldf, vector_params, loglike, priors, vecvals)
+    return transition, state
 end
 
 function AbstractMCMC.step(
@@ -59,54 +84,54 @@ function AbstractMCMC.step(
     discard_sample=false,
     kwargs...,
 )
-    # obtain previous sample
-    vi = state.vi
-    f = vi[:]
-
     # define previous sampler state
     # (do not use cache to avoid in-place sampling from prior)
     wrapped_state = EllipticalSliceSampling.ESSState(
-        f, DynamicPPL.getloglikelihood(vi), nothing
+        state.params, state.loglikelihood, nothing
     )
 
     # compute next state
     sample, new_wrapped_state = AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
-            ESSPrior(model, vi, state.priors), ESSLikelihood(model, vi)
+            ESSPrior(state.ldf, state.priors), ESSLikelihood(state.ldf)
         ),
         EllipticalSliceSampling.ESS(),
         wrapped_state,
     )
 
-    # update sample and log-likelihood
-    vi = DynamicPPL.unflatten!!(vi, sample)
-    vi = DynamicPPL.setloglikelihood!!(vi, new_wrapped_state.loglikelihood)
-
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, TuringESSState(vi, state.priors)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(sample, state.ldf)
+    new_state = TuringESSState(
+        state.ldf, sample, new_wrapped_state.loglikelihood, state.priors, state._vector_vnt
+    )
+    return transition, new_state
 end
 
+# NOTE: This is a quick and easy definition but it assumes that _vec(x) is the same as
+# Bijectors.VectorBijectors.from_vec(dist) for all distributions we care about in the
+# priors. If that ever becomes untrue, then this could silently cause bugs.
 _vec(x::Real) = [x]
 _vec(x::AbstractArray) = vec(x)
 
 # Prior distribution of considered random variable
-struct ESSPrior{M<:Model,V<:AbstractVarInfo,T}
-    model::M
-    varinfo::V
-    μ::T
+struct ESSPrior{L<:DynamicPPL.LogDensityFunction,T<:AbstractVector{<:Real}}
+    ldf::L
+    means::T
 
-    function ESSPrior(
-        model::Model, varinfo::AbstractVarInfo, priors::DynamicPPL.VarNamedTuple
-    )
-        μ = mapreduce(vcat, priors; init=Float64[]) do pair
-            prior_dist = pair.second
-            EllipticalSliceSampling.isgaussian(typeof(prior_dist)) || error(
-                "[ESS] only supports Gaussian prior distributions, but found $(typeof(prior_dist))",
-            )
-            _vec(mean(prior_dist))
+    function ESSPrior(ldf::DynamicPPL.LogDensityFunction, priors::DynamicPPL.VarNamedTuple)
+        # Calculate means from priors.
+        means = fill(NaN, LogDensityProblems.dimension(ldf))
+        for (vn, dist) in pairs(priors)
+            range = ldf._varname_ranges[vn].range
+            this_mean = _vec(mean(dist))
+            means[range] .= this_mean
         end
-        return new{typeof(model),typeof(varinfo),typeof(μ)}(model, varinfo, μ)
+        if any(isnan, means)
+            error(
+                "Some means were not filled in when constructing ESSPrior. This is likely a bug in Turing.jl, please report it.",
+            )
+        end
+        return new{typeof(ldf),typeof(means)}(ldf, means)
     end
 end
 
@@ -115,14 +140,11 @@ EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
 function Base.rand(rng::Random.AbstractRNG, p::ESSPrior)
-    _, vi = DynamicPPL.init!!(
-        rng, p.model, p.varinfo, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
-    )
-    return vi[:]
+    return Base.rand(rng, p.ldf)
 end
 
 # Mean of prior distribution
-Distributions.mean(p::ESSPrior) = p.μ
+Distributions.mean(p::ESSPrior) = p.means
 
 # Evaluate log-likelihood of proposals. We need this struct because
 # EllipticalSliceSampling.jl expects a callable struct / a function as its
@@ -131,8 +153,12 @@ struct ESSLikelihood{L<:DynamicPPL.LogDensityFunction}
     ldf::L
 
     # Force usage of `getloglikelihood` in inner constructor
-    function ESSLikelihood(model::Model, varinfo::AbstractVarInfo)
-        ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, varinfo)
+    function ESSLikelihood(ldf::DynamicPPL.LogDensityFunction)
+        if ldf._getlogdensity !== DynamicPPL.getloglikelihood
+            error(
+                "The log-density function passed to ESSLikelihood must use `getloglikelihood` as its log-density function, but found $(ldf._getlogdensity). This is likely a bug in Turing.jl, please report it!",
+            )
+        end
         return new{typeof(ldf)}(ldf)
     end
 end
@@ -158,17 +184,36 @@ end
 #### Gibbs interface
 ####
 
+function gibbs_get_raw_values(state::TuringESSState)
+    pws = DynamicPPL.ParamsWithStats(
+        state.params, state.ldf; include_log_probs=false, include_colon_eq=false
+    )
+    return pws.params
+end
+
 function gibbs_update_state!!(
     ::ESS,
     state::TuringESSState,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    return error("TODO: not implemented")
-    # The state is basically a VarInfo (plus a constant `priors` field), so we can just
-    # return `params`, but first we need to update its logprob.
-    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
-    # use OAVI.
-    # new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
-    # return TuringESSState(new_vi, state.priors)
+    # In `state`, we need to update basically everything except for the priors. We
+    # can start by reevaluating the model to collect all the info we need.
+    accs = DynamicPPL.OnlyAccsVarInfo(
+        DynamicPPL.VectorParamAccumulator(state.ldf), DynamicPPL.LogLikelihoodAccumulator()
+    )
+    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
+    # Note: use new model here (not state.ldf.model) to account for changes in other
+    # variables' values.
+    _, accs = DynamicPPL.init!!(model, accs, init_strategy, state.ldf.transform_strategy)
+
+    # Construct a new LDF. We use the state's cached _vector_vnt here: the alternative would
+    # be to reconstruct it in the reevaluation above. This assumes that the structure of the
+    # model doesn't change from one Gibbs iteration to the next.
+    new_ldf = DynamicPPL.LogDensityFunction(
+        model, state.ldf._getlogdensity, state._vector_vnt
+    )
+    new_params = DynamicPPL.get_vector_params(accs)
+    new_loglike = DynamicPPL.getloglikelihood(accs)
+    return TuringESSState(new_ldf, new_params, new_loglike, state.priors, state._vector_vnt)
 end
