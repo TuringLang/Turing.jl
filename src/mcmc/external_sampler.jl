@@ -214,3 +214,23 @@ function AbstractMCMC.step(
     end
     return (new_transition, TuringState(state_inner, state.varinfo, new_parameters, f))
 end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_update_state!!(
+    sampler::ExternalSampler,
+    state::TuringState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    return error("TODO: not implemented")
+    # new_ldf = DynamicPPL.LogDensityFunction(
+    #     model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
+    # )
+    # new_inner_state = AbstractMCMC.setparams!!(
+    #     AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
+    # )
+    # return TuringState(new_inner_state, params, params[:], new_ldf)
+end

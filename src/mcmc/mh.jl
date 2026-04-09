@@ -494,3 +494,28 @@ end
 function MH(cov_matrix::Any)
     return externalsampler(AdvancedMH.RWMH(MvNormal(cov_matrix)); unconstrained=true)
 end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_update_state!!(
+    spl::MH,
+    state::AbstractVarInfo,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
+    # the accumulator part of the state. We do need to reevaluate the model though
+    # because it's necessary for the log-probability to be updated to reflect the new
+    # values in `global_vals`. If we don't do that, the MH acceptance step will return
+    # wrong results.
+    #
+    # In order to make sure that our logjacs are consistent with what the sampler expects,
+    # we can use `spl.transform_strategy` here.
+    #
+    # TODO(penelopeysm): Is the `nothing` fallback OK, or do we need InitFromPrior as
+    # a fallback? In the latter case, how do we control `rng`?
+    init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
+    return last(DynamicPPL.init!!(model, state, init_strat, spl.transform_strategy))
+end

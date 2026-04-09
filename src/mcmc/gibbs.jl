@@ -1,3 +1,7 @@
+###################################################
+# Interface for other samplers to work with Gibbs #
+###################################################
+
 """
     isgibbscomponent(spl::AbstractSampler)
 
@@ -6,15 +10,38 @@ Return a boolean indicating whether `spl` is a valid component for a Gibbs sampl
 Defaults to `true` if no method has been defined for a particular sampler.
 """
 isgibbscomponent(::AbstractSampler) = true
-
 isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
 isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-
 isgibbscomponent(::Prior) = false
 isgibbscomponent(::Emcee) = false
 isgibbscomponent(::SGLD) = false
 isgibbscomponent(::SGHMC) = false
 isgibbscomponent(::SMC) = false
+
+"""
+    Turing.Inference.gibbs_get_raw_values(state)
+
+Return a `VarNamedTuple` containing the raw values of all variables in the sampler state.
+"""
+function gibbs_get_raw_values(state::AbstractVarInfo)
+    return DynamicPPL.get_raw_values(state)
+end
+
+"""
+    Turing.Inference.gibbs_update_state!!(
+        sampler::AbstractSampler, state, model::Model, global_vals::VarNamedTuple
+    )
+
+Update the state of a Gibbs component sampler to be consistent with the new values in
+`global_vals`. The exact meaning of this depends on what the sampler state contains.
+
+Each sampler should implement a method for its respective state type.
+"""
+function gibbs_update_state!! end
+
+###############################
+# Gibbs implementation itself #
+###############################
 
 can_be_wrapped(::DynamicPPL.AbstractContext) = true
 can_be_wrapped(::DynamicPPL.AbstractParentContext) = false
@@ -512,138 +539,6 @@ function AbstractMCMC.step_warmup(
     )
     transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
     return transition, GibbsState(vnt, states)
-end
-
-"""
-    Turing.Inference.gibbs_get_raw_values(state)
-
-Return a `VarNamedTuple` containing the raw values of all variables in the sampler state.
-"""
-function gibbs_get_raw_values(state::AbstractVarInfo)
-    return DynamicPPL.get_raw_values(state)
-end
-function gibbs_get_raw_values(state::HMCState)
-    # In general this needs reevaluation (unless the LDF has all fixed transforms --
-    # DynamicPPL handles this.)
-    pws = DynamicPPL.ParamsWithStats(
-        state.z.θ, state.ldf; include_log_probs=false, include_colon_eq=false
-    )
-    return pws.params
-end
-
-"""
-    Turing.Inference.gibbs_update_state!!(
-        sampler::AbstractSampler, state, model::Model, global_vals::VarNamedTuple
-    )
-
-Update the state of a Gibbs component sampler to be consistent with the new values in
-`global_vals`. The exact meaning of this depends on what the sampler state contains.
-"""
-function gibbs_update_state!!(
-    spl::MH,
-    state::AbstractVarInfo,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-)
-    # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
-    # the accumulator part of the state. We do need to reevaluate the model though
-    # because it's necessary for the log-probability to be updated to reflect the new
-    # values in `global_vals`. If we don't do that, the MH acceptance step will return
-    # wrong results.
-    #
-    # In order to make sure that our logjacs are consistent with what the sampler expects,
-    # we can use `spl.transform_strategy` here.
-    #
-    # TODO(penelopeysm): Is the `nothing` fallback OK, or do we need InitFromPrior as 
-    # a fallback? In the latter case, how do we control `rng`?
-    init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
-    return last(DynamicPPL.init!!(model, state, init_strat, spl.transform_strategy))
-end
-
-function gibbs_update_state!!(
-    ::ESS,
-    state::TuringESSState,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-)
-    return error("TODO: not implemented")
-    # The state is basically a VarInfo (plus a constant `priors` field), so we can just
-    # return `params`, but first we need to update its logprob.
-    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
-    # use OAVI.
-    # new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
-    # return TuringESSState(new_vi, state.priors)
-end
-
-function gibbs_update_state!!(
-    sampler::ExternalSampler,
-    state::TuringState,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-)
-    return error("TODO: not implemented")
-    # new_ldf = DynamicPPL.LogDensityFunction(
-    #     model, DynamicPPL.getlogjoint_internal, params; adtype=sampler.adtype
-    # )
-    # new_inner_state = AbstractMCMC.setparams!!(
-    #     AbstractMCMC.LogDensityModel(new_ldf), state.state, params[:]
-    # )
-    # return TuringState(new_inner_state, params, params[:], new_ldf)
-end
-
-function gibbs_update_state!!(
-    spl::Hamiltonian,
-    state::HMCState,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-)
-    # We need to start by creating a new LDF with the values in `global_vals`. In
-    # particular, we need to use `model` here rather than `state.ldf.model`. The reason is
-    # because `model` is the newly 'conditioned' model (to be precise, it has a GibbsContext
-    # inside it) which contains the newly updated values in `global_vals`. In contrast,
-    # `state.ldf.model` is the old one.
-    #
-    # Using `_state.vector_vnt` allows us to avoid reevaluating the model when constructing
-    # the LDF. This is a bit of a hack and could be improved if we had an even lower-level
-    # way of constructing an LDF. It also assumes that the structure of `model` (i.e., the
-    # newly conditioned model) and `ldf.model` (the previous one) is the same, but that's
-    # probably a reasonable assumption to make for HMC.
-    old_ldf = state.ldf
-    new_ldf = DynamicPPL.LogDensityFunction(
-        model, old_ldf._getlogdensity, state._vector_vnt; adtype=old_ldf.adtype
-    )
-    # Now reevaluate the model to extract the correct vectorised params.
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(new_ldf))
-    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
-    _, accs = DynamicPPL.init!!(
-        new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
-    )
-    new_params = DynamicPPL.get_vector_params(accs)
-    # Update the state with this. We need to update the parameters themselves, but we
-    # also need to take care to update the Hamiltonian (because that depends on the LDF).
-    metricT = getmetricT(spl)
-    metric = metricT(LogDensityProblems.dimension(new_ldf))
-    lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
-    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
-    new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-    # Apart from the Hamiltonian, we also need to update the position variables. It would be
-    # nice to do this without mutating, but it's probably fine for now.
-    state.z.θ .= new_params
-    return HMCState(
-        state.i,
-        state.kernel,
-        new_hamiltonian,
-        state.z,
-        state.adaptor,
-        new_ldf,
-        state._vector_vnt,
-    )
-end
-
-function gibbs_update_state!!(
-    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
-)
-    return error("TODO: not implemented")
 end
 
 """

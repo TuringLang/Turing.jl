@@ -37,20 +37,18 @@ function AbstractMCMC.step(
     initial_params,
     kwargs...,
 )
-    vi = DynamicPPL.VarInfo()
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
-    prior_acc = DynamicPPL.PriorDistributionAccumulator()
-    prior_accname = DynamicPPL.accumulator_name(prior_acc)
-    vi = DynamicPPL.setacc!!(vi, prior_acc)
-    _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll())
-    priors = DynamicPPL.get_priors(vi)
+    oavi = DynamicPPL.OnlyAccsVarInfo()
+    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
+    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.PriorDistributionAccumulator())
+    _, oavi = DynamicPPL.init!!(rng, model, oavi, initial_params, DynamicPPL.UnlinkAll())
+    priors = DynamicPPL.get_priors(oavi)
 
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, model)
-    return transition, TuringESSState(vi, priors)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(oavi, model)
+    return transition, TuringESSState(oavi, priors)
 end
 
 function AbstractMCMC.step(
@@ -154,4 +152,23 @@ function AbstractMCMC.step(
     return error(
         "This method is not implemented! If you want to use the ESS sampler in Turing.jl, please use `Turing.ESS()` instead. If you want the default behaviour in EllipticalSliceSampling.jl, wrap your model in a different subtype of `AbstractMCMC.AbstractModel`, and then implement the necessary EllipticalSliceSampling.jl methods on it.",
     )
+end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_update_state!!(
+    ::ESS,
+    state::TuringESSState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    return error("TODO: not implemented")
+    # The state is basically a VarInfo (plus a constant `priors` field), so we can just
+    # return `params`, but first we need to update its logprob.
+    # TODO(penelopeysm): Remove need for evaluate_nowarn here, by allowing ESS-in-Gibbs to
+    # use OAVI.
+    # new_vi = last(DynamicPPL.evaluate_nowarn!!(model, params))
+    # return TuringESSState(new_vi, state.priors)
 end

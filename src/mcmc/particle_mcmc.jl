@@ -527,3 +527,13 @@ Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 # DynamicPPL.Model as an argument, so we can just check for that. See
 # https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
+
+####
+#### Gibbs interface
+####
+
+function gibbs_update_state!!(
+    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
+)
+    return error("TODO: not implemented")
+end
