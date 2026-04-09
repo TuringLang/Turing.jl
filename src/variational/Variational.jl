@@ -309,16 +309,13 @@ sample is a [`DynamicPPL.VarNamedTuple`](@ref) containing parameter values (in o
 untransformed space).
 """
 function Base.rand(rng::Random.AbstractRNG, res::VIResult, sz::Integer...)
-    # TODO(penelopeysm): This is 'correct', but perhaps slow as it reevaluates the model
-    # prod(sz...) times. Note that if the LDF has fixed transforms, we could get away with
-    # not reevaluating the model -- this is an opportunity for future optimisation.
+    # TODO(penelopeysm): Should we expose a way to get colon_eq results as well -- maybe a
+    # kwarg?
     function to_vnt(v::AbstractVector)
-        accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(true))
-        init_strat = DynamicPPL.InitFromVector(v, res.ldf)
-        _, accs = DynamicPPL.init!!(
-            res.ldf.model, accs, init_strat, res.ldf.transform_strategy
+        pws = DynamicPPL.ParamsWithStats(
+            v, res.ldf; include_colon_eq=false, include_log_probs=false
         )
-        return DynamicPPL.get_raw_values(accs)
+        return pws.params
     end
     if sz == ()
         return to_vnt(rand(rng, res.q))
@@ -334,7 +331,7 @@ Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, 
     vi(
         [rng::Random.AbstractRNG,]
         model::DynamicPPL.Model,
-        q,
+        family,
         max_iter::Int;
         adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
         algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(
@@ -344,18 +341,15 @@ Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, 
         kwargs...
     )
 
-Approximate the target `model` via the variational inference algorithm `algorithm` by starting from the initial variational approximation `q`.
+Approximate the target `model` via the variational inference algorithm `algorithm` using a variational family specified by `family`.
 This is a thin wrapper around `AdvancedVI.optimize`.
 
-If the chosen variational inference algorithm operates in an unconstrained space, then the provided initial variational approximation `q` must be a `Bijectors.TransformedDistribution` of an unconstrained distribution.
-For example, the initialization supplied by  `q_meanfield_gaussian`,`q_fullrank_gaussian`, `q_locationscale`.
-
-The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `q` uses `AdvancedVI.MvLocationScale`, which can be constructed by invoking `q_fullrank_gaussian` or `q_meanfield_gaussian`.
+The default `algorithm`, `KLMinRepGradProxDescent` ([relevant docs](https://turinglang.org/AdvancedVI.jl/dev/klminrepgradproxdescent/)), assumes `family` returns a `AdvancedVI.MvLocationScale`, which is true if `family` is `q_fullrank_gaussian` or `q_meanfield_gaussian`.
 For other variational families, refer to the documentation of `AdvancedVI` to determine the best algorithm and other options.
 
 # Arguments
 - `model`: The target `DynamicPPL.Model`.
-- `initial_approx`: The function to generate an initial variational approximation.
+- `family`: A function which is used to generate an initial variational approximation.
   Existing choices in Turing are [`q_locationscale`](@ref), [`q_meanfield_gaussian`](@ref), and [`q_fullrank_gaussian`](@ref).
 - `max_iter`: Maximum number of steps.
 - Any additional arguments are passed on to `AdvancedVI.optimize`.
@@ -377,7 +371,7 @@ A [`VIResult`](@ref) object: please see its docstring for information.
 function vi(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
-    initial_approx,
+    family,
     max_iter::Int,
     args...;
     adtype::ADTypes.AbstractADType=DEFAULT_ADTYPE,
@@ -392,15 +386,15 @@ function vi(
     prob = LogDensityFunction(
         model, DynamicPPL.getlogjoint_internal, transform_strategy; adtype
     )
-    q = initial_approx(rng, prob; kwargs...)
+    q = family(rng, prob; kwargs...)
     q, info, state = AdvancedVI.optimize(
         rng, algorithm, max_iter, prob, q, args...; show_progress=show_progress, kwargs...
     )
     return VIResult(prob, q, info, state)
 end
 
-function vi(model::DynamicPPL.Model, initial_approx, max_iter::Int; kwargs...)
-    return vi(Random.default_rng(), model, initial_approx, max_iter; kwargs...)
+function vi(model::DynamicPPL.Model, family, max_iter::Int; kwargs...)
+    return vi(Random.default_rng(), model, family, max_iter; kwargs...)
 end
 
 end
