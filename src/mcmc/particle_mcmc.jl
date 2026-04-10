@@ -165,17 +165,20 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     spl::SMC;
     nparticles::Int,
+    initial_params,
     discard_sample=false,
     kwargs...,
 )
     # Create an empty VarInfo
-    oavi = DynamicPPL.OnlyAccsVarInfo()
-    oavi = DynamicPPL.setacc!!(oavi, ProduceLogLikelihoodAccumulator())
-    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
+    accs = DynamicPPL.OnlyAccsVarInfo()
+    accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
+    # Initialise
+    # _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
-        [AdvancedPS.Trace(model, oavi, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
+        [AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
         rng,
     )
@@ -192,7 +195,7 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(oavi, stats)
+        DynamicPPL.ParamsWithStats(particle.model.f.varinfo, stats)
     end
     state = SMCState(particles, 2, logevidence)
 
@@ -326,16 +329,24 @@ function AbstractMCMC.step(
     discard_sample=false,
     kwargs...,
 )
-    oavi = state.vi
+    # Reset log-prob accs in reference particle, to avoid accumulating into the same accs
+    # across iterations
+    reference_vi = state.vi
+    reference_vi = DynamicPPL.setacc!!(reference_vi, ProduceLogLikelihoodAccumulator())
+    reference_vi = DynamicPPL.setacc!!(reference_vi, DynamicPPL.LogPriorAccumulator())
+    reference_vi = DynamicPPL.setacc!!(reference_vi, DynamicPPL.LogJacobianAccumulator())
 
     # Create reference particle for which the samples will be retained.
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, oavi, state.rng, false))
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, reference_vi, state.rng, false))
 
-    # Create a new set of particles.
+    # Create a new set of particles with newly emptied accs
+    empty_accs = DynamicPPL.OnlyAccsVarInfo()
+    empty_accs = DynamicPPL.setacc!!(empty_accs, ProduceLogLikelihoodAccumulator())
+    empty_accs = DynamicPPL.setacc!!(empty_accs, DynamicPPL.RawValueAccumulator(true))
     num_particles = spl.nparticles
     x = map(1:num_particles) do i
         if i != num_particles
-            return AdvancedPS.Trace(model, oavi, AdvancedPS.TracedRNG(), true)
+            return AdvancedPS.Trace(model, empty_accs, AdvancedPS.TracedRNG(), true)
         else
             return reference
         end
