@@ -18,11 +18,12 @@ using Turing
     end
 
     @testset "constructor" begin
-        vi = DynamicPPL.VarInfo()
-        vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
+        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
+        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
         sampler = PG(10)
         model = test()
-        trace = AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), false)
+        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
 
         # Make sure the backreference from taped_globals to the trace is in place.
         @test trace.model.ctask.taped_globals.other === trace
@@ -43,12 +44,13 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-        vi = DynamicPPL.VarInfo()
-        vi = DynamicPPL.setacc!!(vi, Turing.Inference.ProduceLogLikelihoodAccumulator())
+        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
+        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
         sampler = PG(10)
         model = normal()
 
-        trace = AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), false)
+        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
 
         newtrace = AdvancedPS.forkr(trace)
         # Catch broken replay mechanism

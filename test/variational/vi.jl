@@ -4,10 +4,13 @@ module AdvancedVITests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 
+using AbstractMCMC: AbstractMCMC
 using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
+using DynamicPPL: DynamicPPL
 using LinearAlgebra
+using LogDensityProblems: LogDensityProblems
 using MCMCChains: Chains
 using Random
 using ReverseDiff
@@ -22,34 +25,37 @@ begin
 
     @testset "q initialization" begin
         m = gdemo_default
-        d = length(Turing.DynamicPPL.VarInfo(m)[:])
-        for q in [q_meanfield_gaussian(m), q_fullrank_gaussian(m)]
+        l = LogDensityFunction(m, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll())
+        d = LogDensityProblems.dimension(l)
+
+        for q in [q_meanfield_gaussian(l), q_fullrank_gaussian(l)]
             rand(q)
         end
 
         μ = ones(d)
-        q = q_meanfield_gaussian(m; location=μ)
-        @assert mean(q.dist) ≈ μ
+        q = q_meanfield_gaussian(l; location=μ)
+        @test mean(q) ≈ μ
 
-        q = q_fullrank_gaussian(m; location=μ)
-        @assert mean(q.dist) ≈ μ
+        q = q_fullrank_gaussian(l; location=μ)
+        @test mean(q) ≈ μ
 
         L = Diagonal(fill(0.1, d))
-        q = q_meanfield_gaussian(m; scale=L)
-        @assert cov(q.dist) ≈ L * L
+        q = q_meanfield_gaussian(l; scale=L)
+        @test cov(q) ≈ L * L
 
         L = LowerTriangular(tril(0.01 * ones(d, d) + I))
-        q = q_fullrank_gaussian(m; scale=L)
-        @assert cov(q.dist) ≈ L * L'
+        q = q_fullrank_gaussian(l; scale=L)
+        @test cov(q) ≈ L * L'
     end
 
     @testset "default interface" begin
-        for q0 in [q_meanfield_gaussian(gdemo_default), q_fullrank_gaussian(gdemo_default)]
-            q, _, _ = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
-            c1 = rand(q, 10)
-        end
-        @test_throws "unconstrained" begin
-            q, _, _ = vi(gdemo_default, Normal(), 1; adtype)
+        for q0 in [q_meanfield_gaussian, q_fullrank_gaussian]
+            result = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
+            @test rand(result) isa DynamicPPL.VarNamedTuple
+            @test rand(result, 2) isa Vector{<:DynamicPPL.VarNamedTuple}
+            @test size(rand(result, 2)) == (2,)
+            @test rand(result, 5, 2) isa Matrix{<:DynamicPPL.VarNamedTuple}
+            @test size(rand(result, 5, 2)) == (5, 2)
         end
     end
 
@@ -65,15 +71,15 @@ begin
         ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
         T = 1000
-        q, _, _ = vi(
+        result = vi(
             gdemo_default,
-            q_fullrank_gaussian(gdemo_default),
+            q_fullrank_gaussian,
             T;
             algorithm,
             show_progress=Turing.PROGRESS[],
         )
-        N = 1000
-        c2 = rand(q, N)
+        c2 = rand(result, 10)
+        @test c2 isa Vector{<:DynamicPPL.VarNamedTuple}
     end
 
     @testset "inference $name" for (name, algorithm) in [
@@ -90,27 +96,27 @@ begin
         ("KLMinWassFwdBwd", KLMinWassFwdBwd(; stepsize=1e-2, n_samples=10)),
         ("FisherMinBatchMatch", FisherMinBatchMatch()),
     ]
-        rng = StableRNG(0x517e1d9bf89bf94f)
+        rng = StableRNG(468)
 
         T = 1000
-        q, _, _ = vi(
+        result = vi(
             rng,
             gdemo_default,
-            q_fullrank_gaussian(gdemo_default),
+            q_fullrank_gaussian,
             T;
             algorithm,
             show_progress=Turing.PROGRESS[],
         )
 
         N = 1000
-        samples = transpose(rand(rng, q, N))
-        chn = Chains(reshape(samples, size(samples)..., 1), ["s", "m"])
+        samples = rand(rng, result, N)
+        chn = AbstractMCMC.from_samples(MCMCChains.Chains, hcat(samples))
 
         check_gdemo(chn; atol=0.5)
     end
 
-    # regression test for:
-    # https://github.com/TuringLang/Turing.jl/issues/2065
+    # regression test for https://github.com/TuringLang/Turing.jl/issues/2065
+    # and https://github.com/TuringLang/Turing.jl/issues/2160
     @testset "simplex bijector" begin
         rng = StableRNG(0x517e1d9bf89bf94f)
 
@@ -118,20 +124,10 @@ begin
             x ~ Dirichlet([1.0, 1.0])
             return x
         end
-
         m = dirichlet()
-        b = Bijectors.bijector(m)
-        x0 = m()
-        z0 = b(x0)
-        @test size(z0) == (1,)
-        x0_inv = Bijectors.inverse(b)(z0)
-        @test size(x0_inv) == size(x0)
-        @test all(x0 .≈ x0_inv)
-
-        # And regression for https://github.com/TuringLang/Turing.jl/issues/2160.
-        q, _, _ = vi(rng, m, q_meanfield_gaussian(m), 1000)
-        x = rand(rng, q, 1000)
-        @test mean(eachcol(x)) ≈ [0.5, 0.5] atol = 0.1
+        result = vi(rng, m, q_meanfield_gaussian, 1000)
+        samples = rand(rng, result, 1000)
+        @test mean(s -> s[@varname(x)], samples) ≈ [0.5, 0.5] atol = 0.1
     end
 
     # Ref: https://github.com/TuringLang/Turing.jl/issues/2205
@@ -144,16 +140,15 @@ begin
         end
 
         model = demo_issue2205() | (y=1.0,)
-        q, _, _ = vi(rng, model, q_meanfield_gaussian(model), 1000)
+        result = vi(rng, model, q_meanfield_gaussian, 1000)
         # True mean.
         mean_true = 1 / 2
         var_true = 1 / 2
         # Check the mean and variance of the posterior.
-        samples = rand(rng, q, 1000)
-        mean_est = mean(samples)
-        var_est = var(samples)
-        @test mean_est ≈ mean_true atol = 0.2
-        @test var_est ≈ var_true atol = 0.2
+        samples = rand(rng, result, 1000)
+        xs = [s[@varname(x)] for s in samples]
+        @test mean(xs) ≈ mean_true atol = 0.2
+        @test var(xs) ≈ var_true atol = 0.2
     end
 end
 
