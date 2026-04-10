@@ -142,34 +142,23 @@ function get_gibbs_global_vnt(::DynamicPPL.AbstractContext)
     throw(ArgumentError(msg))
 end
 
-function Turing.Inference.initialstep(
-    ::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    ::GibbsConditional,
-    vi::DynamicPPL.VarInfo;
-    kwargs...,
-)
-    state = DynamicPPL.is_transformed(vi) ? DynamicPPL.invlink(vi, model) : vi
-    # Since GibbsConditional is only used within Gibbs, it does not need to return a
-    # transition.
-    return nothing, state
-end
-
-@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarInfo) =
+@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarNamedTuple) =
     DynamicPPL.VarNamedTuple(dists)
-@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarInfo) = dists
-function _to_varnamedtuple(dists::AbstractDict{<:VarName}, state::DynamicPPL.VarInfo)
-    template_vnt = state.values
+@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarNamedTuple) =
+    dists
+function _to_varnamedtuple(
+    dists::AbstractDict{<:VarName}, raw_values::DynamicPPL.VarNamedTuple
+)
     vnt = DynamicPPL.VarNamedTuple()
     for (vn, dist) in dists
         top_sym = AbstractPPL.getsym(vn)
-        template = get(template_vnt.data, top_sym, DynamicPPL.NoTemplate())
+        template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
         vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, template)
     end
     return vnt
 end
-function _to_varnamedtuple(dist::Distribution, state::DynamicPPL.VarInfo)
-    vns = keys(state)
+function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTuple)
+    vns = keys(raw_values)
     if length(vns) > 1
         msg = (
             "In GibbsConditional, `get_cond_dists` returned a single distribution," *
@@ -180,7 +169,7 @@ function _to_varnamedtuple(dist::Distribution, state::DynamicPPL.VarInfo)
     end
     vn = only(vns)
     top_sym = AbstractPPL.getsym(vn)
-    template = get(state.values.data, top_sym, DynamicPPL.NoTemplate())
+    template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
     return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
 end
 
@@ -198,8 +187,22 @@ end
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
+    ::GibbsConditional;
+    initial_params,
+    kwargs...,
+)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
+    # Since GibbsConditional is only used within Gibbs, it does not need to return a
+    # transition.
+    return nothing, accs
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
     sampler::GibbsConditional,
-    state::DynamicPPL.VarInfo;
+    state::DynamicPPL.OnlyAccsVarInfo;
     kwargs...,
 )
     # Get all the conditioned variable values from the model context. This is assumed to
@@ -212,17 +215,25 @@ function AbstractMCMC.step(
     #   - a VarNamedTuple of distributions
     #   - a NamedTuple of distributions
     #   - an AbstractDict mapping VarNames to distributions
-    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), state)
+    raw_values = DynamicPPL.get_raw_values(state)
+    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), raw_values)
 
     init_strategy = InitFromCondDists(conddists)
-    _, new_state = DynamicPPL.init!!(rng, model, state, init_strategy)
+    _, new_state = DynamicPPL.init!!(
+        rng, model, state, init_strategy, DynamicPPL.UnlinkAll()
+    )
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
     # transition.
     return nothing, new_state
 end
 
 function gibbs_update_state!!(
-    ::GibbsConditional, ::Any, ::DynamicPPL.Model, global_vnt::DynamicPPL.VarNamedTuple
+    ::GibbsConditional,
+    state::DynamicPPL.OnlyAccsVarInfo,
+    ::DynamicPPL.Model,
+    ::DynamicPPL.VarNamedTuple,
 )
-    return global_vnt
+    # Nothing in the state is used in the next iteration (we overwrite it immediately with
+    # init!! anyway), so we can just return the state as is.
+    return state
 end
