@@ -96,14 +96,12 @@ end
                 end
             end
 
-            # Check that evaluate_nowarn!! and the result it returns are type stable.
+            # Check that init!! is type stable.
             conditioned_model = DynamicPPL.contextualize(model, ctx)
-            _, post_eval_varinfo = @inferred DynamicPPL.evaluate_nowarn!!(
-                conditioned_model, local_vnt
+            accs = DynamicPPL.OnlyAccsVarInfo()
+            _, accs = @inferred DynamicPPL.init!!(
+                conditioned_model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
             )
-            for k in keys(post_eval_varinfo)
-                @inferred post_eval_varinfo[k]
-            end
         end
     end
 end
