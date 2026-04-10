@@ -816,6 +816,30 @@ end
         sampler = Gibbs(:w => HMC(0.05, 10))
         @test (sample(model, sampler, 10); true)
     end
+
+    @testset "dynamic transformations with linked samplers" begin
+        # See https://github.com/TuringLang/Turing.jl/issues/2801.
+        # The issue there was that the linked value for `y` was never updated when `x`
+        # changed, even though it should (the transform for `y` depends on `x`), leading to
+        # incorrect results.
+        @model function dyn()
+            x ~ Uniform(-5, 5)
+            return y ~ truncated(Normal(); lower=x)
+        end
+        model = dyn()
+
+        for spl in (
+            Gibbs(:x => MH(), :y => HMC(0.1, 20)),
+            Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
+        )
+            chn = sample(
+                StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
+            )
+            # ground truth obtained from NUTS
+            @test mean(chn[:x]) ≈ 0.0 atol = 0.1
+            @test mean(chn[:y]) ≈ 1.5 atol = 0.1
+        end
+    end
 end
 
 end
