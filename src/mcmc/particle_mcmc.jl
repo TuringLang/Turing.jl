@@ -20,6 +20,10 @@ end
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
+# Because pMCMC uses OnlyAccsVarInfo, we need to overload this. It's fine to use Any (see
+# the docstring of get_param_eltype in DynamicPPL) because pMCMC doesn't involve AD or any
+# other tracer types.
+DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::ParticleMCMCContext) = Any
 
 mutable struct TracedModel{M<:Model,T<:Tuple,NT<:NamedTuple} <:
                AdvancedPS.AbstractGenericModel
