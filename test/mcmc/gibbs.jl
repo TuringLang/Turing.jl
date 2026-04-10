@@ -302,7 +302,11 @@ end
         state::Union{Nothing,TrivialState}=nothing;
         kwargs...,
     )
-        spl.non_warmup_count += 1
+        if state === nothing
+            spl.non_warmup_init_count += 1
+        else
+            spl.non_warmup_count += 1
+        end
         # no need a transition since we never check the actual outputs
         return nothing, TrivialState()
     end
@@ -314,7 +318,11 @@ end
         state::Union{Nothing,TrivialState}=nothing;
         kwargs...,
     )
-        spl.warmup_count += 1
+        if state === nothing
+            spl.warmup_init_count += 1
+        else
+            spl.warmup_count += 1
+        end
         return nothing, TrivialState()
     end
 

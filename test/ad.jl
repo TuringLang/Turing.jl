@@ -149,7 +149,6 @@ function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInf
     param_eltype = DynamicPPL.get_param_eltype(vi, context)
     valids = valid_eltypes(context)
     if !(any(param_eltype .<: valids))
-        @show context
         throw(IncompatibleADTypeError(param_eltype, adtype(context)))
     end
 end
