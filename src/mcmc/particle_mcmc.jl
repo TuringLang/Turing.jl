@@ -173,8 +173,6 @@ function AbstractMCMC.step(
     accs = DynamicPPL.OnlyAccsVarInfo()
     accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
     accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-    # Initialise
-    # _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
