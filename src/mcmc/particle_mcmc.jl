@@ -328,7 +328,9 @@ function AbstractMCMC.step(
     kwargs...,
 )
     # Reset log-prob accs in reference particle, to avoid accumulating into the same accs
-    # across iterations
+    # across iterations. If the chosen particle for this iteration is the reference
+    # particle, this allows us to just read off the log-probs from the accumulators,
+    # without having to re-evaluate the model.
     reference_vi = state.vi
     reference_vi = DynamicPPL.setacc!!(reference_vi, ProduceLogLikelihoodAccumulator())
     reference_vi = DynamicPPL.setacc!!(reference_vi, DynamicPPL.LogPriorAccumulator())
