@@ -4,6 +4,7 @@ using Pkg
 using Random: seed!
 using Test
 using TimerOutputs: TimerOutputs, @timeit
+using LogDensityProblems
 import Turing
 
 # Fix the global Random.seed for reproducibility.
@@ -12,6 +13,7 @@ seed!(23)
 include("test_utils/models.jl")
 include("test_utils/numerical_tests.jl")
 include("test_utils/sampler.jl")
+include("test_utils/logdensity_test.jl")
 
 Turing.setprogress!(false)
 included_paths, excluded_paths = parse_args(ARGS)
@@ -80,6 +82,7 @@ end
     @testset "utilities" begin
         @timeit_include("mcmc/utilities.jl")
     end
+
 end
 
 show(TIMEROUTPUT; compact=true, sortby=:firstexec)

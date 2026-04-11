@@ -50,6 +50,9 @@ using .Variational
 include("optimisation/Optimisation.jl")
 using .Optimisation
 
+
+include("logdensity_wrapper.jl")
+
 ###########
 # Exports #
 ###########
@@ -187,4 +190,5 @@ export
     might_produce,
     @might_produce
 
+    SafeLogDensity
 end
