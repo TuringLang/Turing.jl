@@ -80,7 +80,7 @@ function satisfies_constraints(
     proposed_val::AbstractArray{<:ForwardDiff.Dual},
     dist::Union{MultivariateDistribution,MatrixDistribution},
 )
-    return satisfies_constraints(lb, ub, ForwardDiff.value.(proposed_val), dist)
+    return satisfies_constraints(_prevfloat.(lb), _nextfloat.(ub), proposed_val, dist)
 end
 function satisfies_constraints(
     lb::Union{Nothing,NamedTuple},
