@@ -47,15 +47,20 @@ function satisfies_constraints(
     satisfies_ub = ub === nothing || proposed_val <= ub
     return isnan(proposed_val) || (satisfies_lb && satisfies_ub)
 end
+# x may be nothing so we need to take care of that
+_prevfloat(x::AbstractFloat) = prevfloat(x)
+_prevfloat(x) = x
+_nextfloat(x::AbstractFloat) = nextfloat(x)
+_nextfloat(x) = x
 function satisfies_constraints(
     lb::Union{Nothing,Real},
     ub::Union{Nothing,Real},
     proposed_val::ForwardDiff.Dual,
     dist::UnivariateDistribution,
 )
-    # This overload is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns true, even
-    # though the primal value is within the constraints.
-    return satisfies_constraints(lb, ub, ForwardDiff.value(proposed_val), dist)
+    # The prevfloat/nextfloat is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns
+    # true, even though the primal value is within the constraints.
+    return satisfies_constraints(_prevfloat(lb), _nextfloat(ub), proposed_val, dist)
 end
 function satisfies_constraints(
     lb::Union{Nothing,AbstractArray{<:Real}},

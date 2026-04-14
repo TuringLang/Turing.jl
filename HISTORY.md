@@ -1,3 +1,7 @@
+# 0.43.6
+
+Internal change to avoid using ForwardDiff internals.
+
 # 0.43.5
 
 Fix incorrect handling of VarNamedTuple templates inside submodels when sampling with Gibbs.
