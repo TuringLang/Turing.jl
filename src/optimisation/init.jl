@@ -49,8 +49,10 @@ function satisfies_constraints(
 end
 # x may be nothing so we need to take care of that
 _prevfloat(x::AbstractFloat) = prevfloat(x)
+_prevfloat(x::AbstractArray{<:AbstractFloat}) = map(prevfloat, x)
 _prevfloat(x) = x
 _nextfloat(x::AbstractFloat) = nextfloat(x)
+_nextfloat(x::AbstractArray{<:AbstractFloat}) = map(nextfloat, x)
 _nextfloat(x) = x
 function satisfies_constraints(
     lb::Union{Nothing,Real},
@@ -80,7 +82,7 @@ function satisfies_constraints(
     proposed_val::AbstractArray{<:ForwardDiff.Dual},
     dist::Union{MultivariateDistribution,MatrixDistribution},
 )
-    return satisfies_constraints(_prevfloat.(lb), _nextfloat.(ub), proposed_val, dist)
+    return satisfies_constraints(_prevfloat(lb), _nextfloat(ub), proposed_val, dist)
 end
 function satisfies_constraints(
     lb::Union{Nothing,NamedTuple},
