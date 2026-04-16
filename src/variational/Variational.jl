@@ -336,6 +336,69 @@ end
 Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, sz...)
 
 """
+    VIResult(ldf, q, info, state)
+
+- `ldf`: A [`DynamicPPL.LogDensityFunction`](@extref) corresponding to the target model (the
+  original model can be accessed as `ldf.model`). If the VI process was run in unconstrained
+  space, this LogDensityFunction will also be in unconstrained space.
+- `q`: Output variational distribution of `algorithm`. Note that, as above, this will
+  typically also be in unconstrained space.
+- `state`: Collection of states used by `algorithm`. This can be used to resume from a past
+  call to `vi`.
+- `info`: Information generated while executing `algorithm`.
+"""
+struct VIResult{L<:LogDensityFunction,Q<:Distribution,I<:AbstractArray{<:NamedTuple},S}
+    ldf::L
+    q::Q
+    info::I
+    state::S
+end
+
+function Base.show(io::IO, ::MIME"text/plain", r::VIResult)
+    printstyled(io, "VIResult\n"; bold=true)
+    println(io, "  ├ q    : $(nameof(typeof(r.q)))")
+    n_iters = length(r.info)
+    println(io, "  ├ info : $(length(r.info))-element $(typeof(r.info))")
+    if n_iters > 0
+        println(io, "  │        final iteration:")
+        last_info = r.info[end]
+        for (i, (k, v)) in enumerate(pairs(last_info))
+            tree_char = i == length(last_info) ? "└" : "├"
+            println(io, "  │         $(tree_char) $k = $v")
+        end
+    else
+    end
+    print(io, "  └ (2 more fields: state, ldf)")
+    return nothing
+end
+
+"""
+    Base.rand(rng::Random.AbstractRNG, res::VIResult, sz...)
+
+Draw a sample, or array of samples, from the variational distribution `q` in `res`. Each
+sample is a [`DynamicPPL.VarNamedTuple`](@ref) containing parameter values (in original,
+untransformed space).
+"""
+function Base.rand(rng::Random.AbstractRNG, res::VIResult, sz::Integer...)
+    # TODO(penelopeysm): Should we expose a way to get colon_eq results as well -- maybe a
+    # kwarg?
+    function to_vnt(v::AbstractVector)
+        pws = DynamicPPL.ParamsWithStats(
+            v, res.ldf; include_colon_eq=false, include_log_probs=false
+        )
+        return pws.params
+    end
+    if sz == ()
+        return to_vnt(rand(rng, res.q))
+    else
+        # re. stack: https://github.com/TuringLang/AdvancedVI.jl/issues/245
+        x = stack(rand(rng, res.q, sz...))
+        return map(to_vnt, eachslice(x; dims=ntuple(i -> i + 1, length(sz))))
+    end
+end
+Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, sz...)
+
+"""
     vi(
         [rng::Random.AbstractRNG,]
         model::DynamicPPL.Model,
