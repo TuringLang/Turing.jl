@@ -47,15 +47,24 @@ function satisfies_constraints(
     satisfies_ub = ub === nothing || proposed_val <= ub
     return isnan(proposed_val) || (satisfies_lb && satisfies_ub)
 end
+# x may be nothing so we need to take care of that
+_prevfloat(x::AbstractFloat) = prevfloat(x)
+_prevfloat(x::AbstractArray{<:AbstractFloat}) = map(prevfloat, x)
+_prevfloat(x) = x
+_nextfloat(x::AbstractFloat) = nextfloat(x)
+_nextfloat(x::AbstractArray{<:AbstractFloat}) = map(nextfloat, x)
+_nextfloat(x) = x
 function satisfies_constraints(
-    lb::Union{Nothing,Real},
-    ub::Union{Nothing,Real},
+    lb::Union{Nothing,AbstractFloat},
+    ub::Union{Nothing,AbstractFloat},
     proposed_val::ForwardDiff.Dual,
-    dist::UnivariateDistribution,
+    ::UnivariateDistribution,
 )
-    # This overload is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns true, even
-    # though the primal value is within the constraints.
-    return satisfies_constraints(lb, ub, ForwardDiff.value(proposed_val), dist)
+    # The prevfloat/nextfloat is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns
+    # true, even though the primal value is within the constraints.
+    satisfies_lb = lb === nothing || proposed_val > prevfloat(lb)
+    satisfies_ub = ub === nothing || proposed_val < nextfloat(ub)
+    return isnan(proposed_val) || (satisfies_lb && satisfies_ub)
 end
 function satisfies_constraints(
     lb::Union{Nothing,AbstractArray{<:Real}},
@@ -70,12 +79,18 @@ function satisfies_constraints(
     return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
-    lb::Union{Nothing,AbstractArray{<:Real}},
-    ub::Union{Nothing,AbstractArray{<:Real}},
+    lb::Union{Nothing,AbstractArray{<:AbstractFloat}},
+    ub::Union{Nothing,AbstractArray{<:AbstractFloat}},
     proposed_val::AbstractArray{<:ForwardDiff.Dual},
     dist::Union{MultivariateDistribution,MatrixDistribution},
 )
-    return satisfies_constraints(lb, ub, ForwardDiff.value.(proposed_val), dist)
+    satisfies_lb =
+        lb === nothing ||
+        all(p -> isnan(p[1]) || p[1] > prevfloat(p[2]), zip(proposed_val, lb))
+    satisfies_ub =
+        ub === nothing ||
+        all(p -> isnan(p[1]) || p[1] < nextfloat(p[2]), zip(proposed_val, ub))
+    return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
     lb::Union{Nothing,NamedTuple},
