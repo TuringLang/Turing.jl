@@ -1,3 +1,7 @@
+# 0.43.7
+
+Fixes an issue where sampling with `MH()` in v0.43 would not include `x := expr` results in the chain.
+
 # 0.43.6
 
 Internal change to avoid using ForwardDiff internals.
