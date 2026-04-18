@@ -285,7 +285,7 @@ function AbstractMCMC.step(
     # with OnlyAccsVarInfo:
     #    1.196674 seconds (18.51 M allocations: 722.256 MiB, 5.11% gc time)
     vi = DynamicPPL.VarInfo()
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
@@ -361,7 +361,7 @@ function AbstractMCMC.step(
 
     # Evaluate the model with a new proposal.
     new_vi = DynamicPPL.VarInfo()
-    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(false))
+    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(true))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
         new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
