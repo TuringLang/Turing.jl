@@ -122,7 +122,7 @@ struct ESSPrior{L<:DynamicPPL.LogDensityFunction,T<:AbstractVector{<:Real}}
         # Calculate means from priors.
         means = fill(NaN, LogDensityProblems.dimension(ldf))
         for (vn, dist) in pairs(priors)
-            range = ldf._varname_ranges[vn].range
+            range = DynamicPPL.get_range_and_transform(ldf, vn).range
             this_mean = _vec(mean(dist))
             means[range] .= this_mean
         end

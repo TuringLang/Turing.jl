@@ -287,17 +287,6 @@ function DynamicPPL.combine(acc1::ConstraintAccumulator, acc2::ConstraintAccumul
     return combined
 end
 
-function _get_ldf_range(ldf::LogDensityFunction, vn::VarName)
-    if haskey(ldf._varname_ranges, vn)
-        return ldf._varname_ranges[vn].range
-    elseif haskey(ldf._iden_varname_ranges, AbstractPPL.getsym(vn))
-        return ldf._iden_varname_ranges[AbstractPPL.getsym(vn)].range
-    else
-        # Should not happen.
-        error("could not find range for variable name $(vn) in LogDensityFunction")
-    end
-end
-
 """
     make_optim_bounds_and_init(
         rng::Random.AbstractRNG,
@@ -340,7 +329,7 @@ function make_optim_bounds_and_init(
     lb = fill(et(-Inf), nelems)
     ub = fill(et(Inf), nelems)
     for (vn, init_val) in constraint_acc.init_vecs
-        range = _get_ldf_range(ldf, vn)
+        range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
             lb[range] = constraint_acc.lb_vecs[vn]
