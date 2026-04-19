@@ -73,7 +73,7 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        [DynamicPPL.ParamsWithStats(vi, model) for vi in vis]
+        [DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vi.values), model) for vi in vis]
     end
 
     linked_vi = DynamicPPL.link!!(vis[1], model)

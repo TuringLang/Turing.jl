@@ -422,7 +422,8 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
     return transition, GibbsState(vnt, states)
 end
 
@@ -451,7 +452,8 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
     return transition, GibbsState(vnt, states)
 end
 
@@ -517,24 +519,6 @@ function gibbs_initialstep_recursive(
     )
 end
 
-# TODO(penelopeysm) This should go in DynamicPPL
-function new_pws_from_vnt(model::DynamicPPL.Model, vnt::DynamicPPL.VarNamedTuple)
-    accs = DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.LogPriorAccumulator(),
-        DynamicPPL.LogLikelihoodAccumulator(),
-        DynamicPPL.RawValueAccumulator(true),
-    )
-    init = DynamicPPL.InitFromParams(vnt, nothing)
-    accs = last(DynamicPPL.init!!(model, accs, init, DynamicPPL.UnlinkAll()))
-    params = DynamicPPL.densify!!(DynamicPPL.get_raw_values(accs))
-    stats = (
-        logprior=DynamicPPL.getlogprior(accs),
-        loglikelihood=DynamicPPL.getloglikelihood(accs),
-        logjoint=DynamicPPL.getlogjoint(accs),
-    )
-    return DynamicPPL.ParamsWithStats(params, stats)
-end
-
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -552,7 +536,8 @@ function AbstractMCMC.step(
         rng, model, AbstractMCMC.step, varnames, samplers, states, state.vnt; kwargs...
     )
 
-    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
     return transition, GibbsState(vnt, states)
 end
 
@@ -579,7 +564,8 @@ function AbstractMCMC.step_warmup(
         state.vnt;
         kwargs...,
     )
-    transition = discard_sample ? nothing : new_pws_from_vnt(model, vnt)
+    transition =
+        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
     return transition, GibbsState(vnt, states)
 end
 
