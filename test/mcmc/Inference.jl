@@ -72,20 +72,27 @@ using Turing
 
     @testset "save/resume correctly reloads state" begin
         struct StaticSampler <: AbstractMCMC.AbstractSampler end
-        function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
-            return DynamicPPL.ParamsWithStats(vi, model), vi
+        function AbstractMCMC.step(
+            rng::Random.AbstractRNG, model::DynamicPPL.Model, ::StaticSampler; kwargs...
+        )
+            t = DynamicPPL.ParamsWithStats(rand(rng, model), (;))
+            return t, t
         end
         function AbstractMCMC.step(
-            rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
+            rng::Random.AbstractRNG,
+            model::DynamicPPL.Model,
+            ::StaticSampler,
+            t::DynamicPPL.ParamsWithStats;
+            kwargs...,
         )
-            return DynamicPPL.ParamsWithStats(vi, model), vi
+            return t, t
         end
 
         @model demo() = x ~ Normal()
 
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
-            @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
+            @test chn1.info.samplerstate isa DynamicPPL.ParamsWithStats
             chn2 = sample(demo(), StaticSampler(), 10; initial_state=loadstate(chn1))
             xval = chn1[:x][1]
             @test all(chn2[:x] .== xval)
@@ -95,7 +102,7 @@ using Turing
             chn1 = sample(
                 demo(), StaticSampler(), MCMCThreads(), 10, nchains; save_state=true
             )
-            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.ParamsWithStats}
             @test length(chn1.info.samplerstate) == nchains
             chn2 = sample(
                 demo(),
