@@ -422,8 +422,11 @@ function AbstractMCMC.step(
         initial_params=initial_params,
         kwargs...,
     )
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+    end
     return transition, GibbsState(vnt, states)
 end
 
@@ -452,8 +455,11 @@ function AbstractMCMC.step_warmup(
         initial_params=initial_params,
         kwargs...,
     )
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+    end
     return transition, GibbsState(vnt, states)
 end
 
@@ -536,8 +542,11 @@ function AbstractMCMC.step(
         rng, model, AbstractMCMC.step, varnames, samplers, states, state.vnt; kwargs...
     )
 
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+    end
     return transition, GibbsState(vnt, states)
 end
 
@@ -564,8 +573,11 @@ function AbstractMCMC.step_warmup(
         state.vnt;
         kwargs...,
     )
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(InitFromParams(vnt), model)
+    transition = if discard_sample
+        nothing
+    else
+        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+    end
     return transition, GibbsState(vnt, states)
 end
 
