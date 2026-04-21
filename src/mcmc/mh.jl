@@ -270,7 +270,7 @@ function AbstractMCMC.step(
 )
     # Generate and return initial parameters.
     vi = DynamicPPL.OnlyAccsVarInfo()
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
+    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
@@ -346,7 +346,7 @@ function AbstractMCMC.step(
 
     # Evaluate the model with a new proposal.
     new_vi = DynamicPPL.OnlyAccsVarInfo()
-    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(false))
+    new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(true))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
         new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
