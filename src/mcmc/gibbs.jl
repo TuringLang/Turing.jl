@@ -341,6 +341,15 @@ Gibbs(@varname(x) => NUTS(), @varname(y) => MH())
 Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
 
+Note that all variables in the model should be handled by one or more samplers. The
+behaviour of Gibbs when there are unhandled variables is undefined: depending on the version
+of Turing, it may either crash, or it may sample once from the prior and not update values
+after that.
+
+There is currently no way to specify a different initialisation strategy for for each
+component sampler individually. When sampling with Gibbs, `initial_params` applies to the
+model as a whole.
+
 # Fields
 $(TYPEDFIELDS)
 """
