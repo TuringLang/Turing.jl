@@ -110,7 +110,7 @@ end
 
 """
     q_locationscale(
-        rng::Random.AbstractRNG,
+        [rng::Random.AbstractRNG,]
         ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:Diagonal,<:LowerTriangular} = nothing,
@@ -184,10 +184,13 @@ function q_locationscale(
     end
     return AdvancedVI.MvLocationScale(μ, L, basedist)
 end
+function q_locationscale(ldf::LogDensityFunction; kwargs...)
+    return q_locationscale(Random.default_rng(), ldf; kwargs...)
+end
 
 """
     q_meanfield_gaussian(
-        rng::Random.AbstractRNG,
+        [rng::Random.AbstractRNG,]
         ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:Diagonal} = nothing,
@@ -214,7 +217,7 @@ The remaining keyword arguments are passed to `q_locationscale`.
 """
 function q_meanfield_gaussian(
     rng::Random.AbstractRNG,
-    ldf::LogDensityFunction,
+    ldf::LogDensityFunction;
     location::Union{Nothing,<:AbstractVector}=nothing,
     scale::Union{Nothing,<:Diagonal}=nothing,
     kwargs...,
@@ -223,10 +226,13 @@ function q_meanfield_gaussian(
         rng, ldf; location, scale, meanfield=true, basedist=Normal(), kwargs...
     )
 end
+function q_meanfield_gaussian(ldf::LogDensityFunction; kwargs...)
+    return q_meanfield_gaussian(Random.default_rng(), ldf; kwargs...)
+end
 
 """
     q_fullrank_gaussian(
-        rng::Random.AbstractRNG,
+        [rng::Random.AbstractRNG,]
         ldf::DynamicPPL.LogDensityFunction;
         location::Union{Nothing,<:AbstractVector} = nothing,
         scale::Union{Nothing,<:LowerTriangular} = nothing,
@@ -253,7 +259,7 @@ The remaining keyword arguments are passed to `q_locationscale`.
 """
 function q_fullrank_gaussian(
     rng::Random.AbstractRNG,
-    ldf::LogDensityFunction,
+    ldf::LogDensityFunction;
     location::Union{Nothing,<:AbstractVector}=nothing,
     scale::Union{Nothing,<:LowerTriangular}=nothing,
     kwargs...,
@@ -261,6 +267,9 @@ function q_fullrank_gaussian(
     return q_locationscale(
         rng, ldf; location, scale, meanfield=false, basedist=Normal(), kwargs...
     )
+end
+function q_fullrank_gaussian(ldf::LogDensityFunction; kwargs...)
+    return q_fullrank_gaussian(Random.default_rng(), ldf; kwargs...)
 end
 
 """

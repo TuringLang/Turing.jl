@@ -109,9 +109,7 @@ function build_values_vnt(model::DynamicPPL.Model)
     # model.args is a NamedTuple
     arg_vals = DynamicPPL.VarNamedTuple(model.args)
     # Extract values from the GibbsContext itself, as a VNT.
-    init_strat = DynamicPPL.InitFromParams(
-        get_gibbs_global_varinfo(context).values, nothing
-    )
+    init_strat = DynamicPPL.InitFromParams(get_gibbs_global_vnt(context), nothing)
     oavi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
     # We need to remove the Gibbs conditioning so that we can get all variables in the
     # accumulator (otherwise those that are conditioned on in `model` will not be included).
@@ -131,47 +129,36 @@ function replace_gibbs_context(m::DynamicPPL.Model)
     return DynamicPPL.contextualize(m, replace_gibbs_context(m.context))
 end
 
-function get_gibbs_global_varinfo(context::GibbsContext)
-    return get_global_varinfo(context)
+function get_gibbs_global_vnt(context::GibbsContext)
+    return get_global_vnt(context)
 end
-function get_gibbs_global_varinfo(context::DynamicPPL.AbstractParentContext)
-    return get_gibbs_global_varinfo(DynamicPPL.childcontext(context))
+function get_gibbs_global_vnt(context::DynamicPPL.AbstractParentContext)
+    return get_gibbs_global_vnt(DynamicPPL.childcontext(context))
 end
-function get_gibbs_global_varinfo(::DynamicPPL.AbstractContext)
+function get_gibbs_global_vnt(::DynamicPPL.AbstractContext)
     msg = """No GibbsContext found in context stack. Are you trying to use \
         GibbsConditional outside of Gibbs?
         """
     throw(ArgumentError(msg))
 end
 
-function Turing.Inference.initialstep(
-    ::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    ::GibbsConditional,
-    vi::DynamicPPL.VarInfo;
-    kwargs...,
-)
-    state = DynamicPPL.is_transformed(vi) ? DynamicPPL.invlink(vi, model) : vi
-    # Since GibbsConditional is only used within Gibbs, it does not need to return a
-    # transition.
-    return nothing, state
-end
-
-@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarInfo) =
+@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarNamedTuple) =
     DynamicPPL.VarNamedTuple(dists)
-@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarInfo) = dists
-function _to_varnamedtuple(dists::AbstractDict{<:VarName}, state::DynamicPPL.VarInfo)
-    template_vnt = state.values
+@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarNamedTuple) =
+    dists
+function _to_varnamedtuple(
+    dists::AbstractDict{<:VarName}, raw_values::DynamicPPL.VarNamedTuple
+)
     vnt = DynamicPPL.VarNamedTuple()
     for (vn, dist) in dists
         top_sym = AbstractPPL.getsym(vn)
-        template = get(template_vnt.data, top_sym, DynamicPPL.NoTemplate())
+        template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
         vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, template)
     end
     return vnt
 end
-function _to_varnamedtuple(dist::Distribution, state::DynamicPPL.VarInfo)
-    vns = keys(state)
+function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTuple)
+    vns = keys(raw_values)
     if length(vns) > 1
         msg = (
             "In GibbsConditional, `get_cond_dists` returned a single distribution," *
@@ -182,7 +169,7 @@ function _to_varnamedtuple(dist::Distribution, state::DynamicPPL.VarInfo)
     end
     vn = only(vns)
     top_sym = AbstractPPL.getsym(vn)
-    template = get(state.values.data, top_sym, DynamicPPL.NoTemplate())
+    template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
     return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
 end
 
@@ -192,14 +179,30 @@ end
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, ::Distribution, init_strat::InitFromCondDists
 )
-    return DynamicPPL.UntransformedValue(rand(rng, init_strat.cond_dists[vn]))
+    return DynamicPPL.TransformedValue(
+        rand(rng, init_strat.cond_dists[vn]), DynamicPPL.NoTransform()
+    )
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    ::GibbsConditional;
+    initial_params,
+    kwargs...,
+)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
+    # Since GibbsConditional is only used within Gibbs, it does not need to return a
+    # transition.
+    return nothing, accs
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::GibbsConditional,
-    state::DynamicPPL.VarInfo;
+    state::DynamicPPL.OnlyAccsVarInfo;
     kwargs...,
 )
     # Get all the conditioned variable values from the model context. This is assumed to
@@ -212,17 +215,25 @@ function AbstractMCMC.step(
     #   - a VarNamedTuple of distributions
     #   - a NamedTuple of distributions
     #   - an AbstractDict mapping VarNames to distributions
-    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), state)
+    raw_values = DynamicPPL.get_raw_values(state)
+    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), raw_values)
 
     init_strategy = InitFromCondDists(conddists)
-    _, new_state = DynamicPPL.init!!(rng, model, state, init_strategy)
+    _, new_state = DynamicPPL.init!!(
+        rng, model, state, init_strategy, DynamicPPL.UnlinkAll()
+    )
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
     # transition.
     return nothing, new_state
 end
 
-function setparams_varinfo!!(
-    ::DynamicPPL.Model, ::GibbsConditional, ::Any, params::DynamicPPL.VarInfo
+function gibbs_update_state!!(
+    ::GibbsConditional,
+    state::DynamicPPL.OnlyAccsVarInfo,
+    ::DynamicPPL.Model,
+    ::DynamicPPL.VarNamedTuple,
 )
-    return params
+    # Nothing in the state is used in the next iteration (we overwrite it immediately with
+    # init!! anyway), so we can just return the state as is.
+    return state
 end

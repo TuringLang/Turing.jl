@@ -37,7 +37,7 @@ function vector_names_and_params(m::ModeResult)
     priors = DynamicPPL.get_priors(accs)
     vector_varnames = Vector{VarName}(undef, length(vector_params))
     for (vn, dist) in pairs(priors)
-        range = ldf._varname_ranges[vn].range
+        range = DynamicPPL.get_range_and_transform(ldf, vn).range
         optics = optic_vec(dist)
         # Really shouldn't happen, but catch in case optic_vec isn't properly defined
         if any(isnothing, optics)

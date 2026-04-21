@@ -66,16 +66,16 @@ end
         )
 
         @testset "$(target_vns)" for target_vns in target_vn_combinations
-            global_varinfo = DynamicPPL.VarInfo(model)
+            global_vnt = rand(model)
             target_vns = collect(target_vns)
-            local_varinfo = DynamicPPL.subset(global_varinfo, target_vns)
+            local_vnt = DynamicPPL.subset(global_vnt, target_vns)
             ctx = Turing.Inference.GibbsContext(
-                target_vns, Ref(global_varinfo), DynamicPPL.DefaultContext()
+                target_vns, Ref(global_vnt), DynamicPPL.DefaultContext()
             )
 
             # Check that the correct varnames are conditioned, and that getting their
             # values is type stable when the varinfo is.
-            for k in keys(global_varinfo)
+            for k in keys(global_vnt)
                 is_target = any(Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns))
                 @test Turing.Inference.is_target_varname(ctx, k) == is_target
                 if !is_target
@@ -87,7 +87,7 @@ end
             for k in all_varnames
                 # The map(identity, ...) part is there to concretise the eltype.
                 subkeys = map(
-                    identity, filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_varinfo))
+                    identity, filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_vnt))
                 )
                 is_target = (k in target_vns)
                 @test Turing.Inference.is_target_varname(ctx, subkeys) == is_target
@@ -96,14 +96,12 @@ end
                 end
             end
 
-            # Check that evaluate_nowarn!! and the result it returns are type stable.
+            # Check that init!! is type stable.
             conditioned_model = DynamicPPL.contextualize(model, ctx)
-            _, post_eval_varinfo = @inferred DynamicPPL.evaluate_nowarn!!(
-                conditioned_model, local_varinfo
+            accs = DynamicPPL.OnlyAccsVarInfo()
+            _, accs = @inferred DynamicPPL.init!!(
+                conditioned_model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
             )
-            for k in keys(post_eval_varinfo)
-                @inferred post_eval_varinfo[k]
-            end
         end
     end
 end
@@ -156,14 +154,17 @@ end
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
-    Inference.isgibbscomponent(wrap::AlgWrapper) = Inference.isgibbscomponent(wrap.inner)
-    function Inference.setparams_varinfo!!(
-        model::DynamicPPL.Model,
+    Turing.Inference.isgibbscomponent(wrap::AlgWrapper) =
+        Turing.Inference.isgibbscomponent(wrap.inner)
+    function Turing.Inference.gibbs_update_state!!(
         sampler::AlgWrapper,
         state,
-        params::DynamicPPL.AbstractVarInfo,
+        model::DynamicPPL.Model,
+        global_vnt::DynamicPPL.VarNamedTuple,
     )
-        return Inference.setparams_varinfo!!(model, sampler.inner, state, params)
+        return Turing.Inference.gibbs_update_state!!(
+            sampler.inner, state, model, global_vnt
+        )
     end
 
     # targets_and_algs will be a list of tuples, where the first element is the target_vns
@@ -191,17 +192,6 @@ end
     )
         capture_targets_and_algs(sampler.inner, model.context)
         return AbstractMCMC.step(rng, model, sampler.inner, args...; kwargs...)
-    end
-
-    function Turing.Inference.initialstep(
-        rng::Random.AbstractRNG,
-        model::DynamicPPL.Model,
-        sampler::AlgWrapper,
-        args...;
-        kwargs...,
-    )
-        capture_targets_and_algs(sampler.inner, model.context)
-        return Turing.Inference.initialstep(rng, model, sampler.inner, args...; kwargs...)
     end
 
     struct Wrapper{T<:Real}
@@ -296,57 +286,44 @@ end
 
     Turing.Inference.isgibbscomponent(::WarmupCounter) = true
 
-    # A trivial state that holds nothing but a VarInfo, to be used with WarmupCounter.
-    struct VarInfoState{T}
-        vi::T
-    end
-
-    Turing.Inference.get_varinfo(state::VarInfoState) = state.vi
-    function Turing.Inference.setparams_varinfo!!(
-        ::DynamicPPL.Model,
-        ::WarmupCounter,
-        ::VarInfoState,
-        params::DynamicPPL.AbstractVarInfo,
+    # we need some state type to implement the Gibbs interface (we can't just use `nothing`)
+    struct TrivialState end
+    Turing.Inference.gibbs_get_raw_values(::TrivialState) = VarNamedTuple()
+    function Turing.Inference.gibbs_update_state!!(
+        ::WarmupCounter, s::TrivialState, ::DynamicPPL.Model, ::DynamicPPL.VarNamedTuple
     )
-        return VarInfoState(params)
+        return s
     end
 
     function AbstractMCMC.step(
-        ::Random.AbstractRNG, model::DynamicPPL.Model, spl::WarmupCounter; kwargs...
-    )
-        spl.non_warmup_init_count += 1
-        vi = DynamicPPL.VarInfo(model)
-        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
-    end
-
-    function AbstractMCMC.step_warmup(
-        ::Random.AbstractRNG, model::DynamicPPL.Model, spl::WarmupCounter; kwargs...
-    )
-        spl.warmup_init_count += 1
-        vi = DynamicPPL.VarInfo(model)
-        return (DynamicPPL.ParamsWithStats(vi, model), VarInfoState(vi))
-    end
-
-    function AbstractMCMC.step(
-        ::Random.AbstractRNG,
+        rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         spl::WarmupCounter,
-        s::VarInfoState;
+        state::Union{Nothing,TrivialState}=nothing;
         kwargs...,
     )
-        spl.non_warmup_count += 1
-        return DynamicPPL.ParamsWithStats(s.vi, model), s
+        if state === nothing
+            spl.non_warmup_init_count += 1
+        else
+            spl.non_warmup_count += 1
+        end
+        # no need a transition since we never check the actual outputs
+        return nothing, TrivialState()
     end
 
     function AbstractMCMC.step_warmup(
         ::Random.AbstractRNG,
         model::DynamicPPL.Model,
         spl::WarmupCounter,
-        s::VarInfoState;
+        state::Union{Nothing,TrivialState}=nothing;
         kwargs...,
     )
-        spl.warmup_count += 1
-        return DynamicPPL.ParamsWithStats(s.vi, model), s
+        if state === nothing
+            spl.warmup_init_count += 1
+        else
+            spl.warmup_count += 1
+        end
+        return nothing, TrivialState()
     end
 
     @model f() = x ~ Normal()
@@ -838,6 +815,30 @@ end
         model = dirichlet_model()
         sampler = Gibbs(:w => HMC(0.05, 10))
         @test (sample(model, sampler, 10); true)
+    end
+
+    @testset "dynamic transformations with linked samplers" begin
+        # See https://github.com/TuringLang/Turing.jl/issues/2801.
+        # The issue there was that the linked value for `y` was never updated when `x`
+        # changed, even though it should (the transform for `y` depends on `x`), leading to
+        # incorrect results.
+        @model function dyn()
+            x ~ Uniform(-5, 5)
+            return y ~ truncated(Normal(); lower=x)
+        end
+        model = dyn()
+
+        for spl in (
+            Gibbs(:x => MH(), :y => HMC(0.1, 20)),
+            Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
+        )
+            chn = sample(
+                StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
+            )
+            # ground truth obtained from NUTS
+            @test mean(chn[:x]) ≈ 0.0 atol = 0.1
+            @test mean(chn[:y]) ≈ 1.5 atol = 0.1
+        end
     end
 end
 

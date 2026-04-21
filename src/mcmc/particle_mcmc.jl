@@ -20,6 +20,10 @@ end
 struct ParticleMCMCContext{R<:AbstractRNG} <: DynamicPPL.AbstractContext
     rng::R
 end
+# Because pMCMC uses OnlyAccsVarInfo, we need to overload this. It's fine to use Any (see
+# the docstring of get_param_eltype in DynamicPPL) because pMCMC doesn't involve AD or any
+# other tracer types.
+DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::ParticleMCMCContext) = Any
 
 mutable struct TracedModel{M<:Model,T<:Tuple,NT<:NamedTuple} <:
                AdvancedPS.AbstractGenericModel
@@ -156,23 +160,23 @@ function AbstractMCMC.sample(
     )
 end
 
-function Turing.Inference.initialstep(
+function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
-    spl::SMC,
-    vi::AbstractVarInfo;
+    spl::SMC;
     nparticles::Int,
+    initial_params,
     discard_sample=false,
     kwargs...,
 )
-    # Reset the VarInfo.
-    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.empty!!(vi)
+    # Create an empty VarInfo
+    accs = DynamicPPL.OnlyAccsVarInfo()
+    accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
 
     # Create a new set of particles.
     particles = AdvancedPS.ParticleContainer(
-        # her
-        [AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
+        [AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), true) for _ in 1:nparticles],
         AdvancedPS.TracedRNG(),
         rng,
     )
@@ -189,7 +193,7 @@ function Turing.Inference.initialstep(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(deepcopy(particle.model.f.varinfo), model, stats)
+        DynamicPPL.ParamsWithStats(particle.model.f.varinfo, stats)
     end
     state = SMCState(particles, 2, logevidence)
 
@@ -217,7 +221,7 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(deepcopy(particle.model.f.varinfo), model, stats)
+        DynamicPPL.ParamsWithStats(deepcopy(particle.model.f.varinfo), stats)
     end
     nextstate = SMCState(state.particles, index + 1, state.average_logevidence)
 
@@ -272,29 +276,24 @@ Equivalent to [`PG`](@ref).
 """
 const CSMC = PG # type alias of PG as Conditional SMC
 
-struct PGState
-    vi::AbstractVarInfo
-    rng::Random.AbstractRNG
+struct PGState{V<:DynamicPPL.AbstractVarInfo,R<:Random.AbstractRNG}
+    vi::V
+    rng::R
 end
 
-get_varinfo(state::PGState) = state.vi
-
-function Turing.Inference.initialstep(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::PG,
-    vi::AbstractVarInfo;
-    discard_sample=false,
-    kwargs...,
+function AbstractMCMC.step(
+    rng::AbstractRNG, model::DynamicPPL.Model, spl::PG; discard_sample=false, kwargs...
 )
     error_if_threadsafe_eval(model)
-    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
+    oavi = DynamicPPL.OnlyAccsVarInfo()
+    oavi = DynamicPPL.setacc!!(oavi, ProduceLogLikelihoodAccumulator())
+    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
 
     # Create a new set of particles
     num_particles = spl.nparticles
     particles = AdvancedPS.ParticleContainer(
         [
-            AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true) for
+            AdvancedPS.Trace(model, oavi, AdvancedPS.TracedRNG(), true) for
             _ in 1:num_particles
         ],
         AdvancedPS.TracedRNG(),
@@ -314,7 +313,7 @@ function Turing.Inference.initialstep(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(deepcopy(_vi), model, (; logevidence=logevidence))
+        DynamicPPL.ParamsWithStats(deepcopy(_vi), (; logevidence=logevidence))
     end
 
     return transition, PGState(_vi, reference.rng)
@@ -328,18 +327,26 @@ function AbstractMCMC.step(
     discard_sample=false,
     kwargs...,
 )
-    # Reset the VarInfo before new sweep.
-    vi = state.vi
-    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
+    # Reset log-prob accs in reference particle, to avoid accumulating into the same accs
+    # across iterations. If the chosen particle for this iteration is the reference
+    # particle, this allows us to just read off the log-probs from the accumulators,
+    # without having to re-evaluate the model.
+    reference_vi = state.vi
+    reference_vi = DynamicPPL.setacc!!(reference_vi, ProduceLogLikelihoodAccumulator())
+    reference_vi = DynamicPPL.setacc!!(reference_vi, DynamicPPL.LogPriorAccumulator())
+    reference_vi = DynamicPPL.setacc!!(reference_vi, DynamicPPL.LogJacobianAccumulator())
 
     # Create reference particle for which the samples will be retained.
-    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, vi, state.rng, false))
+    reference = AdvancedPS.forkr(AdvancedPS.Trace(model, reference_vi, state.rng, false))
 
-    # Create a new set of particles.
+    # Create a new set of particles with newly emptied accs
+    empty_accs = DynamicPPL.OnlyAccsVarInfo()
+    empty_accs = DynamicPPL.setacc!!(empty_accs, ProduceLogLikelihoodAccumulator())
+    empty_accs = DynamicPPL.setacc!!(empty_accs, DynamicPPL.RawValueAccumulator(true))
     num_particles = spl.nparticles
     x = map(1:num_particles) do i
         if i != num_particles
-            return AdvancedPS.Trace(model, vi, AdvancedPS.TracedRNG(), true)
+            return AdvancedPS.Trace(model, empty_accs, AdvancedPS.TracedRNG(), true)
         else
             return reference
         end
@@ -359,7 +366,7 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(deepcopy(_vi), model, (; logevidence=logevidence))
+        DynamicPPL.ParamsWithStats(deepcopy(_vi), (; logevidence=logevidence))
     end
 
     return transition, PGState(_vi, newreference.rng)
@@ -428,12 +435,14 @@ function DynamicPPL.tilde_assume!!(
     trng = get_trace_local_rng()
     resample = get_trace_local_resampled()
     # Modify the varinfo as appropriate.
-    dispatch_ctx = if ~haskey(vi, vn) || resample
-        DynamicPPL.InitContext(trng, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll())
+    values = DynamicPPL.get_raw_values(vi)
+    init_strat = if ~haskey(values, vn) || resample
+        DynamicPPL.InitFromPrior()
     else
-        DynamicPPL.DefaultContext()
+        DynamicPPL.InitFromParams(values, nothing)
     end
-    x, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
+    ctx = DynamicPPL.InitContext(trng, init_strat, DynamicPPL.UnlinkAll())
+    x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, vi)
     # Set the varinfo back in the trace.
     set_trace_local_varinfo(vi)
     return x, vi
@@ -527,3 +536,19 @@ Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 # DynamicPPL.Model as an argument, so we can just check for that. See
 # https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
+
+####
+#### Gibbs interface
+####
+
+function gibbs_get_raw_values(state::PGState)
+    return DynamicPPL.get_raw_values(state.vi)
+end
+
+function gibbs_update_state!!(
+    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
+)
+    init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
+    new_vi = last(DynamicPPL.init!!(model, state.vi, init_strat, DynamicPPL.UnlinkAll()))
+    return PGState(new_vi, state.rng)
+end

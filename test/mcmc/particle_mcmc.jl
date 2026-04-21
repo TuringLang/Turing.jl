@@ -24,7 +24,7 @@ using Turing
         @test s.resampler === resample_systematic
     end
 
-    @testset "models" begin
+    @testset "basic model" begin
         @model function normal()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -32,11 +32,10 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-
         tested = sample(normal(), SMC(), 100)
+    end
 
-        # TODO(mhauru) This needs an explanation for why it fails.
-        # failing test
+    @testset "errors when number of observations is not fixed" begin
         @model function fail_smc()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -46,8 +45,8 @@ using Turing
             end
             return a, b
         end
-
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
+        @test_throws "number of observations" sample(fail_smc(), SMC(), 100)
     end
 
     @testset "chain log-density metadata" begin
