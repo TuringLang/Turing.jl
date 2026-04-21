@@ -270,7 +270,7 @@ function PG(nparticles::Int, threshold::Real)
 end
 
 """
-CSMC(...)
+    CSMC(...)
 
 Equivalent to [`PG`](@ref).
 """

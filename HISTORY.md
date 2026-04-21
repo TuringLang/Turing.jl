@@ -4,6 +4,28 @@
 
 **Variational inference interface**
 
+The VI interface in Turing has been modified to make it more interoperable with the rest of Turing.
+
+  - The arguments to `vi(...)` are slightly different: instead of specifying a `q_init` argument (the initial variational approximation), you now directly pass a function that constructs this for you. For example, instead of
+    
+    ```julia
+    q_init = q_meanfield_gaussian(model)
+    vi(model, q_init, n_iters)
+    ```
+    
+    you would now do
+    
+    ```julia
+    vi(model, q_meanfield_gaussian, n_iters)
+    ```
+
+  - The return value of `vi` is now a `VIResult` struct (please see the documentation for information), which bundles the previous return values together in a more cohesive way.
+    Most importantly, you can now call `rand([rng,] result::VIResult)` to obtain new samples from the variational approximation.
+    This returns a `VarNamedTuple` of raw values, which can be used directly in all other Turing interfaces without any further wrangling.
+    (In contrast, the previous return value of `rand(q)` would yield a vector of transformed parameters.)
+
+Internally, the VI interface has been reworked to directly use `DynamicPPL.LogDensityFunction` instead of relying on a transformed distribution from Bijectors.jl.
+
 **Gibbs sampler interface**
 
 This section is only relevant if you are writing a sampler that is intended to be *directly* used as a component sampler in Turing's Gibbs sampler.
@@ -16,6 +38,7 @@ This fixes correctness issues that arise with value-dependent transformations, a
 In Turing v0.43, you would have to define two methods
 
   - `Turing.Inference.get_varinfo(::MyState)` -> returns a VarInfo of values from your sampler's state
+
   - `Turing.Inference.setparams_varinfo!!(::DynamicPPL.Model, ::MySampler, ::MyState, params::AbstractVarInfo)` -> uses a VarInfo of values to update your sampler's state
 
 The corresponding methods in Turing v0.44 are
@@ -33,10 +56,25 @@ Please see the docstrings in the Turing.jl API page for more information.
 
 ## Other changes
 
+**Performance**
+
 Previously many of Turing's samplers needed to carry around a VarInfo so that they could communicate with Gibbs.
 This release frees them up from having to do so, and in particular allows for usage of `DynamicPPL.OnlyAccsVarInfo`, which is much cheaper as it avoids unnecessary computations.
 
-As a result, samplers such as MH and ESS are faster in this release.
+As a result, samplers such as MH and ESS are faster in this release, sometimes by up to 5x.
+
+**Fixed transforms**
+
+The various inference methods in Turing (MCMC sampling, optimisation, and VI) all accept an extra `fix_transforms` keyword argument, which specifies that all transforms in the model should be determined once at the start of inference and then fixed to those values for the rest of inference.
+(In contrast, the default behaviour is to rederive transforms each time the model is run.)
+
+The reason why Turing rederives transforms is to ensure correctness in cases where the transform *depends on the value of another random variable*.
+For example, if `a` is a parameter, then `b ~ Uniform(-a, a)` has a transform that depends on the value of `a`.
+Since `a` is not static, this in turn means that the transform associated with `b` is not static.
+
+If you know that this consideration is not relevant for you, it can sometimes lead to performance benefits if the transforms are expensive to compute.
+However, in many cases the benefits are negligible and you should always benchmark this on a case-by-case basis.
+Please see https://turinglang.org/DynamicPPL.jl/stable/fixed_transforms/ for further details about this.
 
 # 0.43.7
 

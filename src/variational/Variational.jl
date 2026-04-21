@@ -313,8 +313,8 @@ end
     Base.rand(rng::Random.AbstractRNG, res::VIResult, sz...)
 
 Draw a sample, or array of samples, from the variational distribution `q` in `res`. Each
-sample is a [`DynamicPPL.VarNamedTuple`](@ref) containing parameter values (in original,
-untransformed space).
+sample is a [`DynamicPPL.VarNamedTuple`](@extref DynamicPPL.VarNamedTuples.VarNamedTuple)
+containing raw parameter values.
 """
 function Base.rand(rng::Random.AbstractRNG, res::VIResult, sz::Integer...)
     # TODO(penelopeysm): Should we expose a way to get colon_eq results as well -- maybe a
@@ -368,7 +368,7 @@ For other variational families, refer to the documentation of `AdvancedVI` to de
 - `adtype`: Automatic differentiation backend to be applied to the log-density. The default value for `algorithm` also uses this backend for differentiating the variational objective.
 - `algorithm`: Variational inference algorithm. The default is `KLMinRepGradProxDescent`, please refer to [AdvancedVI docs](https://turinglang.org/AdvancedVI.jl/stable/) for all the options.
 - `show_progress`: Whether to show the progress bar.
-- `unconstrained`: Whether to transform the posterior to be unconstrained for running the variational inference algorithm. If `true`, then the output `q` will be wrapped into a `Bijectors.TransformedDistribution` with the transformation matching the support of the posterior. The default value depends on the chosen `algorithm`.
+- `unconstrained`: Whether to transform the posterior to be unconstrained for running the variational inference algorithm. The default value depends on the chosen `algorithm` (most algorithms require unconstrained space).
 - `fix_transforms`: Whether to precompute the transforms needed to convert model parameters to (possibly unconstrained) vectors. This can lead to performance improvements, but if any transforms depend on model parameters, setting `fix_transforms=true` can silently yield incorrect results.
 - Any additional keyword arguments are passed on both to the function `initial_approx`, and also to `AdvancedVI.optimize`.
 
