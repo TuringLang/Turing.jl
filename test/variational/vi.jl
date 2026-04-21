@@ -51,6 +51,7 @@ begin
     @testset "default interface" begin
         for q0 in [q_meanfield_gaussian, q_fullrank_gaussian]
             result = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
+            @test result isa Turing.Variational.VIResult
             @test rand(result) isa DynamicPPL.VarNamedTuple
             @test rand(result, 2) isa Vector{<:DynamicPPL.VarNamedTuple}
             @test size(rand(result, 2)) == (2,)
