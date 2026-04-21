@@ -139,6 +139,7 @@ function AbstractMCMC.step(
     initial_state=nothing,
     initial_params, # passed through from sample
     discard_sample=false,
+    fix_transforms::Bool=false,
     kwargs...,
 ) where {unconstrained}
     sampler = sampler_wrapper.sampler
@@ -149,7 +150,11 @@ function AbstractMCMC.step(
     _, oavi = DynamicPPL.init!!(model, oavi, DynamicPPL.InitFromPrior(), tfm_strategy)
     vecvals = DynamicPPL.get_vector_values(oavi)
     f = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vecvals; adtype=sampler_wrapper.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        vecvals;
+        adtype=sampler_wrapper.adtype,
+        fix_transforms=fix_transforms,
     )
     x = find_initial_params_ldf(rng, f, initial_params)
 

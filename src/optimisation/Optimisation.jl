@@ -329,6 +329,7 @@ function estimate_mode(
     adtype=ADTypes.AutoForwardDiff(),
     check_model::Bool=true,
     check_constraints_at_runtime::Bool=true,
+    fix_transforms::Bool=false,
     solve_kwargs...,
 )
     check_model && Turing._check_model(model)
@@ -347,7 +348,9 @@ function estimate_mode(
     end
     # Note that we don't need adtype to construct the LDF, because it's specified inside the
     # OptimizationProblem.
-    ldf = LogDensityFunction(model, getlogdensity, tfm_strategy, accs)
+    ldf = LogDensityFunction(
+        model, getlogdensity, tfm_strategy, accs; fix_transforms=fix_transforms
+    )
 
     # Generate bounds and initial parameters in the unlinked or linked space as requested.
     lb_vec, ub_vec, inits_vec = make_optim_bounds_and_init(

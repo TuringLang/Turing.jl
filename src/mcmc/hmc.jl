@@ -165,6 +165,7 @@ function AbstractMCMC.step(
     nadapts=0,
     discard_sample=false,
     verbose::Bool=true,
+    fix_transforms::Bool=false,
     kwargs...,
 )
     # Create a LogDensityFunction
@@ -174,7 +175,11 @@ function AbstractMCMC.step(
     )
     vecvals = DynamicPPL.get_vector_values(oavi)
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vecvals; adtype=spl.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        vecvals;
+        adtype=spl.adtype,
+        fix_transforms=fix_transforms,
     )
     # And a Hamiltonian
     metricT = getmetricT(spl)

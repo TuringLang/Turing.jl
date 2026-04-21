@@ -48,12 +48,17 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     spl::DynamicNUTS;
     initial_params,
+    fix_transforms::Bool=false,
     kwargs...,
 )
     # Construct LogDensityFunction
     tfm_strategy = DynamicPPL.LinkAll()
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        tfm_strategy;
+        adtype=spl.adtype,
+        fix_transforms=fix_transforms,
     )
     x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
 

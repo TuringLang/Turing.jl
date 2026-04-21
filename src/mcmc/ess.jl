@@ -44,6 +44,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     ::ESS;
     discard_sample=false,
+    fix_transforms::Bool=false,
     initial_params,
     kwargs...,
 )
@@ -62,10 +63,12 @@ function AbstractMCMC.step(
     end
 
     # Set up a LogDensityFunction which evaluates the model's log-likelihood.
-    # TODO(penelopeysm): We could conceivably use fixed transforms here because every prior
-    # distribution is Gaussian, which by definition must have a fixed bijector. Need to
-    # benchmark to see if it's worth it.
-    loglike_ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, oavi)
+    # TODO(penelopeysm): We could conceivably always use fixed transforms here because every
+    # prior distribution is Gaussian, which by definition must have a fixed bijector. Need
+    # to benchmark to see if it's worth it.
+    loglike_ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getloglikelihood, oavi; fix_transforms=fix_transforms
+    )
     # And the corresponding vector of params, and the likelihood at this point
     vecvals = DynamicPPL.get_vector_values(oavi)
     vector_params = DynamicPPL.internal_values_as_vector(vecvals)
