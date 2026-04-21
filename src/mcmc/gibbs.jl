@@ -22,6 +22,25 @@ isgibbscomponent(::SMC) = false
     Turing.Inference.gibbs_get_raw_values(state)
 
 Return a `VarNamedTuple` containing the raw values of all variables in the sampler state.
+
+Turing's Gibbs sampler maintains, at all points during the sampling process, a single global
+`VarNamedTuple` that contains the **raw** values for all variables in the model. During the
+sampling process, it calls each component sampler in turn and updates the global
+`VarNamedTuple` with the new raw values returned by each sampler.
+
+This function is used to pass that information *from* a component sampler *to* the Gibbs
+sampler. Note that this means that the `VarNamedTuple` returned by this function should
+**only** contain raw values for the variables that the component sampler is responsible for
+sampling, and should not contain any values for other variables.
+"""
+function gibbs_get_raw_values end
+
+"""
+    Turing.Inference.gibbs_get_raw_values(state::AbstractVarInfo)
+
+If your sampler state is an `AbstractVarInfo`, there is a default method available for this,
+which reads the values stored in its `RawValueAccumulator`. (This means that the `VarInfo`
+used for evaluation in the component sampler *must* contain a `RawValueAccumulator`.)
 """
 function gibbs_get_raw_values(state::AbstractVarInfo)
     return DynamicPPL.get_raw_values(state)
@@ -33,9 +52,25 @@ end
     )
 
 Update the state of a Gibbs component sampler to be consistent with the new values in
-`global_vals`. The exact meaning of this depends on what the sampler state contains.
+`global_vals`. Each sampler should implement a method for its respective state type.
 
-Each sampler should implement a method for its respective state type.
+Note that the `model` argument passed in here will be 'conditioned' on the *new* values
+inside `global_vals`. Thus, evaluating it will reflect the log-probability associated with
+the new values.
+
+Exactly what this function should do will depends on what the sampler state contains, but
+for example, it will often mean:
+
+- Updating any raw or vectorised values stored in the sampler state to be consistent with
+  `global_vals`.
+- Reevaluating the (new) model to update any cached log-probabilities.
+- Updating any log-density callables (such as a `DynamicPPL.LogDensityFunction`) stored in
+  the sampler state, to be consistent with the new model.
+
+For examples of this, please see the implementations of this function for the samplers in
+Turing.jl. In particular, the `HMC` and `ExternalSampler` implementations work with
+`LogDensityFunction` and demonstrate how information such as that can be updated based on
+the new model.
 """
 function gibbs_update_state!! end
 
@@ -55,7 +90,7 @@ If extra information is needed (e.g. log-probabilities), `extra_accs` can be use
 other accumulators to be used in the same model evaluation, to avoid having to recompute
 them later.
 
-Returns `(new_ldf, new_params, accs)` where `accs` is the accumulator VarInfo after
+Returns `(new_ldf, new_params, accs)` where `accs` is the set of accumulators after
 evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
 """
 function gibbs_recompute_ldf_and_params(
@@ -159,8 +194,8 @@ end
 
 get_global_vnt(context::GibbsContext) = context.global_vnt[]
 
-function set_global_vnt!(context::GibbsContext, new_global_varinfo)
-    context.global_vnt[] = new_global_varinfo
+function set_global_vnt!(context::GibbsContext, new_global_vnt)
+    context.global_vnt[] = new_global_vnt
     return nothing
 end
 
@@ -267,10 +302,11 @@ function DynamicPPL.tilde_assume!!(
     else
         # If the varname has not been conditioned on, nor is it a target variable, its
         # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `varinfo` of the context, but not to the local one
+        # this new variable to the global `vnt` of the context, but not to the local one
         # being used by the current sampler.
         #
-        # TODO(penelopeysm): How is the RNG controlled here?
+        # TODO(penelopeysm): This branch is very hard to hit, but it will crash if it is
+        # hit: see https://github.com/TuringLang/Turing.jl/issues/2810
         value = rand(right)
         vnt = get_global_vnt(context)
         vnt = DynamicPPL.templated_setindex!!(vnt, value, vn, template)
@@ -301,7 +337,7 @@ Return a new, conditioned model for a component of a Gibbs sampler.
 - A new model with the variables _not_ in `target_variables` conditioned.
 
 - The `GibbsContext` object that will be used to condition the variables. This is necessary
-because evaluation can mutate its `global_varinfo` field, which we need to access later.
+because evaluation can mutate its `global_vnt` field, which we need to access later.
 """
 function make_conditional(
     model::DynamicPPL.Model,
@@ -477,7 +513,7 @@ end
 
 """
 Take the first step of MCMC for the first component sampler, and call the same function
-recursively on the remaining samplers, until no samplers remain. Return the global VarInfo
+recursively on the remaining samplers, until no samplers remain. Return the global VNT
 and a tuple of initial states for all component samplers.
 
 The `step_function` argument should always be either AbstractMCMC.step or

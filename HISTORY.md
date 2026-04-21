@@ -1,6 +1,42 @@
 # 0.44.0
 
-[...]
+## Breaking changes
+
+**Variational inference interface**
+
+**Gibbs sampler interface**
+
+This section is only relevant if you are writing a sampler that is intended to be *directly* used as a component sampler in Turing's Gibbs sampler.
+(If Gibbs calls your sampler via Turing's `externalsampler` interface, this section does not apply toyou.)
+
+Turing's Gibbs sampler has been reworked in this release to fix a number of correctness and performance issues.
+The main change is that the Gibbs state carries a `VarNamedTuple` of raw values, instead of a `VarInfo` of vectorised (transformed) parameters.
+This fixes correctness issues that arise with value-dependent transformations, and also leads to much reduced overhead when sampling with Gibbs: see https://github.com/TuringLang/Turing.jl/pull/2803 for some representative benchmarks.
+
+In Turing v0.43, you would have to define two methods
+
+  - `Turing.Inference.get_varinfo(::MyState)` -> returns a VarInfo of values from your sampler's state
+  - `Turing.Inference.setparams_varinfo!!(::DynamicPPL.Model, ::MySampler, ::MyState, params::AbstractVarInfo)` -> uses a VarInfo of values to update your sampler's state
+
+The corresponding methods in Turing v0.44 are
+
+  - `Turing.Inference.gibbs_get_raw_values(::MyState)` -> returns a VarNamedTuple of *raw* values from your sampler's state. Note that these values should not be transformed or wrapped in any way: if `x` is `3` in the model, then we should have that `gibbs_get_raw_values(state)[@varname(x)] == 3`.
+
+  - `Turing.Inference.gibbs_update_state!!(::MySampler, ::MyState, ::DynamicPPL.Model, global_vals::VarNamedTuple)` -> uses the values in `global_vals` to update your sampler's state and return a new state.
+    Note that the values in `global_vals` are raw values.
+    Also, note that the model argument passed in here will be 'conditioned' on the *new* values inside `global_vals`.
+    That means that if any part of your state relies on caching the model being evaluated, you have to update those parts of your state to reflect the new model as well.
+
+As can be seen, the interface is almost entirely the same except that we use `VarNamedTuple`s of raw values instead of `VarInfo`s of potentially transformed parameters.
+
+Please see the docstrings in the Turing.jl API page for more information.
+
+## Other changes
+
+Previously many of Turing's samplers needed to carry around a VarInfo so that they could communicate with Gibbs.
+This release frees them up from having to do so, and in particular allows for usage of `DynamicPPL.OnlyAccsVarInfo`, which is much cheaper as it avoids unnecessary computations.
+
+As a result, samplers such as MH and ESS are faster in this release.
 
 # 0.43.7
 
