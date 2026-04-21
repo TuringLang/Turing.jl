@@ -497,8 +497,7 @@ function gibbs_update_state!!(
         state.ldf, model, state._vector_vnt, global_vals
     )
     # Update the Hamiltonian (because that depends on the LDF).
-    metricT = getmetricT(spl)
-    metric = metricT(LogDensityProblems.dimension(new_ldf))
+    metric = gen_metric(LogDensityProblems.dimension(new_ldf), spl, state)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
     new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
