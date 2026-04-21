@@ -66,7 +66,10 @@ function gibbs_recompute_ldf_and_params(
     extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
     new_ldf = DynamicPPL.LogDensityFunction(
-        model, old_ldf._getlogdensity, vector_vnt; adtype=old_ldf.adtype
+        model,
+        DynamicPPL.get_logdensity_callable(old_ldf),
+        vector_vnt;
+        adtype=old_ldf.adtype,
     )
     accs = DynamicPPL.OnlyAccsVarInfo(
         DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...

@@ -154,9 +154,10 @@ struct ESSLikelihood{L<:DynamicPPL.LogDensityFunction}
 
     # Force usage of `getloglikelihood` in inner constructor
     function ESSLikelihood(ldf::DynamicPPL.LogDensityFunction)
-        if ldf._getlogdensity !== DynamicPPL.getloglikelihood
+        logp_callable = DynamicPPL.get_logdensity_callable(ldf)
+        if logp_callable !== DynamicPPL.getloglikelihood
             error(
-                "The log-density function passed to ESSLikelihood must use `getloglikelihood` as its log-density function, but found $(ldf._getlogdensity). This is likely a bug in Turing.jl, please report it!",
+                "The log-density function passed to ESSLikelihood must use `getloglikelihood` as its log-density function, but found $(logp_callable). This is likely a bug in Turing.jl, please report it!",
             )
         end
         return new{typeof(ldf)}(ldf)

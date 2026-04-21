@@ -268,9 +268,7 @@ function AbstractMCMC.step(
     verbose=true,
     kwargs...,
 )
-    # Generate and return initial parameters. We need to use VAIMAcc because that will
-    # generate the VNT for us that provides the values (as opposed to `vi.values` which
-    # stores `AbstractTransformedValues`).
+    # Generate and return initial parameters.
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(false))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
