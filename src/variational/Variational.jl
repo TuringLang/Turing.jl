@@ -303,7 +303,6 @@ function Base.show(io::IO, ::MIME"text/plain", r::VIResult)
             tree_char = i == length(last_info) ? "└" : "├"
             println(io, "  │         $(tree_char) $k = $v")
         end
-    else
     end
     print(io, "  └ (2 more fields: state, ldf)")
     return nothing
