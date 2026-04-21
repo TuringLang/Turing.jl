@@ -150,6 +150,40 @@ begin
         @test mean(xs) ≈ mean_true atol = 0.2
         @test var(xs) ≈ var_true atol = 0.2
     end
+
+    @testset "fix_transforms" begin
+        struct MyNormal <: ContinuousUnivariateDistribution end
+        Distributions.logpdf(::MyNormal, x) = logpdf(Normal(), x)
+        Distributions.rand(rng::Random.AbstractRNG, ::MyNormal) = rand(rng, Normal())
+        counter = Ref(0)
+        struct VectAndIncrement end
+        (::VectAndIncrement)(x) = [x]
+        Bijectors.with_logabsdet_jacobian(::VectAndIncrement, x) = [x], 0.0
+        Bijectors.inverse(::VectAndIncrement) = OnlyAndIncrement()
+        struct OnlyAndIncrement end
+        (::OnlyAndIncrement)(x) = x[]
+        Bijectors.with_logabsdet_jacobian(::OnlyAndIncrement, x) = x[], 0.0
+        Bijectors.inverse(::OnlyAndIncrement) = VectAndIncrement()
+        function Bijectors.VectorBijectors.to_linked_vec(::MyNormal)
+            counter[] += 1
+            return VectAndIncrement()
+        end
+        function Bijectors.VectorBijectors.from_linked_vec(::MyNormal)
+            counter[] += 1
+            return OnlyAndIncrement()
+        end
+
+        @model f() = x ~ MyNormal()
+        model = f()
+
+        counter[] = 0
+        vi(model, q_meanfield_gaussian, 100)
+        @test counter[] > 100
+
+        counter[] = 0
+        vi(model, q_meanfield_gaussian, 100; fix_transforms=true)
+        @test counter[] < 100
+    end
 end
 
 end

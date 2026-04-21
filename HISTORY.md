@@ -65,11 +65,13 @@ As a result, samplers such as MH and ESS are faster in this release, sometimes b
 
 **Fixed transforms**
 
-The various inference methods in Turing (MCMC sampling, optimisation, and VI) now accept an extra `fix_transforms` keyword argument, which specifies that all transforms in the model should be determined once at the start of inference and then fixed to those values for the rest of inference.
+The MCMC sampling (`sample`), optimisation (`mode_estimate` / `maximum_likelihood` / `maximum_a_posteriori`, and VI (`vi`) entry points now accept an extra `fix_transforms` keyword argument, which specifies that all transforms in the model should be determined once at the start of inference and then fixed to those values for the rest of inference.
 (In contrast, the default behaviour is to rederive transforms each time the model is run.)
 
 Note that not all MCMC samplers currently support fixed transforms.
-In particular, HMC, NUTS, ESS and external samplers currently do, but all other samplers do not (including MH and Gibbs).
+In particular, HMC, NUTS, and external samplers currently do, but all other samplers do not (including MH's `LinkedRW`, and Gibbs).
+For some samplers such as ESS and particle MCMC, fixed transforms do not affect the sampling
+process at all (in such cases the keyword argument is accepted but ignored).
 
 The reason why Turing rederives transforms is to ensure correctness in cases where the transform *depends on the value of another random variable*.
 For example, if `a` is a parameter, then `b ~ Uniform(-a, a)` has a transform that depends on the value of `a`.
