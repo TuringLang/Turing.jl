@@ -58,7 +58,7 @@ Note that the `model` argument passed in here will be 'conditioned' on the *new*
 inside `global_vals`. Thus, evaluating it will reflect the log-probability associated with
 the new values.
 
-Exactly what this function should do will depends on what the sampler state contains, but
+Exactly what this function should do will depend on what the sampler state contains, but
 for example, it will often mean:
 
 - Updating any raw or vectorised values stored in the sampler state to be consistent with
@@ -100,6 +100,8 @@ function gibbs_recompute_ldf_and_params(
     global_vals::DynamicPPL.VarNamedTuple,
     extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
+    # TODO(penelopeysm): If old_ldf has fixed transforms, this will overwrite it. This
+    # probably needs to be fixed by improving the constructor in DynamicPPL.
     new_ldf = DynamicPPL.LogDensityFunction(
         model,
         DynamicPPL.get_logdensity_callable(old_ldf),

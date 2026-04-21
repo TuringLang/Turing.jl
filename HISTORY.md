@@ -29,7 +29,7 @@ Internally, the VI interface has been reworked to directly use `DynamicPPL.LogDe
 **Gibbs sampler interface**
 
 This section is only relevant if you are writing a sampler that is intended to be *directly* used as a component sampler in Turing's Gibbs sampler.
-(If Gibbs calls your sampler via Turing's `externalsampler` interface, this section does not apply toyou.)
+(If Gibbs calls your sampler via Turing's `externalsampler` interface, this section does not apply to you.)
 
 Turing's Gibbs sampler has been reworked in this release to fix a number of correctness and performance issues.
 The main change is that the Gibbs state carries a `VarNamedTuple` of raw values, instead of a `VarInfo` of vectorised (transformed) parameters.

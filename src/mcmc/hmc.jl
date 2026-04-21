@@ -506,14 +506,14 @@ function gibbs_update_state!!(
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
     new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-    # Apart from the Hamiltonian, we also need to update the position variables. It would be
-    # nice to do this without mutating, but it's probably fine for now.
-    state.z.θ .= new_params
+    # We also need to update the position variables in the PhasePoint.
+    new_z = deepcopy(state.z)
+    new_z.θ .= new_params
     return HMCState(
         state.i,
         state.kernel,
         new_hamiltonian,
-        state.z,
+        new_z,
         state.adaptor,
         new_ldf,
         state._vector_vnt,
