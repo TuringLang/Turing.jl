@@ -76,15 +76,18 @@ function gibbs_update_state!! end
 
 """
     gibbs_recompute_ldf_and_params(
-        old_ldf, model, vector_vnt, global_vals, extra_accs
+        old_ldf::LogDensityFunction,
+        model::Model,
+        global_vals::VarNamedTuple,
+        extra_accs=()
     )
 
 Shared helper that is used in `gibbs_update_state!!` for any sampler that uses a
 LogDensityFunction.
 
-Creates a new `LogDensityFunction` from the newly conditioned `model` (using a cached
-`vector_vnt` to avoid an extra model evaluation), then reevaluates the model to obtain the
-correct vectorised parameters corresponding to the raw values in `global_vals`.
+Creates a new `LogDensityFunction` from the newly conditioned `model`, then reevaluates the
+model to obtain the correct vectorised parameters corresponding to the raw values in
+`global_vals`.
 
 If extra information is needed (e.g. log-probabilities), `extra_accs` can be used to pass in
 other accumulators to be used in the same model evaluation, to avoid having to recompute
@@ -92,20 +95,23 @@ them later.
 
 Returns `(new_ldf, new_params, accs)` where `accs` is the set of accumulators after
 evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
+
+!!! warning
+    This assumes that `old_ldf.model` (i.e., the model conditioned on the previous values)
+    and `model` (i.e., the model conditioned on the new values) have the same structure, i.e.,
+    all other components of the LogDensityFunction can be reused.
 """
 function gibbs_recompute_ldf_and_params(
     old_ldf::DynamicPPL.LogDensityFunction,
     model::DynamicPPL.Model,
-    vector_vnt::DynamicPPL.VarNamedTuple,
     global_vals::DynamicPPL.VarNamedTuple,
     extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
-    # TODO(penelopeysm): If old_ldf has fixed transforms, this will overwrite it. This
-    # probably needs to be fixed by improving the constructor in DynamicPPL.
     new_ldf = DynamicPPL.LogDensityFunction(
         model,
         DynamicPPL.get_logdensity_callable(old_ldf),
-        vector_vnt;
+        DynamicPPL.get_all_ranges_and_transforms(old_ldf),
+        DynamicPPL.get_sample_input_vector(old_ldf);
         adtype=old_ldf.adtype,
     )
     accs = DynamicPPL.OnlyAccsVarInfo(

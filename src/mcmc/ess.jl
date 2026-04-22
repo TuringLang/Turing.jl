@@ -33,9 +33,6 @@ struct TuringESSState{
     params::P
     loglikelihood::R
     priors::Va
-    # Minor optimisation: we cache a VNT storing vectorised values here to avoid having to
-    # reconstruct it each time in `gibbs_update_state!!`.
-    _vector_vnt::Vb
 end
 
 # always accept in the first step
@@ -47,29 +44,36 @@ function AbstractMCMC.step(
     initial_params,
     kwargs...,
 )
-    # Add some extra accumulators so that we can compute everything we need to in one pass.
-    oavi = DynamicPPL.OnlyAccsVarInfo()
-    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.PriorDistributionAccumulator())
-    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.RawValueAccumulator(true))
-    oavi = DynamicPPL.setacc!!(oavi, DynamicPPL.VectorValueAccumulator())
-    _, oavi = DynamicPPL.init!!(rng, model, oavi, initial_params, DynamicPPL.UnlinkAll())
+    # Set up a LogDensityFunction which evaluates the model's log-likelihood.
+    # Note that this costs one model evaluation (fine since it's only in the first step)
+    loglike_ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.getloglikelihood, DynamicPPL.UnlinkAll()
+    )
+
+    # Run the model using the specified initialisation strategy and extract all necessary
+    # information.
+    accs = DynamicPPL.OnlyAccsVarInfo(
+        # no transforms so no need for LogJacobianAccumulator
+        DynamicPPL.LogPriorAccumulator(),
+        DynamicPPL.LogLikelihoodAccumulator(),
+        DynamicPPL.VectorParamAccumulator(loglike_ldf),
+        DynamicPPL.PriorDistributionAccumulator(),
+        DynamicPPL.RawValueAccumulator(true),  # for ParamsWithStats later
+    )
+    _, accs = DynamicPPL.init!!(model, accs, initial_params, DynamicPPL.UnlinkAll())
+
+    priors = DynamicPPL.get_priors(accs)
+    vector_params = DynamicPPL.get_vector_params(accs)
+    loglike = DynamicPPL.getloglikelihood(accs)
 
     # Check that priors are all Gaussian
-    priors = DynamicPPL.get_priors(oavi)
     for dist in values(priors)
         EllipticalSliceSampling.isgaussian(typeof(dist)) ||
             error("ESS only supports Gaussian prior distributions")
     end
 
-    # Set up a LogDensityFunction which evaluates the model's log-likelihood.
-    loglike_ldf = DynamicPPL.LogDensityFunction(model, DynamicPPL.getloglikelihood, oavi)
-    # And the corresponding vector of params, and the likelihood at this point
-    vecvals = DynamicPPL.get_vector_values(oavi)
-    vector_params = DynamicPPL.internal_values_as_vector(vecvals)
-    loglike = DynamicPPL.getloglikelihood(oavi)
-
-    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(oavi)
-    state = TuringESSState(loglike_ldf, vector_params, loglike, priors, vecvals)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(accs)
+    state = TuringESSState(loglike_ldf, vector_params, loglike, priors)
     return transition, state
 end
 
@@ -99,7 +103,7 @@ function AbstractMCMC.step(
 
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(sample, state.ldf)
     new_state = TuringESSState(
-        state.ldf, sample, new_wrapped_state.loglikelihood, state.priors, state._vector_vnt
+        state.ldf, sample, new_wrapped_state.loglikelihood, state.priors
     )
     return transition, new_state
 end
@@ -199,12 +203,8 @@ function gibbs_update_state!!(
     # pass an extra LogLikelihoodAccumulator here so that we can calculate the new loglike in
     # one pass.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
-        state.ldf,
-        model,
-        state._vector_vnt,
-        global_vals,
-        (DynamicPPL.LogLikelihoodAccumulator(),),
+        state.ldf, model, global_vals, (DynamicPPL.LogLikelihoodAccumulator(),)
     )
     new_loglike = DynamicPPL.getloglikelihood(accs)
-    return TuringESSState(new_ldf, new_params, new_loglike, state.priors, state._vector_vnt)
+    return TuringESSState(new_ldf, new_params, new_loglike, state.priors)
 end

@@ -127,9 +127,6 @@ struct TuringState{
     state::S
     params::P
     ldf::L
-    # Cached vector VNT, used to construct new LDFs in gibbs_update_state!! without
-    # reevaluating the model. Same role as HMCState._vector_vnt.
-    _vector_vnt::V
 end
 
 function AbstractMCMC.step(
@@ -146,13 +143,10 @@ function AbstractMCMC.step(
 
     # Construct LogDensityFunction
     tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
-    oavi = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
-    _, oavi = DynamicPPL.init!!(model, oavi, DynamicPPL.InitFromPrior(), tfm_strategy)
-    vecvals = DynamicPPL.get_vector_values(oavi)
     f = DynamicPPL.LogDensityFunction(
         model,
         DynamicPPL.getlogjoint_internal,
-        vecvals;
+        tfm_strategy;
         adtype=sampler_wrapper.adtype,
         fix_transforms=fix_transforms,
     )
@@ -183,7 +177,7 @@ function AbstractMCMC.step(
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
     end
 
-    return (new_transition, TuringState(state_inner, new_parameters, f, vecvals))
+    return (new_transition, TuringState(state_inner, new_parameters, f))
 end
 
 function AbstractMCMC.step(
@@ -209,7 +203,7 @@ function AbstractMCMC.step(
         new_stats = AbstractMCMC.getstats(state_inner)
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
     end
-    return (new_transition, TuringState(state_inner, new_parameters, f, state._vector_vnt))
+    return (new_transition, TuringState(state_inner, new_parameters, f))
 end
 
 ####
@@ -229,12 +223,10 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(
-        state.ldf, model, state._vector_vnt, global_vals
-    )
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
     # Update the inner sampler's state with the new parameters.
     new_inner_state = AbstractMCMC.setparams!!(
         AbstractMCMC.LogDensityModel(new_ldf), state.state, new_params
     )
-    return TuringState(new_inner_state, new_params, new_ldf, state._vector_vnt)
+    return TuringState(new_inner_state, new_params, new_ldf)
 end
