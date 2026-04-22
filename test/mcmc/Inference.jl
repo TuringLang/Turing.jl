@@ -663,7 +663,10 @@ using Turing
         model = f()
 
         @testset "$spl" for spl in (
-            NUTS(), HMC(0.1, 5), externalsampler(AdvancedMH.RWMH(MvNormal([0.0], [1.0;;])))
+            NUTS(),
+            HMC(0.1, 5),
+            externalsampler(AdvancedMH.RWMH(MvNormal([0.0], [1.0;;]))),
+            Gibbs(:x => HMC(0.1, 5)),
         )
             counter[] = 0
             sample(model, spl, 100)
