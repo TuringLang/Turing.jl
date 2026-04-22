@@ -57,7 +57,9 @@ using .Optimisation
 using DynamicPPL:
     @model,
     @varname,
+    pointwise_logdensities,
     pointwise_loglikelihoods,
+    pointwise_prior_logdensities,
     generated_quantities,
     returned,
     logprior,
@@ -155,7 +157,9 @@ export
     predict,
     # Querying model probabilities - DynamicPPL
     returned,
+    pointwise_logdensities,
     pointwise_loglikelihoods,
+    pointwise_prior_logdensities,
     logprior,
     loglikelihood,
     logjoint,

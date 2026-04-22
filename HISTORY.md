@@ -1,3 +1,7 @@
+# 0.44.1
+
+Re-export `pointwise_logdensities` and `pointwise_prior_logdensities` from DynamicPPL.
+
 # 0.44.0
 
 ## Breaking changes
