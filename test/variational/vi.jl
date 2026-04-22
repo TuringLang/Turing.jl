@@ -185,6 +185,26 @@ begin
         vi(model, q_meanfield_gaussian, 100; fix_transforms=true)
         @test counter[] < 100
     end
+
+    @testset "with callbacks" begin
+        @model function f()
+            x ~ Normal()
+            return y ~ Normal(x)
+        end
+        function callback(; iteration, averaged_params, restructure, state, kwargs...)
+            if mod(iteration, 10) == 1
+                q_avg = restructure(averaged_params)
+                obj = AdvancedVI.RepGradELBO(128) # 128 samples for ELBO estimation
+                elbo_avg = -estimate_objective(obj, q_avg, state.prob)
+                (elbo_avg=elbo_avg,)
+            else
+                nothing
+            end
+        end
+        result = vi(f(), q_meanfield_gaussian, 100; callback=callback)
+        @test result isa Turing.Variational.VIResult
+        @test any(i -> hasproperty(i, :elbo_avg), result.info)
+    end
 end
 
 end

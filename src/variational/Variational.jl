@@ -85,6 +85,7 @@ function q_initialize_scale(
     num_samples::Int=10,
     num_max_trials::Int=10,
     reduce_factor::Real=one(eltype(scale)) / 2,
+    kwargs..., # must take extra kwargs even if they are ignored
 )
     num_max_trials > 0 || error("num_max_trials must be a positive integer")
     n_trial = 0

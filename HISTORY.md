@@ -1,3 +1,7 @@
+# 0.44.2
+
+Fix a bug in v0.44 where extra keyword arguments passed to `vi` (e.g. `callback`) would cause Turing to error.
+
 # 0.44.1
 
 Re-export `pointwise_logdensities` and `pointwise_prior_logdensities` from DynamicPPL.
