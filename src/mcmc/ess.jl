@@ -59,7 +59,7 @@ function AbstractMCMC.step(
         DynamicPPL.PriorDistributionAccumulator(),
         DynamicPPL.RawValueAccumulator(true),  # for ParamsWithStats later
     )
-    _, accs = DynamicPPL.init!!(model, accs, initial_params, DynamicPPL.UnlinkAll())
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
 
     priors = DynamicPPL.get_priors(accs)
     vector_params = DynamicPPL.get_vector_params(accs)
