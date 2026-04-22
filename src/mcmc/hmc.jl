@@ -13,7 +13,6 @@ struct HMCState{
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     L<:DynamicPPL.LogDensityFunction,
-    V<:DynamicPPL.VarNamedTuple,
 }
     i::Int
     kernel::TKernel

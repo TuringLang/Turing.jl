@@ -26,13 +26,12 @@ struct TuringESSState{
     L<:DynamicPPL.LogDensityFunction,
     P<:AbstractVector{<:Real},
     R<:Real,
-    Va<:DynamicPPL.VarNamedTuple,
-    Vb<:DynamicPPL.VarNamedTuple,
+    V<:DynamicPPL.VarNamedTuple,
 }
     ldf::L
     params::P
     loglikelihood::R
-    priors::Va
+    priors::V
 end
 
 # always accept in the first step

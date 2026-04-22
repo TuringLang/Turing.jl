@@ -121,9 +121,7 @@ function externalsampler(
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
-struct TuringState{
-    S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction,V<:DynamicPPL.VarNamedTuple
-}
+struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
     state::S
     params::P
     ldf::L
