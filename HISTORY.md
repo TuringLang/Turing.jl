@@ -69,9 +69,8 @@ The MCMC sampling (`sample`), optimisation (`mode_estimate` / `maximum_likelihoo
 (In contrast, the default behaviour is to rederive transforms each time the model is run.)
 
 Note that not all MCMC samplers currently support fixed transforms.
-In particular, HMC, NUTS, and external samplers currently do, but all other samplers do not (including MH's `LinkedRW`, and Gibbs).
-For some samplers such as ESS and particle MCMC, fixed transforms do not affect the sampling
-process at all (in such cases the keyword argument is accepted but ignored).
+In particular, HMC, NUTS, and external samplers currently do support it, and Gibbs will pass the flag through to its component samplers, but MH's `LinkedRW` option will currently ignore the `fix_transforms` argument.
+For some samplers such as ESS and particle MCMC, fixed transforms do not affect the sampling process at all (in such cases the keyword argument is accepted but ignored).
 
 The reason why Turing rederives transforms is to ensure correctness in cases where the transform *depends on the value of another random variable*.
 For example, if `a` is a parameter, then `b ~ Uniform(-a, a)` has a transform that depends on the value of `a`.

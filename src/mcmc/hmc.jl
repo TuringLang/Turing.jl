@@ -13,7 +13,6 @@ struct HMCState{
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     L<:DynamicPPL.LogDensityFunction,
-    V<:DynamicPPL.VarNamedTuple,
 }
     i::Int
     kernel::TKernel
@@ -21,14 +20,6 @@ struct HMCState{
     z::PhType
     adaptor::TAdapt
     ldf::L
-    # TODO(penelopeysm): This field is needed for Gibbs because each time we call
-    # gibbs_update_state!! on this, we need to reconstruct a LogDensityFunction.
-    # In general this would require reevaluating the model, unless we supply a
-    # VarNamedTuple which already contains vectorised parameters. This can probably
-    # be improved in DynamicPPL, but for now we will just store an extra VNT in
-    # the state.
-    # NOTE: The actual values of this field should never be used or relied on!
-    _vector_vnt::V
 end
 
 ###
@@ -169,15 +160,10 @@ function AbstractMCMC.step(
     kwargs...,
 )
     # Create a LogDensityFunction
-    oavi = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
-    _, oavi = DynamicPPL.init!!(
-        model, oavi, DynamicPPL.InitFromPrior(), DynamicPPL.LinkAll()
-    )
-    vecvals = DynamicPPL.get_vector_values(oavi)
     ldf = DynamicPPL.LogDensityFunction(
         model,
         DynamicPPL.getlogjoint_internal,
-        vecvals;
+        DynamicPPL.LinkAll();
         adtype=spl.adtype,
         fix_transforms=fix_transforms,
     )
@@ -209,7 +195,7 @@ function AbstractMCMC.step(
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
 
-    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf, vecvals)
+    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
 end
@@ -253,9 +239,7 @@ function AbstractMCMC.step(
     else
         DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
     end
-    newstate = HMCState(
-        i, kernel, hamiltonian, t.z, state.adaptor, state.ldf, state._vector_vnt
-    )
+    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
 
     return transition, newstate
 end
@@ -498,9 +482,7 @@ function gibbs_update_state!!(
 )
     # Construct a new LDF with the newly conditioned `model` (not `state.ldf.model`, which
     # contains stale conditioned values) and recompute the vectorised params.
-    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(
-        state.ldf, model, state._vector_vnt, global_vals
-    )
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
     # Update the Hamiltonian (because that depends on the LDF).
     metric = gen_metric(LogDensityProblems.dimension(new_ldf), spl, state)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
@@ -509,13 +491,5 @@ function gibbs_update_state!!(
     # We also need to update the position variables in the PhasePoint.
     new_z = deepcopy(state.z)
     new_z.θ .= new_params
-    return HMCState(
-        state.i,
-        state.kernel,
-        new_hamiltonian,
-        new_z,
-        state.adaptor,
-        new_ldf,
-        state._vector_vnt,
-    )
+    return HMCState(state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf)
 end
