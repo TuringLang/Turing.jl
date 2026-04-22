@@ -8,14 +8,12 @@ Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 ###
 
 struct HMCState{
-    TV<:AbstractVarInfo,
     TKernel<:AHMC.HMCKernel,
     THam<:AHMC.Hamiltonian,
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     L<:DynamicPPL.LogDensityFunction,
 }
-    vi::TV
     i::Int
     kernel::TKernel
     hamiltonian::THam
@@ -27,8 +25,6 @@ end
 ###
 ### Hamiltonian Monte Carlo samplers.
 ###
-
-get_varinfo(state::HMCState) = state.vi
 
 """
     HMC(ϵ::Float64, n_leapfrog::Int; adtype::ADTypes.AbstractADType = AutoForwardDiff())
@@ -160,12 +156,18 @@ function AbstractMCMC.step(
     nadapts=0,
     discard_sample=false,
     verbose::Bool=true,
+    fix_transforms::Bool=false,
     kwargs...,
 )
-    # Create a Hamiltonian
+    # Create a LogDensityFunction
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll(); adtype=spl.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        DynamicPPL.LinkAll();
+        adtype=spl.adtype,
+        fix_transforms=fix_transforms,
     )
+    # And a Hamiltonian
     metricT = getmetricT(spl)
     metric = metricT(LogDensityProblems.dimension(ldf))
     lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
@@ -193,12 +195,7 @@ function AbstractMCMC.step(
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
 
-    # TODO(penelopeysm): this varinfo is only needed for Gibbs. HMC itself has no use for
-    # it. Get rid of this as soon as possible.
-    vi = DynamicPPL.link!!(VarInfo(model), model)
-    vi = DynamicPPL.unflatten!!(vi, theta)
-
-    state = HMCState(vi, 0, kernel, hamiltonian, z, adaptor, ldf)
+    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf)
 
     return transition, state
 end
@@ -236,31 +233,15 @@ function AbstractMCMC.step(
         kernel = state.kernel
     end
 
-    # Update variables
-    vi = state.vi
-    if t.stat.is_accept
-        vi = DynamicPPL.unflatten!!(vi, t.z.θ)
-    end
-
     # Compute next transition and state.
     transition = if discard_sample
         nothing
     else
         DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
     end
-    newstate = HMCState(vi, i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
+    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
 
     return transition, newstate
-end
-
-function get_hamiltonian(model, spl, vi, state, n)
-    metric = gen_metric(n, spl, state)
-    ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, vi; adtype=spl.adtype
-    )
-    lp_func = Base.Fix1(LogDensityProblems.logdensity, ldf)
-    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, ldf)
-    return AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
 end
 
 """
@@ -422,16 +403,15 @@ end
 #####
 
 getstepsize(sampler::Hamiltonian, state) = sampler.ϵ
-getstepsize(sampler::AdaptiveHamiltonian, state) = AHMC.getϵ(state.adaptor)
+getstepsize(::AdaptiveHamiltonian, state) = AHMC.getϵ(state.adaptor)
 function getstepsize(
-    sampler::AdaptiveHamiltonian,
-    state::HMCState{TV,TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
-) where {TV,TKernel,THam,PhType}
+    ::AdaptiveHamiltonian, state::HMCState{TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation}
+) where {TKernel,THam,PhType}
     return state.kernel.τ.integrator.ϵ
 end
 
-gen_metric(dim::Int, spl::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
-function gen_metric(dim::Int, spl::AdaptiveHamiltonian, state)
+gen_metric(dim::Int, ::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
+function gen_metric(::Int, ::AdaptiveHamiltonian, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
 
@@ -479,4 +459,37 @@ end
 
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
+end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_get_raw_values(state::HMCState)
+    # In general this needs reevaluation (unless the LDF has all fixed transforms --
+    # DynamicPPL handles this.)
+    pws = DynamicPPL.ParamsWithStats(
+        state.z.θ, state.ldf; include_log_probs=false, include_colon_eq=false
+    )
+    return pws.params
+end
+
+function gibbs_update_state!!(
+    spl::Hamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    # Construct a new LDF with the newly conditioned `model` (not `state.ldf.model`, which
+    # contains stale conditioned values) and recompute the vectorised params.
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
+    # Update the Hamiltonian (because that depends on the LDF).
+    metric = gen_metric(LogDensityProblems.dimension(new_ldf), spl, state)
+    lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
+    lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
+    new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
+    # We also need to update the position variables in the PhasePoint.
+    new_z = deepcopy(state.z)
+    new_z.θ .= new_params
+    return HMCState(state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf)
 end

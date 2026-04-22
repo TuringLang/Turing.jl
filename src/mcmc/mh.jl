@@ -175,8 +175,8 @@ struct InitFromProposals{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInit
     "A mapping of VarNames to Tuple{Bool,Distribution}s that they should be sampled from. If
     the VarName is not in this VarNamedTuple, then it will be sampled from the prior. The
     Bool indicates whether the proposal is in linked space (true, i.e., the strategy should
-    return a `LinkedVectorValue`); or in untransformed space (false, i.e., the strategy
-    should return an `UntransformedValue`)."
+    return a linked vector value); or in untransformed space (false, i.e., the strategy
+    should return an untransformed value)."
     proposals::V
     "Whether to print the proposals as they are being sampled"
     verbose::Bool
@@ -195,17 +195,16 @@ function DynamicPPL.init(
             end
         end
         if is_linkedrw
-            transform = Bijectors.VectorBijectors.from_linked_vec(prior)
             linked_vec = rand(rng, dist)
-            return DynamicPPL.LinkedVectorValue(linked_vec, transform)
+            return DynamicPPL.TransformedValue(linked_vec, DynamicPPL.DynamicLink())
         else
             # Static or conditional proposal in untransformed space.
-            return DynamicPPL.UntransformedValue(rand(rng, dist))
+            return DynamicPPL.TransformedValue(rand(rng, dist), DynamicPPL.NoTransform())
         end
     else
         strategy.verbose && @info "varname $vn: no proposal specified, drawing from prior"
         # No proposal was specified for this variable, so we sample from the prior.
-        return DynamicPPL.UntransformedValue(rand(rng, prior))
+        return DynamicPPL.TransformedValue(rand(rng, prior), DynamicPPL.NoTransform())
     end
 end
 
@@ -269,22 +268,8 @@ function AbstractMCMC.step(
     verbose=true,
     kwargs...,
 )
-    # Generate and return initial parameters. We need to use VAIMAcc because that will
-    # generate the VNT for us that provides the values (as opposed to `vi.values` which
-    # stores `AbstractTransformedValues`).
-    #
-    # TODO(penelopeysm): This in fact could very well be OnlyAccsVarInfo. Indeed, if you
-    # only run MH, OnlyAccsVarInfo already works right now. The problem is that using MH
-    # inside Gibbs needs a full VarInfo.
-    #
-    # see e.g.
-    #    @model f() = x ~ Beta(2, 2)
-    #    sample(f(), MH(:x => LinkedRW(0.4)), 100_000; progress=false)
-    # with full VarInfo:
-    #    2.302728 seconds (18.81 M allocations: 782.125 MiB, 9.00% gc time)
-    # with OnlyAccsVarInfo:
-    #    1.196674 seconds (18.51 M allocations: 722.256 MiB, 5.11% gc time)
-    vi = DynamicPPL.VarInfo()
+    # Generate and return initial parameters.
+    vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
@@ -343,7 +328,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::MH,
-    old_vi::DynamicPPL.AbstractVarInfo;
+    old_vi::DynamicPPL.OnlyAccsVarInfo;
     discard_sample=false,
     kwargs...,
 )
@@ -360,7 +345,7 @@ function AbstractMCMC.step(
     )
 
     # Evaluate the model with a new proposal.
-    new_vi = DynamicPPL.VarInfo()
+    new_vi = DynamicPPL.OnlyAccsVarInfo()
     new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(true))
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
@@ -402,7 +387,7 @@ end
 
 """
     log_proposal_density(
-        old_vi::DynamicPPL.AbstractVarInfo,
+        old_vi::DynamicPPL.OnlyAccsVarInfo,
         init_strategy_given_new::DynamicPPL.AbstractInitStrategy,
         old_unspecified_priors::DynamicPPL.VarNamedTuple
     )
@@ -422,14 +407,14 @@ from:
   distribution.
 """
 function log_proposal_density(
-    vi::DynamicPPL.AbstractVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
+    vi::DynamicPPL.OnlyAccsVarInfo, ::DynamicPPL.InitFromPrior, ::DynamicPPL.VarNamedTuple
 )
     # All samples were drawn from the prior -- in this case g(x|x') = g(x) = prior
     # probability of x.
     return DynamicPPL.getlogprior(vi)
 end
 function log_proposal_density(
-    vi::DynamicPPL.AbstractVarInfo,
+    vi::DynamicPPL.OnlyAccsVarInfo,
     strategy::InitFromProposals,
     unspecified_priors::DynamicPPL.VarNamedTuple,
 )
@@ -459,12 +444,15 @@ end
 
 # Accumulator to store linked values; but only the ones that have a LinkedRW proposal. Since
 # model evaluation should have happened with `s.transform_strategy`, any variables that are
-# marked by `s.transform_strategy` as being linked should generate a LinkedVectorValue here.
+# marked by `s.transform_strategy` as being linked should generate a
+# TransformedValue{V,DynamicLink} here.
 const MH_ACC_NAME = :MHLinkedValues
-function store_linked_values(val, tval::DynamicPPL.LinkedVectorValue, logjac, vn, dist)
+function store_linked_values(
+    val, tval::DynamicPPL.TransformedValue{V,DynamicPPL.DynamicLink}, logjac, vn, dist
+) where {V}
     return DynamicPPL.get_internal_value(tval)
 end
-function store_linked_values(val, ::DynamicPPL.AbstractTransformedValue, logjac, vn, dist)
+function store_linked_values(val, ::DynamicPPL.TransformedValue, logjac, vn, dist)
     return DynamicPPL.DoNotAccumulate()
 end
 function MHLinkedValuesAccumulator()
@@ -497,4 +485,29 @@ end
 # let the MvNormal constructor handle it.
 function MH(cov_matrix::Any)
     return externalsampler(AdvancedMH.RWMH(MvNormal(cov_matrix)); unconstrained=true)
+end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_update_state!!(
+    spl::MH,
+    state::AbstractVarInfo,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
+    # the accumulator part of the state. We do need to reevaluate the model though
+    # because it's necessary for the log-probability to be updated to reflect the new
+    # values in `global_vals`. If we don't do that, the MH acceptance step will return
+    # wrong results.
+    #
+    # In order to make sure that our logjacs are consistent with what the sampler expects,
+    # we can use `spl.transform_strategy` here.
+    #
+    # TODO(penelopeysm): Is the `nothing` fallback OK, or do we need InitFromPrior as
+    # a fallback? In the latter case, how do we control `rng`?
+    init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
+    return last(DynamicPPL.init!!(model, state, init_strat, spl.transform_strategy))
 end

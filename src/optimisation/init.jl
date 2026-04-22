@@ -133,10 +133,8 @@ function DynamicPPL.init(
     # The inner `init` might (for whatever reason) return linked or otherwise
     # transformed values. We need to transform them back into to unlinked space,
     # so that we can check the constraints properly.
-    maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-    proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
-        DynamicPPL.get_internal_value(maybe_transformed_val)
-    )
+    tv = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+    proposed_val = DynamicPPL.get_raw_value(tv, dist)
     attempts = 1
     while !satisfies_constraints(lb, ub, proposed_val, dist)
         if attempts >= MAX_ATTEMPTS
@@ -146,13 +144,11 @@ function DynamicPPL.init(
                 ),
             )
         end
-        maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-        proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
-            DynamicPPL.get_internal_value(maybe_transformed_val)
-        )
+        tv = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+        proposed_val = DynamicPPL.get_raw_value(tv, dist)
         attempts += 1
     end
-    return DynamicPPL.UntransformedValue(proposed_val)
+    return tv
 end
 
 can_have_linked_constraints(::Distribution) = false
@@ -231,29 +227,35 @@ function DynamicPPL.accumulate_assume!!(
             ),
         )
     end
-    transform =
-        if DynamicPPL.target_transform(acc.transform_strategy, vn) isa
-            DynamicPPL.DynamicLink
-            Bijectors.VectorBijectors.to_linked_vec(dist)
-        elseif DynamicPPL.target_transform(acc.transform_strategy, vn) isa DynamicPPL.Unlink
-            Bijectors.VectorBijectors.to_vec(dist)
-        else
-            error(
-                "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
-            )
-        end
+    target_tfm = DynamicPPL.target_transform(acc.transform_strategy, vn)
+    transform_fn = if target_tfm isa DynamicPPL.DynamicLink
+        Bijectors.VectorBijectors.to_linked_vec(dist)
+    elseif target_tfm isa DynamicPPL.Unlink
+        Bijectors.VectorBijectors.to_vec(dist)
+    elseif target_tfm isa DynamicPPL.FixedTransform
+        Bijectors.inverse(target_tfm.transform)
+    else
+        error(
+            "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
+        )
+    end
     # Transform the value and store it.
-    vectorised_val = transform(val)
+    vectorised_val = transform_fn(val)
+    if !(vectorised_val isa AbstractVector)
+        error(
+            "The transform strategy used ($(acc.transform_strategy)) generated a value for variable $(vn) that is not a vector; in general this cannot be handled by Turing",
+        )
+    end
     acc.init_vecs[vn] = vectorised_val
     nelems = length(vectorised_val)
     # Then generate the constraints using the same transform.
     if lb !== nothing
-        acc.lb_vecs[vn] = transform(lb)
+        acc.lb_vecs[vn] = transform_fn(lb)
     else
         acc.lb_vecs[vn] = fill(-Inf, nelems)
     end
     if ub !== nothing
-        acc.ub_vecs[vn] = transform(ub)
+        acc.ub_vecs[vn] = transform_fn(ub)
     else
         acc.ub_vecs[vn] = fill(Inf, nelems)
     end
@@ -283,17 +285,6 @@ function DynamicPPL.combine(acc1::ConstraintAccumulator, acc2::ConstraintAccumul
     combined.lb_vecs = merge(acc1.lb_vecs, acc2.lb_vecs)
     combined.ub_vecs = merge(acc1.ub_vecs, acc2.ub_vecs)
     return combined
-end
-
-function _get_ldf_range(ldf::LogDensityFunction, vn::VarName)
-    if haskey(ldf._varname_ranges, vn)
-        return ldf._varname_ranges[vn].range
-    elseif haskey(ldf._iden_varname_ranges, AbstractPPL.getsym(vn))
-        return ldf._iden_varname_ranges[AbstractPPL.getsym(vn)].range
-    else
-        # Should not happen.
-        error("could not find range for variable name $(vn) in LogDensityFunction")
-    end
 end
 
 """
@@ -338,7 +329,7 @@ function make_optim_bounds_and_init(
     lb = fill(et(-Inf), nelems)
     ub = fill(et(Inf), nelems)
     for (vn, init_val) in constraint_acc.init_vecs
-        range = _get_ldf_range(ldf, vn)
+        range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
             lb[range] = constraint_acc.lb_vecs[vn]

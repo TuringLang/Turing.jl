@@ -24,13 +24,13 @@ struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSa
     end
 end
 
-function setparams_varinfo!!(
-    model::DynamicPPL.Model,
+function gibbs_update_state!!(
     sampler::RepeatSampler,
     state,
-    params::DynamicPPL.AbstractVarInfo,
+    model::DynamicPPL.Model,
+    global_vnt::DynamicPPL.VarNamedTuple,
 )
-    return setparams_varinfo!!(model, sampler.sampler, state, params)
+    return gibbs_update_state!!(sampler.sampler, state, model, global_vnt)
 end
 
 function AbstractMCMC.step(

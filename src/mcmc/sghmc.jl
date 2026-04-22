@@ -57,11 +57,16 @@ function AbstractMCMC.step(
     spl::SGHMC;
     initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
+    fix_transforms::Bool=false,
     kwargs...,
 )
     tfm_strategy = DynamicPPL.LinkAll()
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        tfm_strategy;
+        adtype=spl.adtype,
+        fix_transforms=fix_transforms,
     )
     x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
 
@@ -191,11 +196,16 @@ function AbstractMCMC.step(
     spl::SGLD;
     initial_params::DynamicPPL.AbstractInitStrategy,
     discard_sample=false,
+    fix_transforms::Bool=false,
     kwargs...,
 )
     tfm_strategy = DynamicPPL.LinkAll()
     ldf = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, tfm_strategy; adtype=spl.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        tfm_strategy;
+        adtype=spl.adtype,
+        fix_transforms=fix_transforms,
     )
     x = Turing.Inference.find_initial_params_ldf(rng, ldf, initial_params)
 

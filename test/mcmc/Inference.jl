@@ -2,9 +2,11 @@ module InferenceTests
 
 using ..Models: gdemo_d, gdemo_default
 using ..NumericalTests: check_gdemo, check_numerical
-using Distributions: Bernoulli, Beta, InverseGamma, Normal
+using Bijectors: Bijectors
+using Distributions: Bernoulli, Beta, InverseGamma, Normal, ContinuousUnivariateDistribution
 using Distributions: sample
 using AbstractMCMC: AbstractMCMC
+import AdvancedMH
 import DynamicPPL
 using DynamicPPL: filldist
 import ForwardDiff
@@ -13,6 +15,7 @@ import MCMCChains
 import Random
 using Random: Xoshiro
 import ReverseDiff
+import Statistics
 using StableRNGs: StableRNG
 using StatsFuns: logsumexp
 using Test: @test, @test_throws, @testset
@@ -72,20 +75,27 @@ using Turing
 
     @testset "save/resume correctly reloads state" begin
         struct StaticSampler <: AbstractMCMC.AbstractSampler end
-        function Turing.Inference.initialstep(rng, model, ::StaticSampler, vi; kwargs...)
-            return DynamicPPL.ParamsWithStats(vi, model), vi
+        function AbstractMCMC.step(
+            rng::Random.AbstractRNG, model::DynamicPPL.Model, ::StaticSampler; kwargs...
+        )
+            t = DynamicPPL.ParamsWithStats(rand(rng, model), (;))
+            return t, t
         end
         function AbstractMCMC.step(
-            rng, model, ::StaticSampler, vi::DynamicPPL.AbstractVarInfo; kwargs...
+            rng::Random.AbstractRNG,
+            model::DynamicPPL.Model,
+            ::StaticSampler,
+            t::DynamicPPL.ParamsWithStats;
+            kwargs...,
         )
-            return DynamicPPL.ParamsWithStats(vi, model), vi
+            return t, t
         end
 
         @model demo() = x ~ Normal()
 
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
-            @test chn1.info.samplerstate isa DynamicPPL.AbstractVarInfo
+            @test chn1.info.samplerstate isa DynamicPPL.ParamsWithStats
             chn2 = sample(demo(), StaticSampler(), 10; initial_state=loadstate(chn1))
             xval = chn1[:x][1]
             @test all(chn2[:x] .== xval)
@@ -95,7 +105,7 @@ using Turing
             chn1 = sample(
                 demo(), StaticSampler(), MCMCThreads(), 10, nchains; save_state=true
             )
-            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.AbstractVarInfo}
+            @test chn1.info.samplerstate isa AbstractVector{<:DynamicPPL.ParamsWithStats}
             @test length(chn1.info.samplerstate) == nchains
             chn2 = sample(
                 demo(),
@@ -623,6 +633,49 @@ using Turing
         # Can't test with HMC/NUTS because some AD backends error; see
         # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
         @test sample(e(), Prior(), 100) isa MCMCChains.Chains
+    end
+
+    @testset "fix_transforms" begin
+        # Create a new distribution that increments a counter each time we derive its
+        # transformation.
+        struct MyNormal <: ContinuousUnivariateDistribution end
+        Distributions.logpdf(::MyNormal, x) = logpdf(Normal(), x)
+        Distributions.rand(rng::Random.AbstractRNG, ::MyNormal) = rand(rng, Normal())
+        counter = Ref(0)
+        struct VectAndIncrement end
+        (::VectAndIncrement)(x) = [x]
+        Bijectors.with_logabsdet_jacobian(::VectAndIncrement, x) = [x], 0.0
+        Bijectors.inverse(::VectAndIncrement) = OnlyAndIncrement()
+        struct OnlyAndIncrement end
+        (::OnlyAndIncrement)(x) = x[]
+        Bijectors.with_logabsdet_jacobian(::OnlyAndIncrement, x) = x[], 0.0
+        Bijectors.inverse(::OnlyAndIncrement) = VectAndIncrement()
+        function Bijectors.VectorBijectors.to_linked_vec(::MyNormal)
+            counter[] += 1
+            return VectAndIncrement()
+        end
+        function Bijectors.VectorBijectors.from_linked_vec(::MyNormal)
+            counter[] += 1
+            return OnlyAndIncrement()
+        end
+
+        @model f() = x ~ MyNormal()
+        model = f()
+
+        @testset "$spl" for spl in (
+            NUTS(),
+            HMC(0.1, 5),
+            externalsampler(AdvancedMH.RWMH(MvNormal([0.0], [1.0;;]))),
+            Gibbs(:x => HMC(0.1, 5)),
+        )
+            counter[] = 0
+            sample(model, spl, 100)
+            @test counter[] > 100
+
+            counter[] = 0
+            sample(model, spl, 100; fix_transforms=true)
+            @test counter[] < 100
+        end
     end
 end
 
