@@ -2,7 +2,8 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+# using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using Turing.Inference: Systematic, ESSResampler
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using Random: Random
 using StableRNGs: StableRNG
@@ -12,7 +13,7 @@ using Turing
 @testset "SMC" begin
     @testset "constructor" begin
         s = SMC()
-        @test s.resampler == AlwaysResample()
+        @test s.resampler == Systematic()
 
         s = SMC(0.6)
         @test s.resampler === ESSResampler(0.6)
