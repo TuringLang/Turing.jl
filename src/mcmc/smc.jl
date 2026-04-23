@@ -3,6 +3,17 @@
 ####
 using StatsFuns: softmax, logsumexp
 
+function error_if_threadsafe_eval(model::DynamicPPL.Model)
+    if DynamicPPL.requires_threadsafe(model)
+        throw(
+            ArgumentError(
+                "Particle sampling methods do not currently support models that need threadsafe evaluation.",
+            ),
+        )
+    end
+    return nothing
+end
+
 mutable struct TracedModel{T<:TapedTask}
     const task::T
     varinfo::AbstractVarInfo
@@ -36,10 +47,20 @@ get_model(trace::TracedModel) = trace.task.fargs[2]
 get_varinfo(trace::TracedModel) = trace.varinfo
 get_rng(trace::TracedModel) = trace.task.taped_globals
 
+# this prevents the task from resetting the varinfo (but also introduces another bug)
+function set_reference(trace::TracedModel)
+    accs = get_varinfo(trace)
+    accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogPriorAccumulator())
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogJacobianAccumulator())
+    return TracedModel(construct_task(get_rng(trace), get_model(trace), accs), accs)
+end
+
 function TracedModel(rng::AbstractRNG, model::Model)
-    vi = DynamicPPL.setacc!!(VarInfo(model), ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.empty!!(vi)
-    return TracedModel(construct_task(rng, model, vi), vi)
+    accs = DynamicPPL.OnlyAccsVarInfo()
+    accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
+    return TracedModel(construct_task(rng, model, accs), accs)
 end
 
 # if score is nothing, the varinfo is caught up and there's no need to update
@@ -94,20 +115,24 @@ Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
 struct SMCContext <: DynamicPPL.AbstractContext end
 
-function init_context(rng::AbstractRNG, vi::VarInfo, vn::VarName)
-    if ~haskey(vi, vn)
-        return DynamicPPL.InitContext(
-            rng, DynamicPPL.InitFromPrior(), vi.transform_strategy
-        )
+DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
+
+function init_context(rng::AbstractRNG, vi::AbstractVarInfo, vn::VarName)
+    values = DynamicPPL.get_raw_values(vi)
+    ctx = if ~haskey(values, vn)
+        DynamicPPL.InitFromPrior()
     else
-        return DynamicPPL.DefaultContext()
+        DynamicPPL.InitFromParams(values, nothing)
     end
+    return DynamicPPL.InitContext(rng, ctx, DynamicPPL.UnlinkAll())
 end
 
+# TODO: add something here to ensure reference trajectories get pooled into vi
 function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template::Any, vi::AbstractVarInfo
 )
     rng = Libtask.get_taped_globals(AbstractRNG)
+    # isref = Libtask.get_taped_globals(Bool)
     dispatch_ctx = init_context(rng, vi, vn)
     val, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
     return val, vi
@@ -133,19 +158,64 @@ end
 
 abstract type AbstractResampler end
 
-struct AlwaysResample <: AbstractResampler end
+should_resample(::AbstractVector, ::AbstractResampler) = true
 
-function should_resample(::AbstractVector, ::AlwaysResample)
-    return true
+function sample_ancestors(
+    rng::AbstractRNG, scheme::AbstractResampler, weights::AbstractVector
+)
+    return sample_ancestors(rng, scheme, weights, length(weights))
 end
 
-struct ESSResampler{T<:Real} <: AbstractResampler
+struct Multinomial <: AbstractResampler end
+
+function sample_ancestors(
+    rng::AbstractRNG, ::Multinomial, weights::AbstractVector{<:Real}, N::Integer
+)
+    return rand(rng, Categorical(weights), N)
+end
+
+struct Systematic <: AbstractResampler end
+
+function sample_ancestors(
+    rng::AbstractRNG, ::Systematic, weights::AbstractVector{WT}, N::Integer
+) where {WT<:Real}
+    # pre-calculations
+    vs = cumsum(weights)
+    vs *= N
+
+    u0 = rand(rng, WT)
+
+    # initialize sampling algorithm
+    a = Vector{Int64}(undef, N)
+    idx = 1
+
+    @inbounds for i in 1:N
+        u = u0 + (i - 1)
+        while vs[idx] <= u
+            idx += 1
+        end
+        a[i] = idx
+    end
+
+    return a
+end
+
+struct ESSResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
     threshold::T
+    scheme::R
 end
+
+ESSResampler(threshold::Real) = ESSResampler(threshold, Systematic())
 
 function should_resample(weights::AbstractVector, resampler::ESSResampler)
     ess = inv(sum(abs2, weights))
     return ess ≤ resampler.threshold * length(weights)
+end
+
+function sample_ancestors(
+    rng::AbstractRNG, resampler::ESSResampler, weights::AbstractVector, N::Integer
+)
+    return sample_ancestors(rng, resampler.scheme, weights, N)
 end
 
 ####
@@ -161,6 +231,12 @@ mutable struct Particle{PT,WT<:Real}
 end
 
 Particle(value) = Particle(value, 0.0)
+
+# NOTE: this is for unit tests
+function raw_from_particle(particle::Particle)
+    vi = get_varinfo(particle.value)
+    return DynamicPPL.get_raw_values(vi)
+end
 
 """
     ParticleContainer
@@ -187,9 +263,12 @@ function StatsBase.sample(rng::AbstractRNG, particles::ParticleContainer)
 end
 
 function resample!(
-    rng::AbstractRNG, particles::ParticleContainer, weights::StatsBase.Weights
+    rng::AbstractRNG,
+    resampler::AbstractResampler,
+    particles::ParticleContainer,
+    weights::StatsBase.Weights
 )
-    idx = sample_ancestors(rng, weights.values)
+    idx = sample_ancestors(rng, resampler, weights)
     @. particles = Particle($split!(rng, particles.values[idx]))
 end
 
@@ -243,6 +322,7 @@ end
 
 Base.getproperty(pc::ReferencedContainer, s::Symbol) = _getproperty(pc, Val(s))
 
+# TODO: special handling for reference trajectory 
 function _getproperty(pc::ReferencedContainer{PT}, ::Val{:values}) where {PT}
     values = Vector{PT}(undef, length(pc.particles) + 1)
     values[1:(end - 1)] = @views(pc.particles.values)
@@ -267,10 +347,14 @@ function StatsBase.sample(rng::AbstractRNG, particles::ReferencedContainer)
     return sample(rng, particles.values, weights(particles))
 end
 
-function resample!(rng::AbstractRNG, ref::ReferencedContainer, weights::StatsBase.Weights)
-    idx = sample_ancestors(rng, weights.values, length(ref.particles))
+function resample!(
+    rng::AbstractRNG,
+    resampler::AbstractResampler,
+    ref::ReferencedContainer,
+    weights::StatsBase.Weights
+)
+    idx = sample_ancestors(rng, resampler, weights, length(ref.particles))
     @. ref.particles = Particle($split!(rng, ref.values[idx]))
-    return ref
 end
 
 function logevidence(particles::ReferencedContainer)
@@ -298,7 +382,7 @@ struct SMC{RT,KT} <: AbstractSampler
 end
 
 SMC(threshold::Real) = SMC(ESSResampler(threshold), nothing)
-SMC() = SMC(AlwaysResample(), nothing)
+SMC() = SMC(Systematic(), nothing)
 
 function initialize(rng::AbstractRNG, model::DynamicPPL.Model, ::SMC, N::Integer)
     return ParticleContainer([TracedModel(rng, model) for _ in 1:N]), false
@@ -311,15 +395,8 @@ function initialize(
         initialize(rng, model, sampler, N)
     else
         particles, is_done = initialize(rng, model, sampler, N - 1)
-        ReferencedContainer(particles, Particle(ref)), is_done
+        ReferencedContainer(particles, Particle(set_reference(ref))), is_done
     end
-end
-
-# TODO: replace this with a systematic resampler
-function sample_ancestors(
-    rng::AbstractRNG, weights::Vector{<:Real}, N::Integer=length(weights)
-)
-    return rand(rng, Categorical(weights), N)
 end
 
 increment_weight!(particle::Particle, score::Nothing) = true
@@ -345,7 +422,7 @@ end
 function maybe_resample!(rng::AbstractRNG, particles, resampler::AbstractResampler)
     weights = StatsBase.weights(particles)
     rs_flag = should_resample(weights, resampler)
-    rs_flag && resample!(rng, particles, weights)
+    rs_flag && resample!(rng, resampler, particles, weights)
     return rs_flag
 end
 
@@ -359,7 +436,8 @@ function rejuvenate!(
     iter::Integer;
     kwargs...,
 )
-    return rejuvenate!(rng, ref.particles, kernel, parallel, rs_flag, iter)
+    new_particles = rejuvenate!(rng, ref.particles, kernel, parallel, rs_flag, iter)
+    return ReferencedContainer(new_particles, ref.reference)
 end
 
 # leave out rejuvenation for now, we'll cross that bridge when we get there
@@ -385,6 +463,7 @@ function smcsample(
     ref=nothing,
     kwargs...,
 )
+    error_if_threadsafe_eval(model)
     particles, is_done = initialize(rng, model, sampler, N, ref)
     iter = 0
     while !is_done
@@ -401,17 +480,21 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model,
     sampler::SMC,
     N::Integer;
-    ensemble::AbstractMCMC.AbstractMCMCEnsemble=MCMCSerial(),
+    ensemble::AbstractMCMC.AbstractMCMCEnsemble=AbstractMCMC.MCMCSerial(),
+    check_model=true,
     chain_type::Any=DEFAULT_CHAIN_TYPE,
     kwargs...,
 )
+    check_model && Turing._check_model(model, sampler)
+    error_if_threadsafe_eval(model)
+
     # perform a particle sweep
     particles = smcsample(rng, model, sampler, ensemble, N; kwargs...)
     stats = (; logevidence=logevidence(particles))
 
     # convert to readable format and bundle samples
     sample = map(
-        x -> DynamicPPL.ParamsWithStats(get_varinfo(x.value), model, stats), particles
+        x -> DynamicPPL.ParamsWithStats(get_varinfo(x.value), stats), particles
     )
     return AbstractMCMC.bundle_samples(sample, model, sampler, particles, chain_type)
 end
@@ -446,12 +529,20 @@ PG(N::Int, threshold::Real) = PG(SMC(threshold), N)
 PG(N::Int) = PG(N, 0.5)
 
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, sampler::ParticleGibbs; kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::ParticleGibbs;
+    discard_sample=false,
+    kwargs...
 )
     particles = smcsample(rng, model, sampler.kernel, AbstractMCMC.MCMCSerial(), sampler.N)
     state = StatsBase.sample(rng, particles)
-    stats = (; logevidence=logevidence(particles))
-    sample = DynamicPPL.ParamsWithStats(get_varinfo(state), model, stats)
+    sample = if discard_sample
+        nothing
+    else
+        stats = (; logevidence=logevidence(particles))
+        DynamicPPL.ParamsWithStats(get_varinfo(state), stats)
+    end
     return sample, state
 end
 
@@ -460,18 +551,25 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler::ParticleGibbs,
     state::TracedModel;
+    discard_sample=false,
     kwargs...,
 )
+    ref = deepcopy(state)
     particles = smcsample(
         rng,
         model,
         sampler.kernel,
         AbstractMCMC.MCMCSerial(),
         sampler.N;
-        ref=deepcopy(state),
+        ref,
     )
-    state = StatsBase.sample(rng, particles)
+    new_ref = StatsBase.sample(rng, particles)
     stats = (; logevidence=logevidence(particles))
-    sample = DynamicPPL.ParamsWithStats(get_varinfo(state), model, stats)
-    return sample, state
+    sample = if discard_sample
+        nothing
+    else
+        stats = (; logevidence=logevidence(particles))
+        DynamicPPL.ParamsWithStats(get_varinfo(new_ref), stats)
+    end
+    return sample, new_ref
 end
