@@ -47,15 +47,24 @@ function satisfies_constraints(
     satisfies_ub = ub === nothing || proposed_val <= ub
     return isnan(proposed_val) || (satisfies_lb && satisfies_ub)
 end
+# x may be nothing so we need to take care of that
+_prevfloat(x::AbstractFloat) = prevfloat(x)
+_prevfloat(x::AbstractArray{<:AbstractFloat}) = map(prevfloat, x)
+_prevfloat(x) = x
+_nextfloat(x::AbstractFloat) = nextfloat(x)
+_nextfloat(x::AbstractArray{<:AbstractFloat}) = map(nextfloat, x)
+_nextfloat(x) = x
 function satisfies_constraints(
-    lb::Union{Nothing,Real},
-    ub::Union{Nothing,Real},
+    lb::Union{Nothing,AbstractFloat},
+    ub::Union{Nothing,AbstractFloat},
     proposed_val::ForwardDiff.Dual,
-    dist::UnivariateDistribution,
+    ::UnivariateDistribution,
 )
-    # This overload is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns true, even
-    # though the primal value is within the constraints.
-    return satisfies_constraints(lb, ub, ForwardDiff.value(proposed_val), dist)
+    # The prevfloat/nextfloat is needed because ForwardDiff.Dual(2.0, 1.0) > 2.0 returns
+    # true, even though the primal value is within the constraints.
+    satisfies_lb = lb === nothing || proposed_val > prevfloat(lb)
+    satisfies_ub = ub === nothing || proposed_val < nextfloat(ub)
+    return isnan(proposed_val) || (satisfies_lb && satisfies_ub)
 end
 function satisfies_constraints(
     lb::Union{Nothing,AbstractArray{<:Real}},
@@ -70,12 +79,18 @@ function satisfies_constraints(
     return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
-    lb::Union{Nothing,AbstractArray{<:Real}},
-    ub::Union{Nothing,AbstractArray{<:Real}},
+    lb::Union{Nothing,AbstractArray{<:AbstractFloat}},
+    ub::Union{Nothing,AbstractArray{<:AbstractFloat}},
     proposed_val::AbstractArray{<:ForwardDiff.Dual},
     dist::Union{MultivariateDistribution,MatrixDistribution},
 )
-    return satisfies_constraints(lb, ub, ForwardDiff.value.(proposed_val), dist)
+    satisfies_lb =
+        lb === nothing ||
+        all(p -> isnan(p[1]) || p[1] > prevfloat(p[2]), zip(proposed_val, lb))
+    satisfies_ub =
+        ub === nothing ||
+        all(p -> isnan(p[1]) || p[1] < nextfloat(p[2]), zip(proposed_val, ub))
+    return satisfies_lb && satisfies_ub
 end
 function satisfies_constraints(
     lb::Union{Nothing,NamedTuple},
@@ -118,10 +133,8 @@ function DynamicPPL.init(
     # The inner `init` might (for whatever reason) return linked or otherwise
     # transformed values. We need to transform them back into to unlinked space,
     # so that we can check the constraints properly.
-    maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-    proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
-        DynamicPPL.get_internal_value(maybe_transformed_val)
-    )
+    tv = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+    proposed_val = DynamicPPL.get_raw_value(tv, dist)
     attempts = 1
     while !satisfies_constraints(lb, ub, proposed_val, dist)
         if attempts >= MAX_ATTEMPTS
@@ -131,13 +144,11 @@ function DynamicPPL.init(
                 ),
             )
         end
-        maybe_transformed_val = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
-        proposed_val = DynamicPPL.get_transform(maybe_transformed_val)(
-            DynamicPPL.get_internal_value(maybe_transformed_val)
-        )
+        tv = DynamicPPL.init(rng, vn, dist, c.actual_strategy)
+        proposed_val = DynamicPPL.get_raw_value(tv, dist)
         attempts += 1
     end
-    return DynamicPPL.UntransformedValue(proposed_val)
+    return tv
 end
 
 can_have_linked_constraints(::Distribution) = false
@@ -216,29 +227,35 @@ function DynamicPPL.accumulate_assume!!(
             ),
         )
     end
-    transform =
-        if DynamicPPL.target_transform(acc.transform_strategy, vn) isa
-            DynamicPPL.DynamicLink
-            Bijectors.VectorBijectors.to_linked_vec(dist)
-        elseif DynamicPPL.target_transform(acc.transform_strategy, vn) isa DynamicPPL.Unlink
-            Bijectors.VectorBijectors.to_vec(dist)
-        else
-            error(
-                "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
-            )
-        end
+    target_tfm = DynamicPPL.target_transform(acc.transform_strategy, vn)
+    transform_fn = if target_tfm isa DynamicPPL.DynamicLink
+        Bijectors.VectorBijectors.to_linked_vec(dist)
+    elseif target_tfm isa DynamicPPL.Unlink
+        Bijectors.VectorBijectors.to_vec(dist)
+    elseif target_tfm isa DynamicPPL.FixedTransform
+        Bijectors.inverse(target_tfm.transform)
+    else
+        error(
+            "don't know how to handle transform strategy $(acc.transform_strategy) for variable $(vn)",
+        )
+    end
     # Transform the value and store it.
-    vectorised_val = transform(val)
+    vectorised_val = transform_fn(val)
+    if !(vectorised_val isa AbstractVector)
+        error(
+            "The transform strategy used ($(acc.transform_strategy)) generated a value for variable $(vn) that is not a vector; in general this cannot be handled by Turing",
+        )
+    end
     acc.init_vecs[vn] = vectorised_val
     nelems = length(vectorised_val)
     # Then generate the constraints using the same transform.
     if lb !== nothing
-        acc.lb_vecs[vn] = transform(lb)
+        acc.lb_vecs[vn] = transform_fn(lb)
     else
         acc.lb_vecs[vn] = fill(-Inf, nelems)
     end
     if ub !== nothing
-        acc.ub_vecs[vn] = transform(ub)
+        acc.ub_vecs[vn] = transform_fn(ub)
     else
         acc.ub_vecs[vn] = fill(Inf, nelems)
     end
@@ -268,17 +285,6 @@ function DynamicPPL.combine(acc1::ConstraintAccumulator, acc2::ConstraintAccumul
     combined.lb_vecs = merge(acc1.lb_vecs, acc2.lb_vecs)
     combined.ub_vecs = merge(acc1.ub_vecs, acc2.ub_vecs)
     return combined
-end
-
-function _get_ldf_range(ldf::LogDensityFunction, vn::VarName)
-    if haskey(ldf._varname_ranges, vn)
-        return ldf._varname_ranges[vn].range
-    elseif haskey(ldf._iden_varname_ranges, AbstractPPL.getsym(vn))
-        return ldf._iden_varname_ranges[AbstractPPL.getsym(vn)].range
-    else
-        # Should not happen.
-        error("could not find range for variable name $(vn) in LogDensityFunction")
-    end
 end
 
 """
@@ -317,11 +323,13 @@ function make_optim_bounds_and_init(
     # ranges stored in the LDF.
     constraint_acc = DynamicPPL.getacc(vi, Val(CONSTRAINT_ACC_NAME))
     nelems = LogDensityProblems.dimension(ldf)
-    inits = fill(NaN, nelems)
-    lb = fill(-Inf, nelems)
-    ub = fill(Inf, nelems)
+    # TODO(penelopeysm) This should really be exported
+    et = eltype(DynamicPPL.get_input_vector_type(ldf))
+    inits = fill(et(NaN), nelems)
+    lb = fill(et(-Inf), nelems)
+    ub = fill(et(Inf), nelems)
     for (vn, init_val) in constraint_acc.init_vecs
-        range = _get_ldf_range(ldf, vn)
+        range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
             lb[range] = constraint_acc.lb_vecs[vn]

@@ -149,7 +149,6 @@ function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInf
     param_eltype = DynamicPPL.get_param_eltype(vi, context)
     valids = valid_eltypes(context)
     if !(any(param_eltype .<: valids))
-        @show context
         throw(IncompatibleADTypeError(param_eltype, adtype(context)))
     end
 end
@@ -247,11 +246,11 @@ end
             # with a gradient-based sampler (say HMC(0.1, 10)).
             # This means we need to construct one with only `s`, and one model with
             # only `m`.
-            global_vi = DynamicPPL.VarInfo(model)
+            global_vnt = rand(model)
             @testset for varnames in ([@varname(s)], [@varname(m)])
                 @info "Testing Gibbs AD with model=$(model.f), varnames=$varnames"
                 conditioned_model = Turing.Inference.make_conditional(
-                    model, varnames, deepcopy(global_vi)
+                    model, varnames, deepcopy(global_vnt)
                 )
                 @test run_ad(
                     model, adtype; rng=StableRNG(123), test=true, benchmark=false

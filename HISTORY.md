@@ -1,3 +1,126 @@
+# 0.44.2
+
+Fix a bug in v0.44 where extra keyword arguments passed to `vi` (e.g. `callback`) would cause Turing to error.
+
+# 0.44.1
+
+Re-export `pointwise_logdensities` and `pointwise_prior_logdensities` from DynamicPPL.
+
+# 0.44.0
+
+## Breaking changes
+
+**Variational inference interface**
+
+The VI interface in Turing has been modified to make it more interoperable with the rest of Turing.
+
+  - The arguments to `vi(...)` are slightly different: instead of specifying a `q_init` argument (the initial variational approximation), you now directly pass a function that constructs this for you. For example, instead of
+    
+    ```julia
+    q_init = q_meanfield_gaussian(model)
+    vi(model, q_init, n_iters)
+    ```
+    
+    you would now do
+    
+    ```julia
+    vi(model, q_meanfield_gaussian, n_iters)
+    ```
+
+  - The return value of `vi` is now a `VIResult` struct (please see the documentation for information), which bundles the previous return values together in a more cohesive way.
+    Most importantly, you can now call `rand([rng,] result::VIResult)` to obtain new samples from the variational approximation.
+    This returns a `VarNamedTuple` of raw values, which can be used directly in all other Turing interfaces without any further wrangling.
+    (In contrast, the previous return value of `rand(q)` would yield a vector of transformed parameters.)
+
+Internally, the VI interface has been reworked to directly use `DynamicPPL.LogDensityFunction` instead of relying on a transformed distribution from Bijectors.jl.
+
+**Gibbs sampler interface**
+
+This section is only relevant if you are writing a sampler that is intended to be *directly* used as a component sampler in Turing's Gibbs sampler.
+(If Gibbs calls your sampler via Turing's `externalsampler` interface, this section does not apply to you.)
+
+Turing's Gibbs sampler has been reworked in this release to fix a number of correctness and performance issues.
+The main change is that the Gibbs state carries a `VarNamedTuple` of raw values, instead of a `VarInfo` of vectorised (transformed) parameters.
+This fixes correctness issues that arise with value-dependent transformations, and also leads to much reduced overhead when sampling with Gibbs: see https://github.com/TuringLang/Turing.jl/pull/2803 for some representative benchmarks.
+
+In Turing v0.43, you would have to define two methods
+
+  - `Turing.Inference.get_varinfo(::MyState)` -> returns a VarInfo of values from your sampler's state
+
+  - `Turing.Inference.setparams_varinfo!!(::DynamicPPL.Model, ::MySampler, ::MyState, params::AbstractVarInfo)` -> uses a VarInfo of values to update your sampler's state
+
+The corresponding methods in Turing v0.44 are
+
+  - `Turing.Inference.gibbs_get_raw_values(::MyState)` -> returns a VarNamedTuple of *raw* values from your sampler's state. Note that these values should not be transformed or wrapped in any way: if `x` is `3` in the model, then we should have that `gibbs_get_raw_values(state)[@varname(x)] == 3`.
+
+  - `Turing.Inference.gibbs_update_state!!(::MySampler, ::MyState, ::DynamicPPL.Model, global_vals::VarNamedTuple)` -> uses the values in `global_vals` to update your sampler's state and return a new state.
+    Note that the values in `global_vals` are raw values.
+    Also, note that the model argument passed in here will be 'conditioned' on the *new* values inside `global_vals`.
+    That means that if any part of your state relies on caching the model being evaluated, you have to update those parts of your state to reflect the new model as well.
+
+As can be seen, the interface is almost entirely the same except that we use `VarNamedTuple`s of raw values instead of `VarInfo`s of potentially transformed parameters.
+
+Please see the docstrings in the Turing.jl API page for more information.
+
+## Other changes
+
+**Performance**
+
+Previously many of Turing's samplers needed to carry around a VarInfo so that they could communicate with Gibbs.
+This release frees them up from having to do so, and in particular allows for usage of `DynamicPPL.OnlyAccsVarInfo`, which is much cheaper as it avoids unnecessary computations.
+
+As a result, samplers such as MH and ESS are faster in this release, sometimes by up to 5x.
+
+**Fixed transforms**
+
+The MCMC sampling (`sample`), optimisation (`mode_estimate` / `maximum_likelihood` / `maximum_a_posteriori`, and VI (`vi`) entry points now accept an extra `fix_transforms` keyword argument, which specifies that all transforms in the model should be determined once at the start of inference and then fixed to those values for the rest of inference.
+(In contrast, the default behaviour is to rederive transforms each time the model is run.)
+
+Note that not all MCMC samplers currently support fixed transforms.
+In particular, HMC, NUTS, and external samplers currently do support it, and Gibbs will pass the flag through to its component samplers, but MH's `LinkedRW` option will currently ignore the `fix_transforms` argument.
+For some samplers such as ESS and particle MCMC, fixed transforms do not affect the sampling process at all (in such cases the keyword argument is accepted but ignored).
+
+The reason why Turing rederives transforms is to ensure correctness in cases where the transform *depends on the value of another random variable*.
+For example, if `a` is a parameter, then `b ~ Uniform(-a, a)` has a transform that depends on the value of `a`.
+Since `a` is not static, this in turn means that the transform associated with `b` is not static.
+
+If you know that this consideration is not relevant for you, it can sometimes lead to performance benefits if the transforms are expensive to compute.
+However, in many cases the benefits are negligible and you should always benchmark this on a case-by-case basis.
+Please see https://turinglang.org/DynamicPPL.jl/stable/fixed_transforms/ for further details about this.
+
+# 0.43.7
+
+Fixes an issue where sampling with `MH()` in v0.43 would not include `x := expr` results in the chain.
+
+# 0.43.6
+
+Internal change to avoid using ForwardDiff internals.
+
+# 0.43.5
+
+Fix incorrect handling of VarNamedTuple templates inside submodels when sampling with Gibbs.
+
+# 0.43.4
+
+Fix some missing `Base.copy` implementations on internal structs.
+
+# 0.43.3
+
+Unify parameter initialisation for HMC and external samplers.
+External samplers (like HMC) now attempt multiple times to generate valid initial parameters, instead of just taking the first set of parameters.
+
+Re-exports `set_logprob_type!` from DynamicPPL to allow users to control the base log-probability type used when evaluating Turing models.
+For example, calling `set_logprob_type!(Float32)` will mean that Turing will use `Float32` for log-probability calculations, only promoting if there is something in the model that causes it to be (e.g. a distribution that returns `Float64` log-probabilities).
+Note that this is a compile-time preference: for it to take effect you will have to restart your Julia session after calling `set_logprob_type!`.
+
+Furthermore, note that sampler support for non-`Float64` log-probabilities is currently limited.
+Although DynamicPPL promises not promote float types unnecessarily, many samplers, including HMC and NUTS, still use `Float64` internally and thus will cause log-probabilities and parameters to be promoted to `Float64`, even if the model itself uses `Float32`.
+
+# 0.43.2
+
+Throw an `ArgumentError` when a `Gibbs` sampler is missing component samplers for any variable in the model.
+This check can be bypassed by passing `check_model=false` to `sample`.
+
 # 0.43.1
 
 Ignore `discard_initial` and `thinning` for `SMC` samplers to prevent a `BoundsError` when these arguments are provided.

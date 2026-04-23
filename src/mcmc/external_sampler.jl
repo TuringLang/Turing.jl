@@ -121,22 +121,11 @@ function externalsampler(
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
-# TODO(penelopeysm): Can't we clean this up somehow?
-struct TuringState{S,V,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
+struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
     state::S
-    # Note that this varinfo is used only for structure. Its parameters and other info do
-    # not need to be accurate
-    varinfo::V
-    # These are the actual parameters that this state is at
     params::P
     ldf::L
 end
-
-# get_varinfo must return something from which the correct parameters can be obtained
-function get_varinfo(state::TuringState)
-    return DynamicPPL.unflatten!!(state.varinfo, state.params)
-end
-get_varinfo(state::AbstractVarInfo) = state
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -145,32 +134,26 @@ function AbstractMCMC.step(
     initial_state=nothing,
     initial_params, # passed through from sample
     discard_sample=false,
+    fix_transforms::Bool=false,
     kwargs...,
 ) where {unconstrained}
     sampler = sampler_wrapper.sampler
 
-    # Initialise varinfo with initial params and link the varinfo if needed.
-    tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
-    _, varinfo = DynamicPPL.init!!(rng, model, VarInfo(), initial_params, tfm_strategy)
-
-    # We need to extract the vectorised initial_params, because the later call to
-    # AbstractMCMC.step only sees a `LogDensityModel` which expects `initial_params`
-    # to be a vector.
-    initial_params_vector = varinfo[:]
-
     # Construct LogDensityFunction
+    tfm_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     f = DynamicPPL.LogDensityFunction(
-        model, DynamicPPL.getlogjoint_internal, varinfo; adtype=sampler_wrapper.adtype
+        model,
+        DynamicPPL.getlogjoint_internal,
+        tfm_strategy;
+        adtype=sampler_wrapper.adtype,
+        fix_transforms=fix_transforms,
     )
+    x = find_initial_params_ldf(rng, f, initial_params)
 
     # Then just call `AbstractMCMC.step` with the right arguments.
     _, state_inner = if initial_state === nothing
         AbstractMCMC.step(
-            rng,
-            AbstractMCMC.LogDensityModel(f),
-            sampler;
-            initial_params=initial_params_vector,
-            kwargs...,
+            rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params=x, kwargs...
         )
 
     else
@@ -179,7 +162,7 @@ function AbstractMCMC.step(
             AbstractMCMC.LogDensityModel(f),
             sampler,
             initial_state;
-            initial_params=initial_params_vector,
+            initial_params=x,
             kwargs...,
         )
     end
@@ -191,7 +174,8 @@ function AbstractMCMC.step(
         new_stats = AbstractMCMC.getstats(state_inner)
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
     end
-    return (new_transition, TuringState(state_inner, varinfo, new_parameters, f))
+
+    return (new_transition, TuringState(state_inner, new_parameters, f))
 end
 
 function AbstractMCMC.step(
@@ -217,5 +201,30 @@ function AbstractMCMC.step(
         new_stats = AbstractMCMC.getstats(state_inner)
         DynamicPPL.ParamsWithStats(new_parameters, f, new_stats)
     end
-    return (new_transition, TuringState(state_inner, state.varinfo, new_parameters, f))
+    return (new_transition, TuringState(state_inner, new_parameters, f))
+end
+
+####
+#### Gibbs interface
+####
+
+function gibbs_get_raw_values(state::TuringState)
+    pws = DynamicPPL.ParamsWithStats(
+        state.params, state.ldf; include_log_probs=false, include_colon_eq=false
+    )
+    return pws.params
+end
+
+function gibbs_update_state!!(
+    ::ExternalSampler,
+    state::TuringState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
+    # Update the inner sampler's state with the new parameters.
+    new_inner_state = AbstractMCMC.setparams!!(
+        AbstractMCMC.LogDensityModel(new_ldf), state.state, new_params
+    )
+    return TuringState(new_inner_state, new_params, new_ldf)
 end

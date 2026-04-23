@@ -57,7 +57,9 @@ using .Optimisation
 using DynamicPPL:
     @model,
     @varname,
+    pointwise_logdensities,
     pointwise_loglikelihoods,
+    pointwise_prior_logdensities,
     generated_quantities,
     returned,
     logprior,
@@ -78,7 +80,9 @@ using DynamicPPL:
     InitFromParams,
     setthreadsafe,
     filldist,
-    arraydist
+    arraydist,
+    set_logprob_type!
+
 using StatsBase: predict
 using OrderedCollections: OrderedDict
 using Libtask: might_produce, @might_produce
@@ -153,7 +157,9 @@ export
     predict,
     # Querying model probabilities - DynamicPPL
     returned,
+    pointwise_logdensities,
     pointwise_loglikelihoods,
+    pointwise_prior_logdensities,
     logprior,
     loglikelihood,
     logjoint,
@@ -163,6 +169,8 @@ export
     fix,
     unfix,
     OrderedDict, # OrderedCollections
+    # Log-prob types in accumulators
+    set_logprob_type!,
     # Initialisation strategies for models
     InitFromPrior,
     InitFromUniform,

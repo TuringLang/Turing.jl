@@ -667,6 +667,45 @@ end
         ) isa ModeResult
     end
 
+    @testset "fix_transforms" begin
+        struct MyNormal <: ContinuousUnivariateDistribution end
+        Distributions.logpdf(::MyNormal, x) = logpdf(Normal(), x)
+        Distributions.rand(rng::Random.AbstractRNG, ::MyNormal) = rand(rng, Normal())
+        counter = Ref(0)
+        struct VectAndIncrement end
+        (::VectAndIncrement)(x) = [x]
+        Bijectors.with_logabsdet_jacobian(::VectAndIncrement, x) = [x], 0.0
+        Bijectors.inverse(::VectAndIncrement) = OnlyAndIncrement()
+        struct OnlyAndIncrement end
+        (::OnlyAndIncrement)(x) = x[]
+        Bijectors.with_logabsdet_jacobian(::OnlyAndIncrement, x) = x[], 0.0
+        Bijectors.inverse(::OnlyAndIncrement) = VectAndIncrement()
+        function Bijectors.VectorBijectors.to_linked_vec(::MyNormal)
+            counter[] += 1
+            return VectAndIncrement()
+        end
+        function Bijectors.VectorBijectors.from_linked_vec(::MyNormal)
+            counter[] += 1
+            return OnlyAndIncrement()
+        end
+
+        @model f() = x ~ MyNormal()
+        model = f()
+
+        # It's very hard to determine how many times the transforms will be called during
+        # optimisation, because it mostly depends on how many iterations the solver has to
+        # do. We make sure to start it at a terrible location so that we ensure that it
+        # _does_ get called at least a few times.
+        inits = InitFromParams(VarNamedTuple(; x=-100.0))
+        counter[] = 0
+        maximum_a_posteriori(model; initial_params=inits, fix_transforms=false)
+        counter_without_fixed_tfms = counter[]
+
+        counter[] = 0
+        maximum_a_posteriori(model; initial_params=inits, fix_transforms=true)
+        @test counter[] < counter_without_fixed_tfms
+    end
+
     @testset "using ModeResult to initialise MCMC" begin
         @model function f(y)
             μ ~ Normal(0, 1)

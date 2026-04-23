@@ -109,6 +109,18 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         end
     end
 
+    @testset "chain includes := statements" begin
+        @model function f()
+            x ~ Normal()
+            y := x^2
+            return nothing
+        end
+        for spl in (MH(), MH(@varname(x) => Normal()), MH([1.0;;]))
+            chn = sample(f(), spl, 20)
+            @test chn[:y] == chn[:x] .^ 2
+        end
+    end
+
     @testset "info statements about proposals" begin
         @model function f()
             x = zeros(2)

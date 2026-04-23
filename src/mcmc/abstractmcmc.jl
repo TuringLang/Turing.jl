@@ -31,6 +31,44 @@ function _convert_initial_params(@nospecialize(_::Any))
     throw(ArgumentError(errmsg))
 end
 
+"""
+    find_initial_params_ldf(rng, ldf, init_strategy; max_attempts=1000)
+
+Given a `LogDensityFunction` and an initialization strategy, attempt to find valid initial
+parameters by sampling from the initialization strategy and checking that the log density
+(and gradient, if available) are finite. If valid parameters are not found after
+`max_attempts`, throw an error.
+"""
+function find_initial_params_ldf(
+    rng::Random.AbstractRNG,
+    ldf::DynamicPPL.LogDensityFunction,
+    init_strategy::DynamicPPL.AbstractInitStrategy;
+    max_attempts::Int=1000,
+)
+    for attempts in 1:max_attempts
+        # Get new parameters
+        x = rand(rng, ldf, init_strategy)
+        is_valid = if ldf.adtype === nothing
+            logp = LogDensityProblems.logdensity(ldf, x)
+            isfinite(logp)
+        else
+            logp, grad = LogDensityProblems.logdensity_and_gradient(ldf, x)
+            isfinite(logp) && all(isfinite, grad)
+        end
+
+        # If they're OK, return them
+        is_valid && return x
+
+        attempts == 10 &&
+            @warn "failed to find valid initial parameters in $(attempts) tries; consider providing a different initialisation strategy with the `initial_params` keyword"
+    end
+
+    # if we failed to find valid initial parameters, error
+    return error(
+        "failed to find valid initial parameters in $(max_attempts) tries. See https://turinglang.org/docs/uri/initial-parameters for common causes and solutions. If the issue persists, please open an issue at https://github.com/TuringLang/Turing.jl/issues",
+    )
+end
+
 #########################################
 # Default definitions for the interface #
 #########################################

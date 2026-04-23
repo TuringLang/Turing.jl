@@ -2,8 +2,9 @@ module TuringAbstractMCMCTests
 
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL
-using Random: AbstractRNG
-using Test: @test, @testset, @test_throws
+using LogDensityProblems: LogDensityProblems
+using Random: AbstractRNG, Random, Xoshiro
+using Test: @test, @testset, @test_throws, @test_logs
 using Turing
 
 @testset "Disabling check_model" begin
@@ -24,20 +25,77 @@ using Turing
     @test sample(model, spl, MCMCDistributed(), 10, 2; check_model=false) isa Any
 end
 
+@testset "find_initial_params_ldf" begin
+    @testset "basic interface" begin
+        @model function normal_model()
+            x ~ Normal(0, 1)
+            return y ~ Normal(x, 1)
+        end
+        @testset for init_strategy in
+                     (InitFromPrior(), InitFromUniform(), InitFromParams((x=0.5, y=-0.3)))
+            model = normal_model()
+            ldf = DynamicPPL.LogDensityFunction(
+                model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll()
+            )
+            rng = Xoshiro(468)
+            x = Turing.Inference.find_initial_params_ldf(rng, ldf, init_strategy)
+            @test x isa AbstractVector{<:Real}
+            @test length(x) == LogDensityProblems.dimension(ldf)
+        end
+    end
+
+    @testset "warning for difficult init params" begin
+        attempt = 0
+        @model function demo_warn_initial_params()
+            x ~ Normal()
+            if (attempt += 1) < 30
+                @addlogprob! -Inf
+            end
+        end
+        ldf = DynamicPPL.LogDensityFunction(
+            demo_warn_initial_params(),
+            DynamicPPL.getlogjoint_internal,
+            DynamicPPL.LinkAll(),
+        )
+        @test_logs (:warn, r"consider providing a different initialisation strategy") Turing.Inference.find_initial_params_ldf(
+            Xoshiro(468), ldf, InitFromUniform()
+        )
+    end
+
+    @testset "errors after max_attempts" begin
+        @model function impossible_model()
+            x ~ Normal()
+            @addlogprob! -Inf
+        end
+        model = impossible_model()
+        ldf = DynamicPPL.LogDensityFunction(
+            model, DynamicPPL.getlogjoint_internal, DynamicPPL.LinkAll()
+        )
+        @test_throws ErrorException Turing.Inference.find_initial_params_ldf(
+            Xoshiro(468), ldf, InitFromUniform()
+        )
+    end
+end
+
 @testset "Initial parameters" begin
     # Dummy algorithm that just returns initial value and does not perform any sampling
     abstract type OnlyInit <: AbstractMCMC.AbstractSampler end
     struct OnlyInitDefault <: OnlyInit end
     struct OnlyInitUniform <: OnlyInit end
     Turing.Inference.init_strategy(::OnlyInitUniform) = InitFromUniform()
-    function Turing.Inference.initialstep(
+    function AbstractMCMC.step(
         rng::AbstractRNG,
         model::DynamicPPL.Model,
-        ::OnlyInit,
-        vi::DynamicPPL.VarInfo=DynamicPPL.VarInfo(rng, model);
+        ::OnlyInit;
+        initial_params::DynamicPPL.AbstractInitStrategy,
         kwargs...,
     )
-        return vi, nothing
+        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(false))
+        _, accs = DynamicPPL.init!!(
+            rng, model, accs, initial_params, DynamicPPL.UnlinkAll()
+        )
+        return accs, nothing
     end
 
     @testset "init_strategy" begin
@@ -55,10 +113,10 @@ end
         model = coinflip()
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
-            varinfos = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(varinfos)
-            @test varinfo[@varname(p)] == 0.2
-            @test DynamicPPL.getlogjoint(varinfo) == lptrue
+            oavis = sample(model, spl, 1; initial_params=inits, progress=false)
+            oavi = only(oavis)
+            @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
+            @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
             chains = sample(
@@ -71,9 +129,9 @@ end
                 progress=false,
             )
             for c in chains
-                varinfo = only(c)
-                @test varinfo[@varname(p)] == 0.2
-                @test DynamicPPL.getlogjoint(varinfo) == lptrue
+                oavi = only(c)
+                @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
+                @test DynamicPPL.getlogjoint(oavi) == lptrue
             end
         end
 
@@ -99,10 +157,11 @@ end
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(chain)
-            @test varinfo[@varname(s)] == 4
-            @test varinfo[@varname(m)] == -1
-            @test DynamicPPL.getlogjoint(varinfo) == lptrue
+            oavi = only(chain)
+            vnt = DynamicPPL.get_raw_values(oavi)
+            @test vnt[@varname(s)] == 4
+            @test vnt[@varname(m)] == -1
+            @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
             chains = sample(
@@ -115,10 +174,11 @@ end
                 progress=false,
             )
             for c in chains
-                varinfo = only(c)
-                @test varinfo[@varname(s)] == 4
-                @test varinfo[@varname(m)] == -1
-                @test DynamicPPL.getlogjoint(varinfo) == lptrue
+                oavi = only(c)
+                vnt = DynamicPPL.get_raw_values(oavi)
+                @test vnt[@varname(s)] == 4
+                @test vnt[@varname(m)] == -1
+                @test DynamicPPL.getlogjoint(oavi) == lptrue
             end
         end
 
@@ -134,9 +194,9 @@ end
             Dict(@varname(m) => -1),
         )
             chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            varinfo = only(chain)
-            @test !ismissing(varinfo[@varname(s)])
-            @test varinfo[@varname(m)] == -1
+            vnt = DynamicPPL.get_raw_values(only(chain))
+            @test !ismissing(vnt[@varname(s)])
+            @test vnt[@varname(m)] == -1
 
             # parallel sampling
             chains = sample(
@@ -149,9 +209,9 @@ end
                 progress=false,
             )
             for c in chains
-                varinfo = only(c)
-                @test !ismissing(varinfo[@varname(s)])
-                @test varinfo[@varname(m)] == -1
+                vnt = DynamicPPL.get_raw_values(only(c))
+                @test !ismissing(vnt[@varname(s)])
+                @test vnt[@varname(m)] == -1
             end
         end
     end

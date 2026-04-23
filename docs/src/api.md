@@ -46,6 +46,7 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 | `setthreadsafe`      | [`DynamicPPL.setthreadsafe`](@extref)      | Mark a model as requiring threadsafe evaluation                                              |
 | `might_produce`      | [`Libtask.might_produce`](@extref)         | Mark a method signature as potentially calling `Libtask.produce`                             |
 | `@might_produce`     | [`Libtask.@might_produce`](@extref)        | Mark a function name as potentially calling `Libtask.produce`                                |
+| `set_logprob_type!`  | [`DynamicPPL.set_logprob_type!`](@extref)  | Set the base log-probability type used during evaluation of Turing models                    |
 
 ### Inference
 
@@ -81,28 +82,30 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Data structures
 
-| Exported symbol | Documentation                               | Description                         |
-|:--------------- |:------------------------------------------- |:----------------------------------- |
-| `@vnt`          | [`DynamicPPL.@vnt`](@extref)                | Generate a `VarNameTuple`           |
-| `VarNamedTuple` | [`DynamicPPL.VarNamedTuple`](@extref)       | A mapping from `VarName`s to values |
-| `OrderedDict`   | [`OrderedCollections.OrderedDict`](@extref) | An ordered dictionary               |
+| Exported symbol | Documentation                                        | Description                         |
+|:--------------- |:---------------------------------------------------- |:----------------------------------- |
+| `@vnt`          | [`DynamicPPL.VarNamedTuples.@vnt`](@extref)          | Generate a `VarNameTuple`           |
+| `VarNamedTuple` | [`DynamicPPL.VarNamedTuples.VarNamedTuple`](@extref) | A mapping from `VarName`s to values |
+| `OrderedDict`   | [`OrderedCollections.OrderedDict`](@extref)          | An ordered dictionary               |
 
 ### DynamicPPL utilities
 
 Please see the [generated quantities](https://turinglang.org/docs/tutorials/usage-generated-quantities/) and [probability interface](https://turinglang.org/docs/tutorials/usage-probability-interface/) guides for more information.
 
-| Exported symbol            | Documentation                                                                                                                | Description                                             |
-|:-------------------------- |:---------------------------------------------------------------------------------------------------------------------------- |:------------------------------------------------------- |
-| `returned`                 | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple%7BModel,%20NamedTuple%7D) | Calculate additional quantities defined in a model      |
-| `predict`                  | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting)                                            | Generate samples from posterior predictive distribution |
-| `pointwise_loglikelihoods` | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                             | Compute log likelihoods for each sample in a chain      |
-| `logprior`                 | [`DynamicPPL.logprior`](@extref)                                                                                             | Compute log prior probability                           |
-| `logjoint`                 | [`DynamicPPL.logjoint`](@extref)                                                                                             | Compute log joint probability                           |
-| `condition`                | [`AbstractPPL.condition`](@extref)                                                                                           | Condition a model on data                               |
-| `decondition`              | [`AbstractPPL.decondition`](@extref)                                                                                         | Remove conditioning on data                             |
-| `conditioned`              | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model                |
-| `fix`                      | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                             |
-| `unfix`                    | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                           |
+| Exported symbol                | Documentation                                                                                                                | Description                                                                  |
+|:------------------------------ |:---------------------------------------------------------------------------------------------------------------------------- |:---------------------------------------------------------------------------- |
+| `returned`                     | [`DynamicPPL.returned`](https://turinglang.org/DynamicPPL.jl/stable/api/#DynamicPPL.returned-Tuple%7BModel,%20NamedTuple%7D) | Calculate additional quantities defined in a model                           |
+| `predict`                      | [`StatsAPI.predict`](https://turinglang.org/DynamicPPL.jl/stable/api/#Predicting)                                            | Generate samples from posterior predictive distribution                      |
+| `pointwise_logdensities`       | [`DynamicPPL.pointwise_logdensities`](@extref)                                                                               | Compute log densities (both prior and likelihood) for each sample in a chain |
+| `pointwise_loglikelihoods`     | [`DynamicPPL.pointwise_loglikelihoods`](@extref)                                                                             | Compute log likelihoods for each sample in a chain                           |
+| `pointwise_prior_logdensities` | [`DynamicPPL.pointwise_prior_logdensities`](@extref)                                                                         | Compute log priors for each sample in a chain                                |
+| `logprior`                     | [`DynamicPPL.logprior`](@extref)                                                                                             | Compute log prior probability                                                |
+| `logjoint`                     | [`DynamicPPL.logjoint`](@extref)                                                                                             | Compute log joint probability                                                |
+| `condition`                    | [`AbstractPPL.condition`](@extref)                                                                                           | Condition a model on data                                                    |
+| `decondition`                  | [`AbstractPPL.decondition`](@extref)                                                                                         | Remove conditioning on data                                                  |
+| `conditioned`                  | [`DynamicPPL.conditioned`](@extref)                                                                                          | Return the conditioned values of a model                                     |
+| `fix`                          | [`DynamicPPL.fix`](@extref)                                                                                                  | Fix the value of a variable                                                  |
+| `unfix`                        | [`DynamicPPL.unfix`](@extref)                                                                                                | Unfix the value of a variable                                                |
 
 ### Initialisation strategies
 
