@@ -9,6 +9,7 @@ using LogDensityProblems: LogDensityProblems
 using Optimization: Optimization
 using OptimizationOptimJL: LBFGS
 using Random: Random
+using SciMLBase: SciMLBase
 using ADTypes: ADTypes
 using StatsBase: StatsBase
 using Printf: Printf
@@ -101,7 +102,7 @@ end
 """
     ModeResult(
         log_density::DynamicPPL.LogDensityFunction,
-        solution::Optimization.OptimizationSolution,
+        solution::SciMLBase.OptimizationSolution,
         linked::Bool,
         estimator::ModeEstimator,
     )
@@ -115,7 +116,7 @@ parameter space in case the optimization was done in a transformed space.
 """
 function ModeResult(
     ldf::LogDensityFunction,
-    solution::Optimization.OptimizationSolution,
+    solution::SciMLBase.OptimizationSolution,
     linked::Bool,
     estimator::ModeEstimator,
 )
