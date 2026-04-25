@@ -13,6 +13,14 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
+
+> [!IMPORTANT]                                                                                                                                                                                                                   
+> Turing.jl is an open-source project developed primarily by academic researchers within grant-funded institutions. As a result, our capacity to triage issues and review contributions is limited by available resources.
+>
+> Organisations that rely on Turing.jl in commercial or industrial contexts are encouraged to support its development, either through financial contributions or direct code contributions.
+>
+> If you are interested in contributing to the TuringLang codebase, the preferred approach is to draft a feature proposal and submit it for review. The TuringLang team will then indicate whether the proposal is accepted or rejected. Upon acceptance, contributors may proceed with implementing the proposed feature. Bug fixes and small changes, however, are typically submitted directly as pull requests.
+
 ## Get started
 
 Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10.8 for the latest version of Turing.jl).
