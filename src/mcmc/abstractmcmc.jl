@@ -69,6 +69,19 @@ function find_initial_params_ldf(
     )
 end
 
+
+"""
+    info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
+
+Returns the number of divergent transitions in the chain.
+"""
+function info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
+    return nothing
+end
+function info_sampler_output(chain, sampler::AbstractSampler)
+    return nothing
+end
+
 #########################################
 # Default definitions for the interface #
 #########################################
@@ -76,7 +89,9 @@ end
 function AbstractMCMC.sample(
     model::DynamicPPL.Model, spl::AbstractSampler, N::Integer; kwargs...
 )
-    return AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
+    chain =  AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
+    info_sampler_output(chain, spl)
+    return chain
 end
 
 function AbstractMCMC.sample(
@@ -108,10 +123,12 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     kwargs...,
-)
-    return AbstractMCMC.sample(
+)   
+    chain = AbstractMCMC.sample(
         Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
     )
+    info_sampler_output(chain, alg)
+    return chain    
 end
 
 function AbstractMCMC.sample(

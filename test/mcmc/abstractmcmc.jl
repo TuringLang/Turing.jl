@@ -6,6 +6,7 @@ using LogDensityProblems: LogDensityProblems
 using Random: AbstractRNG, Random, Xoshiro
 using Test: @test, @testset, @test_throws, @test_logs
 using Turing
+using Logging
 
 @testset "Disabling check_model" begin
     # Set up a model for which check_model errors.
@@ -215,6 +216,21 @@ end
             end
         end
     end
+end
+
+@testset "info_sampler_output" begin
+    @model function f()
+    x ~ Normal()
+        if x < 0
+            @addlogprob! -Inf
+            return
+        end
+    end
+
+    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), NUTS(), 1000; progress=false)
+    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), NUTS(), MCMCThreads(),1000, 2; progress=false)
+    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMC(0.1, 5), 1000; progress=false)
+    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMC(0.1, 5), MCMCThreads(),1000, 2; progress=false)
 end
 
 end # module

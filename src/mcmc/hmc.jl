@@ -3,6 +3,14 @@ abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
+function info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
+    n_divergent = sum(skipmissing(vec(chain[:numerical_error])))    
+    if n_divergent > 0
+        @warn "number of divergent transitions: $n_divergent; consider increasing `target_accept` or reparameterising your model"
+    end   
+    return nothing
+end
+
 ###
 ### Sampler states
 ###
