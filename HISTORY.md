@@ -1,3 +1,7 @@
+# 0.44.3
+
+Add compatibility with SciMLBase v3.
+
 # 0.44.2
 
 Fix a bug in v0.44 where extra keyword arguments passed to `vi` (e.g. `callback`) would cause Turing to error.
