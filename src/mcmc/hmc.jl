@@ -3,6 +3,11 @@ abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
+"""
+    info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
+
+Returns the number of divergent transitions in the chain.
+""" 
 function info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
     n_divergent = sum(skipmissing(vec(chain[:numerical_error])))    
     if n_divergent > 0
