@@ -226,10 +226,12 @@ end
             return nothing
         end
     end
-    warn_message = r"Number of divergent transitions: \d+"
+    warn_message = r"There were \d+ divergent transitions"
     for spl in [NUTS(), HMC(0.1, 5), HMCDA(200, 0.65, 0.3)]
-        @test_logs min_level = Logging.Warn (:warn, warn_message) sample(f(), spl, 1000),
-        @test_logs min_level = Logging.Warn (:warn, warn_message) sample(
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
+            f(), spl, 1000
+        ),
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
             f(), spl, MCMCThreads(), 1000, 2
         )
     end

@@ -3,19 +3,6 @@ abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
 Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
-"""
-    post_sample_hook(chain::MCMCChains.Chains, sampler::Hamiltonian)
-
-Emit a warning message if there are divergent transitions in the chain.
-"""
-function post_sample_hook(chain::MCMCChains.Chains, ::Hamiltonian)
-    n_divergent = sum(skipmissing(vec(chain[:numerical_error])))
-    if n_divergent > 0
-        @warn "Number of divergent transitions: $n_divergent. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
-    end
-    return nothing
-end
-
 ###
 ### Sampler states
 ###
@@ -472,6 +459,19 @@ end
 
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
+end
+
+"""
+    post_sample_hook(chain::MCMCChains.Chains, sampler::Union{HMC,NUTS,HMCDA})
+
+Emit a warning message if there are divergent transitions in the chain.
+"""
+function post_sample_hook(chain::MCMCChains.Chains, ::Union{HMC,NUTS,HMCDA})
+    n_divergent = round(Int, sum(skipmissing(vec(chain[:numerical_error]))))
+    if n_divergent > 0
+        @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
+    end
+    return nothing
 end
 
 ####
