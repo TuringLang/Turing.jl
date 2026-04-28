@@ -70,11 +70,11 @@ function find_initial_params_ldf(
 end
 
 """
-    info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
+    post_sample_hook(chain::MCMCChains.Chains, sampler::AbstractSampler)
 
 A post-sampling hook that can e.g. print info about the results of sampling.
 """
-function info_sampler_output(chain, sampler::AbstractSampler)
+function post_sample_hook(chain, sampler::AbstractSampler)
     return nothing
 end
 
@@ -86,7 +86,7 @@ function AbstractMCMC.sample(
     model::DynamicPPL.Model, spl::AbstractSampler, N::Integer; kwargs...
 )
     chain = AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
-    info_sampler_output(chain, spl)
+    post_sample_hook(chain, spl)
     return chain
 end
 
@@ -123,7 +123,7 @@ function AbstractMCMC.sample(
     chain = AbstractMCMC.sample(
         Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
     )
-    info_sampler_output(chain, alg)
+    post_sample_hook(chain, alg)
     return chain
 end
 

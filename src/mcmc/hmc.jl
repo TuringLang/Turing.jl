@@ -4,11 +4,11 @@ abstract type AdaptiveHamiltonian <: Hamiltonian end
 Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
 """
-    info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
+    post_sample_hook(chain::MCMCChains.Chains, sampler::Hamiltonian)
 
-Returns the number of divergent transitions in the chain.
+Emit a warning message if there are divergent transitions in the chain.
 """
-function info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
+function post_sample_hook(chain::MCMCChains.Chains, ::Hamiltonian)
     n_divergent = sum(skipmissing(vec(chain[:numerical_error])))
     if n_divergent > 0
         @warn "Number of divergent transitions: $n_divergent. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."

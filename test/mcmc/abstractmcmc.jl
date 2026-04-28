@@ -218,7 +218,7 @@ end
     end
 end
 
-@testset "info_sampler_output" begin
+@testset "post_sample_hook" begin
     @model function f()
         x ~ Normal()
         if x < 0
