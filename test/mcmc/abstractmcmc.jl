@@ -226,13 +226,15 @@ end
             return
         end
     end
-
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), NUTS(), 1000; progress=false)
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), NUTS(), MCMCThreads(),1000, 2; progress=false)
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMC(0.1, 5), 1000; progress=false)
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMC(0.1, 5), MCMCThreads(),1000, 2; progress=false)
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMCDA(200, 0.65, 0.3), 1000; progress=false)
-    @test_logs min_level=Logging.Warn (:warn, r"consider increasing `target_accept` or reparameterising your model") sample(f(), HMCDA(200, 0.65, 0.3), MCMCThreads(),1000, 2; progress=false)
+    warn_message = r"consider increasing `target_accept` or reparameterising your model"
+    for spl in [
+                NUTS(), 
+                HMC(0.1, 5),
+                HMCDA(200, 0.65, 0.3)
+            ]
+        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, 1000; progress=false),
+        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, MCMCThreads(),1000, 2; progress=false)
+    end
 end
 
 end # module
