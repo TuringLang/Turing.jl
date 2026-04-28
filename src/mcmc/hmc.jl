@@ -11,7 +11,7 @@ Returns the number of divergent transitions in the chain.
 function info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
     n_divergent = sum(skipmissing(vec(chain[:numerical_error])))    
     if n_divergent > 0
-        @warn "number of divergent transitions: $n_divergent; consider increasing `target_accept` or reparameterising your model"
+    @warn "Number of divergent transitions: $n_divergent. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
     end   
     return nothing
 end

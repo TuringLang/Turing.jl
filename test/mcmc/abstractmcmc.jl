@@ -226,14 +226,14 @@ end
             return
         end
     end
-    warn_message = r"consider increasing `target_accept` or reparameterising your model"
+    warn_message = r"Number of divergent transitions: \d+"
     for spl in [
                 NUTS(), 
                 HMC(0.1, 5),
                 HMCDA(200, 0.65, 0.3)
             ]
-        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, 1000; progress=false),
-        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, MCMCThreads(),1000, 2; progress=false)
+        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, 1000),
+        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, MCMCThreads(),1000, 2)
     end
 end
 
