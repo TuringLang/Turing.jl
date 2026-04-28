@@ -220,20 +220,18 @@ end
 
 @testset "info_sampler_output" begin
     @model function f()
-    x ~ Normal()
+        x ~ Normal()
         if x < 0
             @addlogprob! -Inf
-            return
+            return nothing
         end
     end
     warn_message = r"Number of divergent transitions: \d+"
-    for spl in [
-                NUTS(), 
-                HMC(0.1, 5),
-                HMCDA(200, 0.65, 0.3)
-            ]
-        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, 1000),
-        @test_logs min_level=Logging.Warn (:warn, warn_message) sample(f(), spl, MCMCThreads(),1000, 2)
+    for spl in [NUTS(), HMC(0.1, 5), HMCDA(200, 0.65, 0.3)]
+        @test_logs min_level = Logging.Warn (:warn, warn_message) sample(f(), spl, 1000),
+        @test_logs min_level = Logging.Warn (:warn, warn_message) sample(
+            f(), spl, MCMCThreads(), 1000, 2
+        )
     end
 end
 

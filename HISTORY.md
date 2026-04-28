@@ -1,6 +1,6 @@
 # 0.44.4
 
-Add warning message when there are divergent transitions with `HMC`, `NUTS` or `HMCDA`. 
+Add post-sampling warning message when there are divergent transitions with `HMC`, `NUTS` or `HMCDA`.
 
 # 0.44.3
 

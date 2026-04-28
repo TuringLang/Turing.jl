@@ -69,7 +69,6 @@ function find_initial_params_ldf(
     )
 end
 
-
 """
     info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
 
@@ -86,7 +85,7 @@ end
 function AbstractMCMC.sample(
     model::DynamicPPL.Model, spl::AbstractSampler, N::Integer; kwargs...
 )
-    chain =  AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
+    chain = AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
     info_sampler_output(chain, spl)
     return chain
 end
@@ -120,12 +119,12 @@ function AbstractMCMC.sample(
     N::Integer,
     n_chains::Integer;
     kwargs...,
-)   
+)
     chain = AbstractMCMC.sample(
         Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
     )
     info_sampler_output(chain, alg)
-    return chain    
+    return chain
 end
 
 function AbstractMCMC.sample(
