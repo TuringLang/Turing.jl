@@ -4,7 +4,7 @@ abstract type AdaptiveHamiltonian <: Hamiltonian end
 Turing.allow_discrete_variables(sampler::Hamiltonian) = false
 
 """
-    info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
+    info_sampler_output(chain::MCMCChains.Chains, sampler::Hamiltonian)
 
 Returns the number of divergent transitions in the chain.
 """ 

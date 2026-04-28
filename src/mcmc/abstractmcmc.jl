@@ -73,11 +73,8 @@ end
 """
     info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
 
-Returns the number of divergent transitions in the chain.
+A post-sampling hook that can e.g. print info about the results of sampling.
 """
-function info_sampler_output(chain::MCMCChains.Chains, sampler::AbstractSampler)
-    return nothing
-end
 function info_sampler_output(chain, sampler::AbstractSampler)
     return nothing
 end
