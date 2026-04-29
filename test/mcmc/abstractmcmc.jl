@@ -6,6 +6,7 @@ using LogDensityProblems: LogDensityProblems
 using Random: AbstractRNG, Random, Xoshiro
 using Test: @test, @testset, @test_throws, @test_logs
 using Turing
+using Logging
 
 @testset "Disabling check_model" begin
     # Set up a model for which check_model errors.
@@ -214,6 +215,25 @@ end
                 @test vnt[@varname(m)] == -1
             end
         end
+    end
+end
+
+@testset "post_sample_hook" begin
+    @model function f()
+        x ~ Normal()
+        if x < 0
+            @addlogprob! -Inf
+            return nothing
+        end
+    end
+    warn_message = r"There were \d+ divergent transitions"
+    for spl in [NUTS(), HMC(0.1, 5), HMCDA(200, 0.65, 0.3)]
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
+            f(), spl, 1000
+        ),
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
+            f(), spl, MCMCThreads(), 1000, 2
+        )
     end
 end
 
