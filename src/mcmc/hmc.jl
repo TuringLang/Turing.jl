@@ -95,6 +95,7 @@ function AbstractMCMC.sample(
     nadapts=sampler.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
+    verbose=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
@@ -115,7 +116,7 @@ function AbstractMCMC.sample(
             _discard_initial = discard_initial
         end
 
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -126,10 +127,13 @@ function AbstractMCMC.sample(
             nadapts=_nadapts,
             discard_initial=_discard_initial,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     else
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -141,8 +145,11 @@ function AbstractMCMC.sample(
             discard_adapt=false,
             discard_initial=0,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     end
 end
 
