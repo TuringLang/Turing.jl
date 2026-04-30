@@ -70,11 +70,16 @@ function find_initial_params_ldf(
 end
 
 """
-    post_sample_hook(chain, sampler::AbstractSampler; verbose::Bool=true)
+    post_sample_hook(chain, sampler::AbstractSampler; kwargs...)
 
 A post-sampling hook that can e.g. print info about the results of sampling.
+
+Implementations of this should be careful to take `kwargs...` as keyword arguments instead
+of restricting the signature to specific keyword arguments. Right now, the only keyword
+argument that is passed to this function is `verbose`, but in the future additional keyword
+arguments may be passed here.
 """
-post_sample_hook(chain, ::AbstractSampler; verbose::Bool=true) = nothing
+post_sample_hook(chain, ::AbstractSampler; kwargs...) = nothing
 
 #########################################
 # Default definitions for the interface #
