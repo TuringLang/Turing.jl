@@ -23,6 +23,7 @@ using Random: AbstractRNG
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet, OrderedDict
+using StatsBase
 
 import ADTypes
 import AbstractMCMC
@@ -35,6 +36,7 @@ import AdvancedPS
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
+import Random123
 import MCMCChains
 import StatsBase: predict
 
@@ -54,7 +56,6 @@ export Hamiltonian,
     HMCDA,
     NUTS,
     SMC,
-    CSMC,
     PG,
     RepeatSampler,
     Prior,
@@ -96,7 +97,7 @@ include("ess.jl")
 include("hmc.jl")
 include("mh.jl")
 include("is.jl")
-include("particle_mcmc.jl")
+include("smc.jl")
 include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")

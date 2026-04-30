@@ -120,7 +120,6 @@ export
     NUTS,
     SMC,
     PG,
-    CSMC,
     RepeatSampler,
     externalsampler,
     # Variational inference - AdvancedVI
