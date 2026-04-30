@@ -95,6 +95,7 @@ function AbstractMCMC.sample(
     nadapts=sampler.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
+    verbose=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
@@ -115,7 +116,7 @@ function AbstractMCMC.sample(
             _discard_initial = discard_initial
         end
 
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -126,10 +127,13 @@ function AbstractMCMC.sample(
             nadapts=_nadapts,
             discard_initial=_discard_initial,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     else
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -141,8 +145,11 @@ function AbstractMCMC.sample(
             discard_adapt=false,
             discard_initial=0,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     end
 end
 
@@ -462,13 +469,15 @@ function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs.
 end
 
 """
-    post_sample_hook(chain::MCMCChains.Chains, sampler::Union{HMC,NUTS,HMCDA})
+    post_sample_hook(chain::MCMCChains.Chains, sampler::Union{HMC,NUTS,HMCDA}; kwargs...)
 
 Emit a warning message if there are divergent transitions in the chain.
 """
-function post_sample_hook(chain::MCMCChains.Chains, ::Union{HMC,NUTS,HMCDA})
+function post_sample_hook(
+    chain::MCMCChains.Chains, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
+)
     n_divergent = round(Int, sum(skipmissing(vec(chain[:numerical_error]))))
-    if n_divergent > 0
+    if verbose && n_divergent > 0
         @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
     end
     return nothing

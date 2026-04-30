@@ -117,10 +117,11 @@ function AbstractMCMC.sample(
     initial_params=Turing.Inference.init_strategy(sampler),
     chain_type=DEFAULT_CHAIN_TYPE,
     progress=PROGRESS[],
+    verbose=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
-    return AbstractMCMC.mcmcsample(
+    chn = AbstractMCMC.mcmcsample(
         rng,
         model,
         sampler,
@@ -128,8 +129,11 @@ function AbstractMCMC.sample(
         initial_params=Turing._convert_initial_params(initial_params),
         chain_type=chain_type,
         progress=progress,
+        verbose=verbose,
         kwargs...,
     )
+    post_sample_hook(chn, sampler; verbose)
+    return chn
 end
 
 function AbstractMCMC.sample(
