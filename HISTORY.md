@@ -1,3 +1,7 @@
+# 0.44.5
+
+Allow users to disable the post-sample hook by passing `verbose=false` keyword argument to `sample`.
+
 # 0.44.4
 
 Add post-sampling warning message when there are divergent transitions with `HMC`, `NUTS` or `HMCDA`.

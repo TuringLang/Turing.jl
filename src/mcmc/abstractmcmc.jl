@@ -70,13 +70,11 @@ function find_initial_params_ldf(
 end
 
 """
-    post_sample_hook(chain::MCMCChains.Chains, sampler::AbstractSampler)
+    post_sample_hook(chain, sampler::AbstractSampler; verbose::Bool=true)
 
 A post-sampling hook that can e.g. print info about the results of sampling.
 """
-function post_sample_hook(chain, sampler::AbstractSampler)
-    return nothing
-end
+post_sample_hook(chain, ::AbstractSampler; verbose::Bool=true) = nothing
 
 #########################################
 # Default definitions for the interface #
@@ -85,9 +83,7 @@ end
 function AbstractMCMC.sample(
     model::DynamicPPL.Model, spl::AbstractSampler, N::Integer; kwargs...
 )
-    chain = AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
-    post_sample_hook(chain, spl)
-    return chain
+    return AbstractMCMC.sample(Random.default_rng(), model, spl, N; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -98,18 +94,22 @@ function AbstractMCMC.sample(
     initial_params=init_strategy(spl),
     check_model::Bool=true,
     chain_type=DEFAULT_CHAIN_TYPE,
+    verbose::Bool=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, spl)
-    return AbstractMCMC.mcmcsample(
+    chain = AbstractMCMC.mcmcsample(
         rng,
         model,
         spl,
         N;
         initial_params=Turing._convert_initial_params(initial_params),
         chain_type,
+        verbose,
         kwargs...,
     )
+    post_sample_hook(chain, spl; verbose)
+    return chain
 end
 
 function AbstractMCMC.sample(
@@ -120,11 +120,9 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     kwargs...,
 )
-    chain = AbstractMCMC.sample(
+    return AbstractMCMC.sample(
         Random.default_rng(), model, alg, ensemble, N, n_chains; kwargs...
     )
-    post_sample_hook(chain, alg)
-    return chain
 end
 
 function AbstractMCMC.sample(
@@ -136,6 +134,7 @@ function AbstractMCMC.sample(
     n_chains::Integer;
     chain_type=DEFAULT_CHAIN_TYPE,
     check_model::Bool=true,
+    verbose::Bool=true,
     initial_params=fill(init_strategy(spl), n_chains),
     kwargs...,
 )
@@ -144,7 +143,7 @@ function AbstractMCMC.sample(
         errmsg = "`initial_params` must be an AbstractVector of length `n_chains`; one element per chain"
         throw(ArgumentError(errmsg))
     end
-    return AbstractMCMC.mcmcsample(
+    chain = AbstractMCMC.mcmcsample(
         rng,
         model,
         spl,
@@ -154,8 +153,11 @@ function AbstractMCMC.sample(
         chain_type,
         check_model=false, # no need to check again
         initial_params=map(Turing._convert_initial_params, initial_params),
+        verbose,
         kwargs...,
     )
+    post_sample_hook(chain, spl; verbose)
+    return chain
 end
 
 """
