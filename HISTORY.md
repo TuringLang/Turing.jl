@@ -1,3 +1,7 @@
+# 0.45.0
+
+Make FlexiChains the default chain type in Turing.
+
 # 0.44.5
 
 Allow users to disable the post-sample hook by passing `verbose=false` keyword argument to `sample`.
