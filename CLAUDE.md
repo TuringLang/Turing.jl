@@ -30,6 +30,8 @@ julia --project -e 'using Pkg; Pkg.test(; test_args=["--skip", "mcmc/gibbs.jl", 
 
 CI matrix: Julia stable + min, Ubuntu/Windows/macOS, 1 and 2 threads.
 
+`test/test_utils/sampler.jl` provides generic test helpers (`test_rng_respected`, `test_sampler_analytical`, `test_chain_logp_metadata`) that should work for any sampler. Beyond these, sampler-specific tests are needed to capture the properties you care about — there is no standardised test template yet.
+
 ## Architecture
 
 ### What lives here vs elsewhere
@@ -37,7 +39,7 @@ CI matrix: Julia stable + min, Ubuntu/Windows/macOS, 1 and 2 threads.
 Most complexity is in DynamicPPL. Turing.jl contains:
 
   - **Sampler implementations** (`src/mcmc/`): HMC/NUTS/HMCDA (wrapping AdvancedHMC), MH (wrapping AdvancedMH), particle samplers SMC/PG/CSMC (wrapping AdvancedPS), ESS (wrapping EllipticalSliceSampling), SGLD/SGHMC, Emcee, and Gibbs.
-  - **External sampler interface** (`src/mcmc/external_sampler.jl`): The `externalsampler()` wrapper lets any `AbstractMCMC.AbstractSampler` that implements `step` for `LogDensityModel` work with Turing models.
+  - **External sampler interface** (`src/mcmc/external_sampler.jl`): The `externalsampler()` wrapper lets any `AbstractMCMC.AbstractSampler` that implements `step` for `LogDensityModel` work with Turing models. This is the easier path for new samplers — it only requires a dependency on AbstractMCMC and the LogDensityProblems.jl interface, with no Turing internals. The tradeoff is less power: you can only interact with the model as a black-box log-density function, just like using `LogDensityFunction` directly.
   - **Variational inference** (`src/variational/`): Wraps AdvancedVI algorithms.
   - **Mode estimation** (`src/optimisation/`): MAP and MLE via Optimization.jl.
   - **Custom distributions** (`src/stdlib/`): `Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, `LogPoisson`, and Dirichlet/Chinese Restaurant processes.
@@ -62,11 +64,19 @@ To plug a sampler into Gibbs, implement:
 
 ### Use `OnlyAccsVarInfo`, not `VarInfo`
 
-Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not `VarInfo`. `VarInfo` is being phased out across the ecosystem. Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. But not all samplers can use `LogDensityFunction` — MH, for example, works directly with `OnlyAccsVarInfo` + `init!!` because it needs per-variable proposal control. Either approach is fine; the key constraint is no `VarInfo`.
+Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not `VarInfo`. `VarInfo` is being phased out across the ecosystem.
+
+Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability — for example, MH uses custom accumulators to capture proposal distributions and linked values, so it works directly with `OnlyAccsVarInfo` + `init!!` instead. Either approach is fine; the key constraint is no `VarInfo`.
+
+Note: "linked" and "unconstrained" are synonymous in this codebase. Linking transforms constrained parameters to unconstrained (Euclidean) space for gradient-based sampling.
 
 ### `VarNamedTuple` for parameter collections
 
 Interfaces that accept or return named parameter collections should use `VarNamedTuple`, not `NamedTuple` or `Dict{VarName}`. `NamedTuple` and `Dict{VarName}` are accepted as user-facing input but should be converted to `VarNamedTuple` at the boundary (see `_to_varnamedtuple` in `src/common.jl`). Don't propagate them through internal code.
+
+### `getlogjoint_internal` vs `getlogjoint`
+
+Samplers operating in unconstrained space should use `getlogjoint_internal`, which includes the Jacobian correction from the linking transform. This is the default and what you almost always want. The exceptions are ESS (which needs the likelihood in constrained space, per the algorithm) and optimisation (where the Jacobian term should not influence the objective).
 
 ### AD backend handling
 
