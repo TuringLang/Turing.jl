@@ -70,7 +70,7 @@ Interfaces that accept or return named parameter collections should use `VarName
 
 ### AD backend handling
 
-All samplers accept an `adtype::ADTypes.AbstractADType` keyword (default: `AutoForwardDiff()`). When reviewing sampler code, check that `adtype` is threaded through to `LogDensityFunction` and not hardcoded. The AD backend is the user's choice, not the sampler's.
+Gradient-based samplers accept an `adtype::ADTypes.AbstractADType` keyword (default: `AutoForwardDiff()`). When reviewing sampler code, check that `adtype` is threaded through to `LogDensityFunction` and not hardcoded. The AD backend is the user's choice, not the sampler's.
 
 ### `initial_params` conversion
 
