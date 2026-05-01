@@ -120,7 +120,7 @@ end
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -165,7 +165,7 @@ end
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -200,7 +200,7 @@ end
             @test vnt[@varname(m)] == -1
 
             # parallel sampling
-            chains = sample(
+            c = sample(
                 model,
                 spl,
                 MCMCThreads(),

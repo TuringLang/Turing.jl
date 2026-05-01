@@ -4,7 +4,7 @@ using Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-@reexport using Distributions, MCMCChains
+@reexport using Distributions
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
@@ -14,6 +14,7 @@ using LogDensityProblems: LogDensityProblems
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
+using FlexiChains
 
 using Printf: Printf
 using Random: Random
@@ -189,6 +190,8 @@ export
     loadstate,
     # kwargs in SMC
     might_produce,
-    @might_produce
+    @might_produce,
+    # FlexiChains re-export
+    VNChain
 
 end
