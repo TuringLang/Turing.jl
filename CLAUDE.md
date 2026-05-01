@@ -82,7 +82,7 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 
 ### GibbsContext is not ConditionContext
 
-`GibbsContext` fixes non-target variables through the `assume` pipeline, not the `observe` pipeline. This distinction matters for particle samplers (SMC/CSMC), which trigger resampling on `observe`. Using `condition` instead of `GibbsContext` would cause spurious resampling for every conditioned variable.
+`GibbsContext` is distinct from `condition`/`ConditionContext`. For non-target variables, `GibbsContext.tilde_assume!!` calls `tilde_observe!!` — this means particle samplers (PG/CSMC) will correctly resample on conditioned variables. The key difference from `condition` is that `GibbsContext` obtains the conditioned values from the global `VarNamedTuple` rather than from the model's conditioning, and it handles the bookkeeping needed for Gibbs (e.g. updating the global VNT when new variables appear).
 
 ## Contributing
 
