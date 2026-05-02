@@ -6,6 +6,7 @@ using Distributions: sample
 using DynamicPPL: DynamicPPL
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
+using FlexiChains: FlexiChains
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -35,7 +36,7 @@ using Turing
         chain1 = sample(rng1, gdemo_default, spl, 1)
         rng2 = Xoshiro(1234)
         chain2 = sample(rng2, gdemo_default, spl, 1)
-        @test Array(chain1) == Array(chain2)
+        @test FlexiChains.has_same_data(chain1, chain2)
 
         initial_nt = DynamicPPL.InitFromParams((s=2.0, m=1.0))
         # Initial parameters have to be specified for every walker

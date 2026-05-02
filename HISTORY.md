@@ -1,3 +1,13 @@
+# 0.45.0
+
+## Breaking changes
+
+Make FlexiChains the default chain type for MCMC sampling.
+
+MCMCChains is still fully supported: you can specify `chain_type=MCMCChains.Chains` in the `sample` function to use it instead.
+However, it is no longer loaded as a dependency of Turing and re-exported (it is now an extension).
+That means that if you were previously importing MCMCChains via Turing, you will now have to import it directly.
+
 # 0.44.5
 
 Allow users to disable the post-sample hook by passing `verbose=false` keyword argument to `sample`.

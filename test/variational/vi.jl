@@ -1,4 +1,3 @@
-
 module AdvancedVITests
 
 using ..Models: gdemo_default
@@ -11,15 +10,15 @@ using Distributions: Dirichlet, Normal
 using DynamicPPL: DynamicPPL
 using LinearAlgebra
 using LogDensityProblems: LogDensityProblems
-using MCMCChains: Chains
+using FlexiChains: VNChain, FlexiChain, Parameter
 using Random
-using ReverseDiff
+import ReverseDiff
 using StableRNGs: StableRNG
 using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Variational
 
-begin
+@testset verbose = true "variational/vi.jl" begin
     adtype = AutoReverseDiff()
     operator = AdvancedVI.ClipScale()
 
@@ -111,7 +110,7 @@ begin
 
         N = 1000
         samples = rand(rng, result, N)
-        chn = AbstractMCMC.from_samples(MCMCChains.Chains, hcat(samples))
+        chn = AbstractMCMC.from_samples(VNChain, hcat(samples))
 
         check_gdemo(chn; atol=0.5)
     end
