@@ -2,6 +2,7 @@ module TuringMCMCChainsExt
 
 using Turing
 using Turing: AbstractMCMC
+using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState
 using MCMCChains: MCMCChains
 
 """
@@ -39,6 +40,21 @@ function AbstractMCMC.bundle_samples(
         )
     end
     return AbstractMCMC.chainscat(chains...)
+end
+
+"""
+    post_sample_hook(chain::MCMCChains.Chains, sampler::Union{HMC,NUTS,HMCDA}; kwargs...)
+
+Emit a warning message if there are divergent transitions in the chain.
+"""
+function post_sample_hook(
+    chain::MCMCChains.Chains, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
+)
+    n_divergent = round(Int, sum(skipmissing(vec(chain[:numerical_error]))))
+    if verbose && n_divergent > 0
+        @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
+    end
+    return nothing
 end
 
 end
