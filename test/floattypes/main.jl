@@ -45,14 +45,16 @@ function test_with_type(::Type{T}) where {T}
         end
 
         # Known failures (note MH([1.0;;]) is really externalsampler with AdvancedMH)
-        @testset "$spl" for spl in (ESS(), MH([1.0;;]))
-            chn = sample(f(), spl, 10; progress=false)
-            @test_broken eltype(chn[@varname(x)]) == T
-        end
+        if T != Float64
+            @testset "$spl" for spl in (ESS(), MH([1.0;;]))
+                chn = sample(f(), spl, 10; progress=false)
+                @test_broken eltype(chn[@varname(x)]) == T
+            end
 
-        # AdvancedHMC straight up errors :-(
-        @testset "$spl" for spl in (HMC(0.1, 5), NUTS())
-            @test_throws Exception sample(f(), spl, 10; progress=false)
+            # AdvancedHMC straight up errors :-(
+            @testset "$spl" for spl in (HMC(0.1, 5), NUTS())
+                @test_throws Exception sample(f(), spl, 10; progress=false)
+            end
         end
     end
 end
