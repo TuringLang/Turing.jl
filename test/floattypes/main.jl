@@ -38,13 +38,22 @@ function test_with_type(::Type{T}) where {T}
         @test mr.lp isa T
         @test eltype(mr.optim_result.u) == T
 
-        # MH and Prior
-        for spl in (MH(), Prior())
+        # MH and Prior work
+        @testset "$spl" for spl in (MH(), Prior(), Gibbs(:x => MH()))
             chn = sample(f(), spl, 10; progress=false)
-            @test eltype(chn.value) == T
+            @test eltype(chn[@varname(x)]) == T
         end
 
-        # nothing else really works right now
+        # Known failures (note MH([1.0;;]) is really externalsampler with AdvancedMH)
+        @testset "$spl" for spl in (ESS(), MH([1.0;;]))
+            chn = sample(f(), spl, 10; progress=false)
+            @test_broken eltype(chn[@varname(x)]) == T
+        end
+
+        # AdvancedHMC straight up errors :-(
+        @testset "$spl" for spl in (HMC(0.1, 5), NUTS())
+            @test_throws Exception sample(f(), spl, 10; progress=false)
+        end
     end
 end
 
