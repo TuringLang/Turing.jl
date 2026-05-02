@@ -114,13 +114,15 @@ end
         model = coinflip()
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
-            oavis = sample(model, spl, 1; initial_params=inits, progress=false)
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
             oavi = only(oavis)
             @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chn = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -128,9 +130,10 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                oavi = only(c)
+            for oavis in oaviss
+                oavi = only(oavis)
                 @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
                 @test DynamicPPL.getlogjoint(oavi) == lptrue
             end
@@ -138,10 +141,10 @@ end
 
         # check that Vector no longer works
         @test_throws ArgumentError sample(
-            model, spl, 1; initial_params=[4, -1], progress=false
+            model, spl, 1; initial_params=[4, -1], progress=false, chain_type=Any
         )
         @test_throws ArgumentError sample(
-            model, spl, 1; initial_params=[missing, -1], progress=false
+            model, spl, 1; initial_params=[missing, -1], progress=false, chain_type=Any
         )
 
         # model with two variables: initialization s = 4, m = -1
@@ -157,15 +160,17 @@ end
             InitFromParams(Dict(@varname(s) => 4, @varname(m) => -1)),
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            oavi = only(chain)
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
+            oavi = only(oavis)
             vnt = DynamicPPL.get_raw_values(oavi)
             @test vnt[@varname(s)] == 4
             @test vnt[@varname(m)] == -1
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chn = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -173,9 +178,10 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                oavi = only(c)
+            for oavis in oaviss
+                oavi = only(oavis)
                 vnt = DynamicPPL.get_raw_values(oavi)
                 @test vnt[@varname(s)] == 4
                 @test vnt[@varname(m)] == -1
@@ -194,13 +200,15 @@ end
             (; m=-1),
             Dict(@varname(m) => -1),
         )
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            vnt = DynamicPPL.get_raw_values(only(chain))
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
+            vnt = DynamicPPL.get_raw_values(only(oavis))
             @test !ismissing(vnt[@varname(s)])
             @test vnt[@varname(m)] == -1
 
             # parallel sampling
-            c = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -208,9 +216,10 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                vnt = DynamicPPL.get_raw_values(only(c))
+            for oavis in oaviss
+                vnt = DynamicPPL.get_raw_values(only(oavis))
                 @test !ismissing(vnt[@varname(s)])
                 @test vnt[@varname(m)] == -1
             end

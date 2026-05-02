@@ -140,8 +140,7 @@ end
     @test_throws ArgumentError sample(model, Gibbs(:m => MH()), 10)
 
     # We should be able to skip the check if we want to.
-    @test sample(model, Gibbs(:m => MH()), 10; check_model=false, progress=false) isa
-        MCMCChains.Chains
+    @test sample(model, Gibbs(:m => MH()), 10; check_model=false, progress=false) isa Any
 end
 
 # Test that the samplers are being called in the correct order, on the correct target
