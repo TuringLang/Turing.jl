@@ -477,7 +477,7 @@ function post_sample_hook(
     chain::FlexiChains.VNChain, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
 )
     n_divergent = round(
-        Int, sum(skipmissing(vec(chain[FlexiChains.Extra(:enumerical_error)])))
+        Int, sum(skipmissing(vec(chain[FlexiChains.Extra(:numerical_error)])))
     )
     if verbose && n_divergent > 0
         @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
