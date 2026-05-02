@@ -3,10 +3,6 @@ Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
 DynamicPPL = "366bfd00-2699-11ea-058f-f148b4cae6d8"
-FlexiChains = "4a37a8b9-6e57-4b92-8664-298d46e639f7"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-
-[sources]
-FlexiChains = {url = "https://github.com/penelopeysm/FlexiChains.jl", rev = "py/noturing"}

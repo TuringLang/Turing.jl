@@ -2,7 +2,7 @@
 module TuringFlexiChainsTests
 
 using AbstractMCMC: AbstractMCMC
-using DynamicPPL: DynamicPPL
+using DynamicPPL
 using FlexiChains: FlexiChains, FlexiChain, VNChain, Parameter, Extra
 using MCMCChains: MCMCChains
 using Random: Random, Xoshiro
