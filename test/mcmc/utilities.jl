@@ -1,15 +1,14 @@
 module MCMCUtilitiesTests
 
 using ..Models: gdemo_default
+using FlexiChains: FlexiChains
 using Test: @test, @testset
 using Turing
 
 @testset "Timer" begin
     chain = sample(gdemo_default, MH(), 1000)
-
-    @test chain.info.start_time isa Float64
-    @test chain.info.stop_time isa Float64
-    @test chain.info.start_time ≤ chain.info.stop_time
+    @test FlexiChains.sampling_time(chain) isa Vector{Float64}
+    @test only(FlexiChains.sampling_time(chain)) > 0.0
 end
 
 end

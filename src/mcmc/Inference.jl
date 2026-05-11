@@ -16,6 +16,7 @@ using DynamicPPL:
     Model,
     DefaultContext
 using Distributions, Libtask, Bijectors
+using FlexiChains: FlexiChains, VNChain
 using LinearAlgebra
 using ..Turing: PROGRESS, Turing
 using StatsFuns: logsumexp
@@ -35,7 +36,6 @@ import AdvancedPS
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
-import MCMCChains
 import StatsBase: predict
 
 export Hamiltonian,
@@ -62,7 +62,19 @@ export Hamiltonian,
     init_strategy,
     loadstate
 
-const DEFAULT_CHAIN_TYPE = MCMCChains.Chains
+const DEFAULT_CHAIN_TYPE = VNChain
+
+"""
+    Turing.loadstate(chain::FlexiChain{<:VarName})
+
+Extracts the last sampler state from a `FlexiChain`. This is the same function as 
+[`FlexiChains.last_sampler_state`](@ref).
+
+$(FlexiChains._INITIAL_STATE_DOCSTRING)
+"""
+function loadstate(chain::VNChain)
+    return FlexiChains.last_sampler_state(chain)
+end
 
 include("abstractmcmc.jl")
 include("repeat_sampler.jl")

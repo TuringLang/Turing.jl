@@ -15,6 +15,7 @@ using LogDensityProblems: LogDensityProblems
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
+using FlexiChains
 
 using Printf: Printf
 using Random: Random
@@ -286,4 +287,107 @@ export
     cf,
     mgf,
     cgf,
-    probval
+    probval,
+    # DEPRECATED
+    generated_quantities,
+    # Modelling - AbstractPPL and DynamicPPL
+    @model,
+    @varname,
+    to_submodel,
+    prefix,
+    LogDensityFunction,
+    @addlogprob!,
+    setthreadsafe,
+    # Sampling - AbstractMCMC
+    sample,
+    MCMCThreads,
+    MCMCDistributed,
+    MCMCSerial,
+    # Samplers - Turing.Inference
+    Prior,
+    MH,
+    LinkedRW,
+    Emcee,
+    ESS,
+    Gibbs,
+    GibbsConditional,
+    HMC,
+    SGLD,
+    SGHMC,
+    PolynomialStepsize,
+    HMCDA,
+    NUTS,
+    SMC,
+    PG,
+    CSMC,
+    RepeatSampler,
+    externalsampler,
+    # Variational inference - AdvancedVI
+    vi,
+    q_locationscale,
+    q_meanfield_gaussian,
+    q_fullrank_gaussian,
+    KLMinRepGradProxDescent,
+    KLMinRepGradDescent,
+    KLMinScoreGradDescent,
+    KLMinNaturalGradDescent,
+    KLMinSqrtNaturalGradDescent,
+    KLMinWassFwdBwd,
+    FisherMinBatchMatch,
+    # ADTypes
+    AutoForwardDiff,
+    AutoReverseDiff,
+    AutoMooncake,
+    AutoEnzyme,
+    # Debugging - Turing
+    setprogress!,
+    # Distributions
+    Flat,
+    FlatPos,
+    BinomialLogit,
+    OrderedLogistic,
+    LogPoisson,
+    # Tools to work with Distributions
+    I,  # LinearAlgebra
+    filldist,
+    arraydist,
+    NamedDist,
+    # Predictions - DynamicPPL
+    predict,
+    # Querying model probabilities - DynamicPPL
+    returned,
+    pointwise_logdensities,
+    pointwise_loglikelihoods,
+    pointwise_prior_logdensities,
+    logprior,
+    loglikelihood,
+    logjoint,
+    condition,
+    decondition,
+    conditioned,
+    fix,
+    unfix,
+    OrderedDict,
+    # Log-prob types in accumulators
+    set_logprob_type!,
+    # Initialisation strategies for models
+    InitFromPrior,
+    InitFromUniform,
+    InitFromParams,
+    VarNamedTuple,
+    @vnt,
+    # Point estimates - Turing.Optimisation
+    maximum_a_posteriori,
+    maximum_likelihood,
+    MAP,
+    MLE,
+    vector_names_and_params,
+    # Chain save/resume
+    loadstate,
+    # kwargs in SMC
+    might_produce,
+    @might_produce,
+    # FlexiChains re-export
+    VNChain
+
+end

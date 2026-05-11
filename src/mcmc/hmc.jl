@@ -95,6 +95,7 @@ function AbstractMCMC.sample(
     nadapts=sampler.n_adapts,
     discard_adapt=true,
     discard_initial=-1,
+    verbose=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
@@ -115,7 +116,7 @@ function AbstractMCMC.sample(
             _discard_initial = discard_initial
         end
 
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -126,10 +127,13 @@ function AbstractMCMC.sample(
             nadapts=_nadapts,
             discard_initial=_discard_initial,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     else
-        return AbstractMCMC.mcmcsample(
+        chn = AbstractMCMC.mcmcsample(
             rng,
             model,
             sampler,
@@ -141,8 +145,11 @@ function AbstractMCMC.sample(
             discard_adapt=false,
             discard_initial=0,
             initial_params=initial_params,
+            verbose=verbose,
             kwargs...,
         )
+        post_sample_hook(chn, sampler; verbose)
+        return chn
     end
 end
 
@@ -320,25 +327,25 @@ function HMCDA(
 end
 
 """
-    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0; adtype::ADTypes.AbstractADType=AutoForwardDiff()
+    NUTS(n_adapts::Int, δ::Float64; max_depth::Int=10, Δ_max::Float64=1000.0, init_ϵ::Float64=0.0, adtype::ADTypes.AbstractADType=AutoForwardDiff())
 
 No-U-Turn Sampler (NUTS) sampler.
 
-Usage:
+# Usage
 
 ```julia
 NUTS()            # Use default NUTS configuration.
 NUTS(1000, 0.65)  # Use 1000 adaption steps, and target accept ratio 0.65.
 ```
 
-Arguments:
+# Arguments
 
-- `n_adapts::Int` : The number of samples to use with adaptation.
-- `δ::Float64` : Target acceptance rate for dual averaging.
-- `max_depth::Int` : Maximum doubling tree depth.
-- `Δ_max::Float64` : Maximum divergence during doubling tree.
-- `init_ϵ::Float64` : Initial step size; 0 means automatically searching using a heuristic procedure.
-- `adtype::ADTypes.AbstractADType` : The automatic differentiation (AD) backend.
+- `n_adapts::Int`: The number of samples to use with adaptation.
+- `δ::Float64`: Target acceptance rate for dual averaging.
+- `max_depth::Int`: Maximum doubling tree depth.
+- `Δ_max::Float64`: Maximum divergence during doubling tree.
+- `init_ϵ::Float64`: Initial step size; 0 means automatically searching using a heuristic procedure.
+- `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend.
     If not specified, `ForwardDiff` is used, with its `chunksize` automatically determined.
 
 """
@@ -459,6 +466,23 @@ end
 
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
+end
+
+"""
+    post_sample_hook(chain::FlexiChains.VNChain, sampler::Union{HMC,NUTS,HMCDA}; kwargs...)
+
+Emit a warning message if there are divergent transitions in the chain.
+"""
+function post_sample_hook(
+    chain::FlexiChains.VNChain, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
+)
+    n_divergent = round(
+        Int, sum(skipmissing(vec(chain[FlexiChains.Extra(:numerical_error)])))
+    )
+    if verbose && n_divergent > 0
+        @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
+    end
+    return nothing
 end
 
 ####

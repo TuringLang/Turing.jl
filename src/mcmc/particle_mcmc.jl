@@ -137,6 +137,7 @@ function AbstractMCMC.sample(
     progress=PROGRESS[],
     discard_initial=0,
     thinning=1,
+    verbose=false,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
@@ -147,7 +148,7 @@ function AbstractMCMC.sample(
     if discard_initial > 0 || thinning > 1
         @warn "SMC samplers do not support `discard_initial` or `thinning`. These keyword arguments will be ignored."
     end
-    return AbstractMCMC.mcmcsample(
+    chn = AbstractMCMC.mcmcsample(
         rng,
         model,
         sampler,
@@ -158,6 +159,8 @@ function AbstractMCMC.sample(
         nparticles=N,
         kwargs...,
     )
+    post_sample_hook(chn, sampler; verbose)
+    return chn
 end
 
 function AbstractMCMC.step(
