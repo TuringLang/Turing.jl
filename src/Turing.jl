@@ -5,7 +5,7 @@ using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
 using Distributions
-@reexport using MCMCChains
+using Distributions
 using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
