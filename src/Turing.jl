@@ -4,10 +4,8 @@ using Reexport, ForwardDiff
 using Bijectors, StatsFuns, SpecialFunctions
 using Statistics, LinearAlgebra
 using Libtask
-using Distributions
-using Distributions
+@reexport using Distributions
 using Compat: pkgversion
-
 using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
 import DynamicPPL: NoDist, NamedDist
