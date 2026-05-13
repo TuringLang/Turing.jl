@@ -36,9 +36,9 @@ function AbstractMCMC.step(
     return DynamicPPL.ParamsWithStats(vnt, (;)), vnt
 end
 
-mcmc_values(chain::MCMCChains.Chains, name::Symbol) = reshape(
-    Array(chain[name]), size(chain, 1), size(chain, 3)
-)
+function mcmc_values(chain::MCMCChains.Chains, name::Symbol)
+    return reshape(Array(chain[name]), size(chain, 1), size(chain, 3))
+end
 
 @testset verbose = true "chains.jl" begin
     @testset "basic sampling" begin
