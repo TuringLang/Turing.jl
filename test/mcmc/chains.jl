@@ -36,6 +36,10 @@ function AbstractMCMC.step(
     return DynamicPPL.ParamsWithStats(vnt, (;)), vnt
 end
 
+function mcmc_values(chain::MCMCChains.Chains, name::Symbol)
+    return reshape(Array(chain[name]), size(chain, 1), size(chain, 3))
+end
+
 @testset verbose = true "chains.jl" begin
     @testset "basic sampling" begin
         @model function demomodel(x)
@@ -360,6 +364,67 @@ end
                 # check that it did reuse the previous state
                 xval = chn1[@varname(x)][end, :]
                 @test all(i -> chn2[@varname(x)][i, :] == xval, 1:10)
+            end
+        end
+    end
+
+    @testset "MCMCChains metadata" begin
+        @testset "save_state and initial_state" begin
+            @model f() = x ~ Normal()
+            model = f()
+
+            @testset "single chain" begin
+                chn1 = sample(
+                    model,
+                    StaticSampler(),
+                    10;
+                    chain_type=MCMCChains.Chains,
+                    verbose=false,
+                    save_state=true,
+                )
+                state = loadstate(chn1)
+                @test state isa DynamicPPL.VarNamedTuple
+
+                chn2 = sample(
+                    model,
+                    StaticSampler(),
+                    10;
+                    chain_type=MCMCChains.Chains,
+                    verbose=false,
+                    initial_state=state,
+                )
+                xval = mcmc_values(chn1, :x)[end, 1]
+                @test all(==(xval), mcmc_values(chn2, :x))
+            end
+
+            @testset "multiple chain" begin
+                chn1 = sample(
+                    model,
+                    StaticSampler(),
+                    MCMCThreads(),
+                    10,
+                    3;
+                    chain_type=MCMCChains.Chains,
+                    verbose=false,
+                    save_state=true,
+                )
+                states = loadstate(chn1)
+                @test states isa AbstractVector{<:DynamicPPL.VarNamedTuple}
+                @test length(states) == 3
+
+                chn2 = sample(
+                    model,
+                    StaticSampler(),
+                    MCMCThreads(),
+                    10,
+                    3;
+                    chain_type=MCMCChains.Chains,
+                    verbose=false,
+                    initial_state=states,
+                )
+                xval = mcmc_values(chn1, :x)[end, :]
+                samples = mcmc_values(chn2, :x)
+                @test all(i -> samples[i, :] == xval, axes(samples, 1))
             end
         end
     end

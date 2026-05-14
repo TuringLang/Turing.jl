@@ -1,9 +1,11 @@
 module TuringMCMCChainsExt
 
 using Turing
-using Turing: AbstractMCMC
-using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState
+using Turing: AbstractMCMC, DynamicPPL
+using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState, _get_n_walkers
 using MCMCChains: MCMCChains
+
+import Turing.Inference: post_sample_hook
 
 """
     loadstate(chain::MCMCChains.Chains)
