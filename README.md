@@ -14,12 +14,12 @@
 </p>
 
 
-> [!IMPORTANT]                                                                                                                                                                                    
-> Turing.jl is an open-source project developed primarily by academic researchers within grant-funded institutions. As such, our capacity to triage issues and review contributions is necessarily limited.
+> [!IMPORTANT]
+> `Turing.jl` is maintained primarily by academic researchers at grant-funded institutions, with correspondingly limited capacity for triage and review.
 >
-> Turing.jl’s preferred automatic differentiation backends are ForwardDiff.jl and Mooncake.jl, which are supported natively through their public API. Additional backends are available through DifferentiationInterface.
+> `Turing.jl`'s preferred automatic differentiation backends are `ForwardDiff.jl` and `Mooncake.jl`, which are supported natively through their public APIs; further backends are available via `DifferentiationInterface.jl`.
 >
-> If you are interested in contributing to the TuringLang codebase, we recommend first submitting a feature proposal for review. The TuringLang team will indicate whether the proposal is accepted, after which implementation may proceed. Bug fixes and small changes are typically submitted directly as pull requests. Reviewer privileges are reserved for individuals with a sustained record of substantive contributions to TuringLang, or those explicitly invited by a team member.
+> If you would like to contribute, we ask that proposals for new features be submitted first, so that the TuringLang team can indicate whether they are a good fit before implementation begins; bug fixes and small changes are very welcome as pull requests directly. Reviewer privileges are reserved for those with a sustained record of substantive contributions to TuringLang, or for individuals explicitly invited by a team member.
 
 ## Get started
 
