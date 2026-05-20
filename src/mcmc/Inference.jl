@@ -115,5 +115,7 @@ include("prior.jl")
 
 include("gibbs.jl")
 include("gibbs_conditional.jl")
+include("gibbs_setparams.jl")
+include("gibbs_model_hooks.jl")
 
 end # module
