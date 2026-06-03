@@ -6,6 +6,7 @@ using LogDensityProblems: LogDensityProblems
 using Random: AbstractRNG, Random, Xoshiro
 using Test: @test, @testset, @test_throws, @test_logs
 using Turing
+using Logging
 
 @testset "Disabling check_model" begin
     # Set up a model for which check_model errors.
@@ -113,13 +114,15 @@ end
         model = coinflip()
         lptrue = logpdf(Binomial(25, 0.2), 10)
         let inits = InitFromParams((; p=0.2))
-            oavis = sample(model, spl, 1; initial_params=inits, progress=false)
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
             oavi = only(oavis)
             @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chains = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -127,9 +130,10 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                oavi = only(c)
+            for oavis in oaviss
+                oavi = only(oavis)
                 @test DynamicPPL.get_raw_values(oavi)[@varname(p)] == 0.2
                 @test DynamicPPL.getlogjoint(oavi) == lptrue
             end
@@ -137,10 +141,10 @@ end
 
         # check that Vector no longer works
         @test_throws ArgumentError sample(
-            model, spl, 1; initial_params=[4, -1], progress=false
+            model, spl, 1; initial_params=[4, -1], progress=false, chain_type=Any
         )
         @test_throws ArgumentError sample(
-            model, spl, 1; initial_params=[missing, -1], progress=false
+            model, spl, 1; initial_params=[missing, -1], progress=false, chain_type=Any
         )
 
         # model with two variables: initialization s = 4, m = -1
@@ -156,15 +160,17 @@ end
             InitFromParams(Dict(@varname(s) => 4, @varname(m) => -1)),
             Dict(@varname(s) => 4, @varname(m) => -1),
         )
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            oavi = only(chain)
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
+            oavi = only(oavis)
             vnt = DynamicPPL.get_raw_values(oavi)
             @test vnt[@varname(s)] == 4
             @test vnt[@varname(m)] == -1
             @test DynamicPPL.getlogjoint(oavi) == lptrue
 
             # parallel sampling
-            chains = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -172,9 +178,10 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                oavi = only(c)
+            for oavis in oaviss
+                oavi = only(oavis)
                 vnt = DynamicPPL.get_raw_values(oavi)
                 @test vnt[@varname(s)] == 4
                 @test vnt[@varname(m)] == -1
@@ -193,13 +200,15 @@ end
             (; m=-1),
             Dict(@varname(m) => -1),
         )
-            chain = sample(model, spl, 1; initial_params=inits, progress=false)
-            vnt = DynamicPPL.get_raw_values(only(chain))
+            oavis = sample(
+                model, spl, 1; initial_params=inits, progress=false, chain_type=Any
+            )
+            vnt = DynamicPPL.get_raw_values(only(oavis))
             @test !ismissing(vnt[@varname(s)])
             @test vnt[@varname(m)] == -1
 
             # parallel sampling
-            chains = sample(
+            oaviss = sample(
                 model,
                 spl,
                 MCMCThreads(),
@@ -207,13 +216,33 @@ end
                 10;
                 initial_params=fill(inits, 10),
                 progress=false,
+                chain_type=Any,
             )
-            for c in chains
-                vnt = DynamicPPL.get_raw_values(only(c))
+            for oavis in oaviss
+                vnt = DynamicPPL.get_raw_values(only(oavis))
                 @test !ismissing(vnt[@varname(s)])
                 @test vnt[@varname(m)] == -1
             end
         end
+    end
+end
+
+@testset "post_sample_hook" begin
+    @model function f()
+        x ~ Normal()
+        if x < 0
+            @addlogprob! -Inf
+            return nothing
+        end
+    end
+    warn_message = r"There were \d+ divergent transitions"
+    for spl in [NUTS(), HMC(0.1, 5), HMCDA(200, 0.65, 0.3)]
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
+            f(), spl, 1000
+        ),
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, warn_message) sample(
+            f(), spl, MCMCThreads(), 1000, 2
+        )
     end
 end
 

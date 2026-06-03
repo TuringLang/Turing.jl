@@ -13,6 +13,14 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
+
+> [!IMPORTANT]
+> `Turing.jl` is maintained primarily by academic researchers at grant-funded institutions, with correspondingly limited capacity for triage and review.
+>
+> `Turing.jl`'s preferred automatic differentiation backends are `ForwardDiff.jl` and `Mooncake.jl`, which are supported natively through their public APIs; further backends are available via `DifferentiationInterface.jl`.
+>
+> If you would like to contribute, we ask that proposals for new features be submitted first, so that the TuringLang team can indicate whether they are a good fit before implementation begins; bug fixes and small changes are very welcome as pull requests directly. Reviewer privileges are reserved for those with a sustained record of substantive contributions to TuringLang, or for individuals explicitly invited by a team member.
+
 ## Get started
 
 Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10.8 for the latest version of Turing.jl).

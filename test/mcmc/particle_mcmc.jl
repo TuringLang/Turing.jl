@@ -5,6 +5,7 @@ using ..SamplerTestUtils: test_chain_logp_metadata
 # using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Turing.Inference: Systematic, ESSResampler
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
@@ -96,19 +97,19 @@ using Turing
         @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)
         @test size(chn, 1) == 10
-        @test chn isa MCMCChains.Chains
+        @test chn isa VNChain
 
         @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; thinning=3)
         chn2 = sample(normal(), SMC(), 10; thinning=3)
         @test size(chn2, 1) == 10
-        @test chn2 isa MCMCChains.Chains
+        @test chn2 isa VNChain
 
         @test_logs (:warn, r"ignored") sample(
             normal(), SMC(), 10; discard_initial=2, thinning=2
         )
         chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
         @test size(chn3, 1) == 10
-        @test chn3 isa MCMCChains.Chains
+        @test chn3 isa VNChain
     end
 end
 
