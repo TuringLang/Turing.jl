@@ -38,7 +38,6 @@ import EllipticalSliceSampling
 import LogDensityProblems
 import Random
 import Random123
-import MCMCChains
 import StatsBase: predict
 
 export Hamiltonian,
