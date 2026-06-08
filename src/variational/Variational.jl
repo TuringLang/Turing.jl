@@ -35,7 +35,7 @@ export vi,
 requires_unconstrained_space(::AdvancedVI.AbstractVariationalAlgorithm) = true
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradProxDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinRepGradDescent) = true
-requires_unconstrained_space(::AdvancedVI.KLMinScoreGradDescent) = false
+requires_unconstrained_space(::AdvancedVI.KLMinScoreGradDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinWassFwdBwd) = true
 requires_unconstrained_space(::AdvancedVI.KLMinNaturalGradDescent) = true
 requires_unconstrained_space(::AdvancedVI.KLMinSqrtNaturalGradDescent) = true
