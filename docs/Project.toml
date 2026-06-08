@@ -6,3 +6,12 @@ DynamicPPL = "366bfd00-2699-11ea-058f-f148b4cae6d8"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
+
+[compat]
+Bijectors = "0.16.0"
+Documenter = "1.17.0"
+DocumenterInterLinks = "1.1.0"
+DynamicPPL = "0.42.0"
+OptimizationOptimJL = "0.4.14"
+StatsBase = "0.34.11"
+Turing = "0.45.0"
