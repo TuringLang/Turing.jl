@@ -622,8 +622,8 @@ using Turing
         @model function e(x=1.0)
             return x ~ Normal()
         end
-        # Can't test with HMC/NUTS because some AD backends error; see
-        # https://github.com/JuliaDiff/DifferentiationInterface.jl/issues/802
+        # Can't test with HMC/NUTS because some AD backends error on models with no
+        # parameters.
         @test sample(e(), Prior(), 100) isa VNChain
     end
 
