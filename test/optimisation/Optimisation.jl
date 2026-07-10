@@ -2,7 +2,6 @@ module OptimisationTests
 
 using AbstractPPL: AbstractPPL
 using Bijectors: Bijectors
-import DifferentiationInterface as DI
 using Distributions
 using DynamicPPL: DynamicPPL
 using ForwardDiff: ForwardDiff
@@ -23,7 +22,6 @@ using Turing
 using Turing.Optimisation:
     ModeResult, InitWithConstraintCheck, satisfies_constraints, make_optim_bounds_and_init
 
-SECOND_ORDER_ADTYPE = DI.SecondOrder(AutoForwardDiff(), AutoForwardDiff())
 GDEMO_DEFAULT = DynamicPPL.TestUtils.demo_assume_observe_literal()
 
 function check_optimisation_result(
@@ -260,7 +258,7 @@ end
                 StableRNG(468),
                 GDEMO_DEFAULT,
                 OptimizationOptimJL.Newton();
-                adtype=SECOND_ORDER_ADTYPE,
+                adtype=AutoForwardDiff(),
             )
             m4 = maximum_likelihood(
                 StableRNG(468),
@@ -313,7 +311,7 @@ end
                 StableRNG(468),
                 GDEMO_DEFAULT,
                 OptimizationOptimJL.Newton();
-                adtype=SECOND_ORDER_ADTYPE,
+                adtype=AutoForwardDiff(),
             )
             m4 = maximum_a_posteriori(
                 StableRNG(468),
@@ -393,7 +391,7 @@ end
                 GDEMO_DEFAULT,
                 OptimizationOptimJL.IPNewton();
                 initial_params=InitFromParams(true_value),
-                adtype=SECOND_ORDER_ADTYPE,
+                adtype=AutoForwardDiff(),
                 kwargs...,
             )
             m6 = maximum_likelihood(StableRNG(468), GDEMO_DEFAULT; kwargs...)
@@ -455,7 +453,7 @@ end
                 GDEMO_DEFAULT,
                 OptimizationOptimJL.IPNewton();
                 initial_params=InitFromParams(true_value),
-                adtype=SECOND_ORDER_ADTYPE,
+                adtype=AutoForwardDiff(),
                 kwargs...,
             )
             m6 = maximum_a_posteriori(StableRNG(468), GDEMO_DEFAULT; kwargs...)
@@ -552,18 +550,14 @@ end
         true_optima = DynamicPPL.TestUtils.posterior_optima(model)
 
         optimizers = [
-            (false, OptimizationOptimJL.LBFGS()),
-            (false, OptimizationOptimJL.NelderMead()),
-            (true, OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART()),
+            OptimizationOptimJL.LBFGS(),
+            OptimizationOptimJL.NelderMead(),
+            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
         ]
-        @testset "$(nameof(typeof(optimizer)))" for (needs_second_order, optimizer) in
-                                                    optimizers
-            adtype = if needs_second_order
-                SECOND_ORDER_ADTYPE
-            else
-                AutoForwardDiff()
-            end
-            result = maximum_a_posteriori(StableRNG(468), model, optimizer; adtype=adtype)
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
+            result = maximum_a_posteriori(
+                StableRNG(468), model, optimizer; adtype=AutoForwardDiff()
+            )
 
             for vn in DynamicPPL.TestUtils.varnames(model)
                 val = AbstractPPL.getvalue(true_optima, vn)
@@ -599,19 +593,15 @@ end
         true_optima = DynamicPPL.TestUtils.likelihood_optima(model)
 
         optimizers = [
-            (false, OptimizationOptimJL.LBFGS()),
-            (false, OptimizationOptimJL.NelderMead()),
-            (true, OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART()),
+            OptimizationOptimJL.LBFGS(),
+            OptimizationOptimJL.NelderMead(),
+            OptimizationNLopt.NLopt.LD_TNEWTON_PRECOND_RESTART(),
         ]
-        @testset "$(nameof(typeof(optimizer)))" for (needs_second_order, optimizer) in
-                                                    optimizers
+        @testset "$(nameof(typeof(optimizer)))" for optimizer in optimizers
             try
-                adtype = if needs_second_order
-                    SECOND_ORDER_ADTYPE
-                else
-                    AutoForwardDiff()
-                end
-                result = maximum_likelihood(model, optimizer; reltol=1e-3, adtype=adtype)
+                result = maximum_likelihood(
+                    model, optimizer; reltol=1e-3, adtype=AutoForwardDiff()
+                )
 
                 for vn in DynamicPPL.TestUtils.varnames(model)
                     val = AbstractPPL.getvalue(true_optima, vn)

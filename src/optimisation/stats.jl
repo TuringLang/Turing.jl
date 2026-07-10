@@ -1,4 +1,3 @@
-import DifferentiationInterface as DI
 import Bijectors.VectorBijectors: optic_vec
 
 """
@@ -145,12 +144,9 @@ Calculate the [Fisher information matrix](https://en.wikipedia.org/wiki/Fisher_i
 for the mode result `m`. This is the negative Hessian of the log-probability at the mode.
 
 The Hessian is calculated using automatic differentiation with the specified `adtype`. By
-default this is `ADTypes.AutoForwardDiff()`. In general, however, it may be more efficient
-to use forward-over-reverse AD when the model has many parameters. This can be specified
-using `DifferentiationInterface.SecondOrder(outer, inner)`; please consult the
-[DifferentiationInterface.jl
-documentation](https://juliadiff.org/DifferentiationInterface.jl/DifferentiationInterface/stable/explanation/backends/#Second-order)
-for more details.
+default this is `ADTypes.AutoForwardDiff()`, which computes the Hessian via nested
+forward-mode differentiation. Any `adtype` that supports second-order differentiation may
+be supplied instead.
 """
 function StatsBase.informationmatrix(
     m::ModeResult; adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()
@@ -174,7 +170,9 @@ function StatsBase.informationmatrix(
             "do file an issue at https://github.com/TuringLang/Turing.jl/issues.",
         )
     end
-    return -DI.hessian(f, adtype, x)
+    prepared = AbstractPPL.prepare(adtype, f, x; order=2)
+    _, _, hess = AbstractPPL.value_gradient_and_hessian!!(prepared, x)
+    return -hess
 end
 
 StatsBase.coef(m::ModeResult) = last(vector_names_and_params(m))

@@ -1,3 +1,39 @@
+# 0.46.0
+
+## Breaking changes
+
+### DynamicPPL 0.42
+
+Turing.jl v0.46 brings with it all the underlying changes in DynamicPPL 0.42.
+Most notably, gradient preparation and evaluation now go through AbstractPPL's [`prepare` / `value_and_gradient!!` interface](https://turinglang.org/AbstractPPL.jl/stable/evaluators/).
+This is an internal change and does not affect sampling results.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.42.0) for full details, and the AdvancedVI section below for the user-facing changes in this release.
+
+### AdvancedVI 0.7
+
+Turing.jl v0.46 also brings in the changes in AdvancedVI 0.7.
+Please see [the AdvancedVI changelog](https://github.com/TuringLang/AdvancedVI.jl/releases/tag/v0.7.0) for full details; the changes most pertinent to users of `vi` are:
+
+  - `AutoReverseDiff(; compile=true)` is no longer supported for VI, and is rejected with an `ArgumentError`, as compiled tapes can silently produce incorrect gradients when reused across optimisation steps.
+    Use `AutoReverseDiff(; compile=false)`, or a different reverse-mode backend such as `AutoMooncake()`, instead.
+  - `vi` with `KLMinScoreGradDescent` now optimises in unconstrained (linked) space, making it consistent with the other `KLMin...` algorithms.
+    If you use it with a model that has constrained parameters, results may differ slightly from previous releases.
+
+## Other changes
+
+**DifferentiationInterface removed as a direct dependency**
+
+`informationmatrix` (and hence `vcov`) now computes its Hessian through AbstractPPL's second-order interface instead of DifferentiationInterface. There is no change in behaviour for users.
+
+**Performance of nested submodels**
+
+DynamicPPL 0.42.1 fixes a type-inference failure that made nested submodels (a `x ~ to_submodel(...)` statement inside a model that is itself used as a submodel) many times slower to evaluate and differentiate; see https://github.com/TuringLang/Turing.jl/issues/2844.
+
+**MCMCChains extension fix**
+
+Turing v0.45.0 was accidentally released without declaring the `TuringMCMCChainsExt` package extension, meaning that the extension did not load when MCMCChains was imported.
+This broke some MCMCChains-specific functionality, such as `loadstate` (for resuming sampling from a previous chain) and the post-sampling divergence warnings for Hamiltonian samplers; this is now fixed.
+
 # 0.45.0
 
 ## Breaking changes
