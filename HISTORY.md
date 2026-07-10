@@ -6,8 +6,8 @@
 
 Turing.jl v0.46 brings with it all the underlying changes in DynamicPPL 0.42.
 Most notably, gradient preparation and evaluation now go through AbstractPPL's [`prepare` / `value_and_gradient!!` interface](https://turinglang.org/AbstractPPL.jl/stable/evaluators/).
-**For Turing users, we do not expect any behaviour changes.**
-Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.42.0) for full details.
+This is an internal change and does not affect sampling results.
+Please see [the DynamicPPL changelog](https://github.com/TuringLang/DynamicPPL.jl/releases/tag/v0.42.0) for full details, and the AdvancedVI section below for the user-facing changes in this release.
 
 ### AdvancedVI 0.7
 
@@ -20,6 +20,10 @@ Please see [the AdvancedVI changelog](https://github.com/TuringLang/AdvancedVI.j
     If you use it with a model that has constrained parameters, results may differ slightly from previous releases.
 
 ## Other changes
+
+**DifferentiationInterface removed as a direct dependency**
+
+`informationmatrix` (and hence `vcov`) now computes its Hessian through AbstractPPL's second-order interface instead of DifferentiationInterface. There is no change in behaviour for users.
 
 **Performance of nested submodels**
 
