@@ -3,6 +3,8 @@
 ####
 using StatsFuns: softmax, logsumexp
 
+include("traced_rng.jl")
+
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
     if DynamicPPL.requires_threadsafe(model)
         throw(
@@ -20,10 +22,9 @@ mutable struct TracedModel{T<:TapedTask}
 end
 
 function construct_task(rng::AbstractRNG, model::Model, vi::AbstractVarInfo)
-    inner_rng = Random.seed!(Random123.Philox2x(), rand(rng, Random.Sampler(rng, UInt64)))
     inner_model = DynamicPPL.setleafcontext(model, SMCContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(inner_model, vi)
-    return TapedTask(inner_rng, inner_model.f, args...; kwargs...)
+    return TapedTask(rng, inner_model.f, args...; kwargs...)
 end
 
 # overload consume to store the local varinfo
@@ -49,18 +50,19 @@ get_rng(trace::TracedModel) = trace.task.taped_globals
 
 # this prevents the task from resetting the varinfo (but also introduces another bug)
 function set_reference(trace::TracedModel)
-    accs = get_varinfo(trace)
+    rng = get_rng(trace)
+    Random123.set_counter!(rng, 1)
+    accs = DynamicPPL.OnlyAccsVarInfo()
     accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
-    accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogPriorAccumulator())
-    accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogJacobianAccumulator())
-    return TracedModel(construct_task(get_rng(trace), get_model(trace), accs), accs)
+    accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
+    return TracedModel(construct_task(rng, get_model(trace), accs), accs)
 end
 
 function TracedModel(rng::AbstractRNG, model::Model)
     accs = DynamicPPL.OnlyAccsVarInfo()
     accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
     accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-    return TracedModel(construct_task(rng, model, accs), accs)
+    return TracedModel(construct_task(TracedRNG(rng), model, accs), accs)
 end
 
 # if score is nothing, the varinfo is caught up and there's no need to update
@@ -127,12 +129,10 @@ function init_context(rng::AbstractRNG, vi::AbstractVarInfo, vn::VarName)
     return DynamicPPL.InitContext(rng, ctx, DynamicPPL.UnlinkAll())
 end
 
-# TODO: add something here to ensure reference trajectories get pooled into vi
 function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template::Any, vi::AbstractVarInfo
 )
     rng = Libtask.get_taped_globals(AbstractRNG)
-    # isref = Libtask.get_taped_globals(Bool)
     dispatch_ctx = init_context(rng, vi, vn)
     val, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
     return val, vi
@@ -232,6 +232,11 @@ end
 
 Particle(value) = Particle(value, 0.0)
 
+function reset_weight!(particle::Particle{PT,WT}) where {PT,WT}
+    particle.logw = zero(WT)
+    return nothing
+end
+
 # NOTE: this is for unit tests
 function raw_from_particle(particle::Particle)
     vi = get_varinfo(particle.value)
@@ -266,7 +271,7 @@ function resample!(
     rng::AbstractRNG,
     resampler::AbstractResampler,
     particles::ParticleContainer,
-    weights::StatsBase.Weights
+    weights::StatsBase.Weights,
 )
     idx = sample_ancestors(rng, resampler, weights)
     @. particles = Particle($split!(rng, particles.values[idx]))
@@ -276,7 +281,6 @@ function logevidence(particles::ParticleContainer)
     return logsumexp(particles.log_weights) - log(length(particles))
 end
 
-# TODO: optimize this for the love of god
 function split!(rng::AbstractRNG, particles::Vector{<:TracedModel})
     children = deepcopy.(particles)
     seeds = rand(rng, Random.Sampler(rng, UInt64), length(particles))
@@ -284,7 +288,22 @@ function split!(rng::AbstractRNG, particles::Vector{<:TracedModel})
     return children
 end
 
-advance!(particle::Particle{<:TracedModel}) = consume(particle.value)
+function advance!(particle::Particle{<:TracedModel}, isref::Bool=false)
+    rng = get_rng(particle.value)
+    isref ? load_state!(rng) : save_state!(rng)
+    inc_counter!(rng)
+    return consume(particle.value)
+end
+
+# this is necessary for proper RNG tracing
+function update_keys!(particles::ParticleContainer)
+    map(particles) do particle
+        rng = get_rng(particle.value)
+        k = split(state(rng.rng))
+        Random.seed!(rng, k[1])
+    end
+    return nothing
+end
 
 """
     ReferencedContainer
@@ -351,15 +370,19 @@ function resample!(
     rng::AbstractRNG,
     resampler::AbstractResampler,
     ref::ReferencedContainer,
-    weights::StatsBase.Weights
+    weights::StatsBase.Weights,
 )
     idx = sample_ancestors(rng, resampler, weights, length(ref.particles))
     @. ref.particles = Particle($split!(rng, ref.values[idx]))
+    reset_weight!(ref.reference)
 end
 
 function logevidence(particles::ReferencedContainer)
     return logsumexp(particles.log_weights) - log(length(particles))
 end
+
+# only do this for non reference particles
+update_keys!(ref::ReferencedContainer) = update_keys!(ref.particles)
 
 ####
 #### Generic Sequential Monte Carlo sampler.
@@ -402,10 +425,14 @@ end
 increment_weight!(particle::Particle, score::Nothing) = true
 increment_weight!(particle::Particle, score::Real) = (particle.logw += score; return false)
 
+check_ref(pc::ParticleContainer, N::Integer) = false
+check_ref(pc::ReferencedContainer, N::Integer) = (length(pc) == N)
+
 function reweight!(particles, ::AbstractMCMC.MCMCSerial)
-    num_done = map(particles) do particle
-        score = advance!(particle)
-        increment_weight!(particle, score)
+    num_done = map(eachindex(particles)) do i
+        is_ref = check_ref(particles, i)
+        score = advance!(particles[i], is_ref)
+        increment_weight!(particles[i], score)
     end
     return all(num_done)
 end
@@ -413,7 +440,8 @@ end
 function reweight!(particles, ::AbstractMCMC.MCMCThreads)
     num_done = Vector{Bool}(undef, length(particles))
     Threads.@threads for i in eachindex(particles)
-        score = advance!(particles[i])
+        is_ref = check_ref(particles, i)
+        score = advance!(particles[i], is_ref)
         num_done[i] = increment_weight!(particles[i], score)
     end
     return all(num_done)
@@ -422,7 +450,11 @@ end
 function maybe_resample!(rng::AbstractRNG, particles, resampler::AbstractResampler)
     weights = StatsBase.weights(particles)
     rs_flag = should_resample(weights, resampler)
-    rs_flag && resample!(rng, resampler, particles, weights)
+    if rs_flag
+        resample!(rng, resampler, particles, weights)
+    else
+        update_keys!(particles)
+    end
     return rs_flag
 end
 
@@ -493,9 +525,7 @@ function AbstractMCMC.sample(
     stats = (; logevidence=logevidence(particles))
 
     # convert to readable format and bundle samples
-    sample = map(
-        x -> DynamicPPL.ParamsWithStats(get_varinfo(x.value), stats), particles
-    )
+    sample = map(x -> DynamicPPL.ParamsWithStats(get_varinfo(x.value), stats), particles)
     return AbstractMCMC.bundle_samples(sample, model, sampler, particles, chain_type)
 end
 
@@ -533,7 +563,7 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler::ParticleGibbs;
     discard_sample=false,
-    kwargs...
+    kwargs...,
 )
     particles = smcsample(rng, model, sampler.kernel, AbstractMCMC.MCMCSerial(), sampler.N)
     state = StatsBase.sample(rng, particles)
@@ -556,12 +586,7 @@ function AbstractMCMC.step(
 )
     ref = deepcopy(state)
     particles = smcsample(
-        rng,
-        model,
-        sampler.kernel,
-        AbstractMCMC.MCMCSerial(),
-        sampler.N;
-        ref,
+        rng, model, sampler.kernel, AbstractMCMC.MCMCSerial(), sampler.N; ref
     )
     new_ref = StatsBase.sample(rng, particles)
     stats = (; logevidence=logevidence(particles))
