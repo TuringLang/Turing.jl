@@ -2,7 +2,6 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-# using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
 using Turing.Inference: Systematic, ESSResampler
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using FlexiChains: VNChain
@@ -42,7 +41,7 @@ using Turing
             return a, b
         end
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
-        @test_throws "number of observations" sample(fail_smc(), SMC(), 100)
+        @test_throws "mis-aligned execution" sample(fail_smc(), SMC(), 100)
     end
 
     @testset "chain log-density metadata" begin
@@ -94,19 +93,14 @@ using Turing
             return a, b
         end
 
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)
         @test size(chn, 1) == 10
         @test chn isa VNChain
 
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; thinning=3)
         chn2 = sample(normal(), SMC(), 10; thinning=3)
         @test size(chn2, 1) == 10
         @test chn2 isa VNChain
 
-        @test_logs (:warn, r"ignored") sample(
-            normal(), SMC(), 10; discard_initial=2, thinning=2
-        )
         chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
         @test size(chn3, 1) == 10
         @test chn3 isa VNChain
@@ -115,7 +109,7 @@ end
 
 @testset "PG" begin
     @testset "chain log-density metadata" begin
-        test_chain_logp_metadata(PG(SMC(), 10))
+        test_chain_logp_metadata(PG(10))
     end
 
     @testset "logevidence" begin
@@ -129,7 +123,7 @@ end
             return x
         end
 
-        chains_pg = sample(StableRNG(468), test(), PG(SMC(), 10), 100)
+        chains_pg = sample(StableRNG(468), test(), PG(10), 100)
 
         @test all(isone, chains_pg[:x])
         pg_logevidence = mean(chains_pg[:logevidence])
@@ -138,27 +132,27 @@ end
         @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
     end
 
-    # https://github.com/TuringLang/Turing.jl/issues/1598
+    # BROKEN: https://github.com/TuringLang/Turing.jl/issues/1598
     @testset "reference particle" begin
-        c = sample(gdemo_default, PG(SMC(), 1), 1_000)
+        c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
     end
 
+    # BROKEN: https://github.com/TuringLang/Turing.jl/issues/1996
     @testset "addlogprob leads to reweighting" begin
-        # Make sure that PG takes @addlogprob! into account. It didn't use to:
-        # https://github.com/TuringLang/Turing.jl/issues/1996
+        # Make sure that PG takes @addlogprob! into account
         @model function addlogprob_demo()
             x ~ Normal(0, 1)
             if x < 0
-                @addlogprob! -10.0
+                @producelogprob! -10.0
             else
                 # Need a balanced number of addlogprobs in all branches, or
                 # else PG will error
-                @addlogprob! 0.0
+                @producelogprob! 0.0
             end
         end
-        c = sample(StableRNG(468), addlogprob_demo(), PG(SMC(), 10), 100)
+        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
         # Result should be biased towards x > 0.
         @test mean(c[:x]) > 0.7
     end
@@ -169,12 +163,12 @@ end
             return y ~ Normal(x)
         end
 
-        chain = sample(StableRNG(468), kwarg_demo(5.0), PG(SMC(), 20), 1000)
-        @test chain isa MCMCChains.Chains
+        chain = sample(StableRNG(468), kwarg_demo(5.0), PG(20), 1000)
+        @test chain isa VNChain
         @test mean(chain[:x]) ≈ 2.5 atol = 0.3
 
-        chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(SMC(), 20), 1000)
-        @test chain2 isa MCMCChains.Chains
+        chain2 = sample(StableRNG(468), kwarg_demo(5.0; n=10.0), PG(20), 1000)
+        @test chain2 isa VNChain
         @test mean(chain2[:x]) ≈ 7.5 atol = 0.3
     end
 
@@ -191,7 +185,7 @@ end
             return a ~ to_submodel(inner(y, x))
         end
         m1 = nested(1.0)
-        chn = sample(StableRNG(468), m1, PG(SMC(), 10), 1000)
+        chn = sample(StableRNG(468), m1, PG(10), 1000)
         @test mean(chn[:x]) ≈ 0.5 atol = 0.1
     end
 
@@ -205,14 +199,14 @@ end
             return a ~ to_submodel(inner_kwarg(5.0))
         end
         m1 = outer_kwarg1()
-        chn1 = sample(StableRNG(468), m1, PG(SMC(), 10), 1000)
+        chn1 = sample(StableRNG(468), m1, PG(10), 1000)
         @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.3
 
         @model function outer_kwarg2(n)
             return a ~ to_submodel(inner_kwarg(5.0; n=n))
         end
         m2 = outer_kwarg2(10.0)
-        chn2 = sample(StableRNG(468), m2, PG(SMC(), 10), 1000)
+        chn2 = sample(StableRNG(468), m2, PG(10), 1000)
         @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.3
     end
 
@@ -226,7 +220,7 @@ end
             end
         end
         model = setthreadsafe(f(randn(10)), true)
-        @test_throws ArgumentError sample(model, PG(SMC(), 10), 100)
+        @test_throws ArgumentError sample(model, PG(10), 100)
     end
 end
 

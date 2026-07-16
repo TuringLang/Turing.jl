@@ -262,7 +262,7 @@ using Turing
             return p, x
         end
 
-        smc = SMC()
+        smc = SMC(0.5)
         pg = PG(10)
         gibbs = Gibbs(:p => HMC(0.2, 3), :x => PG(10))
 

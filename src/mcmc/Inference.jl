@@ -33,7 +33,6 @@ import AdvancedHMC
 const AHMC = AdvancedHMC
 import AdvancedMH
 const AMH = AdvancedMH
-import AdvancedPS
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
@@ -56,12 +55,18 @@ export Hamiltonian,
     HMCDA,
     NUTS,
     SMC,
+    ParticleGibbs,
     PG,
+    CSMC,
     RepeatSampler,
     Prior,
     externalsampler,
     init_strategy,
-    loadstate
+    loadstate,
+    @producelogprob!,
+    ProduceLogLikelihoodAccumulator,
+    TracedRNG,
+    TracedModel
 
 const DEFAULT_CHAIN_TYPE = VNChain
 

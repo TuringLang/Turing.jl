@@ -30,7 +30,9 @@ end
 
 # Connect to the Random API
 Random.rng_native_52(trng::TracedRNG) = Random.rng_native_52(trng.rng)
-Base.rand(trng::TracedRNG, ::Type{T}) where {T} = Base.rand(trng.rng, T)
+@inline function Random.rand(trng::TracedRNG, ::Type{T}) where {T<:Unsigned}
+    return Random.rand(trng.rng, T)
+end
 
 """
     split(key::Integer, n::Integer=1)

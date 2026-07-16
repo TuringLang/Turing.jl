@@ -1,10 +1,10 @@
 module ContainerTests
 
-using AdvancedPS: AdvancedPS
 using Distributions: Bernoulli, Beta, Gamma, Normal
-using DynamicPPL: DynamicPPL, @model
+using DynamicPPL
 using Test: @test, @testset
 using Turing
+using StableRNGs
 
 @testset "container.jl" begin
     @model function test()
@@ -17,26 +17,43 @@ using Turing
         return x
     end
 
-    @testset "constructor" begin
+    @testset "traced model" begin
+        trace = TracedModel(StableRNG(23), test());
+        loglikes = collect(trace)
+
+        # ensure correctness of incremental likelihoods
+        @test all(loglikes .≈ -log(2))
+
+        # ensure consistency of ProduceLogLikelihoodAccumulator
+        @test sum(loglikes) == DynamicPPL.getloglikelihood(trace.varinfo)
+
         accs = DynamicPPL.OnlyAccsVarInfo()
-        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-        sampler = PG(10)
-        model = test()
-        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
+        _, accs = DynamicPPL.init!!(
+            TracedRNG(StableRNG(23)),
+            test(),
+            accs,
+            DynamicPPL.InitFromPrior(),
+            DynamicPPL.UnlinkAll()
+        )
 
-        # Make sure the backreference from taped_globals to the trace is in place.
-        @test trace.model.ctask.taped_globals.other === trace
-
-        res = AdvancedPS.advance!(trace, false)
-        @test res ≈ -log(2)
-
-        # Catch broken copy, espetially for RNG / VarInfo
-        newtrace = AdvancedPS.fork(trace)
-        res2 = AdvancedPS.advance!(trace)
+        # ensure that traced models evaluate the same as basic ones
+        traced_acc = Turing.Inference.get_varinfo(trace)
+        @test DynamicPPL.getloglikelihood(accs) == DynamicPPL.getloglikelihood(traced_acc)
+        @test DynamicPPL.get_raw_values(traced_acc) == DynamicPPL.get_raw_values(accs)
     end
 
-    @testset "fork" begin
+    @testset "replay" begin
+        # this mimics propagate without resampling
+        function advance_trace!(particle::Turing.Inference.Particle, isref::Bool)
+            isdone = 0.0
+            while !isnothing(isdone)
+                !isref && Turing.Inference.update_key!(particle)
+                isdone = Turing.Inference.advance!(particle, isref)
+            end
+            return Turing.Inference.get_varinfo(particle.value)
+        end
+
         @model function normal()
             a ~ Normal(0, 1)
             3 ~ Normal(a, 2)
@@ -44,17 +61,18 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-        accs = DynamicPPL.OnlyAccsVarInfo()
-        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-        sampler = PG(10)
-        model = normal()
 
-        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
+        # advance the trace one step
+        trace = TracedModel(StableRNG(23), normal());
+        particle = Turing.Inference.Particle(trace);
+        vi = advance_trace!(particle, false)
 
-        newtrace = AdvancedPS.forkr(trace)
-        # Catch broken replay mechanism
-        @test AdvancedPS.advance!(trace) ≈ AdvancedPS.advance!(newtrace)
+        # set trace as reference and replay
+        new_trace = Turing.Inference.set_reference(particle.value)
+        ref_particle = Turing.Inference.Particle(new_trace)
+        ref_vi = advance_trace!(ref_particle, true)
+
+        @test ref_vi == vi
     end
 end
 

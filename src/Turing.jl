@@ -120,9 +120,14 @@ export
     HMCDA,
     NUTS,
     SMC,
+    ParticleGibbs,
     PG,
+    CSMC,
     RepeatSampler,
     externalsampler,
+    # Tracers - Libtask and Turing.Inference
+    TracedModel,
+    TracedRNG,
     # Variational inference - AdvancedVI
     vi,
     q_locationscale,
@@ -171,6 +176,7 @@ export
     OrderedDict, # OrderedCollections
     # Log-prob types in accumulators
     set_logprob_type!,
+    @producelogprob!,
     # Initialisation strategies for models
     InitFromPrior,
     InitFromUniform,
