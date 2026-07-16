@@ -2,7 +2,7 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-using Turing.Inference: Systematic, ESSResampler
+using Turing.Inference: Systematic, ESSResampler, Multinomial
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using FlexiChains: VNChain
 using Random: Random
@@ -16,7 +16,10 @@ using Turing
         @test s.resampler == Systematic()
 
         s = SMC(0.6)
-        @test s.resampler === ESSResampler(0.6)
+        @test s.resampler === ESSResampler(0.6, Systematic())
+
+        s = SMC(Multinomial(), 0.6)
+        @test s.resampler === ESSResampler(0.6, Multinomial())
     end
 
     @testset "basic model" begin
@@ -108,6 +111,24 @@ using Turing
 end
 
 @testset "PG" begin
+    @testset "constructor" begin
+        s = PG(10)
+        @test s.N == 10
+        @test s.kernel.resampler === ESSResampler(0.5)
+
+        s = PG(60, 0.6)
+        @test s.N == 60
+        @test s.kernel.resampler === ESSResampler(0.6)
+
+        s = PG(80, Multinomial(), 0.6)
+        @test s.N == 80
+        @test s.kernel.resampler === ESSResampler(0.6, Multinomial())
+
+        s = PG(100, Systematic())
+        @test s.N == 100
+        @test s.kernel.resampler === Systematic()
+    end
+
     @testset "chain log-density metadata" begin
         test_chain_logp_metadata(PG(10))
     end

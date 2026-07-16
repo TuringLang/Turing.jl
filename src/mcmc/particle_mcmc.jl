@@ -476,6 +476,7 @@ end
 
 # by default always resample unless the user provides a threshold
 SMC(threshold::Real) = SMC(ESSResampler(threshold))
+SMC(rs::AbstractResampler, threshold::Real) = SMC(ESSResampler(threshold, rs))
 SMC() = SMC(Systematic())
 
 function initialize(rng::AbstractRNG, model::DynamicPPL.Model, ::SMC, N::Integer)
@@ -627,8 +628,10 @@ end
 const PG = ParticleGibbs
 const CSMC = PG
 
-# parity the original interface
+# convenience constructors
 PG(N::Int, threshold::Real) = PG(SMC(threshold), N)
+PG(N::Int, rs::AbstractResampler) = PG(SMC(rs), N)
+PG(N::Int, rs::AbstractResampler, threshold::Real) = PG(SMC(rs, threshold), N)
 PG(N::Int) = PG(N, 0.5)
 
 function AbstractMCMC.step(
