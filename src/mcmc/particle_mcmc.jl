@@ -70,7 +70,9 @@ get_rng(trace::TracedModel) = trace.task.taped_globals
     if isempty(indices)
         return :(error("No element of type ", T, " found in tuple"))
     elseif length(indices) > 1
-        return :(error("Multiple elements of type ", T, " found in tuple at positions ", $indices))
+        return :(error(
+            "Multiple elements of type ", T, " found in tuple at positions ", $indices
+        ))
     else
         return :(tup[$(indices[1])])
     end
@@ -694,7 +696,7 @@ function gibbs_update_state!!(
     ::ParticleGibbs,
     state::TracedModel,
     model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple
+    global_vals::DynamicPPL.VarNamedTuple,
 )
     init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
     accs = last(
