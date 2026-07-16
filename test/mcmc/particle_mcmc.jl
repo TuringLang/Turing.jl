@@ -132,14 +132,14 @@ end
         @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
     end
 
-    # BROKEN: https://github.com/TuringLang/Turing.jl/issues/1598
+    # https://github.com/TuringLang/Turing.jl/issues/1598
     @testset "reference particle" begin
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
     end
 
-    # BROKEN: https://github.com/TuringLang/Turing.jl/issues/1996
+    # https://github.com/TuringLang/Turing.jl/issues/1996
     @testset "addlogprob leads to reweighting" begin
         # Make sure that PG takes @addlogprob! into account
         @model function addlogprob_demo()
