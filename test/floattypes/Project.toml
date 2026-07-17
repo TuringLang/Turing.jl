@@ -8,6 +8,6 @@ Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 Turing = {path = "../../"}
 
 [compat]
-DynamicPPL = "0.42.0"
-FlexiChains = "0.6.14"
-Turing = "0.46.0"
+DynamicPPL = "0.42.2"
+FlexiChains = "0.6.31"
+Turing = "0.46"
