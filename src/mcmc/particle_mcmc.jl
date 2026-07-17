@@ -82,17 +82,16 @@ end
 function set_reference(trace::TracedModel)
     rng = get_rng(trace)
     Random123.set_counter!(rng, 1)
-    accs = DynamicPPL.OnlyAccsVarInfo()
-    accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
-    accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-    return TracedModel(construct_task(rng, get_model(trace), accs), accs)
+    return TracedModel(rng, get_model(trace))
 end
 
-function TracedModel(rng::AbstractRNG, model::DynamicPPL.Model)
+TracedModel(rng::AbstractRNG, model::DynamicPPL.Model) = TracedModel(TracedRNG(rng), model)
+
+function TracedModel(rng::TracedRNG, model::DynamicPPL.Model)
     accs = DynamicPPL.OnlyAccsVarInfo()
     accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
     accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-    return TracedModel(construct_task(TracedRNG(rng), model, accs), accs)
+    return TracedModel(construct_task(rng, model, accs), accs)
 end
 
 # update trace varinfo with what has been sampled to this point
@@ -192,12 +191,8 @@ end
 """
     @producelogprob!(ex)
 
-Same as 
-
-If `ex` evaluates to a `NamedTuple` with keys `:loglikelihood` and/or `:logprior`, the
-values are added to the log likelihood and log prior respectively.
-
-If `ex` evaluates to a number it is added to the log likelihood.
+Same as `@addlogprob!`, but intended for use with SMC samplers to ensure Libtask can produce
+the loglikelihood when iterating throguh the model
 """
 macro producelogprob!(ex)
     # this ensures @addlogprob! accounts for task local storage ala Libtask
@@ -311,12 +306,6 @@ function reset_weight!(particle::Particle{PT,WT}) where {PT,WT}
     return nothing
 end
 
-# NOTE: this is for unit tests
-function raw_from_particle(particle::Particle)
-    vi = get_varinfo(particle.value)
-    return DynamicPPL.get_raw_values(vi)
-end
-
 """
     ParticleContainer
 
@@ -393,23 +382,9 @@ end
 Base.length(pc::ReferencedContainer) = length(pc.particles) + 1
 Base.keys(pc::ReferencedContainer) = LinearIndices(pc.values)
 
-Base.iterate(pc::ReferencedContainer) = iterate(pc.particles)
-
-function Base.iterate(pc::ReferencedContainer, i)
-    i == length(pc) && return (pc.reference, i + 1)
-    return iterate(pc.particles, i)
-end
-
 function Base.getindex(pc::ReferencedContainer, i)
     i == length(pc) && return pc.reference
     return pc.particles[i]
-end
-
-function Base.collect(pc::ReferencedContainer)
-    particles = Vector{eltype(pc.particles)}(undef, length(pc))
-    particles[1:(end - 1)] = @views(pc.particles)
-    particles[end] = pc.reference
-    return particles
 end
 
 Base.getproperty(pc::ReferencedContainer, s::Symbol) = _getproperty(pc, Val(s))
@@ -524,6 +499,14 @@ function ensemble_reweight!(particles, ::AbstractMCMC.MCMCThreads)
         num_done[i] = increment_weight!(particles[i], score)
     end
     return num_done
+end
+
+function ensemble_reweight!(particles, ::AbstractMCMC.MCMCDistributed)
+    return pmap(eachindex(particles)) do i
+        is_ref = check_ref(particles, i)
+        score = advance!(particles[i], is_ref)
+        increment_weight!(particles[i], score)
+    end
 end
 
 # ensure consistency in observation steps per particle

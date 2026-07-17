@@ -8,18 +8,23 @@ mutable struct TracedRNG{R,N,T<:Random123.AbstractR123} <: Random.AbstractRNG
     count::Int
     rng::T
     keys::Array{R,N}
-    refseed::Union{R,Nothing}
 end
 
+"""
+    TracedRNG(rng::AbstractR123)
+
+Given a counter based RNG `AbstractR123`, construct a `TracedRNG` 
+"""
 function TracedRNG(rng::Random123.AbstractR123{T}) where {T<:Unsigned}
     Random123.set_counter!(rng, 0)
-    return TracedRNG(1, rng, T[], nothing)
+    return TracedRNG(1, rng, T[])
 end
 
 """
     TracedRNG([rng::AbstractRNG])
+
 Create a `TracedRNG` with `rng` from a provided `AbstractRNG` which generates a seed used to
-populate the inner RNG. Alternatively, one can provide a counter based RNG `AbstractR123`
+populate the inner counter-based RNG
 """
 function TracedRNG(rng::AbstractRNG=Random.default_rng())
     inner_rng = Random.seed!(Random123.Philox2x(), rand(rng, Random.Sampler(rng, UInt64)))
@@ -32,63 +37,25 @@ Random.rng_native_52(trng::TracedRNG) = Random.rng_native_52(trng.rng)
     return Random.rand(trng.rng, T)
 end
 
-"""
-    split(key::Integer, n::Integer=1)
+# split `key` into `n` new keys
+split(key::Integer, n::Integer=1) = rand(Random.MersenneTwister(key), typeof(key), n)
 
-Split `key` into `n` new keys
-"""
-function split(key::Integer, n::Integer=1)
-    T = typeof(key)
-    inner_rng = Random.MersenneTwister(key)
-    return rand(inner_rng, T, n)
-end
+# load state from current model iteration. Random streams are now replayed
+load_state!(trng::TracedRNG) = Random.seed!(trng, trng.keys[trng.count])
 
-"""
-    load_state!(r::TracedRNG)
-
-Load state from current model iteration. Random streams are now replayed
-"""
-function load_state!(trng::TracedRNG)
-    key = trng.keys[trng.count]
-    return Random.seed!(trng, key)
-end
-
-"""
-    Random.seed!(rng::TracedRNG, key)
-
-Set key and counter of inner rng in `rng` to `key` and the running model step to 0
-"""
+# re-seeding the trace implies resetting the counter, see load_state! for uses
 function Random.seed!(trng::TracedRNG, key)
     Random.seed!(trng.rng, key)
     return Random123.set_counter!(trng.rng, 0)
 end
 
-"""
-    save_state!(r::TracedRNG)
-
-Add current key of the inner rng in `r` to `keys`.
-"""
-function save_state!(trng::TracedRNG)
-    return push!(trng.keys, state(trng.rng))
-end
+# add current key of the inner rng in `r` to `keys`
+save_state!(trng::TracedRNG) = push!(trng.keys, state(trng.rng))
 
 state(rng::Random123.Philox2x) = rng.key
-state(rng::Random123.Philox4x) = (rng.key1, rng.key2)
 
-function Base.copy(trng::TracedRNG)
-    return TracedRNG(trng.count, copy(trng.rng), deepcopy(trng.keys), trng.refseed)
-end
-
-"""
-    set_counter!(r::TracedRNG, n::Integer)
-
-Set the counter of the inner rng in `r`, used to keep track of the current model step
-"""
+# set the counter of the inner rng in `r`, used to keep track of the current model step
 Random123.set_counter!(trng::TracedRNG, n::Integer) = trng.count = n
 
-"""
-    inc_counter!(r::TracedRNG, n::Integer=1)
-
-Increase the model step counter by `n`
-"""
+# increase the model step counter by `n`
 inc_counter!(trng::TracedRNG, n::Integer=1) = trng.count += n

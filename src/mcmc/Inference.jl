@@ -25,6 +25,7 @@ using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet, OrderedDict
 using StatsBase
+using Distributed
 
 import ADTypes
 import AbstractMCMC

@@ -2,13 +2,15 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-using Turing.Inference: Systematic, ESSResampler, Multinomial
+using ..NumericalTests: check_numerical
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using DynamicPPL: extract_priors
 using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
+using Turing.Inference: Systematic, ESSResampler, Multinomial
 
 @testset "SMC" begin
     @testset "constructor" begin
@@ -22,7 +24,7 @@ using Turing
         @test s.resampler === ESSResampler(0.6, Multinomial())
     end
 
-    @testset "basic model" begin
+    @testset "basic model with ensemble reweighting" begin
         @model function normal()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -30,7 +32,38 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-        tested = sample(normal(), SMC(), 100)
+
+        chn1 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCSerial())
+        chn2 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCThreads())
+        chn3 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCDistributed())
+
+        # test that RNG is consistent even when parallelized
+        @test chn1[@varname(a)] ≈ chn2[@varname(a)]
+        @test chn1[@varname(a)] ≈ chn3[@varname(a)]
+    end
+
+    @testset "resampling schemes" begin
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+
+        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        coin_model = coinflip(obs)
+
+        prior = extract_priors(coin_model)[@varname(p)]
+        exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
+        meanp = exact.α / (exact.α + exact.β)
+
+        chn1 = sample(StableRNG(23), coin_model, SMC(Systematic()), 100)
+        check_numerical(chn1, [@varname(p)], [meanp]; atol=0.1)
+
+        chn2 = sample(StableRNG(23), coin_model, SMC(Multinomial()), 100)
+        check_numerical(chn2, [@varname(p)], [meanp]; atol=0.1)
+
+        @test chn1[@varname(p)] != chn2[@varname(p)]
     end
 
     @testset "errors when number of observations is not fixed" begin
