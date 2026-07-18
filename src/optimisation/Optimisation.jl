@@ -245,7 +245,7 @@ However, there are cases where this translation can fail or otherwise be ill-def
 supplied in unlinked space, but the optimisation is run by default in linked space.
 Sometimes it is possible to translate constraints from unlinked space to linked space: for
 example, for `x ~ Beta(2, 2)`, lower bounds in unlinked space can be translated to lower
-bounds in linked space via the logit transform (specificallly, by calling
+bounds in linked space via the logit transform (specifically, by calling
 `Bijectors.VectorBijectors.to_linked_vec(Beta(2, 2))`.
 
 However, if a user supplies a constraint on a Dirichlet variable, there is no well-defined
@@ -272,7 +272,7 @@ call Optimization.jl directly on it.
 - `solver=OptimizationOptimJL.LBFGS()`: The optimization algorithm to use. The default
   solver is L-BFGS, which is a good general-purpose solver that supports box constraints.
   You can also use any solver supported by
-  [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). 
+  [Optimization.jl](https://docs.sciml.ai/Optimization/stable/).
 
 # Keyword arguments
 
@@ -285,7 +285,7 @@ call Optimization.jl directly on it.
 - `initial_params::DynamicPPL.AbstractInitStrategy=DynamicPPL.InitFromPrior()`: an
   initialisation strategy for the parameters. By default, parameters are initialised by
   generating from the prior. The initialisation strategy will always be augmented by
-  any contraints provided via `lb` and `ub`, in that the initial parameters will be
+  any constraints provided via `lb` and `ub`, in that the initial parameters will be
   guaranteed to lie within the provided bounds.
 
 - `lb::Union{NamedTuple,AbstractDict{<:VarName,<:Any}}=(;)`: a mapping from variable names
