@@ -9,3 +9,10 @@ Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [sources]
 Turing = {path = "../../../"}
+
+[compat]
+ADTypes = "1.22.2"
+DynamicPPL = "0.42.2"
+Enzyme = "0.13.186"
+ForwardDiff = "1.4.1"
+StableRNGs = "1.0.4"
