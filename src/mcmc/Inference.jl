@@ -18,7 +18,7 @@ using DynamicPPL:
 using Distributions, Libtask, Bijectors
 using FlexiChains: FlexiChains, VNChain
 using LinearAlgebra
-using ..Turing: PROGRESS, Turing
+using ..Turing: Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
 using AbstractMCMC: AbstractModel, AbstractSampler

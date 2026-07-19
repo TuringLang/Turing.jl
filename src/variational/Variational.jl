@@ -18,7 +18,8 @@ using DynamicPPL: DynamicPPL, LogDensityFunction
 using LinearAlgebra
 using LogDensityProblems: LogDensityProblems
 using Random
-using ..Turing: DEFAULT_ADTYPE, PROGRESS
+using ..Turing: DEFAULT_ADTYPE
+import AbstractMCMC
 
 export vi,
     q_locationscale,
@@ -345,9 +346,7 @@ Base.rand(res::VIResult, sz::Integer...) = Base.rand(Random.default_rng(), res, 
         algorithm::AdvancedVI.AbstractVariationalAlgorithm = KLMinRepGradProxDescent(
             adtype; n_samples=10
         ),
-        unconstrained::Bool=requires_unconstrained_space(algorithm),
-        fix_transforms::Bool=false,
-        show_progress::Bool = Turing.PROGRESS[],
+        show_progress::Bool = AbstractMCMC.PROGRESS[],
         kwargs...
     )
 
@@ -390,8 +389,7 @@ function vi(
         adtype; n_samples=10
     ),
     unconstrained::Bool=requires_unconstrained_space(algorithm),
-    fix_transforms::Bool=false,
-    show_progress::Bool=PROGRESS[],
+    show_progress::Bool=AbstractMCMC.PROGRESS[],
     kwargs...,
 )
     transform_strategy = unconstrained ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()

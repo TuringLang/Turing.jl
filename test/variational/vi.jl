@@ -3,7 +3,7 @@ module AdvancedVITests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 
-using AbstractMCMC: AbstractMCMC
+import AbstractMCMC
 using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal
@@ -48,14 +48,14 @@ using Turing.Variational
     end
 
     @testset "default interface" begin
-        for q0 in [q_meanfield_gaussian, q_fullrank_gaussian]
-            result = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
-            @test result isa Turing.Variational.VIResult
-            @test rand(result) isa DynamicPPL.VarNamedTuple
-            @test rand(result, 2) isa Vector{<:DynamicPPL.VarNamedTuple}
-            @test size(rand(result, 2)) == (2,)
-            @test rand(result, 5, 2) isa Matrix{<:DynamicPPL.VarNamedTuple}
-            @test size(rand(result, 5, 2)) == (5, 2)
+        for q0 in [q_meanfield_gaussian(gdemo_default), q_fullrank_gaussian(gdemo_default)]
+            q, _, _ = vi(
+                gdemo_default, q0, 100; show_progress=AbstractMCMC.PROGRESS[], adtype
+            )
+            c1 = rand(q, 10)
+        end
+        @test_throws "unconstrained" begin
+            q, _, _ = vi(gdemo_default, Normal(), 1; adtype)
         end
     end
 
@@ -76,7 +76,7 @@ using Turing.Variational
             q_fullrank_gaussian,
             T;
             algorithm,
-            show_progress=Turing.PROGRESS[],
+            show_progress=AbstractMCMC.PROGRESS[],
         )
         c2 = rand(result, 10)
         @test c2 isa Vector{<:DynamicPPL.VarNamedTuple}
@@ -105,7 +105,7 @@ using Turing.Variational
             q_fullrank_gaussian,
             T;
             algorithm,
-            show_progress=Turing.PROGRESS[],
+            show_progress=AbstractMCMC.PROGRESS[],
         )
 
         N = 1000

@@ -134,7 +134,7 @@ function AbstractMCMC.sample(
     check_model=true,
     chain_type=DEFAULT_CHAIN_TYPE,
     initial_params=Turing.Inference.init_strategy(sampler),
-    progress=PROGRESS[],
+    progress=AbstractMCMC.PROGRESS[],
     discard_initial=0,
     thinning=1,
     verbose=false,
