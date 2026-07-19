@@ -95,7 +95,7 @@ function q_initialize_scale(
         energy = mean(
             map(1:num_samples) do _
                 z = rand(rng, q)
-                LogDensityProblems.logdensity(ldf, z)
+                return LogDensityProblems.logdensity(ldf, z)
             end,
         )
 
