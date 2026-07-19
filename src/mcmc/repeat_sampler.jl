@@ -117,6 +117,7 @@ function AbstractMCMC.sample(
     initial_params=Turing.Inference.init_strategy(sampler),
     chain_type=DEFAULT_CHAIN_TYPE,
     progress=AbstractMCMC.PROGRESS[],
+    verbose=true,
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
