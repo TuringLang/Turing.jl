@@ -176,7 +176,6 @@ export
     OrderedDict, # OrderedCollections
     # Log-prob types in accumulators
     set_logprob_type!,
-    @producelogprob!,
     # Initialisation strategies for models
     InitFromPrior,
     InitFromUniform,

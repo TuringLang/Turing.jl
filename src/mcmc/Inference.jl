@@ -64,7 +64,6 @@ export Hamiltonian,
     externalsampler,
     init_strategy,
     loadstate,
-    @producelogprob!,
     ProduceLogLikelihoodAccumulator,
     TracedRNG,
     TracedModel

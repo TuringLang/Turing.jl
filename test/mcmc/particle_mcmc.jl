@@ -233,11 +233,11 @@ end
         @model function addlogprob_demo()
             x ~ Normal(0, 1)
             if x < 0
-                @producelogprob! -10.0
+                @addlogprob! -10.0
             else
                 # Need a balanced number of addlogprobs in all branches, or
                 # else PG will error
-                @producelogprob! 0.0
+                @addlogprob! 0.0
             end
         end
         # result should be biased towards x > 0

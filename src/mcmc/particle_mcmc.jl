@@ -144,6 +144,27 @@ Libtask.@might_produce(DynamicPPL.map_accumulator!!)
 # @addlogprob!(::NamedTuple) -> acclogp!! -> accloglikelihood!! -> ...
 Libtask.@might_produce(DynamicPPL.acclogp!!)
 
+# overloading accloglikelihood!! ensures that @addlogprob! produces according to Libtask
+function DynamicPPL.accloglikelihood!!(
+    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+)
+    acc_name = Val(:LogLikelihood)
+    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
+        return vi
+    else
+        vi = DynamicPPL.map_accumulator!!(
+            acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name
+        )
+
+        if DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
+            logscore = pop!(task_local_storage(), :logscore)
+            task_local_storage(:varinfo, vi)
+            Libtask.produce(logscore)
+        end
+        return vi
+    end
+end
+
 # This handles all models and submodel evaluator functions (including those with keyword
 # arguments). The key to this is realising that all model evaluator functions take
 # DynamicPPL.Model as an argument, so we can just check for that. See
@@ -188,39 +209,6 @@ function DynamicPPL.tilde_observe!!(
     return val, vi
 end
 
-"""
-    @producelogprob!(ex)
-
-Same as `@addlogprob!`, but intended for use with SMC samplers to ensure Libtask can produce
-the loglikelihood when iterating through the model
-"""
-macro producelogprob!(ex)
-    # this ensures @addlogprob! accounts for task local storage ala Libtask
-    return quote
-        val = $(esc(ex))
-        vi = $(esc(:(__varinfo__)))
-        if val isa Number
-            if DynamicPPL.hasacc(vi, Val(:LogLikelihood))
-                $(esc(:(__varinfo__))) = DynamicPPL.accloglikelihood!!(
-                    $(esc(:(__varinfo__))), val
-                )
-
-                # grab the log score and remove it from storage
-                loglike = pop!(task_local_storage(), :logscore, nothing)
-                if !isnothing(loglike)
-                    task_local_storage(:varinfo, $(esc(:(__varinfo__))))
-                    Libtask.produce(loglike)
-                end
-            end
-        elseif val isa NamedTuple
-            $(esc(:(__varinfo__))) = DynamicPPL.acclogp!!(
-                $(esc(:(__varinfo__))), val; ignore_missing_accumulator=true
-            )
-        else
-            error("logp must be a Number or a NamedTuple.")
-        end
-    end
-end
 
 ####
 #### Resampling Schemes.
@@ -443,7 +431,7 @@ is set to always resample using a [`Systematic`](@ref) resampler.
 
 # Examples
 ```julia
-# samples 128 particles each iteration, resampling when ESS drops below 50%
+# samples 10,000 particles each iteration, resampling when ESS drops below 50%
 chain = sample(model, SMC(0.5), 10_000)
 ```
 
