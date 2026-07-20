@@ -23,7 +23,7 @@ A container for stepping through a DynamicPPL model using Libtask to yield the l
 every iteration of a Sequential Monte Carlo sampler.
 
 Typically traced models internally `Libtask.consume` through a sampler, but iteration
-utilities ala Libtask extend to this structure for manually stepping through a model.
+utilities like Libtask extend to this structure for manually stepping through a model.
 """
 mutable struct TracedModel{T<:TapedTask}
     const task::T
@@ -192,7 +192,7 @@ end
     @producelogprob!(ex)
 
 Same as `@addlogprob!`, but intended for use with SMC samplers to ensure Libtask can produce
-the loglikelihood when iterating throguh the model
+the loglikelihood when iterating through the model
 """
 macro producelogprob!(ex)
     # this ensures @addlogprob! accounts for task local storage ala Libtask
@@ -558,7 +558,7 @@ function smcsample(
 end
 
 # We overload AbstractMCMC.sample because SMC does not yield a Markov chain. Since stepping
-# through a sampler is based on the underlying model, we posses a different structure which
+# through a sampler is based on the underlying model, we possess a different structure which
 # implies two things: (1) parallelizers are quite a bit different and (2) dependence on the
 # output for AbstractMCMC.step
 function AbstractMCMC.sample(
