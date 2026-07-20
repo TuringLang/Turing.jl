@@ -10,7 +10,7 @@ using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
-using Turing.Inference: Systematic, ESSResampler, Multinomial
+using Turing.Inference: Systematic, ESSResampler, Multinomial, smcsample, get_varinfo
 
 @testset "SMC" begin
     @testset "constructor" begin
@@ -191,6 +191,40 @@ end
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
+    end
+
+    @testset "ensuring reference consistency" begin
+        # NOTE: this test fails when the RNG counter doesn't align with the retained keys
+        get_raw_vals(trace::TracedModel) = DynamicPPL.get_raw_values(get_varinfo(trace))
+
+        @model function state_space_model(y)
+            ρ ~ Uniform(0, 1)
+            x = Vector{Float64}(undef, length(y) + 1)
+            x[1] ~ Normal(0, 1)
+            for t in eachindex(y)
+                x[t + 1] ~ Normal(ρ * x[t], 1)
+                y[t] ~ Normal(x[t + 1], 1)
+            end
+        end
+
+        rng = StableRNG(1234)
+        y = randn(rng, 10)
+        ss_model = state_space_model(y)
+
+        particles, logZ = smcsample(rng, ss_model, SMC(0.5), MCMCSerial(), 3)
+        state = sample(rng, particles)
+        check = Vector{Bool}(undef, 30)
+
+        for m in eachindex(check)
+            ref = deepcopy(state)
+            particles, _ = smcsample(rng, ss_model, SMC(0.5), MCMCSerial(), 3; ref)
+            check[m] = (get_raw_vals(particles.reference.value) == get_raw_vals(state))
+            state = sample(rng, particles)
+        end
+
+        # ensure reference is perfectly regenerated
+        @test all(check)
+        @test length(Turing.Inference.get_rng(state).keys) == (length(y) + 1)
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1996

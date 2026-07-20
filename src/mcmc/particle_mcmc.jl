@@ -342,11 +342,12 @@ end
 
 logevidence(particles::ParticleContainer) = logsumexp(particles.log_weights)
 
-# reseed new child particles according to the sampler RNG
+# reseed new child particles according to the sampler RNG and update keys states
 function split!(rng::AbstractRNG, particles::Vector{<:TracedModel})
     children = deepcopy.(particles)
     seeds = rand(rng, Random.Sampler(rng, UInt64), length(particles))
     @. Random.seed!(get_rng(children), seeds)
+    map(r -> resize!(r.keys, r.count - 1), get_rng.(children))
     return children
 end
 
