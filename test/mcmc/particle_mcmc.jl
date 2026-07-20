@@ -4,7 +4,7 @@ using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using ..NumericalTests: check_numerical
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
-using DynamicPPL: extract_priors
+using DynamicPPL: extract_priors, get_raw_values
 using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
@@ -195,7 +195,7 @@ end
 
     @testset "ensuring reference consistency" begin
         # NOTE: this test fails when the RNG counter doesn't align with the retained keys
-        get_raw_vals(trace::TracedModel) = DynamicPPL.get_raw_values(get_varinfo(trace))
+        get_raw_vals(trace::TracedModel) = get_raw_values(get_varinfo(trace))
 
         @model function state_space_model(y)
             ρ ~ Uniform(0, 1)
@@ -240,9 +240,13 @@ end
                 @producelogprob! 0.0
             end
         end
-        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
-        # Result should be biased towards x > 0.
-        @test mean(c[:x]) > 0.7
+        # result should be biased towards x > 0
+        c1 = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        @test mean(c1[:x]) > 0.7
+
+        # ensure this works for regular samplers as well
+        c2 = sample(StableRNG(468), addlogprob_demo(), MH(), 100)
+        @test mean(c2[:x]) > 0.7
     end
 
     @testset "keyword argument handling" begin

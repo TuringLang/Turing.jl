@@ -206,8 +206,9 @@ macro producelogprob!(ex)
                 )
 
                 # grab the log score and remove it from storage
-                loglike = pop!(task_local_storage(), :logscore)
+                loglike = pop!(task_local_storage(), :logscore, nothing)
                 if !isnothing(loglike)
+                    task_local_storage(:varinfo, $(esc(:(__varinfo__))))
                     Libtask.produce(loglike)
                 end
             end
