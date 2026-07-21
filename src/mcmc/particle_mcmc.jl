@@ -82,8 +82,15 @@ inc_step!(trng::TracedRNG) = (trng.count += 1; trng)
 "Rewind the model-step counter to the first step, so a trajectory replays from the start."
 rewind!(trng::TracedRNG) = (trng.count = 1; trng)
 
-"Deterministically derive a fresh seed from `key`."
-split_key(key::Integer) = rand(Random.MersenneTwister(key), typeof(key))
+# Derive a fresh seed from `key`. Splitting one generator into many by re-seeding is fragile
+# in two ways: the derived seeds can yield *correlated* streams (Steele et al., "Fast
+# Splittable Pseudorandom Number Generators", OOPSLA 2014), and a stdlib `MersenneTwister`
+# derivation is not identical across Julia versions (Julia does not guarantee reproducible
+# streams), which made SMC/PG drift between versions even under a StableRNG. Both bit the
+# previous AdvancedPS implementation (#2781, AdvancedPS.jl#110). Philox is a counter-based
+# generator with a fixed, portable algorithm and strong avalanche, so deriving the seed
+# through it is both well-decorrelated from its parent and version-stable.
+split_key(key::Integer) = rand(Random.seed!(Random123.Philox2x(), key), typeof(key))
 
 "Reseed from the generator's own current state (used between steps when not resampling)."
 refresh!(trng::TracedRNG) = Random.seed!(trng, split_key(inner_key(trng.rng)))
