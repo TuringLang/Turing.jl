@@ -1,8 +1,10 @@
+# 0.47.0
+
+  - Removed Turing's local `PROGRESS` and `setprogress!`; use `AbstractMCMC.PROGRESS` and `AbstractMCMC.setprogress!` instead.
+
 # 0.46.0
 
 ## Breaking changes
-
-  - Removed Turing's local `PROGRESS` and `setprogress!`; use `AbstractMCMC.PROGRESS` and `AbstractMCMC.setprogress!` instead.
 
 ### DynamicPPL 0.42
 

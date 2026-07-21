@@ -4,7 +4,7 @@ using Pkg
 using Random: seed!
 using Test
 using TimerOutputs: TimerOutputs, @timeit
-import AbstractMCMC
+using AbstractMCMC: AbstractMCMC
 import Turing
 
 # Fix the global Random.seed for reproducibility.
