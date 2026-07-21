@@ -526,7 +526,6 @@ function AbstractMCMC.step(
     discard_sample=false,
     kwargs...,
 )
-    error_if_threadsafe_eval(model)
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
     logZ = sweep!(rng, particles, sampler.resampler)
     weights = normalized_weights(particles)
