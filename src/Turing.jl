@@ -120,10 +120,14 @@ export
     HMCDA,
     NUTS,
     SMC,
+    ParticleGibbs,
     PG,
     CSMC,
     RepeatSampler,
     externalsampler,
+    # Tracers - Libtask and Turing.Inference
+    TracedModel,
+    TracedRNG,
     # Variational inference - AdvancedVI
     vi,
     q_locationscale,

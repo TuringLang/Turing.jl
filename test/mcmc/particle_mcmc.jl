@@ -2,30 +2,29 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using ..NumericalTests: check_numerical
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using DynamicPPL: extract_priors, get_raw_values
 using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
+using Turing.Inference: Systematic, ESSResampler, Multinomial, smcsample, get_varinfo
 
 @testset "SMC" begin
     @testset "constructor" begin
         s = SMC()
-        @test s.resampler == ResampleWithESSThreshold()
+        @test s.resampler == Systematic()
 
         s = SMC(0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
+        @test s.resampler === ESSResampler(0.6, Systematic())
 
-        s = SMC(resample_multinomial, 0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-
-        s = SMC(resample_systematic)
-        @test s.resampler === resample_systematic
+        s = SMC(Multinomial(), 0.6)
+        @test s.resampler === ESSResampler(0.6, Multinomial())
     end
 
-    @testset "basic model" begin
+    @testset "basic model with ensemble reweighting" begin
         @model function normal()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -33,7 +32,38 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-        tested = sample(normal(), SMC(), 100)
+
+        chn1 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCSerial())
+        chn2 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCThreads())
+        chn3 = sample(StableRNG(23), normal(), SMC(), 10; ensemble=MCMCDistributed())
+
+        # test that RNG is consistent even when parallelized
+        @test chn1[@varname(a)] ≈ chn2[@varname(a)]
+        @test chn1[@varname(a)] ≈ chn3[@varname(a)]
+    end
+
+    @testset "resampling schemes" begin
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+
+        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        coin_model = coinflip(obs)
+
+        prior = extract_priors(coin_model)[@varname(p)]
+        exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
+        meanp = exact.α / (exact.α + exact.β)
+
+        chn1 = sample(StableRNG(23), coin_model, SMC(Systematic()), 100)
+        check_numerical(chn1, [@varname(p)], [meanp]; atol=0.1)
+
+        chn2 = sample(StableRNG(23), coin_model, SMC(Multinomial()), 100)
+        check_numerical(chn2, [@varname(p)], [meanp]; atol=0.1)
+
+        @test chn1[@varname(p)] != chn2[@varname(p)]
     end
 
     @testset "errors when number of observations is not fixed" begin
@@ -47,7 +77,7 @@ using Turing
             return a, b
         end
         @test_throws ErrorException sample(fail_smc(), SMC(), 100)
-        @test_throws "number of observations" sample(fail_smc(), SMC(), 100)
+        @test_throws "mis-aligned execution" sample(fail_smc(), SMC(), 100)
     end
 
     @testset "chain log-density metadata" begin
@@ -99,19 +129,14 @@ using Turing
             return a, b
         end
 
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)
         @test size(chn, 1) == 10
         @test chn isa VNChain
 
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; thinning=3)
         chn2 = sample(normal(), SMC(), 10; thinning=3)
         @test size(chn2, 1) == 10
         @test chn2 isa VNChain
 
-        @test_logs (:warn, r"ignored") sample(
-            normal(), SMC(), 10; discard_initial=2, thinning=2
-        )
         chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
         @test size(chn3, 1) == 10
         @test chn3 isa VNChain
@@ -121,20 +146,20 @@ end
 @testset "PG" begin
     @testset "constructor" begin
         s = PG(10)
-        @test s.nparticles == 10
-        @test s.resampler == ResampleWithESSThreshold()
+        @test s.N == 10
+        @test s.kernel.resampler === ESSResampler(0.5)
 
         s = PG(60, 0.6)
-        @test s.nparticles == 60
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
+        @test s.N == 60
+        @test s.kernel.resampler === ESSResampler(0.6)
 
-        s = PG(80, resample_multinomial, 0.6)
-        @test s.nparticles == 80
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
+        s = PG(80, Multinomial(), 0.6)
+        @test s.N == 80
+        @test s.kernel.resampler === ESSResampler(0.6, Multinomial())
 
-        s = PG(100, resample_systematic)
-        @test s.nparticles == 100
-        @test s.resampler === resample_systematic
+        s = PG(100, Systematic())
+        @test s.N == 100
+        @test s.kernel.resampler === Systematic()
     end
 
     @testset "chain log-density metadata" begin
@@ -168,9 +193,43 @@ end
         @test length(unique(c[:s])) == 1
     end
 
+    @testset "ensuring reference consistency" begin
+        # NOTE: this test fails when the RNG counter doesn't align with the retained keys
+        get_raw_vals(trace::TracedModel) = get_raw_values(get_varinfo(trace))
+
+        @model function state_space_model(y)
+            ρ ~ Uniform(0, 1)
+            x = Vector{Float64}(undef, length(y) + 1)
+            x[1] ~ Normal(0, 1)
+            for t in eachindex(y)
+                x[t + 1] ~ Normal(ρ * x[t], 1)
+                y[t] ~ Normal(x[t + 1], 1)
+            end
+        end
+
+        rng = StableRNG(1234)
+        y = randn(rng, 10)
+        ss_model = state_space_model(y)
+
+        particles, logZ = smcsample(rng, ss_model, SMC(0.5), MCMCSerial(), 3)
+        state = sample(rng, particles)
+        check = Vector{Bool}(undef, 30)
+
+        for m in eachindex(check)
+            ref = deepcopy(state)
+            particles, _ = smcsample(rng, ss_model, SMC(0.5), MCMCSerial(), 3; ref)
+            check[m] = (get_raw_vals(particles.reference.value) == get_raw_vals(state))
+            state = sample(rng, particles)
+        end
+
+        # ensure reference is perfectly regenerated
+        @test all(check)
+        @test length(Turing.Inference.get_rng(state).keys) == (length(y) + 1)
+    end
+
+    # https://github.com/TuringLang/Turing.jl/issues/1996
     @testset "addlogprob leads to reweighting" begin
-        # Make sure that PG takes @addlogprob! into account. It didn't use to:
-        # https://github.com/TuringLang/Turing.jl/issues/1996
+        # Make sure that PG takes @addlogprob! into account
         @model function addlogprob_demo()
             x ~ Normal(0, 1)
             if x < 0
@@ -181,9 +240,13 @@ end
                 @addlogprob! 0.0
             end
         end
-        c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
-        # Result should be biased towards x > 0.
-        @test mean(c[:x]) > 0.7
+        # result should be biased towards x > 0
+        c1 = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
+        @test mean(c1[:x]) > 0.7
+
+        # ensure this works for regular samplers as well
+        c2 = sample(StableRNG(468), addlogprob_demo(), MH(), 100)
+        @test mean(c2[:x]) > 0.7
     end
 
     @testset "keyword argument handling" begin

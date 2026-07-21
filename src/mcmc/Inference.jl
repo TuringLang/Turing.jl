@@ -24,6 +24,8 @@ using Random: AbstractRNG
 using AbstractMCMC: AbstractModel, AbstractSampler
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet, OrderedDict
+using StatsBase
+using Distributed
 
 import ADTypes
 import AbstractMCMC
@@ -32,10 +34,10 @@ import AdvancedHMC
 const AHMC = AdvancedHMC
 import AdvancedMH
 const AMH = AdvancedMH
-import AdvancedPS
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random
+import Random123
 import StatsBase: predict
 
 export Hamiltonian,
@@ -54,13 +56,17 @@ export Hamiltonian,
     HMCDA,
     NUTS,
     SMC,
-    CSMC,
+    ParticleGibbs,
     PG,
+    CSMC,
     RepeatSampler,
     Prior,
     externalsampler,
     init_strategy,
-    loadstate
+    loadstate,
+    ProduceLogLikelihoodAccumulator,
+    TracedRNG,
+    TracedModel
 
 const DEFAULT_CHAIN_TYPE = VNChain
 
