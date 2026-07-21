@@ -6,12 +6,17 @@
 
 `SMC` and `PG` / `CSMC` have been reimplemented natively and no longer depend on AdvancedPS.
 
-Resampling schemes are now types instead of functions — `Stratified()`, `Systematic()`, and `Multinomial()` (in `Turing.Inference`), optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`.
-For example, `SMC(Turing.Inference.Systematic())`, `SMC(0.5)`, or `PG(10, Turing.Inference.Multinomial(), 0.5)`.
+Resampling schemes are now types rather than functions — `Stratified()`, `Systematic()`, and `Multinomial()` (in `Turing.Inference`), optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`; for example `SMC(Turing.Inference.Systematic())`, `SMC(0.5)`, or `PG(10, Turing.Inference.Multinomial(), 0.5)`.
 The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, …) is gone.
 
-The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows and within the theoretical guarantees for particle Gibbs, which systematic resampling does not.
-Exact draws may therefore differ from previous releases, but should remain statistically consistent (the same target distribution).
+The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows and within the theoretical guarantees for particle Gibbs, which systematic does not.
+Exact draws may therefore differ from previous releases, but remain statistically consistent (the same target distribution).
+
+The rewrite also brings:
+
+  - **Reproducibility.** Internal seeds are derived through a counter-based (Philox) generator, so a fixed user seed gives the same draws on every Julia version and platform, and splitting one stream into many is better decorrelated. Previously, results could drift between Julia versions even under a `StableRNG` (https://github.com/TuringLang/Turing.jl/issues/2781).
+  - **Parallelism.** Multiple chains run under AbstractMCMC's `MCMCThreads()` and `MCMCDistributed()`, and `SMC(; threaded=true)` / `PG(n; threaded=true)` spread the particles across threads within each sweep. Neither changes the results; start Julia with multiple threads (e.g. `julia -t auto`) for the thread-based paths to take effect.
+  - **Weight diagnostics.** `SMC` chains carry the log-evidence estimate `logevidence` and the per-particle normalised `weight` as extra columns; `PG` / `CSMC` chains carry `logevidence`.
 
 # 0.46.0
 

@@ -20,7 +20,7 @@ using Turing.Inference:
     normalized_weights,
     PGState
 using Distributions: Bernoulli, Beta, Gamma, Normal, Uniform, Categorical, sample
-using FlexiChains: VNChain
+using FlexiChains: VNChain, has_same_data
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
@@ -33,6 +33,9 @@ using Turing
         @test SMC(0.6).resampler == ESSResampler(0.6)
         @test SMC(Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
         @test SMC(Systematic()).resampler == Systematic()
+        @test SMC().threaded == false
+        @test SMC(; threaded=true).threaded == true
+        @test SMC(Systematic(); threaded=true).threaded == true
     end
 
     @testset "basic model" begin
@@ -112,6 +115,21 @@ using Turing
         @test chains_smc[:logevidence] ≈ fill(smc_logevidence, 100)
     end
 
+    @testset "threaded execution matches serial" begin
+        # Particles are seeded serially before the parallel reweighting, so `threaded=true`
+        # must reproduce the serial draws exactly (bit for bit), whatever the thread count.
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+        model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+        serial = sample(StableRNG(23), model, SMC(), 200)
+        threaded = sample(StableRNG(23), model, SMC(; threaded=true), 200)
+        @test serial[@varname(p)] == threaded[@varname(p)]
+    end
+
     @testset "refuses to run threadsafe eval" begin
         # SMC can't run models that have nondeterministic evaluation order,
         # so it should refuse to run models marked as threadsafe.
@@ -160,6 +178,9 @@ end
         @test PG(60, 0.6).resampler == ESSResampler(0.6)
         @test PG(80, Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
         @test PG(100, Systematic()).resampler == Systematic()
+        @test PG(10).threaded == false
+        @test PG(10; threaded=true).threaded == true
+        @test PG(80, Multinomial(), 0.6; threaded=true).threaded == true
     end
 
     @testset "chain log-density metadata" begin
@@ -190,6 +211,22 @@ end
         @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
     end
 
+    @testset "threaded execution matches serial" begin
+        # Threading the reweighting must not perturb the reference-replay bookkeeping, so the
+        # conditional sweeps have to reproduce the serial draws exactly, whatever the thread
+        # count.
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+        model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+        serial = sample(StableRNG(23), model, PG(10), 200)
+        threaded = sample(StableRNG(23), model, PG(10; threaded=true), 200)
+        @test serial[@varname(p)] == threaded[@varname(p)]
+    end
+
     # https://github.com/TuringLang/Turing.jl/issues/1598
     @testset "reference particle" begin
         c = sample(gdemo_default, PG(1), 1_000)
@@ -217,7 +254,7 @@ end
         function run_csmc(model, N, nsteps, rng)
             draw(ps) = ps[rand(rng, Categorical(normalized_weights(ps)))]
             particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:N]
-            sweep!(rng, particles, ESSResampler(0.5))
+            sweep!(rng, particles, ESSResampler(0.5), false)
             state = let p = draw(particles)
                 PGState(p.varinfo, p.rng)
             end
@@ -228,7 +265,7 @@ end
                     i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
                     1:N,
                 )
-                sweep!(rng, parts, ESSResampler(0.5); conditional=true)
+                sweep!(rng, parts, ESSResampler(0.5), false; conditional=true)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 p = draw(parts)
                 state = PGState(p.varinfo, p.rng)
@@ -329,6 +366,23 @@ end
         end
         model = setthreadsafe(f(randn(10)), true)
         @test_throws ArgumentError sample(model, PG(10), 100)
+    end
+end
+
+@testset "parallel chains (MCMCThreads)" begin
+    @model function coinflip(y)
+        p ~ Beta(1, 1)
+        for t in eachindex(y)
+            y[t] ~ Bernoulli(p)
+        end
+    end
+    model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+    # Multiple chains through AbstractMCMC's thread-based ensemble stay reproducible under a
+    # fixed seed (genuinely parallel only when Julia is started with more than one thread).
+    for sampler in (SMC(), PG(10))
+        c1 = sample(Xoshiro(5), model, sampler, MCMCThreads(), 100, 4)
+        c2 = sample(Xoshiro(5), model, sampler, MCMCThreads(), 100, 4)
+        @test has_same_data(c1, c2)
     end
 end
 
