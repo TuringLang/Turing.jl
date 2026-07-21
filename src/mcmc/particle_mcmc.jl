@@ -64,7 +64,7 @@ Random.rand(trng::TracedRNG, ::Type{T}) where {T<:Unsigned} = Random.rand(trng.r
 inner_key(rng::Random123.Philox2x) = rng.key
 
 "Reseed and rewind the inner generator. The model-step counter is left untouched."
-function Random.seed!(trng::TracedRNG, key)
+function Random.seed!(trng::TracedRNG, key::Integer)
     Random.seed!(trng.rng, key)
     Random123.set_counter!(trng.rng, 0)
     return trng
