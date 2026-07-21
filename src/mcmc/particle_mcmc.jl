@@ -41,7 +41,7 @@ in `keys`, indexed by the step counter `count`.
   - [`load_state!`](@ref) restores `keys[count]`, replaying that step's randomness (the
     reference trajectory).
 """
-mutable struct TracedRNG{K,T<:Random123.AbstractR123} <: Random.AbstractRNG
+mutable struct TracedRNG{K<:Unsigned,T<:Random123.AbstractR123} <: Random.AbstractRNG
     count::Int
     rng::T
     keys::Vector{K}
@@ -131,11 +131,11 @@ mutable struct Particle
     # through Libtask's (already type-unstable) taped globals, so this costs nothing extra.
     varinfo::DynamicPPL.AbstractVarInfo
     rng::TracedRNG
-    logweight::Float64
+    logweight::DynamicPPL.LogProbType
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
     # particle as its taped globals (a back-reference).
-    Particle(vi, rng) = new(vi, rng, 0.0)
+    Particle(vi, rng) = new(vi, rng, zero(DynamicPPL.LogProbType))
 end
 
 function Particle(
@@ -171,7 +171,7 @@ back-reference; [`reseed!`](@ref) then gives it its own random stream.
 fork(particle::Particle, rng::AbstractRNG) = reseed!(deepcopy(particle), rng)
 
 """
-    advance!(particle, isref) -> Union{Float64,Nothing}
+    advance!(particle, isref) -> Union{Real,Nothing}
 
 Run the particle to its next `observe`, returning the incremental log-likelihood, or
 `nothing` once the model finishes. An ordinary particle records the step's seed; the
@@ -346,11 +346,11 @@ end
 Resample with `scheme`, but only when the effective sample size drops below
 `threshold * nparticles`. This is the default for [`SMC`](@ref) and [`PG`](@ref).
 """
-struct ESSResampler{R<:AbstractResampler} <: AbstractResampler
-    threshold::Float64
+struct ESSResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
+    threshold::T
     scheme::R
 end
-ESSResampler(threshold::Real) = ESSResampler(Float64(threshold), Stratified())
+ESSResampler(threshold::Real) = ESSResampler(threshold, Stratified())
 
 function should_resample(resampler::ESSResampler, weights)
     ess = inv(sum(abs2, weights))
@@ -407,10 +407,11 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler, conditional
             reuse = !seen[a] && !(conditional && a == n)
             seen[a] = true
             child = reuse ? reseed!(old[a], rng) : fork(old[a], rng)
-            child.logweight = 0.0
+            child.logweight = zero(DynamicPPL.LogProbType)
             particles[slot] = child
         end
-        conditional && (particles[n].logweight = 0.0)  # reference retained, weight reset
+        # reference retained, weight reset
+        conditional && (particles[n].logweight = zero(DynamicPPL.LogProbType))
     else
         for (i, p) in enumerate(particles)
             # Refresh every particle's seed except the reference, which keeps replaying.
@@ -424,7 +425,7 @@ end
 
 # Run a full particle sweep in place, returning the log-evidence estimate.
 function sweep!(rng::AbstractRNG, particles, resampler; conditional::Bool=false)
-    logZ = 0.0
+    logZ = zero(DynamicPPL.LogProbType)
     while true
         resample_propagate!(rng, particles, resampler, conditional)
         logZ0 = logevidence(particles)
@@ -470,14 +471,14 @@ not exported; refer to them as e.g. `Turing.Inference.Systematic`.
 SMC() = SMC(ESSResampler(0.5))
 SMC(threshold::Real) = SMC(ESSResampler(threshold))
 function SMC(scheme::AbstractResampler, threshold::Real)
-    return SMC(ESSResampler(Float64(threshold), scheme))
+    return SMC(ESSResampler(threshold, scheme))
 end
 
-struct SMCState{P,W}
+struct SMCState{P<:AbstractVector,W<:AbstractVector}
     particles::P
     weights::W
     index::Int
-    logevidence::Float64
+    logevidence::DynamicPPL.LogProbType
 end
 
 function AbstractMCMC.sample(
@@ -584,7 +585,7 @@ whenever the effective sample size drops below half the number of particles.
 PG(n::Int) = PG(n, ESSResampler(0.5))
 PG(n::Int, threshold::Real) = PG(n, ESSResampler(threshold))
 function PG(n::Int, scheme::AbstractResampler, threshold::Real)
-    return PG(n, ESSResampler(Float64(threshold), scheme))
+    return PG(n, ESSResampler(threshold, scheme))
 end
 
 "Conditional SMC, an alias for [`PG`](@ref)."
