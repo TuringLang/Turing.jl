@@ -210,15 +210,15 @@ abstract type AbstractResampler end
 
 should_resample(::AbstractVector, ::AbstractResampler) = true
 
-function sample_ancestors(
+function sample_particles(
     rng::AbstractRNG, scheme::AbstractResampler, weights::AbstractVector
 )
-    return sample_ancestors(rng, scheme, weights, length(weights))
+    return sample_particles(rng, scheme, weights, length(weights))
 end
 
 struct Multinomial <: AbstractResampler end
 
-function sample_ancestors(
+function sample_particles(
     rng::AbstractRNG, ::Multinomial, weights::AbstractVector{<:Real}, N::Integer
 )
     return rand(rng, Categorical(weights), N)
@@ -226,7 +226,7 @@ end
 
 struct Systematic <: AbstractResampler end
 
-function sample_ancestors(
+function sample_particles(
     rng::AbstractRNG, ::Systematic, weights::AbstractVector{WT}, N::Integer
 ) where {WT<:Real}
     # pre-calculations
@@ -262,10 +262,10 @@ function should_resample(weights::AbstractVector, resampler::ESSResampler)
     return ess ≤ resampler.threshold * length(weights)
 end
 
-function sample_ancestors(
+function sample_particles(
     rng::AbstractRNG, resampler::ESSResampler, weights::AbstractVector, N::Integer
 )
-    return sample_ancestors(rng, resampler.scheme, weights, N)
+    return sample_particles(rng, resampler.scheme, weights, N)
 end
 
 ####
@@ -317,7 +317,7 @@ function resample!(
     particles::ParticleContainer,
     weights::StatsBase.Weights,
 )
-    idx = sample_ancestors(rng, resampler, weights)
+    idx = sample_particles(rng, resampler, weights)
     @. particles = Particle($split!(rng, particles.values[idx]))
 end
 
@@ -401,7 +401,7 @@ function resample!(
     ref::ReferencedContainer,
     weights::StatsBase.Weights,
 )
-    idx = sample_ancestors(rng, resampler, weights, length(ref.particles))
+    idx = sample_particles(rng, resampler, weights, length(ref.particles))
     @. ref.particles = Particle($split!(rng, ref.values[idx]))
     reset_weight!(ref.reference)
 end
