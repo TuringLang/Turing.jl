@@ -1,17 +1,24 @@
 ###
-### Particle filtering and particle MCMC samplers.
+### Particle filtering and particle MCMC samplers: SMC, PG / conditional SMC.
 ###
-### SMC runs a particle filter over a model; PG/CSMC wraps a *conditional* particle filter
-### inside an MCMC loop. Both treat each `observe` statement as one filtering step: running
-### the model under `ParticleMCMCContext` turns every likelihood term into a
-### `Libtask.produce`, so a particle is a suspended model execution that we advance one
-### observation at a time, reweight, and resample.
+### Key design.
+### A probabilistic model becomes a particle filter by reading each `observe` statement as one
+### filtering step. Evaluated under `ParticleMCMCContext`, every likelihood term calls
+### `Libtask.produce`, so a *particle* is a suspended model execution: we `advance!` it to its
+### next `observe`, take the produced log-likelihood as its weight, then resample. SMC is one
+### such sweep; particle Gibbs (PG/CSMC) runs a *conditional* sweep -- one particle is a fixed
+### reference trajectory -- inside an MCMC loop.
 ###
-### Each particle carries a `TracedRNG` that records the seed it used at every step. The
-### reference trajectory of a conditional sweep is reproduced by *replaying* those seeds
-### (`load_state!`), so it is regenerated exactly without storing its values. A particle
-### forked from the reference is reseeded, which automatically switches it from replaying to
-### sampling fresh -- no per-particle bookkeeping required.
+### The reference is reproduced without storing its values: each particle's `TracedRNG`
+### records the seed it drew at every step, and the reference simply *replays* those seeds
+### (`load_state!`), regenerating its trajectory exactly. A particle forked from the reference
+### is reseeded, which flips it from replaying to sampling fresh, so branching needs no
+### per-particle flag. This is what keeps the reference handling small, and it rests on one
+### invariant: every step must draw from a fresh seed -- guaranteed by the resample/refresh in
+### `resample_propagate!` -- otherwise the recorded seeds collide and replay is wrong.
+###
+### Sections below: traced RNG; model evaluation via Libtask; resampling schemes; the particle
+### sweep; the SMC sampler; the PG/CSMC sampler; the Gibbs-component interface.
 ###
 
 using StatsFuns: softmax, logsumexp
@@ -138,20 +145,26 @@ function Particle(
 end
 
 """
+    reseed!(particle, rng)
+
+Restart `particle` as a fresh continuation seeded from `rng`: it switches from replaying to
+sampling afresh, and `keys` is truncated to the steps already taken so a particle descended
+from the reference forgets the reference's future. Mutates and returns `particle`.
+"""
+function reseed!(particle::Particle, rng::AbstractRNG)
+    Random.seed!(particle.rng, rand(rng, UInt64))
+    resize!(particle.rng.keys, particle.rng.count - 1)
+    return particle
+end
+
+"""
     fork(particle, rng)
 
-Copy `particle` into an independent continuation seeded from `rng`. `deepcopy` forks the
-underlying `TapedTask` (Libtask defines `copy` as `deepcopy`) and preserves the
-task↔particle back-reference. Reseeding switches the child from replaying to sampling afresh;
-`keys` is truncated to the steps already taken so a child of the reference forgets the
-reference's future.
+Copy `particle` into an independent, reseeded continuation. `deepcopy` forks the underlying
+`TapedTask` (Libtask defines `copy` as `deepcopy`) and preserves the task↔particle
+back-reference; [`reseed!`](@ref) then gives it its own random stream.
 """
-function fork(particle::Particle, rng::AbstractRNG)
-    child = deepcopy(particle)
-    Random.seed!(child.rng, rand(rng, UInt64))
-    resize!(child.rng.keys, child.rng.count - 1)
-    return child
-end
+fork(particle::Particle, rng::AbstractRNG) = reseed!(deepcopy(particle), rng)
 
 """
     advance!(particle, isref) -> Union{Float64,Nothing}
@@ -382,8 +395,14 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler, conditional
     if should_resample(resampler, weights)
         ancestors = resample_indices(rng, resampler, weights, conditional ? n - 1 : n)
         old = copy(particles)
+        seen = falses(n)
         for (slot, a) in enumerate(ancestors)
-            child = fork(old[a], rng)
+            # Reuse each surviving parent's object for its first offspring; only extra
+            # offspring -- and any offspring of the retained reference -- need the costly
+            # `deepcopy`. Either way the child is reseeded to continue independently.
+            reuse = !seen[a] && !(conditional && a == n)
+            seen[a] = true
+            child = reuse ? reseed!(old[a], rng) : fork(old[a], rng)
             child.logweight = 0.0
             particles[slot] = child
         end
