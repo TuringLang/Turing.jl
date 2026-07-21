@@ -267,6 +267,13 @@ end
 #
 # Resampling schemes
 #
+# On theoretical correctness: particle Gibbs (and the SMC evidence estimate) are justified
+# for resampling schemes whose offspring counts satisfy `E[Oᵏ] = N·Wᵏ` (Andrieu, Doucet &
+# Holenstein, 2010, Assumption 2). Multinomial and stratified resampling meet this and are
+# also consistent as `N → ∞`. Systematic resampling has the same expected counts, but its
+# single shared uniform makes it order-dependent and it is not consistent in general (Gerber,
+# Chopin & Whiteley, 2019), so it falls outside the particle Gibbs invariance proof. We
+# therefore default to stratified resampling and offer systematic only as an explicit choice.
 
 abstract type AbstractResampler end
 
@@ -282,7 +289,24 @@ function resample_indices(rng::AbstractRNG, ::Multinomial, weights, n::Integer)
     return rand(rng, Distributions.Categorical(weights), n)
 end
 
-"Systematic resampling: one uniform placed on a regular grid of `n` points."
+"Stratified resampling: one independent uniform per stratum of width `1/n`."
+struct Stratified <: AbstractResampler end
+function resample_indices(rng::AbstractRNG, ::Stratified, weights, n::Integer)
+    v = n * weights[1]
+    indices = Vector{Int}(undef, n)
+    s = 1
+    for k in 1:n
+        u = oftype(v, (k - 1) + rand(rng))
+        while v < u
+            s += 1
+            v += n * weights[s]
+        end
+        indices[k] = s
+    end
+    return indices
+end
+
+"Systematic resampling: one shared uniform placed on a regular grid of `n` points."
 struct Systematic <: AbstractResampler end
 function resample_indices(rng::AbstractRNG, ::Systematic, weights, n::Integer)
     v = n * weights[1]
@@ -301,7 +325,7 @@ function resample_indices(rng::AbstractRNG, ::Systematic, weights, n::Integer)
 end
 
 """
-    ESSResampler(threshold, scheme = Systematic())
+    ESSResampler(threshold, scheme = Stratified())
 
 Resample with `scheme`, but only when the effective sample size drops below
 `threshold * nparticles`. This is the default for [`SMC`](@ref) and [`PG`](@ref).
@@ -310,7 +334,7 @@ struct ESSResampler{R<:AbstractResampler} <: AbstractResampler
     threshold::Float64
     scheme::R
 end
-ESSResampler(threshold::Real) = ESSResampler(Float64(threshold), Systematic())
+ESSResampler(threshold::Real) = ESSResampler(Float64(threshold), Stratified())
 
 function should_resample(resampler::ESSResampler, weights)
     ess = inv(sum(abs2, weights))
@@ -411,9 +435,9 @@ end
 
 """
     SMC([resampler = ESSResampler(0.5)])
-    SMC([scheme = Systematic(), ]threshold)
+    SMC([scheme = Stratified(), ]threshold)
 
-Sequential Monte Carlo sampler. By default systematic resampling is triggered whenever the
+Sequential Monte Carlo sampler. By default stratified resampling is triggered whenever the
 effective sample size drops below half the number of particles.
 """
 SMC() = SMC(ESSResampler(0.5))
@@ -526,9 +550,9 @@ end
 
 """
     PG(n, [resampler = ESSResampler(0.5)])
-    PG(n, [scheme = Systematic(), ]threshold)
+    PG(n, [scheme = Stratified(), ]threshold)
 
-Particle Gibbs sampler with `n` particles. By default systematic resampling is triggered
+Particle Gibbs sampler with `n` particles. By default stratified resampling is triggered
 whenever the effective sample size drops below half the number of particles.
 """
 PG(n::Int) = PG(n, ESSResampler(0.5))

@@ -4,6 +4,7 @@ using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using DynamicPPL: DynamicPPL
 using Turing.Inference:
+    Stratified,
     Systematic,
     Multinomial,
     ESSResampler,
@@ -24,6 +25,7 @@ using Turing
 @testset "SMC" begin
     @testset "constructor" begin
         @test SMC().resampler == ESSResampler(0.5)
+        @test SMC().resampler.scheme isa Stratified   # stratified is the default scheme
         @test SMC(0.6).resampler == ESSResampler(0.6)
         @test SMC(Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
         @test SMC(Systematic()).resampler == Systematic()
