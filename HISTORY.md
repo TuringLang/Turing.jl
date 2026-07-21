@@ -1,3 +1,18 @@
+# 0.47.0
+
+## Breaking changes
+
+### Particle MCMC (SMC and PG)
+
+`SMC` and `PG` / `CSMC` have been reimplemented natively and no longer depend on AdvancedPS.
+
+Resampling schemes are now types instead of functions — `Stratified()`, `Systematic()`, and `Multinomial()` (in `Turing.Inference`), optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`.
+For example, `SMC(Turing.Inference.Systematic())`, `SMC(0.5)`, or `PG(10, Turing.Inference.Multinomial(), 0.5)`.
+The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, …) is gone.
+
+The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows and within the theoretical guarantees for particle Gibbs, which systematic resampling does not.
+Exact draws may therefore differ from previous releases, but should remain statistically consistent (the same target distribution).
+
 # 0.46.0
 
 ## Breaking changes
@@ -18,18 +33,6 @@ Please see [the AdvancedVI changelog](https://github.com/TuringLang/AdvancedVI.j
     Use `AutoReverseDiff(; compile=false)`, or a different reverse-mode backend such as `AutoMooncake()`, instead.
   - `vi` with `KLMinScoreGradDescent` now optimises in unconstrained (linked) space, making it consistent with the other `KLMin...` algorithms.
     If you use it with a model that has constrained parameters, results may differ slightly from previous releases.
-
-### Particle MCMC (SMC and PG)
-
-The particle samplers (`SMC`, and `PG` / `CSMC`) have been reimplemented natively and no longer depend on AdvancedPS.
-
-Resampling schemes are now types rather than functions: use `Stratified()`, `Systematic()`, or `Multinomial()`, optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size drops below `threshold * nparticles`.
-For example, `SMC(Systematic())`, `SMC(0.5)`, or `PG(10, Multinomial(), 0.5)`.
-The previous function-based API (`resample_systematic`, `resample_multinomial`, `AdvancedPS.ResampleWithESSThreshold`) is no longer available.
-
-The default resampling scheme is now **stratified** (previously systematic).
-Stratified resampling is unbiased and consistent as the number of particles grows, and unlike systematic resampling it stays within the theoretical guarantees underpinning particle Gibbs.
-Because of the new default and the reimplementation, sampling results will differ from previous releases.
 
 ## Other changes
 
