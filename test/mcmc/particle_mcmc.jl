@@ -2,7 +2,7 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
-using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
+using Turing.Inference: Systematic, Multinomial, ESSResampler
 using Distributions: Bernoulli, Beta, Gamma, Normal, sample
 using FlexiChains: VNChain
 using Random: Random
@@ -12,17 +12,10 @@ using Turing
 
 @testset "SMC" begin
     @testset "constructor" begin
-        s = SMC()
-        @test s.resampler == ResampleWithESSThreshold()
-
-        s = SMC(0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-
-        s = SMC(resample_multinomial, 0.6)
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-
-        s = SMC(resample_systematic)
-        @test s.resampler === resample_systematic
+        @test SMC().resampler == ESSResampler(0.5)
+        @test SMC(0.6).resampler == ESSResampler(0.6)
+        @test SMC(Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
+        @test SMC(Systematic()).resampler == Systematic()
     end
 
     @testset "basic model" begin
@@ -120,21 +113,11 @@ end
 
 @testset "PG" begin
     @testset "constructor" begin
-        s = PG(10)
-        @test s.nparticles == 10
-        @test s.resampler == ResampleWithESSThreshold()
-
-        s = PG(60, 0.6)
-        @test s.nparticles == 60
-        @test s.resampler === ResampleWithESSThreshold(resample_systematic, 0.6)
-
-        s = PG(80, resample_multinomial, 0.6)
-        @test s.nparticles == 80
-        @test s.resampler === ResampleWithESSThreshold(resample_multinomial, 0.6)
-
-        s = PG(100, resample_systematic)
-        @test s.nparticles == 100
-        @test s.resampler === resample_systematic
+        @test PG(10).nparticles == 10
+        @test PG(10).resampler == ESSResampler(0.5)
+        @test PG(60, 0.6).resampler == ESSResampler(0.6)
+        @test PG(80, Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
+        @test PG(100, Systematic()).resampler == Systematic()
     end
 
     @testset "chain log-density metadata" begin

@@ -32,7 +32,7 @@ import AdvancedHMC
 const AHMC = AdvancedHMC
 import AdvancedMH
 const AMH = AdvancedMH
-import AdvancedPS
+import Random123
 import EllipticalSliceSampling
 import LogDensityProblems
 import Random

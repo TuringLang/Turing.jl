@@ -1,10 +1,12 @@
 module ContainerTests
 
-using AdvancedPS: AdvancedPS
 using Distributions: Bernoulli, Beta, Gamma, Normal
 using DynamicPPL: DynamicPPL, @model
+using Random: Xoshiro
 using Test: @test, @testset
 using Turing
+using Turing.Inference:
+    Particle, TracedRNG, particle_varinfo, advance!, fork, set_step!, refresh!
 
 @testset "container.jl" begin
     @model function test()
@@ -17,26 +19,25 @@ using Turing
         return x
     end
 
-    @testset "constructor" begin
-        accs = DynamicPPL.OnlyAccsVarInfo()
-        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-        sampler = PG(10)
-        model = test()
-        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
-
-        # Make sure the backreference from taped_globals to the trace is in place.
-        @test trace.model.ctask.taped_globals.other === trace
-
-        res = AdvancedPS.advance!(trace, false)
-        @test res ≈ -log(2)
-
-        # Catch broken copy, espetially for RNG / VarInfo
-        newtrace = AdvancedPS.fork(trace)
-        res2 = AdvancedPS.advance!(trace)
+    @testset "advance!" begin
+        # `x ~ Bernoulli(1)` forces `x = 1`, so the first observe is `1 ~ Bernoulli(0.5)`.
+        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
+        @test advance!(particle, false) ≈ -log(2)
+        @test advance!(particle, false) ≈ -log(2)     # `0 ~ Bernoulli(0.5)`
+        @test advance!(particle, false) === nothing    # model finished
     end
 
     @testset "fork" begin
+        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
+        advance!(particle, false)
+        child = fork(particle, Xoshiro(1))
+        # Independent continuations: advancing one does not touch the other.
+        @test advance!(child, false) ≈ -log(2)
+        @test particle.varinfo !== child.varinfo
+        @test advance!(particle, false) ≈ -log(2)
+    end
+
+    @testset "rng replay" begin
         @model function normal()
             a ~ Normal(0, 1)
             3 ~ Normal(a, 2)
@@ -44,17 +45,22 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
-        accs = DynamicPPL.OnlyAccsVarInfo()
-        accs = DynamicPPL.setacc!!(accs, Turing.Inference.ProduceLogLikelihoodAccumulator())
-        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-        sampler = PG(10)
-        model = normal()
 
-        trace = AdvancedPS.Trace(model, accs, AdvancedPS.TracedRNG(), false)
+        # Run a particle to completion, then replay it from its recorded seeds (as the
+        # reference trajectory of a conditional sweep does) and check it regenerates exactly.
+        # Replay relies on each step using a distinct seed, so we refresh before every step
+        # exactly as the sweep's no-resample path does.
+        particle = Particle(normal(), particle_varinfo(), TracedRNG(Xoshiro(23)))
+        while (refresh!(particle.rng); advance!(particle, false)) !== nothing
+        end
+        values = DynamicPPL.get_raw_values(particle.varinfo)
 
-        newtrace = AdvancedPS.forkr(trace)
-        # Catch broken replay mechanism
-        @test AdvancedPS.advance!(trace) ≈ AdvancedPS.advance!(newtrace)
+        reference = Particle(
+            normal(), particle_varinfo(), set_step!(deepcopy(particle.rng), 1)
+        )
+        while advance!(reference, true) !== nothing
+        end
+        @test DynamicPPL.get_raw_values(reference.varinfo) == values
     end
 end
 
