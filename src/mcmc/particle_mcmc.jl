@@ -22,6 +22,7 @@
 ###
 
 using StatsFuns: softmax, logsumexp
+import Random123
 
 #
 # Traced RNG
