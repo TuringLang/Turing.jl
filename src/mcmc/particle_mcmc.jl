@@ -85,6 +85,15 @@ split_key(key::Integer) = rand(Random.MersenneTwister(key), typeof(key))
 "Reseed from the generator's own current state (used between steps when not resampling)."
 refresh!(trng::TracedRNG) = Random.seed!(trng, split_key(inner_key(trng.rng)))
 
+#
+# Model evaluation via Libtask
+#
+# A `Particle` is the only mutable state. It is stored as its `TapedTask`'s "taped globals",
+# so the tilde overloads reach it from *inside* a running model via `get_taped_globals`.
+# This keeps all state explicit on the particle -- no `task_local_storage`.
+
+# Particle samplers replay executions in a fixed order, so they cannot run models whose
+# evaluation order is nondeterministic (e.g. a threaded `observe` loop).
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
     if DynamicPPL.requires_threadsafe(model)
         throw(
@@ -95,13 +104,6 @@ function error_if_threadsafe_eval(model::DynamicPPL.Model)
     end
     return nothing
 end
-
-#
-# Model evaluation via Libtask
-#
-# A `Particle` is the only mutable state. It is stored as its `TapedTask`'s "taped globals",
-# so the tilde overloads reach it from *inside* a running model via `get_taped_globals`.
-# This keeps all state explicit on the particle -- no `task_local_storage`.
 
 """
     ParticleMCMCContext
@@ -387,8 +389,8 @@ function reweight!(particles, conditional::Bool)
     )
 end
 
-# Resample (if the scheme calls for it) and fork the survivors, or -- when not resampling --
-# refresh each ordinary particle's seed so the next step draws fresh randomness.
+# Resample (if the scheme calls for it) and propagate the survivors, or -- when not
+# resampling -- refresh each ordinary particle's seed so the next step draws fresh randomness.
 function resample_propagate!(rng::AbstractRNG, particles, resampler, conditional::Bool)
     n = length(particles)
     weights = normalized_weights(particles)
@@ -425,6 +427,8 @@ function sweep!(rng::AbstractRNG, particles, resampler; conditional::Bool=false)
         resample_propagate!(rng, particles, resampler, conditional)
         logZ0 = logevidence(particles)
         done = reweight!(particles, conditional)
+        # Each observation contributes the log-ratio of total weight it adds; summed over the
+        # sweep these telescope into an estimate of the model's log-evidence log p(y).
         logZ += logevidence(particles) - logZ0
         done && break
     end
