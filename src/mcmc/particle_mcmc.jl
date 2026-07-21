@@ -253,13 +253,12 @@ Libtask.@might_produce(DynamicPPL.tilde_assume!!)  # GibbsContext turns assumes 
 # See https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
-# A varinfo carrying every accumulator a retained particle needs: the produce-aware
-# likelihood, the prior and Jacobian terms (for log-density chain metadata), and raw values.
+# A particle needs only the produce-aware likelihood accumulator (which drives reweighting)
+# and the raw sampled values. The prior/Jacobian terms shown in chain metadata are recomputed
+# downstream from the raw values, so accumulating them per particle would be wasted work.
 function particle_varinfo()
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.LogPriorAccumulator())
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.LogJacobianAccumulator())
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
     return vi
 end
