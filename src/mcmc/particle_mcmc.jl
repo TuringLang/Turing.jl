@@ -20,6 +20,9 @@
 ### Sections below: traced RNG; model evaluation via Libtask; resampling schemes; the particle
 ### sweep; the SMC sampler; the PG/CSMC sampler; the Gibbs-component interface.
 ###
+### Reference: Andrieu, Doucet & Holenstein, "Particle Markov chain Monte Carlo methods",
+### Journal of the Royal Statistical Society: Series B 72(3), 269-342 (2010).
+###
 
 using StatsFuns: softmax, logsumexp
 import Random123
