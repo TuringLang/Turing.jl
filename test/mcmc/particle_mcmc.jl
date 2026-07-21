@@ -1,7 +1,7 @@
 module ParticleMCMCTests
 
 using ..Models: gdemo_default
-using ..SamplerTestUtils: test_chain_logp_metadata
+using ..SamplerTestUtils: test_chain_logp_metadata, test_rng_respected
 using DynamicPPL: DynamicPPL
 using Turing.Inference:
     Stratified,
@@ -58,6 +58,10 @@ using Turing
 
     @testset "chain log-density metadata" begin
         test_chain_logp_metadata(SMC())
+    end
+
+    @testset "rng is respected" begin
+        test_rng_respected(SMC())
     end
 
     @testset "logevidence" begin
@@ -135,6 +139,10 @@ end
 
     @testset "chain log-density metadata" begin
         test_chain_logp_metadata(PG(10))
+    end
+
+    @testset "rng is respected" begin
+        test_rng_respected(PG(10))
     end
 
     @testset "logevidence" begin
