@@ -75,9 +75,11 @@ save_state!(trng::TracedRNG) = push!(trng.keys, inner_key(trng.rng))
 "Replay the seed recorded at the current step."
 load_state!(trng::TracedRNG) = Random.seed!(trng, trng.keys[trng.count])
 
-"Set / advance the model-step counter."
-set_step!(trng::TracedRNG, n::Integer) = (trng.count = n; trng)
-inc_step!(trng::TracedRNG, n::Integer=1) = (trng.count += n; trng)
+"Advance the model-step counter by one."
+inc_step!(trng::TracedRNG) = (trng.count += 1; trng)
+
+"Rewind the model-step counter to the first step, so a trajectory replays from the start."
+rewind!(trng::TracedRNG) = (trng.count = 1; trng)
 
 "Deterministically derive a fresh seed from `key`."
 split_key(key::Integer) = rand(Random.MersenneTwister(key), typeof(key))
@@ -618,8 +620,7 @@ function AbstractMCMC.step(
 )
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
-    # Rewind the retained RNG to step 1 so the reference replays its trajectory from the start.
-    reference = Particle(model, particle_varinfo(), set_step!(deepcopy(state.rng), 1))
+    reference = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)))
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
     end

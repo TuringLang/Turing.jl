@@ -14,7 +14,7 @@ using Turing.Inference:
     particle_varinfo,
     advance!,
     fork,
-    set_step!,
+    rewind!,
     refresh!,
     sweep!,
     normalized_weights,
@@ -223,7 +223,7 @@ end
             end
             allok = true
             for _ in 1:nsteps
-                ref = Particle(model, particle_varinfo(), set_step!(deepcopy(state.rng), 1))
+                ref = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)))
                 parts = map(
                     i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
                     1:N,
@@ -402,9 +402,7 @@ end
         end
         values = DynamicPPL.get_raw_values(particle.varinfo)
 
-        reference = Particle(
-            normal(), particle_varinfo(), set_step!(deepcopy(particle.rng), 1)
-        )
+        reference = Particle(normal(), particle_varinfo(), rewind!(deepcopy(particle.rng)))
         while advance!(reference, true) !== nothing
         end
         @test DynamicPPL.get_raw_values(reference.varinfo) == values
