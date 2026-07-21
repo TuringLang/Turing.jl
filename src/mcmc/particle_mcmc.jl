@@ -16,6 +16,13 @@ function error_if_threadsafe_eval(model::DynamicPPL.Model)
     return nothing
 end
 
+# here varinfo has to be an abstract type because of the RawValueAccumulator
+mutable struct TapedGlobals{RT<:AbstractRNG,LT<:Real}
+    rng::RT
+    varinfo::DynamicPPL.AbstractVarInfo
+    logscore::LT
+end
+
 """
     TracedModel(rng, model)
 
@@ -25,27 +32,20 @@ every iteration of a Sequential Monte Carlo sampler.
 Typically traced models internally `Libtask.consume` through a sampler, but iteration
 utilities like Libtask extend to this structure for manually stepping through a model.
 """
-mutable struct TracedModel{T<:TapedTask}
-    const task::T
-    varinfo::DynamicPPL.AbstractVarInfo
+struct TracedModel{T<:TapedTask}
+    task::T
 end
 
-# NOTE: instead of storing `vi` in the taped task, we can exploit task local storage because
-# updating the varinfo happens within a single call stack of `Libtask.consume`
 function construct_task(
     rng::AbstractRNG, model::DynamicPPL.Model, vi::DynamicPPL.AbstractVarInfo
 )
     inner_model = DynamicPPL.setleafcontext(model, SMCContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(inner_model, vi)
-    return TapedTask(rng, inner_model.f, args...; kwargs...)
+    logscore = zero(DynamicPPL.LogProbType)
+    return TapedTask(TapedGlobals(rng, vi, logscore), inner_model.f, args...; kwargs...)
 end
 
-# overload consume to store the local varinfo
-function Libtask.consume(trace::TracedModel)
-    score = Libtask.consume(trace.task)
-    set_varinfo!(trace)
-    return score
-end
+Libtask.consume(trace::TracedModel) = Libtask.consume(trace.task)
 
 # apply the same iteration utilities as a TapedTask
 function Base.iterate(trace::TracedModel, ::Nothing=nothing)
@@ -58,8 +58,8 @@ Base.IteratorEltype(::Type{<:TracedModel}) = Base.EltypeUnknown()
 
 # these will be useful when constructing new traces from proposed values
 get_model(trace::TracedModel) = fetch_type(DynamicPPL.Model, trace.task.fargs)
-get_varinfo(trace::TracedModel) = trace.varinfo
-get_rng(trace::TracedModel) = trace.task.taped_globals
+get_varinfo(trace::TracedModel) = trace.task.taped_globals.varinfo
+get_rng(trace::TracedModel) = trace.task.taped_globals.rng
 
 @generated function fetch_type(::Type{T}, tup::Tuple) where {T}
     indices = Int[]
@@ -78,7 +78,7 @@ get_rng(trace::TracedModel) = trace.task.taped_globals
     end
 end
 
-# this prevents the task from resetting the varinfo
+# prevent the task from resetting the varinfo in the reference state
 function set_reference(trace::TracedModel)
     rng = get_rng(trace)
     Random123.set_counter!(rng, 1)
@@ -91,15 +91,7 @@ function TracedModel(rng::TracedRNG, model::DynamicPPL.Model)
     accs = DynamicPPL.OnlyAccsVarInfo()
     accs = DynamicPPL.setacc!!(accs, ProduceLogLikelihoodAccumulator())
     accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
-    return TracedModel(construct_task(rng, model, accs), accs)
-end
-
-# update trace varinfo with what has been sampled to this point
-function set_varinfo!(trace::TracedModel)
-    storage = task_local_storage()
-    if haskey(storage, :varinfo)
-        trace.varinfo = pop!(storage, :varinfo)
-    end
+    return TracedModel(construct_task(rng, model, accs))
 end
 
 struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.LogProbAccumulator{T}
@@ -111,7 +103,7 @@ DynamicPPL.logp(acc::ProduceLogLikelihoodAccumulator) = acc.logp
 
 # this is the only difference between LogLikelihoodAccumulator
 function DynamicPPL.acclogp(acc::ProduceLogLikelihoodAccumulator, val)
-    task_local_storage(:logscore, val)
+    Libtask.get_taped_globals(TapedGlobals).logscore = val
     newacc = ProduceLogLikelihoodAccumulator(DynamicPPL.logp(acc) + val)
     return newacc
 end
@@ -157,9 +149,9 @@ function DynamicPPL.accloglikelihood!!(
         )
 
         if DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
-            logscore = pop!(task_local_storage(), :logscore)
-            task_local_storage(:varinfo, vi)
-            Libtask.produce(logscore)
+            taped_globals = Libtask.get_taped_globals(TapedGlobals)
+            taped_globals.varinfo = vi
+            Libtask.produce(taped_globals.logscore)
         end
         return vi
     end
@@ -188,10 +180,10 @@ end
 function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template::Any, vi::AbstractVarInfo
 )
-    rng = Libtask.get_taped_globals(AbstractRNG)
-    dispatch_ctx = init_context(rng, vi, vn)
+    taped_globals = Libtask.get_taped_globals(TapedGlobals)
+    dispatch_ctx = init_context(taped_globals.rng, vi, vn)
     val, vi = DynamicPPL.tilde_assume!!(dispatch_ctx, dist, vn, template, vi)
-    task_local_storage(:varinfo, vi)
+    taped_globals.varinfo = vi
     return val, vi
 end
 
@@ -203,12 +195,12 @@ function DynamicPPL.tilde_observe!!(
     template,
     vi::AbstractVarInfo,
 )
+    taped_globals = Libtask.get_taped_globals(TapedGlobals)
     val, vi = DynamicPPL.tilde_observe!!(DefaultContext(), dist, val, vn, template, vi)
-    task_local_storage(:varinfo, vi)
-    Libtask.produce(pop!(task_local_storage(), :logscore))
+    taped_globals.varinfo = vi
+    Libtask.produce(taped_globals.logscore)
     return val, vi
 end
-
 
 ####
 #### Resampling Schemes.
@@ -603,7 +595,6 @@ end
 const PG = ParticleGibbs
 const CSMC = PG
 
-# convenience constructors
 PG(N::Int, threshold::Real) = PG(SMC(threshold), N)
 PG(N::Int, rs::AbstractResampler) = PG(SMC(rs), N)
 PG(N::Int, rs::AbstractResampler, threshold::Real) = PG(SMC(rs, threshold), N)
@@ -675,5 +666,5 @@ function gibbs_update_state!!(
     accs = last(
         DynamicPPL.init!!(model, get_varinfo(state), init_strat, DynamicPPL.UnlinkAll())
     )
-    return TracedModel(construct_task(get_rng(state), model, accs), accs)
+    return TracedModel(construct_task(get_rng(state), model, accs))
 end

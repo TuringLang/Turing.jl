@@ -4,6 +4,7 @@ using Distributions: Bernoulli, Beta, Gamma, Normal
 using DynamicPPL
 using Test: @test, @testset
 using Turing
+using Turing.Inference: Particle, get_varinfo
 using StableRNGs
 
 @testset "container.jl" begin
@@ -25,7 +26,7 @@ using StableRNGs
         @test all(loglikes .≈ -log(2))
 
         # ensure consistency of ProduceLogLikelihoodAccumulator
-        @test sum(loglikes) == DynamicPPL.getloglikelihood(trace.varinfo)
+        @test sum(loglikes) == DynamicPPL.getloglikelihood(get_varinfo(trace))
 
         accs = DynamicPPL.OnlyAccsVarInfo()
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
@@ -34,24 +35,24 @@ using StableRNGs
             test(),
             accs,
             DynamicPPL.InitFromPrior(),
-            DynamicPPL.UnlinkAll()
+            DynamicPPL.UnlinkAll(),
         )
 
         # ensure that traced models evaluate the same as basic ones
-        traced_acc = Turing.Inference.get_varinfo(trace)
+        traced_acc = get_varinfo(trace)
         @test DynamicPPL.getloglikelihood(accs) == DynamicPPL.getloglikelihood(traced_acc)
         @test DynamicPPL.get_raw_values(traced_acc) == DynamicPPL.get_raw_values(accs)
     end
 
     @testset "replay" begin
         # this mimics propagate without resampling
-        function advance_trace!(particle::Turing.Inference.Particle, isref::Bool)
+        function advance_trace!(particle::Particle, isref::Bool)
             isdone = 0.0
             while !isnothing(isdone)
                 !isref && Turing.Inference.update_key!(particle)
                 isdone = Turing.Inference.advance!(particle, isref)
             end
-            return Turing.Inference.get_varinfo(particle.value)
+            return get_varinfo(particle.value)
         end
 
         @model function normal()
@@ -64,12 +65,12 @@ using StableRNGs
 
         # advance the trace one step
         trace = TracedModel(StableRNG(23), normal());
-        particle = Turing.Inference.Particle(trace);
+        particle = Particle(trace);
         vi = advance_trace!(particle, false)
 
         # set trace as reference and replay
         new_trace = Turing.Inference.set_reference(particle.value)
-        ref_particle = Turing.Inference.Particle(new_trace)
+        ref_particle = Particle(new_trace)
         ref_vi = advance_trace!(ref_particle, true)
 
         @test ref_vi == vi
