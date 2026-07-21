@@ -9,7 +9,7 @@ using Random: Random, Xoshiro
 using Test
 using Turing
 
-Turing.setprogress!(false)
+AbstractMCMC.setprogress!(false)
 
 # This sampler does nothing (it just stays at the existing state)
 struct StaticSampler <: AbstractMCMC.AbstractSampler end

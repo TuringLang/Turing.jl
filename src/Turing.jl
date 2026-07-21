@@ -24,21 +24,6 @@ using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzy
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
-const PROGRESS = Ref(true)
-
-# TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
-"""
-    setprogress!(progress::Bool)
-
-Enable progress logging in Turing if `progress` is `true`, and disable it otherwise.
-"""
-function setprogress!(progress::Bool)
-    @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
-    PROGRESS[] = progress
-    AbstractMCMC.setprogress!(progress; silent=true)
-    return progress
-end
-
 # Random probability measures.
 include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
@@ -141,8 +126,6 @@ export
     AutoReverseDiff,
     AutoMooncake,
     AutoEnzyme,
-    # Debugging - Turing
-    setprogress!,
     # Distributions
     Flat,
     FlatPos,
