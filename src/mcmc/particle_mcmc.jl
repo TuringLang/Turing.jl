@@ -16,7 +16,67 @@
 
 using StatsFuns: softmax, logsumexp
 
-include("traced_rng.jl")
+#
+# Traced RNG
+#
+# A counter-based RNG that records the seed used at each model step, so that a particle's
+# trajectory can be replayed exactly: the conditional-SMC reference regenerates itself by
+# replaying its recorded seeds. This section comes first because `Particle` and `PGState`
+# name `TracedRNG` in their type signatures.
+
+"""
+    TracedRNG([rng = Random.default_rng()])
+
+A `Random123.Philox2x` generator that remembers the seed (`key`) it used at each model step
+in `keys`, indexed by the step counter `count`.
+
+  - [`save_state!`](@ref) records the current seed (ordinary particles);
+  - [`load_state!`](@ref) restores `keys[count]`, replaying that step's randomness (the
+    reference trajectory).
+"""
+mutable struct TracedRNG{K,T<:Random123.AbstractR123} <: Random.AbstractRNG
+    count::Int
+    rng::T
+    keys::Vector{K}
+end
+
+function TracedRNG(inner::Random123.AbstractR123{T}) where {T<:Unsigned}
+    Random123.set_counter!(inner, 0)
+    return TracedRNG(1, inner, T[])
+end
+function TracedRNG(rng::AbstractRNG=Random.default_rng())
+    inner = Random.seed!(Random123.Philox2x(), rand(rng, Random.Sampler(rng, UInt64)))
+    return TracedRNG(inner)
+end
+
+Random.rng_native_52(trng::TracedRNG) = Random.rng_native_52(trng.rng)
+Random.rand(trng::TracedRNG, ::Type{T}) where {T<:Unsigned} = Random.rand(trng.rng, T)
+
+"The current seed of the inner generator."
+inner_key(rng::Random123.Philox2x) = rng.key
+
+"Reseed and rewind the inner generator. The model-step counter is left untouched."
+function Random.seed!(trng::TracedRNG, key)
+    Random.seed!(trng.rng, key)
+    Random123.set_counter!(trng.rng, 0)
+    return trng
+end
+
+"Record the seed used at the current step."
+save_state!(trng::TracedRNG) = push!(trng.keys, inner_key(trng.rng))
+
+"Replay the seed recorded at the current step."
+load_state!(trng::TracedRNG) = Random.seed!(trng, trng.keys[trng.count])
+
+"Set / advance the model-step counter."
+set_step!(trng::TracedRNG, n::Integer) = (trng.count = n; trng)
+inc_step!(trng::TracedRNG, n::Integer=1) = (trng.count += n; trng)
+
+"Deterministically derive a fresh seed from `key`."
+split_key(key::Integer) = rand(Random.MersenneTwister(key), typeof(key))
+
+"Reseed from the generator's own current state (used between steps when not resampling)."
+refresh!(trng::TracedRNG) = Random.seed!(trng, split_key(inner_key(trng.rng)))
 
 function error_if_threadsafe_eval(model::DynamicPPL.Model)
     if DynamicPPL.requires_threadsafe(model)
@@ -82,13 +142,12 @@ end
 
 Copy `particle` into an independent continuation seeded from `rng`. `deepcopy` forks the
 underlying `TapedTask` (Libtask defines `copy` as `deepcopy`) and preserves the
-task↔particle back-reference, which we reset explicitly to be safe. Reseeding switches the
-child from replaying to sampling afresh; `keys` is truncated to the steps already taken so a
-child of the reference forgets the reference's future.
+task↔particle back-reference. Reseeding switches the child from replaying to sampling afresh;
+`keys` is truncated to the steps already taken so a child of the reference forgets the
+reference's future.
 """
 function fork(particle::Particle, rng::AbstractRNG)
     child = deepcopy(particle)
-    Libtask.set_taped_globals!(child.task, child)
     Random.seed!(child.rng, rand(rng, UInt64))
     resize!(child.rng.keys, child.rng.count - 1)
     return child
@@ -170,7 +229,12 @@ function DynamicPPL.accumulate_observe!!(
 end
 
 # Tell Libtask which calls may contain `produce`, walking up the call stack from `acclogp`.
+# Over-approximating is safe (a wrongly-marked call just gets instrumented); missing a real
+# one is not, so we err towards marking.
 Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
+# Merging accumulators (across submodels or Gibbs blocks) can add a
+# ProduceLogLikelihoodAccumulator to a plain one, which routes through the producing
+# `acclogp` -- so this `+` may itself produce.
 function Libtask.might_produce(
     ::Type{
         <:Tuple{
@@ -505,6 +569,7 @@ function AbstractMCMC.step(
 )
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
+    # Rewind the retained RNG to step 1 so the reference replays its trajectory from the start.
     reference = Particle(model, particle_varinfo(), set_step!(deepcopy(state.rng), 1))
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
