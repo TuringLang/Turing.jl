@@ -2,7 +2,8 @@ module ParticleMCMCTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata, test_rng_respected
-using DynamicPPL: DynamicPPL
+using ..NumericalTests: check_numerical
+using DynamicPPL: DynamicPPL, extract_priors, get_raw_values, getloglikelihood
 using Turing.Inference:
     Stratified,
     Systematic,
@@ -14,8 +15,11 @@ using Turing.Inference:
     advance!,
     fork,
     set_step!,
-    refresh!
-using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+    refresh!,
+    sweep!,
+    normalized_weights,
+    PGState
+using Distributions: Bernoulli, Beta, Gamma, Normal, Uniform, Categorical, sample
 using FlexiChains: VNChain
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
@@ -40,6 +44,27 @@ using Turing
             return a, b
         end
         tested = sample(normal(), SMC(), 100)
+    end
+
+    @testset "resampling schemes" begin
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        coin_model = coinflip(obs)
+        prior = extract_priors(coin_model)[@varname(p)]
+        exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
+
+        # every scheme targets the same posterior...
+        chn_strat = sample(StableRNG(23), coin_model, SMC(Stratified()), 100)
+        chn_multi = sample(StableRNG(23), coin_model, SMC(Multinomial()), 100)
+        check_numerical(chn_strat, [@varname(p)], [mean(exact)]; atol=0.1)
+        check_numerical(chn_multi, [@varname(p)], [mean(exact)]; atol=0.1)
+        # ...but the schemes are genuinely different, so the draws differ.
+        @test chn_strat[@varname(p)] != chn_multi[@varname(p)]
     end
 
     @testset "errors when number of observations is not fixed" begin
@@ -172,6 +197,52 @@ end
         @test length(unique(c[:s])) == 1
     end
 
+    @testset "ensuring reference consistency" begin
+        # In conditional SMC the retained trajectory must be regenerated *exactly* by the
+        # reference particle on the next iteration -- this is what makes CSMC valid. It fails
+        # if the traced-RNG step counter and the recorded seeds ever fall out of alignment.
+        @model function state_space_model(y)
+            ρ ~ Uniform(0, 1)
+            x = Vector{Float64}(undef, length(y) + 1)
+            x[1] ~ Normal(0, 1)
+            for t in eachindex(y)
+                x[t + 1] ~ Normal(ρ * x[t], 1)
+                y[t] ~ Normal(x[t + 1], 1)
+            end
+        end
+
+        # Run PG's conditional sweep by hand so we can inspect the reference particle (slot
+        # N) and check it reproduces the trajectory we retained. Wrapped in a function to keep
+        # the mutating loop out of test soft scope.
+        function run_csmc(model, N, nsteps, rng)
+            draw(ps) = ps[rand(rng, Categorical(normalized_weights(ps)))]
+            particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:N]
+            sweep!(rng, particles, ESSResampler(0.5))
+            state = let p = draw(particles)
+                PGState(p.varinfo, p.rng)
+            end
+            allok = true
+            for _ in 1:nsteps
+                ref = Particle(model, particle_varinfo(), set_step!(deepcopy(state.rng), 1))
+                parts = map(
+                    i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
+                    1:N,
+                )
+                sweep!(rng, parts, ESSResampler(0.5); conditional=true)
+                allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
+                p = draw(parts)
+                state = PGState(p.varinfo, p.rng)
+            end
+            return allok, length(state.rng.keys)
+        end
+
+        rng = StableRNG(1234)
+        y = randn(rng, 10)
+        allok, nkeys = run_csmc(state_space_model(y), 3, 30, rng)
+        @test allok                         # reference regenerated exactly every step
+        @test nkeys == length(y) + 1        # keys stay aligned with the trajectory length
+    end
+
     @testset "addlogprob leads to reweighting" begin
         # Make sure that PG takes @addlogprob! into account. It didn't use to:
         # https://github.com/TuringLang/Turing.jl/issues/1996
@@ -188,6 +259,10 @@ end
         c = sample(StableRNG(468), addlogprob_demo(), PG(10), 100)
         # Result should be biased towards x > 0.
         @test mean(c[:x]) > 0.7
+
+        # @addlogprob! should also be respected by ordinary (non-particle) samplers.
+        c2 = sample(StableRNG(468), addlogprob_demo(), MH(), 100)
+        @test mean(c2[:x]) > 0.7
     end
 
     @testset "keyword argument handling" begin
@@ -274,6 +349,29 @@ end
         @test advance!(particle, false) ≈ -log(2)
         @test advance!(particle, false) ≈ -log(2)     # `0 ~ Bernoulli(0.5)`
         @test advance!(particle, false) === nothing    # model finished
+    end
+
+    @testset "matches a direct evaluation" begin
+        # A particle advanced without resampling draws from its RNG continuously, so it must
+        # produce exactly the same values and log-likelihood as a plain DynamicPPL evaluation
+        # seeded identically.
+        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
+        while advance!(particle, false) !== nothing
+        end
+
+        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogLikelihoodAccumulator())
+        accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
+        _, accs = DynamicPPL.init!!(
+            TracedRNG(Xoshiro(23)),
+            test(),
+            accs,
+            DynamicPPL.InitFromPrior(),
+            DynamicPPL.UnlinkAll(),
+        )
+
+        @test get_raw_values(particle.varinfo) == get_raw_values(accs)
+        @test getloglikelihood(particle.varinfo) == getloglikelihood(accs)
     end
 
     @testset "fork" begin
