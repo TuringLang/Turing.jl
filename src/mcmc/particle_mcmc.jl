@@ -461,6 +461,9 @@ end
 
 Sequential Monte Carlo sampler. By default stratified resampling is triggered whenever the
 effective sample size drops below half the number of particles.
+
+The resampling scheme types (`Stratified`, `Systematic`, `Multinomial`, `ESSResampler`) are
+not exported; refer to them as e.g. `Turing.Inference.Systematic`.
 """
 SMC() = SMC(ESSResampler(0.5))
 SMC(threshold::Real) = SMC(ESSResampler(threshold))
