@@ -5,9 +5,9 @@ using ..SamplerTestUtils: test_chain_logp_metadata, test_rng_respected
 using ..NumericalTests: check_numerical
 using DynamicPPL: DynamicPPL, extract_priors, get_raw_values, getloglikelihood
 using Turing.Inference:
-    Stratified,
-    Systematic,
-    Multinomial,
+    StratifiedResampler,
+    SystematicResampler,
+    MultinomialResampler,
     ESSResampler,
     Particle,
     TracedRNG,
@@ -28,13 +28,14 @@ using Turing
 @testset "SMC" begin
     @testset "constructor" begin
         @test SMC().resampler == ESSResampler(0.5)
-        @test SMC().resampler.scheme isa Stratified   # stratified is the default scheme
+        @test SMC().resampler.scheme isa StratifiedResampler   # stratified is the default scheme
         @test SMC(0.6).resampler == ESSResampler(0.6)
-        @test SMC(Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
-        @test SMC(Systematic()).resampler == Systematic()
+        @test SMC(MultinomialResampler(), 0.6).resampler ==
+            ESSResampler(0.6, MultinomialResampler())
+        @test SMC(SystematicResampler()).resampler == SystematicResampler()
         @test SMC().multithreaded == false
         @test SMC(; multithreaded=true).multithreaded == true
-        @test SMC(Systematic(); multithreaded=true).multithreaded == true
+        @test SMC(SystematicResampler(); multithreaded=true).multithreaded == true
     end
 
     @testset "basic model" begin
@@ -61,8 +62,8 @@ using Turing
         exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
 
         # every scheme targets the same posterior...
-        chn_strat = sample(StableRNG(23), coin_model, SMC(Stratified()), 100)
-        chn_multi = sample(StableRNG(23), coin_model, SMC(Multinomial()), 100)
+        chn_strat = sample(StableRNG(23), coin_model, SMC(StratifiedResampler()), 100)
+        chn_multi = sample(StableRNG(23), coin_model, SMC(MultinomialResampler()), 100)
         check_numerical(chn_strat, [@varname(p)], [mean(exact)]; atol=0.1)
         check_numerical(chn_multi, [@varname(p)], [mean(exact)]; atol=0.1)
         # ...but the schemes are genuinely different, so the draws differ.
@@ -176,11 +177,12 @@ end
         @test PG(10).nparticles == 10
         @test PG(10).resampler == ESSResampler(0.5)
         @test PG(60, 0.6).resampler == ESSResampler(0.6)
-        @test PG(80, Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
-        @test PG(100, Systematic()).resampler == Systematic()
+        @test PG(80, MultinomialResampler(), 0.6).resampler ==
+            ESSResampler(0.6, MultinomialResampler())
+        @test PG(100, SystematicResampler()).resampler == SystematicResampler()
         @test PG(10).multithreaded == false
         @test PG(10; multithreaded=true).multithreaded == true
-        @test PG(80, Multinomial(), 0.6; multithreaded=true).multithreaded == true
+        @test PG(80, MultinomialResampler(), 0.6; multithreaded=true).multithreaded == true
     end
 
     @testset "chain log-density metadata" begin

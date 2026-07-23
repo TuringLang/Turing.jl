@@ -341,14 +341,14 @@ should_resample(::AbstractResampler, weights) = true
 function resample_indices end
 
 "Multinomial resampling: `n` independent draws from the categorical over `weights`."
-struct Multinomial <: AbstractResampler end
-function resample_indices(rng::AbstractRNG, ::Multinomial, weights, n::Integer)
+struct MultinomialResampler <: AbstractResampler end
+function resample_indices(rng::AbstractRNG, ::MultinomialResampler, weights, n::Integer)
     return rand(rng, Distributions.Categorical(weights), n)
 end
 
 "Stratified resampling: one independent uniform per stratum of width `1/n`."
-struct Stratified <: AbstractResampler end
-function resample_indices(rng::AbstractRNG, ::Stratified, weights, n::Integer)
+struct StratifiedResampler <: AbstractResampler end
+function resample_indices(rng::AbstractRNG, ::StratifiedResampler, weights, n::Integer)
     v = n * weights[1]
     indices = Vector{Int}(undef, n)
     s = 1
@@ -364,8 +364,8 @@ function resample_indices(rng::AbstractRNG, ::Stratified, weights, n::Integer)
 end
 
 "Systematic resampling: one shared uniform placed on a regular grid of `n` points."
-struct Systematic <: AbstractResampler end
-function resample_indices(rng::AbstractRNG, ::Systematic, weights, n::Integer)
+struct SystematicResampler <: AbstractResampler end
+function resample_indices(rng::AbstractRNG, ::SystematicResampler, weights, n::Integer)
     v = n * weights[1]
     u = oftype(v, rand(rng))
     indices = Vector{Int}(undef, n)
@@ -382,7 +382,7 @@ function resample_indices(rng::AbstractRNG, ::Systematic, weights, n::Integer)
 end
 
 """
-    ESSResampler(threshold, scheme = Stratified())
+    ESSResampler(threshold, scheme = StratifiedResampler())
 
 Resample with `scheme`, but only when the effective sample size drops below
 `threshold * nparticles`. This is the default for [`SMC`](@ref) and [`PG`](@ref).
@@ -391,7 +391,7 @@ struct ESSResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
     threshold::T
     scheme::R
 end
-ESSResampler(threshold::Real) = ESSResampler(threshold, Stratified())
+ESSResampler(threshold::Real) = ESSResampler(threshold, StratifiedResampler())
 
 function should_resample(resampler::ESSResampler, weights)
     return ess(weights) ≤ resampler.threshold * length(weights)
@@ -541,7 +541,7 @@ end
 
 """
     SMC([resampler = ESSResampler(0.5)]; multithreaded = false)
-    SMC([scheme = Stratified(), ]threshold; multithreaded = false)
+    SMC([scheme = StratifiedResampler(), ]threshold; multithreaded = false)
 
 Sequential Monte Carlo sampler. By default stratified resampling is triggered whenever the
 effective sample size drops below half the number of particles.
@@ -549,8 +549,8 @@ effective sample size drops below half the number of particles.
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
 
-The resampling scheme types (`Stratified`, `Systematic`, `Multinomial`, `ESSResampler`) are
-not exported; refer to them as e.g. `Turing.Inference.Systematic`.
+The resampling scheme types (`StratifiedResampler`, `SystematicResampler`, `MultinomialResampler`, `ESSResampler`) are
+not exported; refer to them as e.g. `Turing.Inference.SystematicResampler`.
 """
 SMC(; kwargs...) = SMC(ESSResampler(0.5); kwargs...)
 SMC(threshold::Real; kwargs...) = SMC(ESSResampler(threshold); kwargs...)
@@ -631,7 +631,7 @@ end
 
 """
     PG(n, [resampler = ESSResampler(0.5)]; multithreaded = false)
-    PG(n, [scheme = Stratified(), ]threshold; multithreaded = false)
+    PG(n, [scheme = StratifiedResampler(), ]threshold; multithreaded = false)
 
 Particle Gibbs sampler with `n` particles. By default stratified resampling is triggered
 whenever the effective sample size drops below half the number of particles.
