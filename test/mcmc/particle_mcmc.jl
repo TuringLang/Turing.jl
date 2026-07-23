@@ -158,7 +158,7 @@ using Turing
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 
-    @testset "discard_initial and thinning are ignored" begin
+    @testset "discard_initial, thinning and initial_params are ignored" begin
         @model function normal()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -166,6 +166,10 @@ using Turing
             1.5 ~ Normal(b, 2)
             return a, b
         end
+
+        @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
+            normal(), SMC(), 10; initial_params=(; a=1.0)
+        )
 
         @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)

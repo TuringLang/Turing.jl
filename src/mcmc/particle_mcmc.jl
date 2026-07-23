@@ -594,6 +594,7 @@ function AbstractMCMC.sample(
     chain_type=DEFAULT_CHAIN_TYPE,
     discard_initial=0,
     thinning=1,
+    initial_params=nothing,
     verbose=false,
     kwargs...,
 )
@@ -601,6 +602,9 @@ function AbstractMCMC.sample(
     error_if_threadsafe_eval(model)
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
+    end
+    if initial_params !== nothing
+        @warn "SMC draws its initial population from the prior; `initial_params` is ignored."
     end
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
     logZ, ess_per_step = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
