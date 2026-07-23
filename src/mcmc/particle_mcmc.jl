@@ -135,8 +135,8 @@ DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
     Particle(model, varinfo, rng::TracedRNG)
 
 A single particle: a suspended `model` execution together with its `varinfo`, its own
-replayable `rng`, and an accumulated `logweight`. It also serves as the particle Gibbs
-sampler state, aliased `PGState` below.
+replayable `rng`, and an accumulated `logweight`. It also serves directly as the particle
+Gibbs sampler state (there is no separate state struct).
 """
 mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
@@ -551,22 +551,17 @@ function SMC(scheme::AbstractResampler, threshold::Real; kwargs...)
     return SMC(ESSResampler(threshold, scheme); kwargs...)
 end
 
-struct SMCState{P<:AbstractVector,W<:AbstractVector}
-    particles::P
-    weights::W
-    index::Int
-    logevidence::DynamicPPL.LogProbType
-end
-
+# SMC is a single weighted sweep, not a Markov chain: rather than fake an iteration through
+# AbstractMCMC's step loop (returning the population one particle at a time), we run the sweep
+# and bundle the whole population into the chain in one shot. `discard_initial`/`thinning`
+# therefore have nothing to apply to.
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     sampler::SMC,
-    N::Integer;
+    nparticles::Integer;
     check_model=true,
     chain_type=DEFAULT_CHAIN_TYPE,
-    initial_params=Turing.Inference.init_strategy(sampler),
-    progress=PROGRESS[],
     discard_initial=0,
     thinning=1,
     verbose=false,
@@ -574,62 +569,26 @@ function AbstractMCMC.sample(
 )
     check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
-    # SMC is not a Markov chain, so these AbstractMCMC knobs do not apply. Consume them here
-    # rather than forwarding them to `mcmcsample` (which would `BoundsError`, see #1811).
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
     end
-    chain = AbstractMCMC.mcmcsample(
-        rng,
-        model,
-        sampler,
-        N;
-        chain_type,
-        initial_params,
-        progress,
-        nparticles=N,
-        kwargs...,
-    )
-    post_sample_hook(chain, sampler; verbose)
-    return chain
-end
-
-# The whole sweep runs on the first step; later steps read off the population one particle at
-# a time (SMC returns a weighted sample, not a chain).
-function AbstractMCMC.step(
-    rng::AbstractRNG,
-    model::DynamicPPL.Model,
-    sampler::SMC;
-    nparticles::Int,
-    discard_sample=false,
-    kwargs...,
-)
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
     logZ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     weights = normalized_weights(particles)
-
-    stats = (; weight=weights[1], logevidence=logZ)
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(particles[1].varinfo, stats)
-    return transition, SMCState(particles, weights, 2, logZ)
-end
-
-function AbstractMCMC.step(
-    ::AbstractRNG,
-    ::DynamicPPL.Model,
-    ::SMC,
-    state::SMCState;
-    discard_sample=false,
-    kwargs...,
-)
-    i = state.index
-    stats = (; weight=state.weights[i], logevidence=state.logevidence)
-    transition = if discard_sample
-        nothing
-    else
-        DynamicPPL.ParamsWithStats(deepcopy(state.particles[i].varinfo), stats)
+    # One final resampling step, so the returned particles are an equal-weight sample. The
+    # sweep ends on a reweight, leaving the population weighted; resampling once here makes the
+    # result a standard unweighted chain (so `mean(chain[...])` and friends need no weighting),
+    # at the cost of a little resampling variance. Unconditional -- unlike the ESS-gated
+    # resampling inside the sweep.
+    ancestors = resample_indices(rng, sampler.resampler, weights, nparticles)
+    transitions = map(ancestors) do a
+        DynamicPPL.ParamsWithStats(particles[a].varinfo, (; logevidence=logZ))
     end
-    return transition, SMCState(state.particles, state.weights, i + 1, state.logevidence)
+    chain = AbstractMCMC.bundle_samples(
+        transitions, model, sampler, nothing, chain_type; kwargs...
+    )
+    post_sample_hook(chain, sampler; verbose)
+    return chain
 end
 
 #
@@ -679,9 +638,8 @@ end
 const CSMC = PG
 
 # PG's sampler state is just the retained `Particle`: it already carries the reference
-# trajectory's `varinfo` and `rng` (its `task`/`logweight` are then unused), so we alias
-# rather than define a separate struct.
-const PGState = Particle
+# trajectory's `varinfo` and `rng` (its `task`/`logweight` are then unused), so there is no
+# dedicated state struct.
 
 # First iteration: an ordinary (unconditional) particle sweep.
 function AbstractMCMC.step(
@@ -701,7 +659,7 @@ function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     sampler::PG,
-    state::PGState;
+    state::Particle;
     discard_sample=false,
     kwargs...,
 )
@@ -733,10 +691,10 @@ end
 # Gibbs interface
 #
 
-gibbs_get_raw_values(state::PGState) = DynamicPPL.get_raw_values(state.varinfo)
+gibbs_get_raw_values(state::Particle) = DynamicPPL.get_raw_values(state.varinfo)
 
 function gibbs_update_state!!(
-    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
+    ::PG, state::Particle, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
     init = DynamicPPL.InitFromParams(global_vals, nothing)
     # Re-initialise the reference varinfo with the values conditioned by other Gibbs
