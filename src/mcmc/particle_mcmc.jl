@@ -32,8 +32,8 @@ import Random123
 #
 # A counter-based RNG that records the seed used at each model step, so that a particle's
 # trajectory can be replayed exactly: the conditional-SMC reference regenerates itself by
-# replaying its recorded seeds. This section comes first because `Particle` and `PGState`
-# name `TracedRNG` in their type signatures.
+# replaying its recorded seeds. This section comes first because `Particle` names `TracedRNG`
+# in its type signature.
 
 """
     TracedRNG([rng = Random.default_rng()])
@@ -135,7 +135,8 @@ DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
     Particle(model, varinfo, rng::TracedRNG)
 
 A single particle: a suspended `model` execution together with its `varinfo`, its own
-replayable `rng`, and an accumulated `logweight`.
+replayable `rng`, and an accumulated `logweight`. It also serves as the particle Gibbs
+sampler state, aliased `PGState` below.
 """
 mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
@@ -670,10 +671,10 @@ end
 "Conditional SMC, an alias for [`PG`](@ref)."
 const CSMC = PG
 
-struct PGState{V<:DynamicPPL.AbstractVarInfo,R<:TracedRNG}
-    varinfo::V
-    rng::R
-end
+# PG's sampler state is just the retained `Particle`: it already carries the reference
+# trajectory's `varinfo` and `rng` (its `task`/`logweight` are then unused), so we alias
+# rather than define a separate struct.
+const PGState = Particle
 
 # First iteration: an ordinary (unconditional) particle sweep.
 function AbstractMCMC.step(
@@ -716,7 +717,7 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
     else
         DynamicPPL.ParamsWithStats(deepcopy(retained.varinfo), (; logevidence=logZ))
     end
-    return transition, PGState(retained.varinfo, retained.rng)
+    return transition, retained
 end
 
 #
@@ -729,6 +730,11 @@ function gibbs_update_state!!(
     ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
     init = DynamicPPL.InitFromParams(global_vals, nothing)
-    new_vi = last(DynamicPPL.init!!(model, state.varinfo, init, DynamicPPL.UnlinkAll()))
-    return PGState(new_vi, state.rng)
+    # Re-initialise the reference varinfo with the values conditioned by other Gibbs
+    # components. Mutating in place is safe: the caller replaces this state with the value we
+    # return and never reads the pre-update one again.
+    state.varinfo = last(
+        DynamicPPL.init!!(model, state.varinfo, init, DynamicPPL.UnlinkAll())
+    )
+    return state
 end

@@ -17,8 +17,7 @@ using Turing.Inference:
     rewind!,
     refresh!,
     sweep!,
-    normalized_weights,
-    PGState
+    normalized_weights
 using Distributions: Bernoulli, Beta, Gamma, Normal, Uniform, Categorical, sample
 using FlexiChains: VNChain, has_same_data
 using Random: Random, Xoshiro
@@ -255,9 +254,7 @@ end
             draw(ps) = ps[rand(rng, Categorical(normalized_weights(ps)))]
             particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:N]
             sweep!(rng, particles, ESSResampler(0.5), false)
-            state = let p = draw(particles)
-                PGState(p.varinfo, p.rng)
-            end
+            state = draw(particles)
             allok = true
             for _ in 1:nsteps
                 ref = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)))
@@ -267,8 +264,7 @@ end
                 )
                 sweep!(rng, parts, ESSResampler(0.5), false; conditional=true)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
-                p = draw(parts)
-                state = PGState(p.varinfo, p.rng)
+                state = draw(parts)
             end
             return allok, length(state.rng.keys)
         end
