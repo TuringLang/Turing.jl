@@ -137,16 +137,22 @@ DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 A single particle: a suspended `model` execution together with its `varinfo`, its own
 replayable `rng`, and an accumulated `logweight`.
 """
-mutable struct Particle
+mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
     # through Libtask's (already type-unstable) taped globals, so this costs nothing extra.
     varinfo::DynamicPPL.AbstractVarInfo
-    rng::TracedRNG
-    logweight::DynamicPPL.LogProbType
+    rng::RT
+    # `logweight` tracks whatever `DynamicPPL.LogProbType` is, so weights follow suit if it
+    # is ever changed.
+    logweight::WT
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
-    # particle as its taped globals (a back-reference).
-    Particle(vi, rng) = new(vi, rng, zero(DynamicPPL.LogProbType))
+    # particle as its taped globals (a back-reference). This has to be an inner constructor
+    # for that reason: `task` is left undefined here and set immediately after.
+    function Particle(vi::DynamicPPL.AbstractVarInfo, rng::RT) where {RT<:TracedRNG}
+        w = zero(DynamicPPL.LogProbType)
+        return new{RT,typeof(w)}(vi, rng, w)
+    end
 end
 
 function Particle(
