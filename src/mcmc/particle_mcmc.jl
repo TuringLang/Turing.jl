@@ -3,7 +3,7 @@
 ###
 ### Key design.
 ### A probabilistic model becomes a particle filter by reading each `observe` statement as one
-### filtering step. Evaluated under `ParticleMCMCContext`, every likelihood term calls
+### filtering step. Evaluated under `SMCContext`, every likelihood term calls
 ### `Libtask.produce`, so a *particle* is a suspended model execution: we `advance!` it to its
 ### next `observe`, take the produced log-likelihood as its weight, then resample. SMC is one
 ### such sweep; particle Gibbs (PG/CSMC) runs a *conditional* sweep -- one particle is a fixed
@@ -119,17 +119,17 @@ function error_if_threadsafe_eval(model::DynamicPPL.Model)
 end
 
 """
-    ParticleMCMCContext
+    SMCContext
 
 Leaf context marking a model evaluation as a particle-filter step: `tilde_assume!!` draws
 from the prior using the particle's [`TracedRNG`](@ref), and `tilde_observe!!` scores the
 observation and `Libtask.produce`s the increment as the particle's weight.
 """
-struct ParticleMCMCContext <: DynamicPPL.AbstractContext end
+struct SMCContext <: DynamicPPL.AbstractContext end
 
 # `OnlyAccsVarInfo` needs a parameter eltype; `Any` is fine here since particle MCMC never
 # involves AD or tracer types (see the `get_param_eltype` docstring in DynamicPPL).
-DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::ParticleMCMCContext) = Any
+DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 
 """
     Particle(model, varinfo, rng::TracedRNG)
@@ -152,7 +152,7 @@ end
 function Particle(
     model::DynamicPPL.Model, varinfo::DynamicPPL.AbstractVarInfo, rng::TracedRNG
 )
-    model = DynamicPPL.setleafcontext(model, ParticleMCMCContext())
+    model = DynamicPPL.setleafcontext(model, SMCContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
     particle = Particle(deepcopy(varinfo), rng)
     particle.task = Libtask.TapedTask(particle, model.f, args...; kwargs...)
@@ -195,11 +195,7 @@ function advance!(particle::Particle, isref::Bool)
 end
 
 function DynamicPPL.tilde_assume!!(
-    ::ParticleMCMCContext,
-    dist::Distribution,
-    vn::VarName,
-    template,
-    ::DynamicPPL.AbstractVarInfo,
+    ::SMCContext, dist::Distribution, vn::VarName, template, ::DynamicPPL.AbstractVarInfo
 )
     particle = Libtask.get_taped_globals(Particle)
     ctx = DynamicPPL.InitContext(
@@ -216,7 +212,7 @@ end
 # inside `acclogp` -- keeps the produced weight in step with the accumulated log-likelihood
 # (no one-step lag) and lets `@addlogprob!` terms reach the accumulator, not just the weight.
 function DynamicPPL.tilde_observe!!(
-    ::ParticleMCMCContext,
+    ::SMCContext,
     dist::Distribution,
     left,
     vn::Union{VarName,Nothing},
