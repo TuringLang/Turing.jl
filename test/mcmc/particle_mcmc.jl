@@ -32,9 +32,9 @@ using Turing
         @test SMC(0.6).resampler == ESSResampler(0.6)
         @test SMC(Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
         @test SMC(Systematic()).resampler == Systematic()
-        @test SMC().threaded == false
-        @test SMC(; threaded=true).threaded == true
-        @test SMC(Systematic(); threaded=true).threaded == true
+        @test SMC().multithreaded == false
+        @test SMC(; multithreaded=true).multithreaded == true
+        @test SMC(Systematic(); multithreaded=true).multithreaded == true
     end
 
     @testset "basic model" begin
@@ -114,8 +114,8 @@ using Turing
         @test chains_smc[:logevidence] ≈ fill(smc_logevidence, 100)
     end
 
-    @testset "threaded execution matches serial" begin
-        # Particles are seeded serially before the parallel reweighting, so `threaded=true`
+    @testset "multithreaded execution matches serial" begin
+        # Particles are seeded serially before the parallel reweighting, so `multithreaded=true`
         # must reproduce the serial draws exactly (bit for bit), whatever the thread count.
         @model function coinflip(y)
             p ~ Beta(1, 1)
@@ -125,8 +125,8 @@ using Turing
         end
         model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
         serial = sample(StableRNG(23), model, SMC(), 200)
-        threaded = sample(StableRNG(23), model, SMC(; threaded=true), 200)
-        @test serial[@varname(p)] == threaded[@varname(p)]
+        multithreaded = sample(StableRNG(23), model, SMC(; multithreaded=true), 200)
+        @test serial[@varname(p)] == multithreaded[@varname(p)]
     end
 
     @testset "refuses to run threadsafe eval" begin
@@ -177,9 +177,9 @@ end
         @test PG(60, 0.6).resampler == ESSResampler(0.6)
         @test PG(80, Multinomial(), 0.6).resampler == ESSResampler(0.6, Multinomial())
         @test PG(100, Systematic()).resampler == Systematic()
-        @test PG(10).threaded == false
-        @test PG(10; threaded=true).threaded == true
-        @test PG(80, Multinomial(), 0.6; threaded=true).threaded == true
+        @test PG(10).multithreaded == false
+        @test PG(10; multithreaded=true).multithreaded == true
+        @test PG(80, Multinomial(), 0.6; multithreaded=true).multithreaded == true
     end
 
     @testset "chain log-density metadata" begin
@@ -210,7 +210,7 @@ end
         @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
     end
 
-    @testset "threaded execution matches serial" begin
+    @testset "multithreaded execution matches serial" begin
         # Threading the reweighting must not perturb the reference-replay bookkeeping, so the
         # conditional sweeps have to reproduce the serial draws exactly, whatever the thread
         # count.
@@ -222,8 +222,8 @@ end
         end
         model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
         serial = sample(StableRNG(23), model, PG(10), 200)
-        threaded = sample(StableRNG(23), model, PG(10; threaded=true), 200)
-        @test serial[@varname(p)] == threaded[@varname(p)]
+        multithreaded = sample(StableRNG(23), model, PG(10; multithreaded=true), 200)
+        @test serial[@varname(p)] == multithreaded[@varname(p)]
     end
 
     # https://github.com/TuringLang/Turing.jl/issues/1598

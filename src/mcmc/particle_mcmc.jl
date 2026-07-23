@@ -413,7 +413,7 @@ normalized_weights(particles) = softmax(logweights(particles))
 logevidence(particles) = logsumexp(logweights(particles))
 
 # Advance one particle by one observation, folding its incremental weight in; return `true`
-# once it has finished (produced nothing). Factored out so the serial and threaded loops in
+# once it has finished (produced nothing). Factored out so the serial and multithreaded loops in
 # `reweight!` share one body.
 function advance_particle!(p::Particle, isref::Bool)
     score = advance!(p, isref)
@@ -425,13 +425,20 @@ end
 # Advance every particle by one observation; return `true` once all have finished. A model
 # whose number of observations varies across executions leaves particles out of step.
 #
+# `multithreaded` is *within-sweep* parallelism -- spreading this sweep's particle evaluations
+# across threads. It is a separate axis from AbstractMCMC's chain-level ensemble
+# (`MCMCThreads`/`MCMCDistributed`, which runs whole chains independently); the two compose.
+# Only threading is offered here, not distribution: particles resample every step (all-to-all)
+# and are live Libtask tasks, so spreading one sweep across processes would be communication-
+# bound rather than a speed-up.
+#
 # Each particle advances only its own state (rng, varinfo, task), and its rng was already
-# seeded serially in `resample_propagate!`, so the threaded loop is race-free and gives
+# seeded serially in `resample_propagate!`, so the multithreaded loop is race-free and gives
 # results identical to the serial one. Only the model evaluations parallelise; the shared
 # sampler rng is untouched here.
-function reweight!(particles, conditional::Bool, threaded::Bool)
+function reweight!(particles, conditional::Bool, multithreaded::Bool)
     n = length(particles)
-    if threaded
+    if multithreaded
         # A shared counter would race, so collect per-particle results and tally afterwards.
         finished = Vector{Bool}(undef, n)
         Threads.@threads for i in 1:n
@@ -485,13 +492,13 @@ end
 
 # Run a full particle sweep in place, returning the log-evidence estimate.
 function sweep!(
-    rng::AbstractRNG, particles, resampler, threaded::Bool; conditional::Bool=false
+    rng::AbstractRNG, particles, resampler, multithreaded::Bool; conditional::Bool=false
 )
     logZ = zero(DynamicPPL.LogProbType)
     while true
         resample_propagate!(rng, particles, resampler, conditional)
         logZ0 = logevidence(particles)
-        done = reweight!(particles, conditional, threaded)
+        done = reweight!(particles, conditional, multithreaded)
         # Each observation contributes the log-ratio of total weight it adds; summed over the
         # sweep these telescope into an estimate of the model's log-evidence log p(y).
         logZ += logevidence(particles) - logZ0
@@ -519,20 +526,20 @@ struct SMC{R<:AbstractResampler} <: ParticleInference
     "resampling scheme"
     resampler::R
     "reweight the particles across threads within each sweep"
-    threaded::Bool
-    function SMC(resampler::R; threaded::Bool=false) where {R<:AbstractResampler}
-        return new{R}(resampler, threaded)
+    multithreaded::Bool
+    function SMC(resampler::R; multithreaded::Bool=false) where {R<:AbstractResampler}
+        return new{R}(resampler, multithreaded)
     end
 end
 
 """
-    SMC([resampler = ESSResampler(0.5)]; threaded = false)
-    SMC([scheme = Stratified(), ]threshold; threaded = false)
+    SMC([resampler = ESSResampler(0.5)]; multithreaded = false)
+    SMC([scheme = Stratified(), ]threshold; multithreaded = false)
 
 Sequential Monte Carlo sampler. By default stratified resampling is triggered whenever the
 effective sample size drops below half the number of particles.
 
-Set `threaded = true` to evaluate the particles across threads within each sweep; results are
+Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
 
 The resampling scheme types (`Stratified`, `Systematic`, `Multinomial`, `ESSResampler`) are
@@ -598,7 +605,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
-    logZ = sweep!(rng, particles, sampler.resampler, sampler.threaded)
+    logZ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     weights = normalized_weights(particles)
 
     stats = (; weight=weights[1], logevidence=logZ)
@@ -644,22 +651,22 @@ struct PG{R<:AbstractResampler} <: ParticleInference
     "resampling scheme"
     resampler::R
     "reweight the particles across threads within each sweep"
-    threaded::Bool
+    multithreaded::Bool
     function PG(
-        nparticles::Int, resampler::R; threaded::Bool=false
+        nparticles::Int, resampler::R; multithreaded::Bool=false
     ) where {R<:AbstractResampler}
-        return new{R}(nparticles, resampler, threaded)
+        return new{R}(nparticles, resampler, multithreaded)
     end
 end
 
 """
-    PG(n, [resampler = ESSResampler(0.5)]; threaded = false)
-    PG(n, [scheme = Stratified(), ]threshold; threaded = false)
+    PG(n, [resampler = ESSResampler(0.5)]; multithreaded = false)
+    PG(n, [scheme = Stratified(), ]threshold; multithreaded = false)
 
 Particle Gibbs sampler with `n` particles. By default stratified resampling is triggered
 whenever the effective sample size drops below half the number of particles.
 
-Set `threaded = true` to evaluate the particles across threads within each sweep; results are
+Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
 """
 PG(n::Int; kwargs...) = PG(n, ESSResampler(0.5); kwargs...)
@@ -684,7 +691,7 @@ function AbstractMCMC.step(
     particles = [
         Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:(sampler.nparticles)
     ]
-    logZ = sweep!(rng, particles, sampler.resampler, sampler.threaded)
+    logZ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
 end
 
@@ -704,7 +711,9 @@ function AbstractMCMC.step(
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
     end
-    logZ = sweep!(rng, particles, sampler.resampler, sampler.threaded; conditional=true)
+    logZ = sweep!(
+        rng, particles, sampler.resampler, sampler.multithreaded; conditional=true
+    )
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
 end
 
