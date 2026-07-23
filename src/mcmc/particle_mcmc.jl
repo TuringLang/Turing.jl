@@ -237,7 +237,7 @@ function DynamicPPL.tilde_observe!!(
         DynamicPPL.DefaultContext(), dist, left, vn, template, particle.varinfo
     )
     particle.varinfo = vi
-    Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)  # increment this observation added
+    Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)
     return left, vi
 end
 
@@ -394,8 +394,7 @@ end
 ESSResampler(threshold::Real) = ESSResampler(threshold, Stratified())
 
 function should_resample(resampler::ESSResampler, weights)
-    ess = inv(sum(abs2, weights))
-    return ess ≤ resampler.threshold * length(weights)
+    return ess(weights) ≤ resampler.threshold * length(weights)
 end
 function resample_indices(rng::AbstractRNG, resampler::ESSResampler, weights, n::Integer)
     return resample_indices(rng, resampler.scheme, weights, n)
@@ -410,7 +409,9 @@ end
 
 logweights(particles) = [p.logweight for p in particles]
 normalized_weights(particles) = softmax(logweights(particles))
-logevidence(particles) = logsumexp(logweights(particles))
+log_normalizing_constant(particles) = logsumexp(logweights(particles))
+"Effective sample size of a normalised weight vector, `1 / Σ wᵢ²`."
+ess(weights) = inv(sum(abs2, weights))
 
 # Advance one particle by one observation, folding its incremental weight in; return `true`
 # once it has finished (produced nothing). Factored out so the serial and multithreaded loops in
@@ -490,21 +491,27 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler, conditional
     return nothing
 end
 
-# Run a full particle sweep in place, returning the log-evidence estimate.
+# Run a full particle sweep in place, returning the log-evidence estimate and the
+# per-observation effective sample sizes.
 function sweep!(
     rng::AbstractRNG, particles, resampler, multithreaded::Bool; conditional::Bool=false
 )
     logZ = zero(DynamicPPL.LogProbType)
+    ess_per_step = Float64[]
     while true
         resample_propagate!(rng, particles, resampler, conditional)
-        logZ0 = logevidence(particles)
+        logZ0 = log_normalizing_constant(particles)
         done = reweight!(particles, conditional, multithreaded)
         # Each observation contributes the log-ratio of total weight it adds; summed over the
         # sweep these telescope into an estimate of the model's log-evidence log p(y).
-        logZ += logevidence(particles) - logZ0
+        logZ += log_normalizing_constant(particles) - logZ0
         done && break
+        # Post-reweight ESS for this observation: a degeneracy diagnostic (low ESS means few
+        # particles carry the weight). After the break, so the finishing pass -- which adds no
+        # observation and leaves the weights unchanged -- contributes no spurious entry.
+        push!(ess_per_step, ess(normalized_weights(particles)))
     end
-    return logZ
+    return logZ, ess_per_step
 end
 
 #
@@ -573,7 +580,7 @@ function AbstractMCMC.sample(
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
     end
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
-    logZ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
+    logZ, ess_per_step = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     weights = normalized_weights(particles)
     # One final resampling step, so the returned particles are an equal-weight sample. The
     # sweep ends on a reweight, leaving the population weighted; resampling once here makes the
@@ -581,8 +588,12 @@ function AbstractMCMC.sample(
     # at the cost of a little resampling variance. Unconditional -- unlike the ESS-gated
     # resampling inside the sweep.
     ancestors = resample_indices(rng, sampler.resampler, weights, nparticles)
+    # `log_normalizing_constant` and `ess_per_step` are sweep-level, so every returned particle carries the
+    # same values.
     transitions = map(ancestors) do a
-        DynamicPPL.ParamsWithStats(particles[a].varinfo, (; logevidence=logZ))
+        DynamicPPL.ParamsWithStats(
+            particles[a].varinfo, (; log_normalizing_constant=logZ, ess_per_step)
+        )
     end
     chain = AbstractMCMC.bundle_samples(
         transitions, model, sampler, nothing, chain_type; kwargs...
@@ -649,7 +660,7 @@ function AbstractMCMC.step(
     particles = [
         Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:(sampler.nparticles)
     ]
-    logZ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
+    logZ, _ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
 end
 
@@ -669,7 +680,7 @@ function AbstractMCMC.step(
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
     end
-    logZ = sweep!(
+    logZ, _ = sweep!(
         rng, particles, sampler.resampler, sampler.multithreaded; conditional=true
     )
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
@@ -682,7 +693,9 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(deepcopy(retained.varinfo), (; logevidence=logZ))
+        DynamicPPL.ParamsWithStats(
+            deepcopy(retained.varinfo), (; log_normalizing_constant=logZ)
+        )
     end
     return transition, retained
 end

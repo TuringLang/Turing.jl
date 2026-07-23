@@ -91,7 +91,7 @@ using Turing
         test_rng_respected(SMC())
     end
 
-    @testset "logevidence" begin
+    @testset "log_normalizing_constant" begin
         @model function test()
             a ~ Normal(0, 1)
             x ~ Bernoulli(1)
@@ -105,13 +105,14 @@ using Turing
         chains_smc = sample(StableRNG(100), test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
-        # For SMC, the chain stores the collective logevidence of the sampled trajectories
+        # For SMC, the chain stores the collective log_normalizing_constant of the sampled trajectories
         # as a statistic (which is the same for all 'iterations'). So we can just pick the
         # first one.
-        smc_logevidence = first(chains_smc[:logevidence])
-        @test smc_logevidence ≈ -2 * log(2)
+        smc_log_normalizing_constant = first(chains_smc[:log_normalizing_constant])
+        @test smc_log_normalizing_constant ≈ -2 * log(2)
         # Check that they're all equal.
-        @test chains_smc[:logevidence] ≈ fill(smc_logevidence, 100)
+        @test chains_smc[:log_normalizing_constant] ≈
+            fill(smc_log_normalizing_constant, 100)
     end
 
     @testset "multithreaded execution matches serial" begin
@@ -190,7 +191,7 @@ end
         test_rng_respected(PG(10))
     end
 
-    @testset "logevidence" begin
+    @testset "log_normalizing_constant" begin
         @model function test()
             a ~ Normal(0, 1)
             x ~ Bernoulli(1)
@@ -204,10 +205,10 @@ end
         chains_pg = sample(StableRNG(468), test(), PG(10), 100)
 
         @test all(isone, chains_pg[:x])
-        pg_logevidence = mean(chains_pg[:logevidence])
-        @test pg_logevidence ≈ -2 * log(2) atol = 0.01
+        pg_log_normalizing_constant = mean(chains_pg[:log_normalizing_constant])
+        @test pg_log_normalizing_constant ≈ -2 * log(2) atol = 0.01
         # Should be the same for all iterations.
-        @test chains_pg[:logevidence] ≈ fill(pg_logevidence, 100)
+        @test chains_pg[:log_normalizing_constant] ≈ fill(pg_log_normalizing_constant, 100)
     end
 
     @testset "multithreaded execution matches serial" begin
