@@ -204,6 +204,11 @@ function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template, ::DynamicPPL.AbstractVarInfo
 )
     particle = Libtask.get_taped_globals(Particle)
+    # Always draw from the prior. A value is never already present here: particle varinfos
+    # start empty, each variable is assumed exactly once, and the CSMC reference reproduces its
+    # trajectory by replaying its RNG seeds, not by reusing stored values. Reusing an existing
+    # value (via `InitFromParams`) would only matter for a pre-populated varinfo, which
+    # particle sampling does not currently create.
     ctx = DynamicPPL.InitContext(
         particle.rng, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
     )
