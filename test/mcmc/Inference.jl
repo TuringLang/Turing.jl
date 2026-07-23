@@ -394,13 +394,13 @@ using Turing
 
         N = 1_000
 
-        # For SMC, the chain stores the collective logevidence of the sampled trajectories
+        # For SMC, the chain stores the collective log_normalizing_constant of the sampled trajectories
         # as a statistic (which is the same for all 'iterations'). So we can just pick the
         # first one.
         res_smc = sample(StableRNG(seed), test(), smc, N)
         @test all(isone, res_smc[@varname(x)])
-        smc_logevidence = first(res_smc[:logevidence])
-        @test smc_logevidence ≈ 2 * log(0.5)
+        smc_log_normalizing_constant = first(res_smc[:log_normalizing_constant])
+        @test smc_log_normalizing_constant ≈ 2 * log(0.5)
 
         res_pg = sample(StableRNG(seed), test(), pg, 100)
         @test all(isone, res_pg[@varname(x)])
