@@ -123,7 +123,7 @@ end
 
 Leaf context marking a model evaluation as a particle-filter step: `tilde_assume!!` draws
 from the prior using the particle's [`TracedRNG`](@ref), and `tilde_observe!!` scores the
-observation, which [`ProduceLogLikelihoodAccumulator`](@ref) turns into a `Libtask.produce`.
+observation and `Libtask.produce`s the increment as the particle's weight.
 """
 struct ParticleMCMCContext <: DynamicPPL.AbstractContext end
 
@@ -210,6 +210,11 @@ function DynamicPPL.tilde_assume!!(
     return x, vi
 end
 
+# Reweighting invariant: a particle's per-step score is `produce`d from here and from the
+# `accloglikelihood!!` overload (for `@addlogprob!`), *after* the likelihood accumulator is
+# updated, and equals the accumulator's increment. Producing after the update -- rather than
+# inside `acclogp` -- keeps the produced weight in step with the accumulated log-likelihood
+# (no one-step lag) and lets `@addlogprob!` terms reach the accumulator, not just the weight.
 function DynamicPPL.tilde_observe!!(
     ::ParticleMCMCContext,
     dist::Distribution,
@@ -219,19 +224,23 @@ function DynamicPPL.tilde_observe!!(
     ::DynamicPPL.AbstractVarInfo,
 )
     particle = Libtask.get_taped_globals(Particle)
+    before = DynamicPPL.getloglikelihood(particle.varinfo)
     left, vi = DynamicPPL.tilde_observe!!(
         DynamicPPL.DefaultContext(), dist, left, vn, template, particle.varinfo
     )
     particle.varinfo = vi
+    Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)  # increment this observation added
     return left, vi
 end
 
 """
     ProduceLogLikelihoodAccumulator{T} <: LogProbAccumulator{T}
 
-Like `LogLikelihoodAccumulator`, but `Libtask.produce`s each likelihood increment as it is
-accumulated. Because `@addlogprob!` also routes through `acclogp`, it too triggers a
-`produce`, so manual likelihood terms reweight particles correctly (issue #1996).
+A marker likelihood accumulator: it accumulates exactly like `LogLikelihoodAccumulator`, but
+its distinct type flags a varinfo as belonging to a particle, so the produce sites know to
+emit. The produce happens in [`tilde_observe!!`](@ref) (observations) and the
+`accloglikelihood!!` overload below (`@addlogprob!`, issue #1996) -- in each case from the
+increase in accumulated log-likelihood, keeping the accumulator the single source of truth.
 """
 struct ProduceLogLikelihoodAccumulator{T<:Real} <: DynamicPPL.LogProbAccumulator{T}
     logp::T
@@ -239,11 +248,8 @@ end
 
 DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
 DynamicPPL.logp(acc::ProduceLogLikelihoodAccumulator) = acc.logp
-
-function DynamicPPL.acclogp(acc::ProduceLogLikelihoodAccumulator, val)
-    Libtask.produce(val)  # the only difference from `LogLikelihoodAccumulator`
-    return ProduceLogLikelihoodAccumulator(acc.logp + val)
-end
+# `acclogp` is inherited from the generic `LogProbAccumulator` method (plain addition); the
+# produce is handled by the produce sites, not here.
 
 function DynamicPPL.accumulate_assume!!(
     acc::ProduceLogLikelihoodAccumulator, val, tval, logjac, vn, dist, template
@@ -256,27 +262,43 @@ function DynamicPPL.accumulate_observe!!(
     return DynamicPPL.acclogp(acc, Distributions.loglikelihood(dist, left))
 end
 
-# Tell Libtask which calls may contain `produce`, walking up the call stack from `acclogp`.
-# Over-approximating is safe (a wrongly-marked call just gets instrumented); missing a real
-# one is not, so we err towards marking.
-Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
-# Merging accumulators (across submodels or Gibbs blocks) can add a
-# ProduceLogLikelihoodAccumulator to a plain one, which routes through the producing
-# `acclogp` -- so this `+` may itself produce.
-function Libtask.might_produce(
-    ::Type{
-        <:Tuple{
-            typeof(Base.:+),
-            ProduceLogLikelihoodAccumulator,
-            DynamicPPL.LogLikelihoodAccumulator,
-        },
-    },
+# `@addlogprob!` bypasses `tilde_observe!!`, so its produce is emitted here instead -- again
+# only once the accumulator has been updated. Gated on the producing accumulator, so outside
+# particle evaluation this reduces to the default (non-producing) method (issue #1996).
+function DynamicPPL.accloglikelihood!!(
+    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
-    return true
+    acc_name = Val(:LogLikelihood)
+    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
+        return vi
+    end
+    is_particle = DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
+    before = is_particle ? DynamicPPL.getloglikelihood(vi) : zero(DynamicPPL.LogProbType)
+    vi = DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
+    if is_particle
+        particle = Libtask.get_taped_globals(Particle)
+        particle.varinfo = vi
+        Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)
+    end
+    return vi
 end
-Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
+
+# Tell Libtask which calls may contain a `produce`, so it instruments them. The produce lives
+# in `tilde_observe!!` and `accloglikelihood!!`; the rest of each chain is marked so Libtask
+# tapes through to reach it. Over-approximating is safe (a wrongly-marked call just gets
+# instrumented); missing a real one is not, so we err towards marking.
+#
+#   observe:      tilde_observe!! accumulates (accumulate_observe!! -> acclogp), then produces
+#   @addlogprob!: accloglikelihood!! accumulates (map_accumulator!! -> acclogp), then produces
+#                 (the `@addlogprob! (; ...)` NamedTuple form routes through acclogp!! first)
+#   Gibbs:        GibbsContext turns a tilde_assume!! into a tilde_observe!!
 Libtask.@might_produce(DynamicPPL.tilde_observe!!)
-Libtask.@might_produce(DynamicPPL.tilde_assume!!)  # GibbsContext turns assumes into observes
+Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
+Libtask.@might_produce(DynamicPPL.acclogp)
+Libtask.@might_produce(DynamicPPL.tilde_assume!!)
+Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
+Libtask.@might_produce(DynamicPPL.map_accumulator!!)
+Libtask.@might_produce(DynamicPPL.acclogp!!)
 # Every model / submodel evaluator takes a `DynamicPPL.Model`, so this covers them all.
 # See https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
