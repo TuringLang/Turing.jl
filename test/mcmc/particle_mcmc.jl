@@ -279,6 +279,35 @@ end
         @test nkeys == length(y) + 1        # keys stay aligned with the trajectory length
     end
 
+    @testset "reference is pinned to retained values under re-conditioning" begin
+        # Finding 1 regression. In Gibbs the model is re-conditioned between sweeps, so the
+        # CSMC reference must reproduce the *retained values* rather than re-draw them from the
+        # (now different) prior. Retain a trajectory under one conditioning, rebuild the
+        # reference under another; value-pinning keeps the trajectory, whereas re-drawing from
+        # the prior -- the pre-fix behaviour -- would follow the shifted prior instead.
+        @model function reconditioned(y)
+            a ~ Normal(0, 10)
+            x ~ Normal(a, 1)                # x's prior depends on a, owned by another component
+            return y ~ Normal(x, 1)
+        end
+        rng = StableRNG(42)
+        retained = Particle(
+            reconditioned(2.0) | (@varname(a) => 0.0), particle_varinfo(), TracedRNG(rng)
+        )
+        while advance!(retained, false) !== nothing
+        end
+        retained_vals = get_raw_values(retained.varinfo)
+        reference = Particle(
+            reconditioned(2.0) | (@varname(a) => 5.0),   # x's prior shifted far away
+            particle_varinfo(),
+            rewind!(deepcopy(retained.rng)),
+            retained_vals,
+        )
+        while advance!(reference, true) !== nothing
+        end
+        @test get_raw_values(reference.varinfo) == retained_vals
+    end
+
     @testset "addlogprob leads to reweighting" begin
         # Make sure that PG takes @addlogprob! into account. It didn't use to:
         # https://github.com/TuringLang/Turing.jl/issues/1996

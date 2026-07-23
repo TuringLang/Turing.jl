@@ -9,13 +9,14 @@
 ### such sweep; particle Gibbs (PG/CSMC) runs a *conditional* sweep -- one particle is a fixed
 ### reference trajectory -- inside an MCMC loop.
 ###
-### The reference is reproduced without storing its values: each particle's `TracedRNG`
-### records the seed it drew at every step, and the reference simply *replays* those seeds
-### (`load_state!`), regenerating its trajectory exactly. A particle forked from the reference
-### is reseeded, which flips it from replaying to sampling fresh, so branching needs no
-### per-particle flag. This is what keeps the reference handling small, and it rests on one
-### invariant: every step must draw from a fresh seed -- guaranteed by the resample/refresh in
-### `resample_propagate!` -- otherwise the recorded seeds collide and replay is wrong.
+### The reference reproduces the retained trajectory by *reusing its values*: the sampler state
+### carries those values, and the reference re-runs the model with `InitFromParams`, so it stays
+### the retained trajectory even when the model is re-conditioned between Gibbs sweeps (e.g. a
+### state-space transition prior that depends on a parameter owned by another Gibbs component).
+### A particle forked from the reference forgets the remaining values (in `reseed!`), so
+### branching samples fresh with no per-particle flag. Each particle's counter-based `TracedRNG`
+### supplies splittable, version-stable seeds that decorrelate the fresh draws across particles
+### and Julia versions.
 ###
 ### Sections below: traced RNG; model evaluation via Libtask; resampling schemes; the particle
 ### sweep; the SMC sampler; the PG/CSMC sampler; the Gibbs-component interface.
@@ -146,22 +147,35 @@ mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # `logweight` tracks whatever `DynamicPPL.LogProbType` is, so weights follow suit if it
     # is ever changed.
     logweight::WT
+    # The retained trajectory's values, which the CSMC reference reproduces by reusing them
+    # (`InitFromParams` in `tilde_assume!!`); empty for ordinary particles. `reseed!` clears it
+    # so a particle forked off the reference samples fresh beyond the fork point. Reproducing
+    # by *value* (not by replayed RNG seeds) is what keeps the reference the retained trajectory
+    # when the model is re-conditioned between Gibbs sweeps.
+    reference_values::DynamicPPL.VarNamedTuple
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
     # particle as its taped globals (a back-reference). This has to be an inner constructor
     # for that reason: `task` is left undefined here and set immediately after.
-    function Particle(vi::DynamicPPL.AbstractVarInfo, rng::RT) where {RT<:TracedRNG}
+    function Particle(
+        vi::DynamicPPL.AbstractVarInfo,
+        rng::RT,
+        reference_values::DynamicPPL.VarNamedTuple=DynamicPPL.VarNamedTuple(),
+    ) where {RT<:TracedRNG}
         w = zero(DynamicPPL.LogProbType)
-        return new{RT,typeof(w)}(vi, rng, w)
+        return new{RT,typeof(w)}(vi, rng, w, reference_values)
     end
 end
 
 function Particle(
-    model::DynamicPPL.Model, varinfo::DynamicPPL.AbstractVarInfo, rng::TracedRNG
+    model::DynamicPPL.Model,
+    varinfo::DynamicPPL.AbstractVarInfo,
+    rng::TracedRNG,
+    reference_values::DynamicPPL.VarNamedTuple=DynamicPPL.VarNamedTuple(),
 )
     model = DynamicPPL.setleafcontext(model, SMCContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
-    particle = Particle(deepcopy(varinfo), rng)
+    particle = Particle(deepcopy(varinfo), rng, reference_values)
     particle.task = Libtask.TapedTask(particle, model.f, args...; kwargs...)
     return particle
 end
@@ -176,6 +190,8 @@ from the reference forgets the reference's future. Mutates and returns `particle
 function reseed!(particle::Particle, rng::AbstractRNG)
     Random.seed!(particle.rng, rand(rng, UInt64))
     resize!(particle.rng.keys, particle.rng.count - 1)
+    # A fork samples fresh from here on, so it must forget the reference's remaining values.
+    particle.reference_values = DynamicPPL.VarNamedTuple()
     return particle
 end
 
@@ -205,14 +221,16 @@ function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template, ::DynamicPPL.AbstractVarInfo
 )
     particle = Libtask.get_taped_globals(Particle)
-    # Always draw from the prior. A value is never already present here: particle varinfos
-    # start empty, each variable is assumed exactly once, and the CSMC reference reproduces its
-    # trajectory by replaying its RNG seeds, not by reusing stored values. Reusing an existing
-    # value (via `InitFromParams`) would only matter for a pre-populated varinfo, which
-    # particle sampling does not currently create.
-    ctx = DynamicPPL.InitContext(
-        particle.rng, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
-    )
+    # Reuse the retained value (`InitFromParams`) if this particle is reproducing the CSMC
+    # reference trajectory and still carries this variable; otherwise draw from the prior.
+    # `reference_values` is empty for ordinary particles and is cleared by `reseed!` on a fork,
+    # so a fork of the reference draws fresh past the fork point (see the `Particle` fields).
+    strategy = if haskey(particle.reference_values, vn)
+        DynamicPPL.InitFromParams(particle.reference_values, nothing)
+    else
+        DynamicPPL.InitFromPrior()
+    end
+    ctx = DynamicPPL.InitContext(particle.rng, strategy, DynamicPPL.UnlinkAll())
     x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, particle.varinfo)
     particle.varinfo = vi
     return x, vi
@@ -676,7 +694,15 @@ function AbstractMCMC.step(
 )
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
-    reference = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)))
+    # The reference reproduces the retained trajectory by reusing its values (passed here and
+    # consumed by `tilde_assume!!`), so it stays that trajectory even if the model was
+    # re-conditioned since the last sweep. Its varinfo starts empty like any other particle.
+    reference = Particle(
+        model,
+        particle_varinfo(),
+        rewind!(deepcopy(state.rng)),
+        DynamicPPL.get_raw_values(state.varinfo),
+    )
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
     end
