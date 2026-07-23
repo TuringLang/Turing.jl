@@ -372,7 +372,10 @@ function resample_indices(rng::AbstractRNG, ::StratifiedResampler, weights, n::I
     s = 1
     for k in 1:n
         u = oftype(v, (k - 1) + rand(rng))
-        while v < u
+        # `s < length(weights)` guards the last particle: if `weights` sums to slightly under
+        # one (softmax rounding), `v` can fall a hair short of `u` at the final stratum and the
+        # unguarded loop would index past the end.
+        while s < length(weights) && v < u
             s += 1
             v += n * weights[s]
         end
@@ -389,7 +392,9 @@ function resample_indices(rng::AbstractRNG, ::SystematicResampler, weights, n::I
     indices = Vector{Int}(undef, n)
     s = 1
     for k in 1:n
-        while v < u
+        # See `StratifiedResampler`: `s < length(weights)` keeps the final stratum from
+        # indexing past the end when `weights` sums to slightly under one.
+        while s < length(weights) && v < u
             s += 1
             v += n * weights[s]
         end

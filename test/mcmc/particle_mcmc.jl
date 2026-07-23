@@ -17,6 +17,7 @@ using Turing.Inference:
     rewind!,
     refresh!,
     sweep!,
+    resample_indices,
     normalized_weights
 using Distributions: Bernoulli, Beta, Gamma, Normal, Uniform, Categorical, sample
 using FlexiChains: VNChain, has_same_data
@@ -68,6 +69,19 @@ using Turing
         check_numerical(chn_multi, [@varname(p)], [mean(exact)]; atol=0.1)
         # ...but the schemes are genuinely different, so the draws differ.
         @test chn_strat[@varname(p)] != chn_multi[@varname(p)]
+    end
+
+    @testset "stratified/systematic resampling never index past the end" begin
+        # softmax can return weights summing to slightly under one; the cumulative walk must
+        # not run off the end of the last stratum. Exaggerate the undersum so the (otherwise
+        # astronomically rare) overrun is hit on every seed.
+        weights = fill(0.9 / 8, 8)
+        for scheme in (StratifiedResampler(), SystematicResampler())
+            @test all(
+                all(in(1:8), resample_indices(Xoshiro(s), scheme, weights, 8)) for
+                s in 1:1000
+            )
+        end
     end
 
     @testset "errors when number of observations is not fixed" begin
