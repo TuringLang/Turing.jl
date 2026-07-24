@@ -60,7 +60,10 @@ using Turing
 
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
-            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 3_000)
+            # CSMC mixes the variance `s` slowly, so the Monte Carlo error at 3_000 draws sits
+            # close to `atol` and an unlucky seed tips it over; the estimator is unbiased, so
+            # 10_000 draws simply give comfortable headroom.
+            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 10_000)
             check_gdemo(chain; atol=0.1)
         end
 

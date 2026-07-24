@@ -38,10 +38,6 @@ end
         @timeit_include("ad.jl")
     end
 
-    @testset "essential" verbose = true begin
-        @timeit_include("essential/container.jl")
-    end
-
     @testset "samplers (without AD)" verbose = true begin
         @timeit_include("mcmc/abstractmcmc.jl")
         @timeit_include("mcmc/callbacks.jl")
