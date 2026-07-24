@@ -151,7 +151,13 @@ mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # (`InitFromParams` in `tilde_assume!!`); empty for ordinary particles. `reseed!` clears it
     # so a particle forked off the reference samples fresh beyond the fork point. Reproducing
     # by *value* (not by replayed RNG seeds) is what keeps the reference the retained trajectory
-    # when the model is re-conditioned between Gibbs sweeps.
+    # when the model is re-conditioned between Gibbs sweeps. A draw is a deterministic function
+    # x = g(u; θ) of the RNG output `u` and the distribution parameters θ (canonically the
+    # inverse-CDF, x = F⁻¹(u; θ)). Seed-replay fixes `u` and recomputes x' = g(u; θ'); value-replay
+    # reuses x' = x. These agree only when θ' = θ. Re-conditioning updates a value θ depends on
+    # (owned by another block), so θ' ≠ θ and the replayed draw moves with the changed distribution
+    # -- e.g. x ~ Normal(μ, 1) draws x = μ + Φ⁻¹(u), so after μ → μ' the same `u` gives x + (μ' − μ),
+    # not x.
     reference_values::DynamicPPL.VarNamedTuple
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
