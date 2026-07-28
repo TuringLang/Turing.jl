@@ -19,8 +19,9 @@ using Turing.Inference:
     sweep!,
     resample_indices,
     normalized_weights
-using Distributions: Bernoulli, Beta, Gamma, Normal, Uniform, Categorical, sample
+using Distributions: Bernoulli, Beta, Gamma, MvNormal, Normal, Uniform, Categorical, sample
 using FlexiChains: VNChain, has_same_data
+using LinearAlgebra: I
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
@@ -256,8 +257,9 @@ end
 
     @testset "ensuring reference consistency" begin
         # In conditional SMC the retained trajectory must be regenerated *exactly* by the
-        # reference particle on the next iteration -- this is what makes CSMC valid. It fails
-        # if the traced-RNG step counter and the recorded seeds ever fall out of alignment.
+        # reference particle on the next iteration -- this is what makes CSMC valid. Value
+        # replay must reach every latent address, and the traced-RNG step counter and recorded
+        # seeds must stay aligned with the observation boundaries.
         @model function state_space_model(y)
             ρ ~ Uniform(0, 1)
             x = Vector{Float64}(undef, length(y) + 1)
@@ -278,7 +280,13 @@ end
             state = draw(particles)
             allok = true
             for _ in 1:nsteps
-                ref = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)))
+                ref = Particle(
+                    model,
+                    particle_varinfo(),
+                    rewind!(deepcopy(state.rng)),
+                    get_raw_values(state.varinfo),
+                    copy(state.assumed_varnames),
+                )
                 parts = map(
                     i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
                     1:N,
@@ -320,10 +328,73 @@ end
             particle_varinfo(),
             rewind!(deepcopy(retained.rng)),
             retained_vals,
+            copy(retained.assumed_varnames),
         )
         while advance!(reference, true) !== nothing
         end
         @test get_raw_values(reference.varinfo) == retained_vals
+    end
+
+    @testset "value replay detects a changed latent trace" begin
+        @model function branch_changes(flag, y)
+            if flag
+                x ~ Normal()
+                μ = x
+            else
+                z ~ Normal()
+                μ = z
+            end
+            return y ~ Normal(μ, 1)
+        end
+        rng = StableRNG(91)
+        retained = Particle(branch_changes(true, 0.0), particle_varinfo(), TracedRNG(rng))
+        while advance!(retained, false) !== nothing
+        end
+        reference = Particle(
+            branch_changes(false, 0.0),
+            particle_varinfo(),
+            rewind!(deepcopy(retained.rng)),
+            get_raw_values(retained.varinfo),
+            copy(retained.assumed_varnames),
+        )
+        @test_throws "reference execution trace changed" advance!(reference, true)
+
+        @model function branch_drops(flag, y)
+            x ~ Normal()
+            if flag
+                z ~ Normal()
+            end
+            return y ~ Normal(x, 1)
+        end
+        retained = Particle(branch_drops(true, 0.0), particle_varinfo(), TracedRNG(rng))
+        while advance!(retained, false) !== nothing
+        end
+        reference = Particle(
+            branch_drops(false, 0.0),
+            particle_varinfo(),
+            rewind!(deepcopy(retained.rng)),
+            get_raw_values(retained.varinfo),
+            copy(retained.assumed_varnames),
+        )
+        @test_throws "reference execution trace changed" begin
+            while advance!(reference, true) !== nothing
+            end
+        end
+    end
+
+    @testset "value replay tracks slice assumes by their assumed address" begin
+        # `x[1:2] ~ MvNormal(...)` is assumed under the single address `x[1:2]` but stored in
+        # the retained values under the keys `x[1]`, `x[2]`. The expected-address set must
+        # therefore come from what the trajectory assumed, not from the retained values' keys,
+        # or every slice assume looks like a changed trace.
+        @model function slice_assume(y)
+            x = Vector{Float64}(undef, 2)
+            x[1:2] ~ MvNormal(zeros(2), I)
+            y[1] ~ Normal(x[1], 0.5)
+            return y[2] ~ Normal(x[2], 0.5)
+        end
+        chn = sample(StableRNG(105), slice_assume([0.4, -0.4]), PG(5), 20)
+        @test size(chn, 1) == 20
     end
 
     @testset "addlogprob leads to reweighting" begin
