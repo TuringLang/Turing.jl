@@ -392,13 +392,22 @@ end
 #
 # Resampling schemes
 #
-# On theoretical correctness: particle Gibbs (and the SMC evidence estimate) are justified
-# for resampling schemes whose offspring counts satisfy `E[Oᵏ] = N·Wᵏ` (Andrieu, Doucet &
-# Holenstein, 2010, Assumption 2). Multinomial and stratified resampling meet this and are
-# also consistent as `N → ∞`. Systematic resampling has the same expected counts, but its
-# single shared uniform makes it order-dependent and it is not consistent in general (Gerber,
-# Chopin & Whiteley, 2019), so it falls outside the particle Gibbs invariance proof. We
-# therefore default to stratified resampling and offer systematic only as an explicit choice.
+# For unconditional SMC, multinomial, stratified, and systematic resampling all have offspring
+# counts satisfying `E[Oᵏ] = N·Wᵏ`. Multinomial resampling is broadly consistent, and
+# stratified resampling is consistent under standard regularity conditions; systematic
+# resampling is order-dependent and can fail to be consistent for arbitrary particle orderings
+# (Gerber, Chopin & Whiteley, 2019), so stratified is the default unconditional scheme.
+#
+# Particle Gibbs additionally needs a valid *conditional* version of the chosen law, and
+# pinning one ordered offspring is not it: for systematic resampling the conditional
+# construction draws the grid offset from a weight-dependent mixture rather than `U[0,1]`, then
+# randomly cycles the output so the reference lands in the pinned slot (Chopin & Singh, 2015,
+# Algorithm 4, https://doi.org/10.3150/14-BEJ629; see also Finke, Johansen, Lee & Murray,
+# "Resampling in conditional SMC algorithms", https://arxiv.org/abs/2606.25603). Independent
+# multinomial draws stay valid once the reference ancestor is pinned, so `resample_propagate!`
+# uses them for every scheme in a conditional sweep. That costs mixing -- Chopin & Singh find
+# systematic resampling mixes noticeably better than multinomial in particle Gibbs -- so
+# implementing the conditional schemes properly would be a genuine improvement.
 
 abstract type AbstractResampler end
 
@@ -538,7 +547,14 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler, conditional
     n = length(particles)
     weights = normalized_weights(particles)
     if should_resample(resampler, weights)
-        ancestors = resample_indices(rng, resampler, weights, conditional ? n - 1 : n)
+        # A conditional sweep draws the `n-1` free ancestors independently from the categorical
+        # over the weights, whatever scheme `resampler` names -- see the resampling-schemes
+        # section for why the named scheme's conditional version is not simply "pin one draw".
+        ancestors = if conditional
+            resample_indices(rng, MultinomialResampler(), weights, n - 1)
+        else
+            resample_indices(rng, resampler, weights, n)
+        end
         old = copy(particles)
         seen = falses(n)
         for (slot, a) in enumerate(ancestors)
@@ -710,8 +726,11 @@ end
     PG(n, [resampler = ESSResampler(0.5)]; multithreaded = false)
     PG(n, [scheme = StratifiedResampler(), ]threshold; multithreaded = false)
 
-Particle Gibbs sampler with `n` particles. By default stratified resampling is triggered
-whenever the effective sample size drops below half the number of particles.
+Particle Gibbs sampler with `n` particles. By default resampling is triggered whenever the
+effective sample size drops below half the number of particles. The selected scheme is used
+for the unconditional first sweep; conditional sweeps draw their ancestors from the categorical
+over the weights, because the conditional version of stratified or systematic resampling is a
+different algorithm rather than the same draw with one output pinned.
 
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).

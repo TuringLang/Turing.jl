@@ -248,6 +248,42 @@ end
         @test serial[@varname(p)] == multithreaded[@varname(p)]
     end
 
+    @testset "conditional sweeps ignore the named resampling scheme" begin
+        # Conditional sweeps draw their ancestors multinomially whatever scheme is named, so
+        # sweeps differing only in that scheme must agree exactly. Bare schemes (no ESS gate)
+        # resample at every step, so the draw is exercised throughout.
+        @model function drifting(y)
+            x ~ Normal()
+            for t in eachindex(y)
+                y[t] ~ Normal(x, 1)
+            end
+        end
+        model = drifting([0.3, -0.7, 1.1])
+        function conditional_sweep(scheme)
+            rng = StableRNG(77)
+            retained = Particle(model, particle_varinfo(), TracedRNG(rng))
+            while advance!(retained, false) !== nothing
+            end
+            reference = Particle(
+                model,
+                particle_varinfo(),
+                rewind!(deepcopy(retained.rng)),
+                get_raw_values(retained.varinfo),
+                copy(retained.assumed_varnames),
+            )
+            particles = map(
+                i ->
+                    i < 5 ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference,
+                1:5,
+            )
+            sweep!(StableRNG(78), particles, scheme, false; conditional=true)
+            return map(p -> get_raw_values(p.varinfo), particles)
+        end
+        multinomial = conditional_sweep(MultinomialResampler())
+        @test conditional_sweep(StratifiedResampler()) == multinomial
+        @test conditional_sweep(SystematicResampler()) == multinomial
+    end
+
     # https://github.com/TuringLang/Turing.jl/issues/1598
     @testset "reference particle" begin
         c = sample(gdemo_default, PG(1), 1_000)
@@ -468,7 +504,7 @@ end
             return a ~ to_submodel(inner_kwarg(5.0; n=n))
         end
         m2 = outer_kwarg2(10.0)
-        chn2 = sample(StableRNG(468), m2, PG(10), 1000)
+        chn2 = sample(StableRNG(468), m2, PG(10), 2000)
         @test mean(chn2[Symbol("a.x")]) ≈ 7.5 atol = 0.3
     end
 

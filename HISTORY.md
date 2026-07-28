@@ -9,7 +9,8 @@
 Resampling schemes are now types rather than functions — `StratifiedResampler()`, `SystematicResampler()`, and `MultinomialResampler()` (in `Turing.Inference`), optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`; for example `SMC(Turing.Inference.SystematicResampler())`, `SMC(0.5)`, or `PG(10, Turing.Inference.MultinomialResampler(), 0.5)`.
 The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, …) is gone.
 
-The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows and within the theoretical guarantees for particle Gibbs, which systematic does not.
+The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows, which systematic does not.
+The selected scheme applies to unconditional sweeps; `PG` / `CSMC` draw the ancestors of a conditional sweep from the categorical over the weights, since a correct conditional version of stratified or systematic resampling is scheme-specific rather than "pin one draw and keep the rest".
 Exact draws may therefore differ from previous releases, but remain statistically consistent (the same target distribution).
 
 The rewrite also brings:
