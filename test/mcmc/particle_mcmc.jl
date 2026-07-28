@@ -159,7 +159,7 @@ using Turing
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 
-    @testset "discard_initial, thinning and initial_params are ignored" begin
+    @testset "discard_initial, thinning, initial_params and callback are ignored" begin
         @model function normal()
             a ~ Normal(4, 5)
             3 ~ Normal(a, 2)
@@ -171,6 +171,20 @@ using Turing
         @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
             normal(), SMC(), 10; initial_params=(; a=1.0)
         )
+        @test_logs (:warn, r"initial_params.*ignored") sample(
+            normal(), SMC(), 10; initial_params=DynamicPPL.InitFromUniform()
+        )
+
+        # The ensemble wrapper injects the sampler's own default `InitFromPrior()` per chain.
+        # That is not a user-specified initialisation, so it must not warn.
+        @test_logs sample(Xoshiro(1), normal(), SMC(), MCMCSerial(), 10, 2; progress=false)
+
+        # A callback is accepted only to be reported as ignored, and must not run.
+        called = false
+        @test_logs (:warn, r"callback.*ignored") sample(
+            normal(), SMC(), 10; callback=(args...; kwargs...) -> (called = true)
+        )
+        @test !called
 
         @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
         chn = sample(normal(), SMC(), 10; discard_initial=5)

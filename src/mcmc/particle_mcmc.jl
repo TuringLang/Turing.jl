@@ -661,6 +661,7 @@ function AbstractMCMC.sample(
     discard_initial=0,
     thinning=1,
     initial_params=nothing,
+    callback=nothing,
     verbose=false,
     kwargs...,
 )
@@ -669,8 +670,13 @@ function AbstractMCMC.sample(
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
     end
-    if initial_params !== nothing
+    if initial_params !== nothing && !(initial_params isa DynamicPPL.InitFromPrior)
         @warn "SMC draws its initial population from the prior; `initial_params` is ignored."
+    end
+    # Accepted only so it can be reported as ignored: AbstractMCMC's contract is one callback
+    # per step, and SMC is a single sweep, so there is no iteration to call back from.
+    if callback !== nothing
+        @warn "SMC runs one sweep rather than an MCMC loop, so there are no per-iteration callbacks; `callback` is ignored."
     end
     particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:nparticles]
     logZ, ess_per_step = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
