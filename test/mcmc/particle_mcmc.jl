@@ -497,9 +497,13 @@ end
         @test size(chn, 1) == ndraws
         ks = reduce(vcat, (reshape(collect(k), 1, :) for k in collect(chn[@varname(k)])))
         @test size(ks) == (ndraws, 4)
-        # Four standard errors of a Poisson(`tilt`) mean over `ndraws` draws, which also leaves room
-        # for the autocorrelation a Markov chain carries.
-        tol = 4 * sqrt(tilt / ndraws)
+        # `sqrt(tilt / ndraws)` is the standard error this mean would have from independent draws.
+        # A PG chain is autocorrelated, and measured across eight seeds its batch-means standard
+        # error runs about 2.3x that, so eight iid errors is roughly 3.5 real ones. The margin is
+        # there to keep the test from flaking, and it costs nothing here: the failure mode this
+        # guards against -- dropping the weight that depends on the trace's shape -- lands on the
+        # prior mean 1.0, four times the tolerance away.
+        tol = 8 * sqrt(tilt / ndraws)
         for t in 1:4
             @test mean(@view ks[:, t]) ≈ tilt atol = tol
             @test mean(==(0), @view ks[:, t]) ≈ exp(-tilt) atol = tol
