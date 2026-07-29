@@ -60,7 +60,14 @@ using Turing
 
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
-            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 3_000)
+            # CSMC mixes the variance `s` slowly, so the Monte Carlo error at 3_000 draws
+            # exceeds `atol` on this seed (measured |err| 0.212); the estimator is unbiased, so
+            # 10_000 draws buy the headroom back. That headroom is not large: conditional
+            # sweeps draw their ancestors multinomially, which is noisier than the stratified
+            # scheme used before, and `s` moved from |err| 0.024 to 0.061 against `atol = 0.1`
+            # as a result. If this test starts failing, suspect the draw count before the
+            # sampler.
+            chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 10_000)
             check_gdemo(chain; atol=0.1)
         end
 

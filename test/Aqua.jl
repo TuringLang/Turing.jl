@@ -24,6 +24,8 @@ using Turing
 # meaningful in practice (in particular, to trigger this we would need to call `g(..., f)`,
 # which is incredibly unlikely).
 Aqua.test_ambiguities([Turing]; exclude=[Libtask.might_produce])
-Aqua.test_all(Turing; ambiguities=false)
+
+# `persistent_tasks` is flaky on Windows; a lingering Task is a code property, not an OS one.
+Aqua.test_all(Turing; ambiguities=false, persistent_tasks=!Sys.iswindows())
 
 end
