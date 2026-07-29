@@ -732,6 +732,15 @@ different algorithm rather than the same draw with one output pinned.
 
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
+
+!!! warning "`log_normalizing_constant` is biased for PG"
+    PG chains carry `log_normalizing_constant`, but unlike [`SMC`](@ref)'s it does **not** estimate
+    `log p(y)` without bias, so it must not be used for model comparison. A conditional sweep
+    retains the reference whatever its weight, and the reference is a draw from the posterior rather
+    than from the proposal, so it usually carries far more likelihood than a fresh particle and
+    inflates the mean weight at every step. Measured against the exact `p(y)` of a linear Gaussian
+    SSM, `E[Ẑ]` overshoots by 80% at `n = 16` and 16% at `n = 64`; the bias decays like `1/n` but
+    stays large at practical `n`. Use `SMC` for an unbiased estimate.
 """
 PG(n::Int; kwargs...) = PG(n, ESSThresholdResampler(0.5); kwargs...)
 PG(n::Int, threshold::Real; kwargs...) = PG(n, ESSThresholdResampler(threshold); kwargs...)

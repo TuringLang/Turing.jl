@@ -21,6 +21,7 @@ using Distributions: Bernoulli, Beta, Gamma, MvNormal, Normal, Uniform, Categori
 using FlexiChains: VNChain, has_same_data
 using LinearAlgebra: I
 using Random: Random, Xoshiro
+using SpecialFunctions: logbeta
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
@@ -240,8 +241,41 @@ end
         @test all(isone, chains_pg[:x])
         pg_log_normalizing_constant = mean(chains_pg[:log_normalizing_constant])
         @test pg_log_normalizing_constant ≈ -2 * log(2) atol = 0.01
-        # Should be the same for all iterations.
+        # Every particle scores the same here -- `x ~ Bernoulli(1)` pins `x = 1`, so both observes
+        # contribute exactly `log(1/2)` regardless of the trajectory. Zero weight variance is why
+        # the estimate is exact for PG too, and why all iterations agree. It is *not* evidence that
+        # PG's estimator is unbiased in general; the testset below covers that.
         @test chains_pg[:log_normalizing_constant] ≈ fill(pg_log_normalizing_constant, 100)
+    end
+
+    @testset "log_normalizing_constant is biased upward for conditional sweeps" begin
+        # Unlike SMC's, PG's `log_normalizing_constant` is not an unbiased estimate of log p(y):
+        # a conditional sweep keeps the reference whatever its weight, and the reference is a
+        # posterior draw rather than a proposal draw, so it inflates the mean weight at each step.
+        # Pin the direction and rough size so a future change to the sweep cannot quietly alter it.
+        #
+        # Beta-Bernoulli, so p(y) is exact: with a Beta(1,1) prior, p(y) = B(1+s, 1+n-s)/B(1,1).
+        @model function coinflip(y)
+            p ~ Beta(1, 1)
+            for t in eachindex(y)
+                y[t] ~ Bernoulli(p)
+            end
+        end
+        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        s, n = sum(obs), length(obs)
+        exact_logp = logbeta(1 + s, 1 + n - s) - logbeta(1, 1)
+
+        # SMC's estimate is unbiased, so averaging Ẑ over independent sweeps lands on p(y).
+        smc_ratios = map(1:200) do i
+            chn = sample(StableRNG(900 + i), coinflip(obs), SMC(), 32)
+            exp(first(chn[:log_normalizing_constant]) - exact_logp)
+        end
+        @test mean(smc_ratios) ≈ 1 atol = 0.1
+
+        # PG's overshoots. Drop iteration 1, which is an unconditional sweep.
+        chn = sample(StableRNG(468), coinflip(obs), PG(8), 2_000)
+        pg_ratios = exp.(vec(collect(chn[:log_normalizing_constant]))[2:end] .- exact_logp)
+        @test mean(pg_ratios) > 1.05
     end
 
     @testset "multithreaded execution matches serial" begin
