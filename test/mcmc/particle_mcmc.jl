@@ -16,7 +16,6 @@ using Turing.Inference:
     fork,
     sweep!,
     resample_indices,
-    normalized_weights,
     pg_transition_and_state
 using Distributions:
     Bernoulli,
