@@ -343,21 +343,36 @@ end
 # `@addlogprob!` bypasses `tilde_observe!!`, so its produce is emitted here instead -- again
 # only once the accumulator has been updated. Gated on the producing accumulator, so outside
 # particle evaluation this reduces to the default (non-producing) method (issue #1996).
+#
+# This is type piracy -- both `accloglikelihood!!` and `OnlyAccsVarInfo` belong to DynamicPPL,
+# and this method shadows DynamicPPL's own for every `OnlyAccsVarInfo`, which is what all
+# samplers use. It is deliberate for want of an alternative: the produce has to happen once the
+# accumulator has been updated, and no Turing-owned type appears anywhere in the signature. A
+# DynamicPPL-side post-accumulate hook would let this go away.
+#
+# Everything except the produce is delegated to the general method via `@invoke`, so that this
+# cannot silently drift from upstream: re-implementing that body here would leave every
+# `OnlyAccsVarInfo` in the ecosystem running Turing's copy, while only particle sampling is
+# covered by these tests.
 function DynamicPPL.accloglikelihood!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
     acc_name = Val(:LogLikelihood)
-    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
-        return vi
+    is_particle =
+        DynamicPPL.hasacc(vi, acc_name) &&
+        DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
+    if !is_particle
+        return @invoke DynamicPPL.accloglikelihood!!(
+            vi::DynamicPPL.AbstractVarInfo, logp; ignore_missing_accumulator
+        )
     end
-    is_particle = DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
-    before = is_particle ? DynamicPPL.getloglikelihood(vi) : zero(DynamicPPL.LogProbType)
-    vi = DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
-    if is_particle
-        particle = Libtask.get_taped_globals(Particle)
-        particle.varinfo = vi
-        Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)
-    end
+    before = DynamicPPL.getloglikelihood(vi)
+    vi = @invoke DynamicPPL.accloglikelihood!!(
+        vi::DynamicPPL.AbstractVarInfo, logp; ignore_missing_accumulator
+    )
+    particle = Libtask.get_taped_globals(Particle)
+    particle.varinfo = vi
+    Libtask.produce(DynamicPPL.getloglikelihood(vi) - before)
     return vi
 end
 
