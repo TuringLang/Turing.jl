@@ -12,6 +12,7 @@ seed!(23)
 include("test_utils/models.jl")
 include("test_utils/numerical_tests.jl")
 include("test_utils/sampler.jl")
+include("test_utils/exact_ssm.jl")
 
 Turing.setprogress!(false)
 included_paths, excluded_paths = parse_args(ARGS)

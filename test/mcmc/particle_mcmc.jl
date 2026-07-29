@@ -3,6 +3,7 @@ module ParticleMCMCTests
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata, test_rng_respected
 using ..NumericalTests: check_numerical
+using ..ExactSSM: ExactSSM
 using DynamicPPL: DynamicPPL, extract_priors, get_raw_values, getloglikelihood
 using Turing.Inference:
     StratifiedResampler,
@@ -17,7 +18,18 @@ using Turing.Inference:
     sweep!,
     resample_indices,
     normalized_weights
-using Distributions: Bernoulli, Beta, Gamma, MvNormal, Normal, Uniform, Categorical, sample
+using Distributions:
+    Bernoulli,
+    Beta,
+    Categorical,
+    Gamma,
+    InverseGamma,
+    LogNormal,
+    MvNormal,
+    Normal,
+    Uniform,
+    logpdf,
+    sample
 using FlexiChains: VNChain, has_same_data
 using LinearAlgebra: I
 using Random: Random, Xoshiro
@@ -315,7 +327,7 @@ end
                 Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:4
             ]
             push!(particles, reference)
-            sweep!(StableRNG(78), particles, scheme, false; conditional=true)
+            sweep!(StableRNG(78), particles, scheme, false)
             return map(p -> get_raw_values(p.varinfo), particles)
         end
         multinomial = conditional_sweep(MultinomialResampler())
@@ -364,7 +376,7 @@ end
                     _ in 1:(N - 1)
                 ]
                 push!(parts, ref)
-                sweep!(rng, parts, ESSThresholdResampler(0.5), false; conditional=true)
+                sweep!(rng, parts, ESSThresholdResampler(0.5), false)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 state = draw(parts)
                 nlatents = length(state.assumed_varnames)
@@ -651,6 +663,194 @@ end
         ) !== nothing
         end
         @test get_raw_values(reference.varinfo) == values
+    end
+end
+
+#
+# State space models with tractable posteriors
+#
+# These are the checks that pin the particle samplers to a known answer rather than to each other. A
+# scalar linear Gaussian SSM and a discrete HMM both have closed-form posteriors, supplied by
+# `ExactSSM` and validated there against brute force, so a disagreement beyond Monte Carlo error is a
+# bug.
+#
+# Each model is exercised twice: `PG` alone against the exact smoothing marginals, then
+# `Gibbs(θ => NUTS/HMC, states => CSMC)` with a static parameter unknown. The second is the case that
+# matters, because the states' distribution depends on the θ owned by the *other* Gibbs component, so
+# the CSMC reference has to stay pinned to its retained trajectory as the model is re-conditioned
+# between sweeps. The exact θ posterior comes from quadrature against the closed-form likelihood, and
+# the θ-mixed state marginals from the laws of total expectation and variance over the same grid.
+
+"Draws for one variable as a plain vector; chain indexing yields an iteration×chain matrix."
+particle_draws(chn, vn) = vec(collect(chn[vn]))
+
+"Batch-means standard error of the mean of a correlated chain."
+function batch_means_se(v; nbatches::Int=40)
+    n = length(v) ÷ nbatches
+    b = [mean(@view v[((i - 1) * n + 1):(i * n)]) for i in 1:nbatches]
+    return std(b) / sqrt(nbatches)
+end
+
+"""
+Assert that `samples` estimates `exact` to within `nsigma` batch-means standard errors. Using the
+chain's own error estimate keeps the tolerance honest as mixing changes, rather than hard-coding an
+`atol` that silently becomes either vacuous or flaky.
+"""
+function test_within_mc_error(exact, samples; nsigma=4)
+    @test abs(mean(samples) - exact) <= nsigma * batch_means_se(samples)
+    return nothing
+end
+
+@model function lgssm(y, a, q, r)
+    # `typeof(q)` stays generic when HMC differentiates through `q`, without boxing every
+    # element the way `Vector{Real}` would.
+    x = Vector{typeof(q)}(undef, length(y))
+    x[1] ~ Normal(0, sqrt(q / (1 - a^2)))
+    y[1] ~ Normal(x[1], sqrt(r))
+    for t in 2:length(y)
+        x[t] ~ Normal(a * x[t - 1], sqrt(q))
+        y[t] ~ Normal(x[t], sqrt(r))
+    end
+end
+
+@model function lgssm_unknown_q(y, a, r)
+    q ~ InverseGamma(3, 2)
+    x = Vector{typeof(q)}(undef, length(y))
+    x[1] ~ Normal(0, sqrt(q / (1 - a^2)))
+    y[1] ~ Normal(x[1], sqrt(r))
+    for t in 2:length(y)
+        x[t] ~ Normal(a * x[t - 1], sqrt(q))
+        y[t] ~ Normal(x[t], sqrt(r))
+    end
+end
+
+const HMM_P = [0.80 0.15 0.05; 0.10 0.80 0.10; 0.05 0.15 0.80]
+const HMM_MEANS = [-1.5, 0.0, 1.5]
+const HMM_PI0 = ExactSSM.stationary_distribution(HMM_P)
+
+@model function hmm(y, sd)
+    z = Vector{Int}(undef, length(y))
+    z[1] ~ Categorical(HMM_PI0)
+    y[1] ~ Normal(HMM_MEANS[z[1]], sd)
+    for t in 2:length(y)
+        z[t] ~ Categorical(HMM_P[z[t - 1], :])
+        y[t] ~ Normal(HMM_MEANS[z[t]], sd)
+    end
+end
+
+@model function hmm_unknown_sd(y)
+    sd ~ LogNormal(log(0.7), 0.4)
+    z = Vector{Int}(undef, length(y))
+    z[1] ~ Categorical(HMM_PI0)
+    y[1] ~ Normal(HMM_MEANS[z[1]], sd)
+    for t in 2:length(y)
+        z[t] ~ Categorical(HMM_P[z[t - 1], :])
+        y[t] ~ Normal(HMM_MEANS[z[t]], sd)
+    end
+end
+
+@testset "linear Gaussian SSM" begin
+    ExactSSM.test_exact_ssm_reference()
+
+    a, r, true_q, T = 0.8, 0.3, 0.5, 6
+    s0(q) = q / (1 - a^2)                       # stationary, so the chain has no burn-in transient
+
+    # Named `xtrue`, not `x`: a `@model` sharing a local scope with an `x` assignment captures it,
+    # so every particle would mutate one shared array -- silently, and catastrophically.
+    rng = StableRNG(1234)
+    xtrue = zeros(T)
+    xtrue[1] = sqrt(s0(true_q)) * randn(rng)
+    for t in 2:T
+        xtrue[t] = a * xtrue[t - 1] + sqrt(true_q) * randn(rng)
+    end
+    y = xtrue .+ sqrt(r) .* randn(rng, T)
+
+    @testset "PG recovers the exact smoothing marginals" begin
+        means, vars = ExactSSM.lgssm_smoother(y, a, true_q, r, s0(true_q))
+        chn = sample(StableRNG(24), lgssm(y, a, true_q, r), PG(32), 4_000)
+        for t in 1:T
+            xs = particle_draws(chn, @varname(x[t]))
+            test_within_mc_error(means[t], xs)
+            test_within_mc_error(vars[t], (xs .- mean(xs)) .^ 2)
+        end
+    end
+
+    @testset "Gibbs(q => NUTS, x => CSMC) recovers the exact posterior" begin
+        prior = InverseGamma(3, 2)
+        qs = range(0.05, 4.0; length=400)
+        w = ExactSSM.grid_posterior(
+            prior, qs, q -> ExactSSM.lgssm_loglik(y, a, q, r, s0(q))
+        )
+        q_mean, q_sd = ExactSSM.grid_moments(w, qs)
+        smoothed = [ExactSSM.lgssm_smoother(y, a, q, r, s0(q)) for q in qs]
+        x_mean = sum(w[i] * first(smoothed[i]) for i in eachindex(w))
+        x_second = sum(
+            w[i] * (last(smoothed[i]) .+ first(smoothed[i]) .^ 2) for i in eachindex(w)
+        )
+
+        alg = Gibbs(@varname(q) => NUTS(), @varname(x) => CSMC(32))
+        chn = sample(StableRNG(31), lgssm_unknown_q(y, a, r), alg, 4_000)
+
+        qd = particle_draws(chn, @varname(q))
+        test_within_mc_error(q_mean, qd)
+        @test std(qd) ≈ q_sd rtol = 0.2
+        for t in 1:T
+            xs = particle_draws(chn, @varname(x[t]))
+            test_within_mc_error(x_mean[t], xs)
+            @test var(xs) ≈ x_second[t] - x_mean[t]^2 rtol = 0.25
+        end
+    end
+end
+
+@testset "discrete HMM" begin
+    P, π0, means = HMM_P, HMM_PI0, HMM_MEANS
+    true_sd, K, T = 0.7, 3, 6
+    obs_loglik(y, sd) = [logpdf(Normal(means[k], sd), y[t]) for t in 1:length(y), k in 1:K]
+
+    # `ztrue`, not `z`, for the same reason as `xtrue` above.
+    rng = StableRNG(99)
+    ztrue = Vector{Int}(undef, T)
+    ztrue[1] = rand(rng, Categorical(π0))
+    for t in 2:T
+        ztrue[t] = rand(rng, Categorical(P[ztrue[t - 1], :]))
+    end
+    y = [means[ztrue[t]] + true_sd * randn(rng) for t in 1:T]
+
+    @testset "PG recovers the exact state marginals" begin
+        # Discrete states make this sharp: the reference is a probability vector, so any bias shows
+        # up directly instead of being absorbed into a mean.
+        post, _ = ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, true_sd))
+        chn = sample(StableRNG(25), hmm(y, true_sd), PG(32), 4_000)
+        for t in 1:T, k in 1:K
+            post[t, k] < 0.02 && continue      # too rare to resolve at this chain length
+            test_within_mc_error(
+                post[t, k], Float64.(particle_draws(chn, @varname(z[t])) .== k)
+            )
+        end
+    end
+
+    @testset "Gibbs(sd => HMC, z => CSMC) recovers the exact posterior" begin
+        prior = LogNormal(log(0.7), 0.4)
+        sds = range(0.2, 2.5; length=400)
+        w = ExactSSM.grid_posterior(
+            prior, sds, s -> last(ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, s)))
+        )
+        sd_mean, sd_sd = ExactSSM.grid_moments(w, sds)
+        posts = [first(ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, s))) for s in sds]
+        mixed = sum(w[i] * posts[i] for i in eachindex(w))
+
+        alg = Gibbs(@varname(sd) => HMC(0.1, 12), @varname(z) => CSMC(32))
+        chn = sample(StableRNG(32), hmm_unknown_sd(y), alg, 4_000)
+
+        sdd = particle_draws(chn, @varname(sd))
+        test_within_mc_error(sd_mean, sdd)
+        @test std(sdd) ≈ sd_sd rtol = 0.2
+        for t in 1:T, k in 1:K
+            mixed[t, k] < 0.02 && continue
+            test_within_mc_error(
+                mixed[t, k], Float64.(particle_draws(chn, @varname(z[t])) .== k)
+            )
+        end
     end
 end
 
