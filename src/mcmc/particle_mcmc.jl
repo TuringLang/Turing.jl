@@ -122,8 +122,9 @@ end
 """
     SMCContext
 
-Leaf context marking a model evaluation as a particle-filter step: `tilde_assume!!` draws
-from the prior using the particle's [`TracedRNG`](@ref), and `tilde_observe!!` scores the
+Leaf context marking a model evaluation as a particle-filter step: `tilde_assume!!` draws from
+the prior using the particle's [`TracedRNG`](@ref) -- or, for a conditional-SMC reference,
+replays the retained trajectory's value at that address -- and `tilde_observe!!` scores the
 observation and `Libtask.produce`s the increment as the particle's weight.
 """
 struct SMCContext <: DynamicPPL.AbstractContext end
