@@ -586,7 +586,9 @@ function sweep!(
     rng::AbstractRNG, particles, resampler, multithreaded::Bool; conditional::Bool=false
 )
     logZ = zero(DynamicPPL.LogProbType)
-    ess_per_step = Float64[]
+    # The ESS values are computed from the particle weights, so they follow whatever
+    # `DynamicPPL.LogProbType` is rather than being pinned to `Float64`.
+    ess_per_step = DynamicPPL.LogProbType[]
     while true
         resample_propagate!(rng, particles, resampler, conditional)
         logZ0 = log_normalizing_constant(particles)
