@@ -314,9 +314,11 @@ Libtask.@might_produce(DynamicPPL.acclogp!!)
 # See https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
-# A particle needs only the produce-aware likelihood accumulator (which drives reweighting)
-# and the raw sampled values. The prior/Jacobian terms shown in chain metadata are recomputed
-# downstream from the raw values, so accumulating them per particle would be wasted work.
+# Swap the default likelihood accumulator for the produce-aware one that drives reweighting, and
+# add the raw sampled values. `OnlyAccsVarInfo`'s defaults also bring `LogPrior` and `LogJacobian`
+# along, and they are kept on purpose: `ParamsWithStats` reads them straight off this varinfo to
+# fill a chain's `logprior` and `logjoint` columns. Dropping them to save the per-particle logpdf
+# work would not error -- the read is guarded by `hasacc` -- it would silently omit those columns.
 function particle_varinfo()
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
@@ -755,7 +757,7 @@ function AbstractMCMC.step(
 end
 
 # Subsequent iterations: conditional SMC given the retained trajectory, which the reference
-# particle regenerates by replaying `state.rng` from the first step.
+# particle reproduces by reusing the retained values (see the `reference` field).
 function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
