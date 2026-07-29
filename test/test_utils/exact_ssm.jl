@@ -12,13 +12,7 @@ using Distributions: Categorical, MvNormal, Normal, logpdf
 using LinearAlgebra: I, Symmetric, diag, eigen
 using Test: @test, @testset
 
-export lgssm_smoother,
-    lgssm_loglik,
-    hmm_forward_backward,
-    stationary_distribution,
-    grid_posterior,
-    grid_moments,
-    test_exact_ssm_reference
+# Everything here is reached qualified (`ExactSSM.foo`), so there is no export list.
 
 ##
 ## Scalar linear Gaussian SSM: x₁ ~ N(0, s0), xₜ = a·xₜ₋₁ + N(0, q), yₜ = xₜ + N(0, r)
@@ -93,19 +87,20 @@ function hmm_forward_backward(
 )
     T, K = size(loglik_obs)
     F = promote_type(eltype(π0), eltype(P), eltype(loglik_obs))
+    lik = exp.(loglik_obs)                     # both passes need it; exponentiate once
     α = zeros(F, T, K)
     c = zeros(F, T)                            # per-step normalisers, which give the log-likelihood
-    α[1, :] = π0 .* exp.(loglik_obs[1, :])
-    c[1] = sum(α[1, :])
+    α[1, :] = π0 .* @view lik[1, :]
+    c[1] = sum(@view α[1, :])
     α[1, :] ./= c[1]
     for t in 2:T
-        α[t, :] = (P' * α[t - 1, :]) .* exp.(loglik_obs[t, :])
-        c[t] = sum(α[t, :])
+        α[t, :] = (P' * @view(α[t - 1, :])) .* @view lik[t, :]
+        c[t] = sum(@view α[t, :])
         α[t, :] ./= c[t]
     end
     β = ones(F, T, K)
     for t in (T - 1):-1:1
-        β[t, :] = P * (exp.(loglik_obs[t + 1, :]) .* β[t + 1, :]) ./ c[t + 1]
+        β[t, :] = P * (@view(lik[t + 1, :]) .* @view(β[t + 1, :])) ./ c[t + 1]
     end
     post = α .* β
     return post ./ sum(post; dims=2), sum(log, c)
@@ -116,8 +111,7 @@ function hmm_brute_force(π0::AbstractVector, P::AbstractMatrix, loglik_obs::Abs
     T, K = size(loglik_obs)
     post = zeros(T, K)
     total = 0.0
-    for idx in 0:(K^T - 1)
-        z = [(idx ÷ K^(t - 1)) % K + 1 for t in 1:T]
+    for z in CartesianIndices(ntuple(_ -> K, T))
         lp = log(π0[z[1]]) + loglik_obs[1, z[1]]
         for t in 2:T
             lp += log(P[z[t - 1], z[t]]) + loglik_obs[t, z[t]]
@@ -184,7 +178,8 @@ function test_exact_ssm_reference()
         @test ll_fb ≈ ll_bf atol = 1e-12
 
         # A stationary π0 is a fixed point of the transition, which several tests rely on.
-        @test transpose(P) * stationary_distribution(P) ≈ stationary_distribution(P)
+        π0_stat = stationary_distribution(P)
+        @test transpose(P) * π0_stat ≈ π0_stat
     end
 end
 

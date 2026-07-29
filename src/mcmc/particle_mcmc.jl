@@ -83,12 +83,12 @@ struct SMCContext <: DynamicPPL.AbstractContext end
 DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 
 """
-    Particle(model, varinfo, rng)
-    Particle(model, varinfo, rng, retained::Particle)
+    Particle(model, rng)
+    Particle(model, rng, retained::Particle)
 
-A single particle: a suspended `model` execution together with its `varinfo`, its own `rng`, and
-an accumulated `logweight`. It also serves directly as the particle Gibbs sampler state (there
-is no separate state struct).
+A single particle: a suspended `model` execution together with its `varinfo`, its own `rng`, and an
+accumulated `logweight`. It also serves directly as the particle Gibbs sampler state (there is no
+separate state struct).
 
 Without `retained` the particle draws from the prior. Given the previous sweep's retained particle it
 becomes a conditional-SMC reference pinned to that trajectory, erroring if its execution reaches an
@@ -104,26 +104,26 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # `logweight` tracks whatever `DynamicPPL.LogProbType` is, so weights follow suit if it
     # is ever changed.
     logweight::WT
-    # The retained trajectory's values, which the CSMC reference reproduces by reusing them
-    # (`InitFromParams` in `tilde_assume!!`); empty for ordinary particles. `reseed!` clears it so
-    # a particle forked off the reference samples fresh beyond the fork point. Reusing the *value*
-    # rather than replaying the RNG draw is what keeps the reference on the retained trajectory
-    # when Gibbs re-conditions the model: a draw is x = g(u; θ) in the RNG output u and the
-    # distribution parameters θ, so replaying u after θ → θ' yields g(u; θ') ≠ x -- e.g.
-    # x ~ Normal(μ, 1) is μ + Φ⁻¹(u), which shifts by μ' − μ.
-    reference_values::DynamicPPL.VarNamedTuple
-    # `nothing` for an ordinary particle; for a CSMC reference, the addresses the retained
-    # trajectory assumed. This cannot be read off `reference_values`: a slice assume such as
-    # `x[1:2] ~ MvNormal(...)` is stored there under the keys `x[1]`, `x[2]` but assumed under the
-    # single address `x[1:2]`, so comparing against those keys would report a spurious trace
-    # change; and an empty `reference_values` cannot distinguish a reference with no latents from
-    # an ordinary particle. Without it, an address the retained trajectory never had would
-    # silently draw from the prior, corrupting the reference. Being non-`nothing` is also what
-    # marks a particle as the reference. Set only alongside `reference_values`, by the reference
-    # constructor below.
-    expected_reference_varnames::Union{Nothing,Set{DynamicPPL.VarName}}
-    # Addresses assumed by this execution, in the same form as the set above. Survives forking,
-    # so a particle that becomes the retained state hands the complete set to the next
+    # `nothing` unless this particle is a CSMC reference; one field rather than two so the pair
+    # cannot get out of step, and so `isreference` has a single thing to test.
+    #
+    # `values` is the retained trajectory, which the reference reproduces by reusing it
+    # (`InitFromParams` in `tilde_assume!!`). Reusing the *value* rather than replaying the RNG draw
+    # is what keeps the reference on that trajectory when Gibbs re-conditions the model: a draw is
+    # x = g(u; θ) in the RNG output u and the distribution parameters θ, so replaying u after θ → θ'
+    # yields g(u; θ') ≠ x -- e.g. x ~ Normal(μ, 1) is μ + Φ⁻¹(u), which shifts by μ' − μ.
+    #
+    # `varnames` is the set of addresses the retained trajectory assumed, and cannot be recovered
+    # from `values`: a slice assume such as `x[1:2] ~ MvNormal(...)` is stored under the keys `x[1]`,
+    # `x[2]` but assumed under the single address `x[1:2]`, so comparing against those keys would
+    # report a spurious trace change. Without it an address the retained trajectory never had would
+    # silently draw from the prior, corrupting the reference.
+    reference::Union{
+        Nothing,
+        @NamedTuple{values::DynamicPPL.VarNamedTuple, varnames::Set{DynamicPPL.VarName}}
+    }
+    # Addresses assumed by this execution, in the same form as `reference.varnames`. Survives
+    # forking, so a particle that becomes the retained state hands the complete set to the next
     # reference; a reference must finish having assumed exactly that set.
     assumed_varnames::Set{DynamicPPL.VarName}
     task::Libtask.TapedTask
@@ -134,24 +134,25 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
         vi::DynamicPPL.AbstractVarInfo, rng::RT, retained::Union{Nothing,Particle}=nothing
     ) where {RT<:AbstractRNG}
         w = zero(DynamicPPL.LogProbType)
-        values, varnames = if retained === nothing
-            DynamicPPL.VarNamedTuple(), nothing
+        reference = if retained === nothing
+            nothing
         else
-            DynamicPPL.get_raw_values(retained.varinfo), copy(retained.assumed_varnames)
+            (;
+                values=DynamicPPL.get_raw_values(retained.varinfo),
+                varnames=copy(retained.assumed_varnames),
+            )
         end
-        return new{RT,typeof(w)}(vi, rng, w, values, varnames, Set{DynamicPPL.VarName}())
+        return new{RT,typeof(w)}(vi, rng, w, reference, Set{DynamicPPL.VarName}())
     end
 end
 
 function Particle(
-    model::DynamicPPL.Model,
-    varinfo::DynamicPPL.AbstractVarInfo,
-    rng::AbstractRNG,
-    retained::Union{Nothing,Particle}=nothing,
+    model::DynamicPPL.Model, rng::AbstractRNG, retained::Union{Nothing,Particle}=nothing
 )
     model = DynamicPPL.setleafcontext(model, SMCContext())
+    varinfo = particle_varinfo()
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
-    particle = Particle(deepcopy(varinfo), rng, retained)
+    particle = Particle(varinfo, rng, retained)
     particle.task = Libtask.TapedTask(particle, model.f, args...; kwargs...)
     return particle
 end
@@ -165,8 +166,7 @@ the reference stops reusing retained values and samples afresh. Mutates and retu
 function reseed!(particle::Particle, rng::AbstractRNG)
     Random.seed!(particle.rng, rand(rng, UInt64))
     # A fork samples fresh from here on, so it must forget the reference's remaining values.
-    particle.reference_values = DynamicPPL.VarNamedTuple()
-    particle.expected_reference_varnames = nothing
+    particle.reference = nothing
     return particle
 end
 
@@ -183,7 +183,7 @@ fork(particle::Particle, rng::AbstractRNG) = reseed!(deepcopy(particle), rng)
 Whether `particle` is a conditional-SMC reference, i.e. pinned to a retained trajectory. Carried
 on the particle rather than inferred from its slot, so forking and resampling cannot get it wrong.
 """
-isreference(particle::Particle) = particle.expected_reference_varnames !== nothing
+isreference(particle::Particle) = particle.reference !== nothing
 
 """
     advance!(particle) -> Union{Real,Nothing}
@@ -196,9 +196,9 @@ function advance!(particle::Particle)
     # `tilde_assume!!` already rejects any address outside the retained set, so once the
     # reference has run to completion the only discrepancy left to catch is a retained address
     # it never visited (e.g. a branch that stopped being taken after re-conditioning).
-    expected = particle.expected_reference_varnames
-    if score === nothing && expected !== nothing
-        dropped = setdiff(expected, particle.assumed_varnames)
+    reference = particle.reference
+    if score === nothing && reference !== nothing
+        dropped = setdiff(reference.varnames, particle.assumed_varnames)
         isempty(dropped) || error(
             "the reference execution trace changed while replaying retained values " *
             "(retained addresses never reached: $(collect(dropped)))",
@@ -211,19 +211,19 @@ function DynamicPPL.tilde_assume!!(
     ::SMCContext, dist::Distribution, vn::VarName, template, ::DynamicPPL.AbstractVarInfo
 )
     particle = Libtask.get_taped_globals(Particle)
-    # A reference reuses the retained value at every address it visits (see `reference_values`);
+    # A reference reuses the retained value at every address it visits (see the `reference` field);
     # ordinary particles and forks have no expected set, so they draw from the prior. The two error
     # paths cover the two ways the trace can have moved: an address outside the retained set here,
     # and -- via the `nothing` fallback -- a retained address with no usable value.
-    expected = particle.expected_reference_varnames
-    strategy = if expected === nothing
+    reference = particle.reference
+    strategy = if reference === nothing
         DynamicPPL.InitFromPrior()
     else
-        vn in expected || error(
+        vn in reference.varnames || error(
             "the reference execution trace changed while replaying retained values " *
             "(new address: $vn)",
         )
-        DynamicPPL.InitFromParams(particle.reference_values, nothing)
+        DynamicPPL.InitFromParams(reference.values, nothing)
     end
     ctx = DynamicPPL.InitContext(particle.rng, strategy, DynamicPPL.UnlinkAll())
     x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, particle.varinfo)
@@ -537,9 +537,12 @@ end
 
 # ── One sweep ─────────────────────────────────────────────────────────────────
 
-# Run a full particle sweep in place, returning the log-evidence estimate and the
-# per-observation effective sample sizes.
-function sweep!(rng::AbstractRNG, particles, resampler, multithreaded::Bool)
+# Run a full particle sweep in place, returning the log-evidence estimate and -- when `ess` is set --
+# the per-observation effective sample sizes. Only `SMC` reports those, and `PG` runs thousands of
+# sweeps, so computing them unconditionally would be pure waste on the sampler that sweeps most.
+function sweep!(
+    rng::AbstractRNG, particles, resampler, multithreaded::Bool; ess::Bool=false
+)
     logZ = zero(DynamicPPL.LogProbType)
     # The ESS values are computed from the particle weights, so they follow whatever
     # `DynamicPPL.LogProbType` is rather than being pinned to `Float64`.
@@ -561,7 +564,7 @@ function sweep!(rng::AbstractRNG, particles, resampler, multithreaded::Bool)
         # Post-reweight ESS for this observation: a degeneracy diagnostic (low ESS means few
         # particles carry the weight). After the break, so the finishing pass -- which adds no
         # observation and leaves the weights unchanged -- contributes no spurious entry.
-        push!(ess_per_step, weight_ess(normalized_weights(particles)))
+        ess && push!(ess_per_step, weight_ess(normalized_weights(particles)))
     end
     return logZ, ess_per_step
 end
@@ -641,10 +644,10 @@ function AbstractMCMC.sample(
     if callback !== nothing
         @warn "SMC runs one sweep rather than an MCMC loop, so there are no per-iteration callbacks; `callback` is ignored."
     end
-    particles = [
-        Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:nparticles
-    ]
-    logZ, ess_per_step = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
+    particles = [Particle(model, particle_rng(rng)) for _ in 1:nparticles]
+    logZ, ess_per_step = sweep!(
+        rng, particles, sampler.resampler, sampler.multithreaded; ess=true
+    )
     weights = normalized_weights(particles)
     # One final resampling step, so the returned particles are an equal-weight sample. The
     # sweep ends on a reweight, leaving the population weighted; resampling once here makes the
@@ -732,10 +735,7 @@ function AbstractMCMC.step(
     rng::AbstractRNG, model::DynamicPPL.Model, sampler::PG; discard_sample=false, kwargs...
 )
     error_if_threadsafe_eval(model)
-    particles = [
-        Particle(model, particle_varinfo(), particle_rng(rng)) for
-        _ in 1:(sampler.nparticles)
-    ]
+    particles = [Particle(model, particle_rng(rng)) for _ in 1:(sampler.nparticles)]
     logZ, _ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
 end
@@ -753,13 +753,13 @@ function AbstractMCMC.step(
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
     # Passing `state` makes this the reference, pinned to the retained trajectory by value (see
-    # `reference_values`). Its own generator is never read, since every draw is supplied by value --
+    # the `reference` field). Its own generator is never read, since every draw is supplied by value --
     # only its forks' are, and `reseed!` gives those fresh seeds. So it carries the retained
     # generator forward rather than taking a fresh one, which keeps the sweep from drawing anything
     # from `rng` on its behalf; the copy just avoids aliasing `state`.
-    reference = Particle(model, particle_varinfo(), deepcopy(state.rng), state)
+    reference = Particle(model, deepcopy(state.rng), state)
     # `n - 1` fresh particles, with the reference last -- the slot `resample_propagate!` retains.
-    particles = [Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:(n - 1)]
+    particles = [Particle(model, particle_rng(rng)) for _ in 1:(n - 1)]
     push!(particles, reference)
     logZ, _ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)

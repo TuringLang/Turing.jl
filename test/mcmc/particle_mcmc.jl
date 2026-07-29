@@ -12,12 +12,12 @@ using Turing.Inference:
     ESSThresholdResampler,
     Particle,
     particle_rng,
-    particle_varinfo,
     advance!,
     fork,
     sweep!,
     resample_indices,
-    normalized_weights
+    normalized_weights,
+    pg_transition_and_state
 using Distributions:
     Bernoulli,
     Beta,
@@ -38,6 +38,61 @@ using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
 
+# Models shared across the testsets below. Defined at module scope, not inside a testset: a `@model`
+# sharing a local scope with a same-named variable captures it, and every particle then mutates one
+# shared array (see the `xtrue`/`ztrue` note further down).
+
+@model function coinflip(y)
+    p ~ Beta(1, 1)
+    for t in eachindex(y)
+        y[t] ~ Bernoulli(p)
+    end
+end
+const COIN_OBS = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+
+# `x ~ Bernoulli(1)` pins x = 1, so both observes contribute exactly log(1/2) whatever the
+# trajectory -- zero weight variance, which several log_normalizing_constant tests rely on.
+@model function test()
+    a ~ Normal(0, 1)
+    x ~ Bernoulli(1)
+    b ~ Gamma(2, 3)
+    1 ~ Bernoulli(x / 2)
+    c ~ Beta()
+    0 ~ Bernoulli(x / 2)
+    return x
+end
+
+@model function normal()
+    a ~ Normal(4, 5)
+    3 ~ Normal(a, 2)
+    b ~ Normal(a, 1)
+    1.5 ~ Normal(b, 2)
+    return a, b
+end
+
+# Nondeterministic evaluation order, which the particle samplers must refuse.
+# As `normal()` but centred at zero; used where the replay test wants a different trajectory.
+@model function centred_normal()
+    a ~ Normal(0, 1)
+    3 ~ Normal(a, 2)
+    b ~ Normal(a, 1)
+    1.5 ~ Normal(b, 2)
+    return a, b
+end
+
+# Nondeterministic evaluation order, which the particle samplers must refuse.
+@model function threadsafe_model(y)
+    x ~ Normal()
+    Threads.@threads for i in eachindex(y)
+        y[i] ~ Normal(x)
+    end
+end
+
+"Run a particle to completion."
+run_to_end!(p) = (while advance!(p) !== nothing
+end;
+p)
+
 @testset "SMC" begin
     @testset "constructor" begin
         @test SMC().resampler == ESSThresholdResampler(0.5)
@@ -52,24 +107,11 @@ using Turing
     end
 
     @testset "basic model" begin
-        @model function normal()
-            a ~ Normal(4, 5)
-            3 ~ Normal(a, 2)
-            b ~ Normal(a, 1)
-            1.5 ~ Normal(b, 2)
-            return a, b
-        end
         tested = sample(normal(), SMC(), 100)
     end
 
     @testset "resampling schemes" begin
-        @model function coinflip(y)
-            p ~ Beta(1, 1)
-            for t in eachindex(y)
-                y[t] ~ Bernoulli(p)
-            end
-        end
-        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        obs = COIN_OBS
         coin_model = coinflip(obs)
         prior = extract_priors(coin_model)[@varname(p)]
         exact = Beta(prior.α + sum(obs), prior.β + length(obs) - sum(obs))
@@ -119,16 +161,6 @@ using Turing
     end
 
     @testset "log_normalizing_constant" begin
-        @model function test()
-            a ~ Normal(0, 1)
-            x ~ Bernoulli(1)
-            b ~ Gamma(2, 3)
-            1 ~ Bernoulli(x / 2)
-            c ~ Beta()
-            0 ~ Bernoulli(x / 2)
-            return x
-        end
-
         chains_smc = sample(StableRNG(100), test(), SMC(), 100)
 
         @test all(isone, chains_smc[:x])
@@ -145,13 +177,7 @@ using Turing
     @testset "multithreaded execution matches serial" begin
         # Particles are seeded serially before the parallel reweighting, so `multithreaded=true`
         # must reproduce the serial draws exactly (bit for bit), whatever the thread count.
-        @model function coinflip(y)
-            p ~ Beta(1, 1)
-            for t in eachindex(y)
-                y[t] ~ Bernoulli(p)
-            end
-        end
-        model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+        model = coinflip(COIN_OBS)
         serial = sample(StableRNG(23), model, SMC(), 200)
         multithreaded = sample(StableRNG(23), model, SMC(; multithreaded=true), 200)
         @test serial[@varname(p)] == multithreaded[@varname(p)]
@@ -160,25 +186,11 @@ using Turing
     @testset "refuses to run threadsafe eval" begin
         # SMC can't run models that have nondeterministic evaluation order,
         # so it should refuse to run models marked as threadsafe.
-        @model function f(y)
-            x ~ Normal()
-            Threads.@threads for i in eachindex(y)
-                y[i] ~ Normal(x)
-            end
-        end
-        model = setthreadsafe(f(randn(10)), true)
+        model = setthreadsafe(threadsafe_model(randn(10)), true)
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 
     @testset "discard_initial, thinning, initial_params and callback are ignored" begin
-        @model function normal()
-            a ~ Normal(4, 5)
-            3 ~ Normal(a, 2)
-            b ~ Normal(a, 1)
-            1.5 ~ Normal(b, 2)
-            return a, b
-        end
-
         @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
             normal(), SMC(), 10; initial_params=(; a=1.0)
         )
@@ -238,16 +250,6 @@ end
     end
 
     @testset "log_normalizing_constant" begin
-        @model function test()
-            a ~ Normal(0, 1)
-            x ~ Bernoulli(1)
-            b ~ Gamma(2, 3)
-            1 ~ Bernoulli(x / 2)
-            c ~ Beta()
-            0 ~ Bernoulli(x / 2)
-            return x
-        end
-
         chains_pg = sample(StableRNG(468), test(), PG(10), 100)
 
         @test all(isone, chains_pg[:x])
@@ -267,13 +269,7 @@ end
         # Pin the direction and rough size so a future change to the sweep cannot quietly alter it.
         #
         # Beta-Bernoulli, so p(y) is exact: with a Beta(1,1) prior, p(y) = B(1+s, 1+n-s)/B(1,1).
-        @model function coinflip(y)
-            p ~ Beta(1, 1)
-            for t in eachindex(y)
-                y[t] ~ Bernoulli(p)
-            end
-        end
-        obs = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1]
+        obs = COIN_OBS
         s, n = sum(obs), length(obs)
         exact_logp = logbeta(1 + s, 1 + n - s) - logbeta(1, 1)
 
@@ -294,13 +290,7 @@ end
         # Threading the reweighting must not perturb the reference-replay bookkeeping, so the
         # conditional sweeps have to reproduce the serial draws exactly, whatever the thread
         # count.
-        @model function coinflip(y)
-            p ~ Beta(1, 1)
-            for t in eachindex(y)
-                y[t] ~ Bernoulli(p)
-            end
-        end
-        model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+        model = coinflip(COIN_OBS)
         serial = sample(StableRNG(23), model, PG(10), 200)
         multithreaded = sample(StableRNG(23), model, PG(10; multithreaded=true), 200)
         @test serial[@varname(p)] == multithreaded[@varname(p)]
@@ -319,13 +309,10 @@ end
         model = drifting([0.3, -0.7, 1.1])
         function conditional_sweep(scheme)
             rng = StableRNG(77)
-            retained = Particle(model, particle_varinfo(), particle_rng(rng))
-            while advance!(retained) !== nothing
-            end
-            reference = Particle(model, particle_varinfo(), particle_rng(rng), retained)
-            particles = [
-                Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:4
-            ]
+            retained = Particle(model, particle_rng(rng))
+            run_to_end!(retained)
+            reference = Particle(model, particle_rng(rng), retained)
+            particles = [Particle(model, particle_rng(rng)) for _ in 1:4]
             push!(particles, reference)
             sweep!(StableRNG(78), particles, scheme, false)
             return map(p -> get_raw_values(p.varinfo), particles)
@@ -361,20 +348,17 @@ end
         # N) and check it reproduces the trajectory we retained. Wrapped in a function to keep
         # the mutating loop out of test soft scope.
         function run_csmc(model, N, nsteps, rng)
-            draw(ps) = ps[rand(rng, Categorical(normalized_weights(ps)))]
-            particles = [
-                Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:N
-            ]
+            # The sampler's own selection rule, not a reimplementation of it: if `pg_transition_and`
+            # `_state` ever changes how the retained particle is chosen, this test follows.
+            draw(ps) = last(pg_transition_and_state(rng, ps, 0.0, true))
+            particles = [Particle(model, particle_rng(rng)) for _ in 1:N]
             sweep!(rng, particles, ESSThresholdResampler(0.5), false)
             state = draw(particles)
             allok = true
             nlatents = 0
             for _ in 1:nsteps
-                ref = Particle(model, particle_varinfo(), particle_rng(rng), state)
-                parts = [
-                    Particle(model, particle_varinfo(), particle_rng(rng)) for
-                    _ in 1:(N - 1)
-                ]
+                ref = Particle(model, particle_rng(rng), state)
+                parts = [Particle(model, particle_rng(rng)) for _ in 1:(N - 1)]
                 push!(parts, ref)
                 sweep!(rng, parts, ESSThresholdResampler(0.5), false)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
@@ -405,20 +389,15 @@ end
             return y ~ Normal(x, 1)
         end
         rng = StableRNG(42)
-        retained = Particle(
-            reconditioned(2.0) | (@varname(a) => 0.0), particle_varinfo(), particle_rng(rng)
-        )
-        while advance!(retained) !== nothing
-        end
+        retained = Particle(reconditioned(2.0) | (@varname(a) => 0.0), particle_rng(rng))
+        run_to_end!(retained)
         retained_vals = get_raw_values(retained.varinfo)
         reference = Particle(
             reconditioned(2.0) | (@varname(a) => 5.0),   # x's prior shifted far away
-            particle_varinfo(),
             particle_rng(rng),
             retained,
         )
-        while advance!(reference) !== nothing
-        end
+        run_to_end!(reference)
         @test get_raw_values(reference.varinfo) == retained_vals
     end
 
@@ -434,14 +413,9 @@ end
             return y ~ Normal(μ, 1)
         end
         rng = StableRNG(91)
-        retained = Particle(
-            branch_changes(true, 0.0), particle_varinfo(), particle_rng(rng)
-        )
-        while advance!(retained) !== nothing
-        end
-        reference = Particle(
-            branch_changes(false, 0.0), particle_varinfo(), particle_rng(rng), retained
-        )
+        retained = Particle(branch_changes(true, 0.0), particle_rng(rng))
+        run_to_end!(retained)
+        reference = Particle(branch_changes(false, 0.0), particle_rng(rng), retained)
         @test_throws "reference execution trace changed" advance!(reference)
 
         @model function branch_drops(flag, y)
@@ -451,15 +425,11 @@ end
             end
             return y ~ Normal(x, 1)
         end
-        retained = Particle(branch_drops(true, 0.0), particle_varinfo(), particle_rng(rng))
-        while advance!(retained) !== nothing
-        end
-        reference = Particle(
-            branch_drops(false, 0.0), particle_varinfo(), particle_rng(rng), retained
-        )
+        retained = Particle(branch_drops(true, 0.0), particle_rng(rng))
+        run_to_end!(retained)
+        reference = Particle(branch_drops(false, 0.0), particle_rng(rng), retained)
         @test_throws "reference execution trace changed" begin
-            while advance!(reference) !== nothing
-            end
+            run_to_end!(reference)
         end
     end
 
@@ -556,25 +526,13 @@ end
     @testset "refuses to run threadsafe eval" begin
         # PG can't run models that have nondeterministic evaluation order,
         # so it should refuse to run models marked as threadsafe.
-        @model function f(y)
-            x ~ Normal()
-            Threads.@threads for i in eachindex(y)
-                y[i] ~ Normal(x)
-            end
-        end
-        model = setthreadsafe(f(randn(10)), true)
+        model = setthreadsafe(threadsafe_model(randn(10)), true)
         @test_throws ArgumentError sample(model, PG(10), 100)
     end
 end
 
 @testset "parallel chains (MCMCThreads)" begin
-    @model function coinflip(y)
-        p ~ Beta(1, 1)
-        for t in eachindex(y)
-            y[t] ~ Bernoulli(p)
-        end
-    end
-    model = coinflip([0, 1, 0, 1, 1, 1, 1, 1, 1, 1])
+    model = coinflip(COIN_OBS)
     # Multiple chains through AbstractMCMC's thread-based ensemble stay reproducible under a
     # fixed seed (genuinely parallel only when Julia is started with more than one thread).
     for sampler in (SMC(), PG(10))
@@ -585,19 +543,9 @@ end
 end
 
 @testset "particle container" begin
-    @model function test()
-        a ~ Normal(0, 1)
-        x ~ Bernoulli(1)
-        b ~ Gamma(2, 3)
-        1 ~ Bernoulli(x / 2)
-        c ~ Beta()
-        0 ~ Bernoulli(x / 2)
-        return x
-    end
-
     @testset "advance!" begin
         # `x ~ Bernoulli(1)` forces `x = 1`, so the first observe is `1 ~ Bernoulli(0.5)`.
-        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        particle = Particle(test(), particle_rng(Xoshiro(23)))
         @test advance!(particle) ≈ -log(2)
         @test advance!(particle) ≈ -log(2)     # `0 ~ Bernoulli(0.5)`
         @test advance!(particle) === nothing    # model finished
@@ -607,9 +555,8 @@ end
         # A particle advanced without resampling draws from its RNG continuously, so it must
         # produce exactly the same values and log-likelihood as a plain DynamicPPL evaluation
         # seeded identically.
-        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
-        while advance!(particle) !== nothing
-        end
+        particle = Particle(test(), particle_rng(Xoshiro(23)))
+        run_to_end!(particle)
 
         accs = DynamicPPL.OnlyAccsVarInfo()
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogLikelihoodAccumulator())
@@ -627,7 +574,7 @@ end
     end
 
     @testset "fork" begin
-        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        particle = Particle(test(), particle_rng(Xoshiro(23)))
         advance!(particle)
         child = fork(particle, Xoshiro(1))
         # Independent continuations: advancing one does not touch the other.
@@ -641,23 +588,12 @@ end
         # generator is never consulted. Pinning that down is what lets the reference be handed an
         # ordinary generator instead of a replayable one: scrambling its seeds before every step
         # must not perturb the trajectory it regenerates.
-        @model function normal()
-            a ~ Normal(0, 1)
-            3 ~ Normal(a, 2)
-            b ~ Normal(a, 1)
-            1.5 ~ Normal(b, 2)
-            return a, b
-        end
-
-        retained = Particle(normal(), particle_varinfo(), particle_rng(Xoshiro(23)))
-        while advance!(retained) !== nothing
-        end
+        retained = Particle(centred_normal(), particle_rng(Xoshiro(23)))
+        run_to_end!(retained)
         values = get_raw_values(retained.varinfo)
 
         scrambler = Xoshiro(99)
-        reference = Particle(
-            normal(), particle_varinfo(), particle_rng(Xoshiro(7)), retained
-        )
+        reference = Particle(normal(), particle_rng(Xoshiro(7)), retained)
         while (
             Random.seed!(reference.rng, rand(scrambler, UInt64)); advance!(reference)
         ) !== nothing
@@ -821,11 +757,12 @@ end
         # up directly instead of being absorbed into a mean.
         post, _ = ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, true_sd))
         chn = sample(StableRNG(25), hmm(y, true_sd), PG(32), 4_000)
-        for t in 1:T, k in 1:K
-            post[t, k] < 0.02 && continue      # too rare to resolve at this chain length
-            test_within_mc_error(
-                post[t, k], Float64.(particle_draws(chn, @varname(z[t])) .== k)
-            )
+        for t in 1:T
+            zs = particle_draws(chn, @varname(z[t]))
+            for k in 1:K
+                post[t, k] < 0.02 && continue  # too rare to resolve at this chain length
+                test_within_mc_error(post[t, k], Float64.(zs .== k))
+            end
         end
     end
 
@@ -845,11 +782,12 @@ end
         sdd = particle_draws(chn, @varname(sd))
         test_within_mc_error(sd_mean, sdd)
         @test std(sdd) ≈ sd_sd rtol = 0.2
-        for t in 1:T, k in 1:K
-            mixed[t, k] < 0.02 && continue
-            test_within_mc_error(
-                mixed[t, k], Float64.(particle_draws(chn, @varname(z[t])) .== k)
-            )
+        for t in 1:T
+            zs = particle_draws(chn, @varname(z[t]))
+            for k in 1:K
+                mixed[t, k] < 0.02 && continue
+                test_within_mc_error(mixed[t, k], Float64.(zs .== k))
+            end
         end
     end
 end
