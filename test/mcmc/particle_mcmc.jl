@@ -10,12 +10,10 @@ using Turing.Inference:
     MultinomialResampler,
     ESSResampler,
     Particle,
-    TracedRNG,
+    particle_rng,
     particle_varinfo,
     advance!,
     fork,
-    rewind!,
-    refresh!,
     sweep!,
     resample_indices,
     normalized_weights
@@ -275,17 +273,14 @@ end
         model = drifting([0.3, -0.7, 1.1])
         function conditional_sweep(scheme)
             rng = StableRNG(77)
-            retained = Particle(model, particle_varinfo(), TracedRNG(rng))
-            while advance!(retained, false) !== nothing
+            retained = Particle(model, particle_varinfo(), particle_rng(rng))
+            while advance!(retained) !== nothing
             end
-            reference = Particle(
-                model, particle_varinfo(), rewind!(deepcopy(retained.rng)), retained
-            )
-            particles = map(
-                i ->
-                    i < 5 ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference,
-                1:5,
-            )
+            reference = Particle(model, particle_varinfo(), particle_rng(rng), retained)
+            particles = [
+                Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:4
+            ]
+            push!(particles, reference)
             sweep!(StableRNG(78), particles, scheme, false; conditional=true)
             return map(p -> get_raw_values(p.varinfo), particles)
         end
@@ -303,9 +298,9 @@ end
 
     @testset "ensuring reference consistency" begin
         # In conditional SMC the retained trajectory must be regenerated *exactly* by the
-        # reference particle on the next iteration -- this is what makes CSMC valid. Value
-        # replay must reach every latent address, and the traced-RNG step counter and recorded
-        # seeds must stay aligned with the observation boundaries.
+        # reference particle on the next iteration -- this is what makes CSMC valid. Reusing the
+        # retained values must reach every latent address, over many sweeps and after the
+        # reference has itself been resampled from.
         @model function state_space_model(y)
             ρ ~ Uniform(0, 1)
             x = Vector{Float64}(undef, length(y) + 1)
@@ -321,30 +316,35 @@ end
         # the mutating loop out of test soft scope.
         function run_csmc(model, N, nsteps, rng)
             draw(ps) = ps[rand(rng, Categorical(normalized_weights(ps)))]
-            particles = [Particle(model, particle_varinfo(), TracedRNG(rng)) for _ in 1:N]
+            particles = [
+                Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:N
+            ]
             sweep!(rng, particles, ESSResampler(0.5), false)
             state = draw(particles)
             allok = true
+            nlatents = 0
             for _ in 1:nsteps
-                ref = Particle(
-                    model, particle_varinfo(), rewind!(deepcopy(state.rng)), state
-                )
-                parts = map(
-                    i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
-                    1:N,
-                )
+                ref = Particle(model, particle_varinfo(), particle_rng(rng), state)
+                parts = [
+                    Particle(model, particle_varinfo(), particle_rng(rng)) for
+                    _ in 1:(N - 1)
+                ]
+                push!(parts, ref)
                 sweep!(rng, parts, ESSResampler(0.5), false; conditional=true)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 state = draw(parts)
+                nlatents = length(state.assumed_varnames)
             end
-            return allok, length(state.rng.keys)
+            return allok, nlatents
         end
 
         rng = StableRNG(1234)
         y = randn(rng, 10)
-        allok, nkeys = run_csmc(state_space_model(y), 3, 30, rng)
-        @test allok                         # reference regenerated exactly every step
-        @test nkeys == length(y) + 1        # keys stay aligned with the trajectory length
+        # ρ plus x[1:length(y)+1]: the retained trajectory must span every latent, so that the
+        # next reference is pinned on all of them rather than silently redrawing the rest.
+        allok, nlatents = run_csmc(state_space_model(y), 3, 30, rng)
+        @test allok                             # reference regenerated exactly every step
+        @test nlatents == length(y) + 2
     end
 
     @testset "reference is pinned to retained values under re-conditioning" begin
@@ -360,18 +360,18 @@ end
         end
         rng = StableRNG(42)
         retained = Particle(
-            reconditioned(2.0) | (@varname(a) => 0.0), particle_varinfo(), TracedRNG(rng)
+            reconditioned(2.0) | (@varname(a) => 0.0), particle_varinfo(), particle_rng(rng)
         )
-        while advance!(retained, false) !== nothing
+        while advance!(retained) !== nothing
         end
         retained_vals = get_raw_values(retained.varinfo)
         reference = Particle(
             reconditioned(2.0) | (@varname(a) => 5.0),   # x's prior shifted far away
             particle_varinfo(),
-            rewind!(deepcopy(retained.rng)),
+            particle_rng(rng),
             retained,
         )
-        while advance!(reference, true) !== nothing
+        while advance!(reference) !== nothing
         end
         @test get_raw_values(reference.varinfo) == retained_vals
     end
@@ -388,16 +388,15 @@ end
             return y ~ Normal(μ, 1)
         end
         rng = StableRNG(91)
-        retained = Particle(branch_changes(true, 0.0), particle_varinfo(), TracedRNG(rng))
-        while advance!(retained, false) !== nothing
+        retained = Particle(
+            branch_changes(true, 0.0), particle_varinfo(), particle_rng(rng)
+        )
+        while advance!(retained) !== nothing
         end
         reference = Particle(
-            branch_changes(false, 0.0),
-            particle_varinfo(),
-            rewind!(deepcopy(retained.rng)),
-            retained,
+            branch_changes(false, 0.0), particle_varinfo(), particle_rng(rng), retained
         )
-        @test_throws "reference execution trace changed" advance!(reference, true)
+        @test_throws "reference execution trace changed" advance!(reference)
 
         @model function branch_drops(flag, y)
             x ~ Normal()
@@ -406,17 +405,14 @@ end
             end
             return y ~ Normal(x, 1)
         end
-        retained = Particle(branch_drops(true, 0.0), particle_varinfo(), TracedRNG(rng))
-        while advance!(retained, false) !== nothing
+        retained = Particle(branch_drops(true, 0.0), particle_varinfo(), particle_rng(rng))
+        while advance!(retained) !== nothing
         end
         reference = Particle(
-            branch_drops(false, 0.0),
-            particle_varinfo(),
-            rewind!(deepcopy(retained.rng)),
-            retained,
+            branch_drops(false, 0.0), particle_varinfo(), particle_rng(rng), retained
         )
         @test_throws "reference execution trace changed" begin
-            while advance!(reference, true) !== nothing
+            while advance!(reference) !== nothing
             end
         end
     end
@@ -555,25 +551,25 @@ end
 
     @testset "advance!" begin
         # `x ~ Bernoulli(1)` forces `x = 1`, so the first observe is `1 ~ Bernoulli(0.5)`.
-        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
-        @test advance!(particle, false) ≈ -log(2)
-        @test advance!(particle, false) ≈ -log(2)     # `0 ~ Bernoulli(0.5)`
-        @test advance!(particle, false) === nothing    # model finished
+        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        @test advance!(particle) ≈ -log(2)
+        @test advance!(particle) ≈ -log(2)     # `0 ~ Bernoulli(0.5)`
+        @test advance!(particle) === nothing    # model finished
     end
 
     @testset "matches a direct evaluation" begin
         # A particle advanced without resampling draws from its RNG continuously, so it must
         # produce exactly the same values and log-likelihood as a plain DynamicPPL evaluation
         # seeded identically.
-        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
-        while advance!(particle, false) !== nothing
+        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        while advance!(particle) !== nothing
         end
 
         accs = DynamicPPL.OnlyAccsVarInfo()
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogLikelihoodAccumulator())
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
         _, accs = DynamicPPL.init!!(
-            TracedRNG(Xoshiro(23)),
+            particle_rng(Xoshiro(23)),
             test(),
             accs,
             DynamicPPL.InitFromPrior(),
@@ -585,16 +581,20 @@ end
     end
 
     @testset "fork" begin
-        particle = Particle(test(), particle_varinfo(), TracedRNG(Xoshiro(23)))
-        advance!(particle, false)
+        particle = Particle(test(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        advance!(particle)
         child = fork(particle, Xoshiro(1))
         # Independent continuations: advancing one does not touch the other.
-        @test advance!(child, false) ≈ -log(2)
+        @test advance!(child) ≈ -log(2)
         @test particle.varinfo !== child.varinfo
-        @test advance!(particle, false) ≈ -log(2)
+        @test advance!(particle) ≈ -log(2)
     end
 
-    @testset "rng replay" begin
+    @testset "reference consumes no randomness" begin
+        # The reference reproduces the retained trajectory purely from its values, so its own
+        # generator is never consulted. Pinning that down is what lets the reference be handed an
+        # ordinary generator instead of a replayable one: scrambling its seeds before every step
+        # must not perturb the trajectory it regenerates.
         @model function normal()
             a ~ Normal(0, 1)
             3 ~ Normal(a, 2)
@@ -603,19 +603,20 @@ end
             return a, b
         end
 
-        # Run a particle to completion, then replay it from its recorded seeds (as the
-        # reference trajectory of a conditional sweep does) and check it regenerates exactly.
-        # Replay relies on each step using a distinct seed, so we refresh before every step
-        # exactly as the sweep's no-resample path does.
-        particle = Particle(normal(), particle_varinfo(), TracedRNG(Xoshiro(23)))
-        while (refresh!(particle.rng); advance!(particle, false)) !== nothing
+        retained = Particle(normal(), particle_varinfo(), particle_rng(Xoshiro(23)))
+        while advance!(retained) !== nothing
         end
-        values = DynamicPPL.get_raw_values(particle.varinfo)
+        values = get_raw_values(retained.varinfo)
 
-        reference = Particle(normal(), particle_varinfo(), rewind!(deepcopy(particle.rng)))
-        while advance!(reference, true) !== nothing
+        scrambler = Xoshiro(99)
+        reference = Particle(
+            normal(), particle_varinfo(), particle_rng(Xoshiro(7)), retained
+        )
+        while (
+            Random.seed!(reference.rng, rand(scrambler, UInt64)); advance!(reference)
+        ) !== nothing
         end
-        @test DynamicPPL.get_raw_values(reference.varinfo) == values
+        @test get_raw_values(reference.varinfo) == values
     end
 end
 
