@@ -279,11 +279,7 @@ end
             while advance!(retained, false) !== nothing
             end
             reference = Particle(
-                model,
-                particle_varinfo(),
-                rewind!(deepcopy(retained.rng)),
-                get_raw_values(retained.varinfo),
-                copy(retained.assumed_varnames),
+                model, particle_varinfo(), rewind!(deepcopy(retained.rng)), retained
             )
             particles = map(
                 i ->
@@ -331,11 +327,7 @@ end
             allok = true
             for _ in 1:nsteps
                 ref = Particle(
-                    model,
-                    particle_varinfo(),
-                    rewind!(deepcopy(state.rng)),
-                    get_raw_values(state.varinfo),
-                    copy(state.assumed_varnames),
+                    model, particle_varinfo(), rewind!(deepcopy(state.rng)), state
                 )
                 parts = map(
                     i -> i < N ? Particle(model, particle_varinfo(), TracedRNG(rng)) : ref,
@@ -377,8 +369,7 @@ end
             reconditioned(2.0) | (@varname(a) => 5.0),   # x's prior shifted far away
             particle_varinfo(),
             rewind!(deepcopy(retained.rng)),
-            retained_vals,
-            copy(retained.assumed_varnames),
+            retained,
         )
         while advance!(reference, true) !== nothing
         end
@@ -404,8 +395,7 @@ end
             branch_changes(false, 0.0),
             particle_varinfo(),
             rewind!(deepcopy(retained.rng)),
-            get_raw_values(retained.varinfo),
-            copy(retained.assumed_varnames),
+            retained,
         )
         @test_throws "reference execution trace changed" advance!(reference, true)
 
@@ -423,8 +413,7 @@ end
             branch_drops(false, 0.0),
             particle_varinfo(),
             rewind!(deepcopy(retained.rng)),
-            get_raw_values(retained.varinfo),
-            copy(retained.assumed_varnames),
+            retained,
         )
         @test_throws "reference execution trace changed" begin
             while advance!(reference, true) !== nothing

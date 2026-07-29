@@ -134,10 +134,19 @@ DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 
 """
     Particle(model, varinfo, rng::TracedRNG)
+    Particle(model, varinfo, rng::TracedRNG, retained::Particle)
 
 A single particle: a suspended `model` execution together with its `varinfo`, its own
 replayable `rng`, and an accumulated `logweight`. It also serves directly as the particle
 Gibbs sampler state (there is no separate state struct).
+
+Without `retained` the particle draws from the prior. Given the previous sweep's retained
+particle, it becomes a conditional-SMC reference pinned to that trajectory: it replays the
+retained values, and errors if its execution reaches an address the retained trajectory does
+not have, or finishes without reaching one that it does. Taking the whole particle -- rather
+than its values and addresses separately -- is what makes a half-specified reference
+unrepresentable; only the two pieces are kept, so the retained particle itself is not held
+alive across sweeps.
 """
 mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
@@ -165,31 +174,27 @@ mutable struct Particle{RT<:TracedRNG,WT<:Real}
     # but assumed under the single address `x[1:2]`, so comparing against those keys would
     # report a spurious trace change; and an empty `reference_values` cannot distinguish a
     # reference with no latents from an ordinary particle. Without it, an address the retained
-    # trajectory never had would silently draw from the prior, corrupting the reference.
+    # trajectory never had would silently draw from the prior, corrupting the reference. It is
+    # set only alongside `reference_values`, by the reference constructor below.
     expected_reference_varnames::Union{Nothing,Set{DynamicPPL.VarName}}
-    # Addresses assumed by this execution, in the same form. Survives forking, so a particle
-    # that becomes the retained state hands the complete set to the next reference; a
-    # reference must finish with exactly the set above.
+    # Addresses assumed by this execution, in the same form as the set above. Survives forking,
+    # so a particle that becomes the retained state hands the complete set to the next
+    # reference; a reference must finish having assumed exactly that set.
     assumed_varnames::Set{DynamicPPL.VarName}
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
     # particle as its taped globals (a back-reference). This has to be an inner constructor
     # for that reason: `task` is left undefined here and set immediately after.
     function Particle(
-        vi::DynamicPPL.AbstractVarInfo,
-        rng::RT,
-        reference_values::DynamicPPL.VarNamedTuple=DynamicPPL.VarNamedTuple(),
-        expected_reference_varnames::Union{Nothing,Set{DynamicPPL.VarName}}=nothing,
+        vi::DynamicPPL.AbstractVarInfo, rng::RT, retained::Union{Nothing,Particle}=nothing
     ) where {RT<:TracedRNG}
         w = zero(DynamicPPL.LogProbType)
-        return new{RT,typeof(w)}(
-            vi,
-            rng,
-            w,
-            reference_values,
-            expected_reference_varnames,
-            Set{DynamicPPL.VarName}(),
-        )
+        values, varnames = if retained === nothing
+            DynamicPPL.VarNamedTuple(), nothing
+        else
+            DynamicPPL.get_raw_values(retained.varinfo), copy(retained.assumed_varnames)
+        end
+        return new{RT,typeof(w)}(vi, rng, w, values, varnames, Set{DynamicPPL.VarName}())
     end
 end
 
@@ -197,14 +202,11 @@ function Particle(
     model::DynamicPPL.Model,
     varinfo::DynamicPPL.AbstractVarInfo,
     rng::TracedRNG,
-    reference_values::DynamicPPL.VarNamedTuple=DynamicPPL.VarNamedTuple(),
-    expected_reference_varnames::Union{Nothing,Set{DynamicPPL.VarName}}=nothing,
+    retained::Union{Nothing,Particle}=nothing,
 )
     model = DynamicPPL.setleafcontext(model, SMCContext())
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
-    particle = Particle(
-        deepcopy(varinfo), rng, reference_values, expected_reference_varnames
-    )
+    particle = Particle(deepcopy(varinfo), rng, retained)
     particle.task = Libtask.TapedTask(particle, model.f, args...; kwargs...)
     return particle
 end
@@ -265,10 +267,10 @@ function DynamicPPL.tilde_assume!!(
     particle = Libtask.get_taped_globals(Particle)
     # A CSMC reference reuses the retained value (`InitFromParams`) at every address it visits.
     # `expected_reference_varnames` is `nothing` for ordinary particles and is cleared by
-    # `reseed!` on a fork, so both draw from the prior (see the `Particle` fields). An address
-    # outside the retained set means the execution trace changed, which must error rather than
-    # silently drawing part of the nominally fixed reference afresh; the `nothing` fallback
-    # given to `InitFromParams` catches the converse, a retained address with no usable value.
+    # `reseed!` on a fork, so both draw from the prior. An address outside the retained set means
+    # the execution trace changed, which must error rather than silently drawing part of the
+    # nominally fixed reference afresh; the `nothing` fallback given to `InitFromParams` catches
+    # the converse, a retained address with no usable value.
     expected = particle.expected_reference_varnames
     strategy = if expected === nothing
         DynamicPPL.InitFromPrior()
@@ -783,13 +785,7 @@ function AbstractMCMC.step(
     # The reference reproduces the retained trajectory by reusing its values (passed here and
     # consumed by `tilde_assume!!`), so it stays that trajectory even if the model was
     # re-conditioned since the last sweep. Its varinfo starts empty like any other particle.
-    reference = Particle(
-        model,
-        particle_varinfo(),
-        rewind!(deepcopy(state.rng)),
-        DynamicPPL.get_raw_values(state.varinfo),
-        copy(state.assumed_varnames),
-    )
+    reference = Particle(model, particle_varinfo(), rewind!(deepcopy(state.rng)), state)
     particles = map(1:n) do i
         i < n ? Particle(model, particle_varinfo(), TracedRNG(rng)) : reference
     end
