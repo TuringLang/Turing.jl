@@ -1,6 +1,7 @@
 #
 # Exact inference for the two state space models with tractable posteriors
 #
+
 # These give samplers something unarguable to be compared against: a Kalman filter and smoother for
 # a scalar linear Gaussian model, and forward-backward for a discrete HMM. `test_exact_ssm_reference`
 # validates both against brute force, so the reference is checked in CI rather than trusted.

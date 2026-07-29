@@ -38,6 +38,10 @@ using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
 using Turing
 
+#
+# Shared models
+#
+
 # Models shared across the testsets below. Defined at module scope, not inside a testset: a `@model`
 # sharing a local scope with a same-named variable captures it, and every particle then mutates one
 # shared array (see the `xtrue`/`ztrue` note further down).
@@ -92,6 +96,10 @@ end
 run_to_end!(p) = (while advance!(p) !== nothing
 end;
 p)
+
+#
+# SMC
+#
 
 @testset "SMC" begin
     @testset "constructor" begin
@@ -227,6 +235,10 @@ p)
         @test chn3 isa VNChain
     end
 end
+
+#
+# PG / conditional SMC
+#
 
 @testset "PG" begin
     @testset "constructor" begin
@@ -531,6 +543,10 @@ end
     end
 end
 
+#
+# Chain-level parallelism
+#
+
 @testset "parallel chains (MCMCThreads)" begin
     model = coinflip(COIN_OBS)
     # Multiple chains through AbstractMCMC's thread-based ensemble stay reproducible under a
@@ -541,6 +557,10 @@ end
         @test has_same_data(c1, c2)
     end
 end
+
+#
+# Particle mechanics
+#
 
 @testset "particle container" begin
     @testset "advance!" begin
@@ -605,6 +625,7 @@ end
 #
 # State space models with tractable posteriors
 #
+
 # These are the checks that pin the particle samplers to a known answer rather than to each other. A
 # scalar linear Gaussian SSM and a discrete HMM both have closed-form posteriors, supplied by
 # `ExactSSM` and validated there against brute force, so a disagreement beyond Monte Carlo error is a
@@ -637,20 +658,14 @@ function test_within_mc_error(exact, samples; nsigma=4)
     return nothing
 end
 
-@model function lgssm(y, a, q, r)
-    # `typeof(q)` stays generic when HMC differentiates through `q`, without boxing every
-    # element the way `Vector{Real}` would.
-    x = Vector{typeof(q)}(undef, length(y))
-    x[1] ~ Normal(0, sqrt(q / (1 - a^2)))
-    y[1] ~ Normal(x[1], sqrt(r))
-    for t in 2:length(y)
-        x[t] ~ Normal(a * x[t - 1], sqrt(q))
-        y[t] ~ Normal(x[t], sqrt(r))
-    end
-end
-
-@model function lgssm_unknown_q(y, a, r)
+# One model per SSM, with the parameter always sampled; the fixed-parameter tests `fix` it instead of
+# duplicating the body. `fix` substitutes the value without adding a log-density term, so the sweep
+# still sees one filtering step per observation -- `condition` would turn the assume into an observe
+# and add a produce, which measurably changes the draws.
+@model function lgssm(y, a, r)
     q ~ InverseGamma(3, 2)
+    # `typeof(q)` stays generic when HMC differentiates through `q`, without boxing every element the
+    # way `Vector{Real}` would.
     x = Vector{typeof(q)}(undef, length(y))
     x[1] ~ Normal(0, sqrt(q / (1 - a^2)))
     y[1] ~ Normal(x[1], sqrt(r))
@@ -664,17 +679,7 @@ const HMM_P = [0.80 0.15 0.05; 0.10 0.80 0.10; 0.05 0.15 0.80]
 const HMM_MEANS = [-1.5, 0.0, 1.5]
 const HMM_PI0 = ExactSSM.stationary_distribution(HMM_P)
 
-@model function hmm(y, sd)
-    z = Vector{Int}(undef, length(y))
-    z[1] ~ Categorical(HMM_PI0)
-    y[1] ~ Normal(HMM_MEANS[z[1]], sd)
-    for t in 2:length(y)
-        z[t] ~ Categorical(HMM_P[z[t - 1], :])
-        y[t] ~ Normal(HMM_MEANS[z[t]], sd)
-    end
-end
-
-@model function hmm_unknown_sd(y)
+@model function hmm(y)
     sd ~ LogNormal(log(0.7), 0.4)
     z = Vector{Int}(undef, length(y))
     z[1] ~ Categorical(HMM_PI0)
@@ -703,7 +708,9 @@ end
 
     @testset "PG recovers the exact smoothing marginals" begin
         means, vars = ExactSSM.lgssm_smoother(y, a, true_q, r, s0(true_q))
-        chn = sample(StableRNG(24), lgssm(y, a, true_q, r), PG(32), 4_000)
+        chn = sample(
+            StableRNG(24), fix(lgssm(y, a, r), @varname(q) => true_q), PG(32), 4_000
+        )
         for t in 1:T
             xs = particle_draws(chn, @varname(x[t]))
             test_within_mc_error(means[t], xs)
@@ -725,7 +732,7 @@ end
         )
 
         alg = Gibbs(@varname(q) => NUTS(), @varname(x) => CSMC(32))
-        chn = sample(StableRNG(31), lgssm_unknown_q(y, a, r), alg, 4_000)
+        chn = sample(StableRNG(31), lgssm(y, a, r), alg, 4_000)
 
         qd = particle_draws(chn, @varname(q))
         test_within_mc_error(q_mean, qd)
@@ -756,7 +763,7 @@ end
         # Discrete states make this sharp: the reference is a probability vector, so any bias shows
         # up directly instead of being absorbed into a mean.
         post, _ = ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, true_sd))
-        chn = sample(StableRNG(25), hmm(y, true_sd), PG(32), 4_000)
+        chn = sample(StableRNG(25), fix(hmm(y), @varname(sd) => true_sd), PG(32), 4_000)
         for t in 1:T
             zs = particle_draws(chn, @varname(z[t]))
             for k in 1:K
@@ -777,7 +784,7 @@ end
         mixed = sum(w[i] * posts[i] for i in eachindex(w))
 
         alg = Gibbs(@varname(sd) => HMC(0.1, 12), @varname(z) => CSMC(32))
-        chn = sample(StableRNG(32), hmm_unknown_sd(y), alg, 4_000)
+        chn = sample(StableRNG(32), hmm(y), alg, 4_000)
 
         sdd = particle_draws(chn, @varname(sd))
         test_within_mc_error(sd_mean, sdd)

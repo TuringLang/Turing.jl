@@ -345,7 +345,9 @@ end
 # systematic resampling mixes noticeably better than multinomial in particle Gibbs -- so
 # implementing the conditional schemes properly would be a genuine improvement.
 
-# ── Resampler interface ───────────────────────────────────────────────────────
+##
+## Resampler interface
+##
 
 abstract type AbstractResampler end
 
@@ -355,7 +357,9 @@ should_resample(::AbstractResampler, weights) = true
 """Draw `n` ancestor indices from `1:length(weights)` with probabilities `weights`."""
 function resample_indices end
 
-# ── Schemes ───────────────────────────────────────────────────────────────────
+##
+## Schemes
+##
 
 "Multinomial resampling: `n` independent draws from the categorical over `weights`."
 struct MultinomialResampler <: AbstractResampler end
@@ -398,7 +402,9 @@ function resample_indices(rng::AbstractRNG, ::SystematicResampler, weights, n::I
     return inverse_cdf_indices(weights, n, k -> (k - 1) + u)
 end
 
-# ── Effective-sample-size gating ──────────────────────────────────────────────
+##
+## Effective-sample-size gating
+##
 
 """
     ESSThresholdResampler(threshold, scheme = StratifiedResampler())
@@ -431,7 +437,9 @@ end
 # retained trajectory's values, while the other `n-1` slots are resampled from all `n` particles
 # (so they may descend from the reference).
 
-# ── Weights and diagnostics ───────────────────────────────────────────────────
+##
+## Weights and diagnostics
+##
 
 logweights(particles) = [p.logweight for p in particles]
 normalized_weights(particles) = softmax(logweights(particles))
@@ -443,7 +451,9 @@ autocorrelation rather than a population's weight degeneracy.
 """
 weight_ess(weights) = inv(sum(abs2, weights))
 
-# ── Reweighting ───────────────────────────────────────────────────────────────
+##
+## Reweighting
+##
 
 # Advance one particle by one observation, folding its incremental weight in; return `true`
 # once it has finished (produced nothing). Factored out so the serial and multithreaded loops in
@@ -488,7 +498,9 @@ function reweight!(particles, multithreaded::Bool)
     )
 end
 
-# ── Resample and propagate ────────────────────────────────────────────────────
+##
+## Resample and propagate
+##
 
 # Resample (if the scheme calls for it) and propagate the survivors, or -- when not resampling --
 # refresh each ordinary particle's seed so the next step draws fresh randomness. Returns whether it
@@ -535,7 +547,9 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler)
     end
 end
 
-# ── One sweep ─────────────────────────────────────────────────────────────────
+##
+## One sweep
+##
 
 # Run a full particle sweep in place, returning the log-evidence estimate and -- when `ess` is set --
 # the per-observation effective sample sizes. Only `SMC` reports those, and `PG` runs thousands of
