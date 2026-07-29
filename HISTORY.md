@@ -6,7 +6,7 @@
 
 `SMC` and `PG` / `CSMC` have been reimplemented natively and no longer depend on AdvancedPS.
 
-Resampling schemes are now types rather than functions — `StratifiedResampler()`, `SystematicResampler()`, and `MultinomialResampler()` (in `Turing.Inference`), optionally wrapped in `ESSResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`; for example `SMC(Turing.Inference.SystematicResampler())`, `SMC(0.5)`, or `PG(10, Turing.Inference.MultinomialResampler(), 0.5)`.
+Resampling schemes are now types rather than functions — `StratifiedResampler()`, `SystematicResampler()`, and `MultinomialResampler()` (in `Turing.Inference`), optionally wrapped in `ESSThresholdResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`; for example `SMC(Turing.Inference.SystematicResampler())`, `SMC(0.5)`, or `PG(10, Turing.Inference.MultinomialResampler(), 0.5)`.
 The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, …) is gone.
 
 The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows, which systematic does not.

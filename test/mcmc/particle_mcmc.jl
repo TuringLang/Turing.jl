@@ -8,7 +8,7 @@ using Turing.Inference:
     StratifiedResampler,
     SystematicResampler,
     MultinomialResampler,
-    ESSResampler,
+    ESSThresholdResampler,
     Particle,
     particle_rng,
     particle_varinfo,
@@ -27,11 +27,11 @@ using Turing
 
 @testset "SMC" begin
     @testset "constructor" begin
-        @test SMC().resampler == ESSResampler(0.5)
+        @test SMC().resampler == ESSThresholdResampler(0.5)
         @test SMC().resampler.scheme isa StratifiedResampler   # stratified is the default scheme
-        @test SMC(0.6).resampler == ESSResampler(0.6)
+        @test SMC(0.6).resampler == ESSThresholdResampler(0.6)
         @test SMC(MultinomialResampler(), 0.6).resampler ==
-            ESSResampler(0.6, MultinomialResampler())
+            ESSThresholdResampler(0.6, MultinomialResampler())
         @test SMC(SystematicResampler()).resampler == SystematicResampler()
         @test SMC().multithreaded == false
         @test SMC(; multithreaded=true).multithreaded == true
@@ -206,10 +206,10 @@ end
 @testset "PG" begin
     @testset "constructor" begin
         @test PG(10).nparticles == 10
-        @test PG(10).resampler == ESSResampler(0.5)
-        @test PG(60, 0.6).resampler == ESSResampler(0.6)
+        @test PG(10).resampler == ESSThresholdResampler(0.5)
+        @test PG(60, 0.6).resampler == ESSThresholdResampler(0.6)
         @test PG(80, MultinomialResampler(), 0.6).resampler ==
-            ESSResampler(0.6, MultinomialResampler())
+            ESSThresholdResampler(0.6, MultinomialResampler())
         @test PG(100, SystematicResampler()).resampler == SystematicResampler()
         @test PG(10).multithreaded == false
         @test PG(10; multithreaded=true).multithreaded == true
@@ -319,7 +319,7 @@ end
             particles = [
                 Particle(model, particle_varinfo(), particle_rng(rng)) for _ in 1:N
             ]
-            sweep!(rng, particles, ESSResampler(0.5), false)
+            sweep!(rng, particles, ESSThresholdResampler(0.5), false)
             state = draw(particles)
             allok = true
             nlatents = 0
@@ -330,7 +330,7 @@ end
                     _ in 1:(N - 1)
                 ]
                 push!(parts, ref)
-                sweep!(rng, parts, ESSResampler(0.5), false; conditional=true)
+                sweep!(rng, parts, ESSThresholdResampler(0.5), false; conditional=true)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 state = draw(parts)
                 nlatents = length(state.assumed_varnames)

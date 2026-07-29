@@ -436,21 +436,25 @@ end
 # ── Effective-sample-size gating ──────────────────────────────────────────────
 
 """
-    ESSResampler(threshold, scheme = StratifiedResampler())
+    ESSThresholdResampler(threshold, scheme = StratifiedResampler())
 
 Resample with `scheme`, but only when the effective sample size drops below
 `threshold * nparticles`. This is the default for [`SMC`](@ref) and [`PG`](@ref).
 """
-struct ESSResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
+struct ESSThresholdResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
     threshold::T
     scheme::R
 end
-ESSResampler(threshold::Real) = ESSResampler(threshold, StratifiedResampler())
-
-function should_resample(resampler::ESSResampler, weights)
-    return ess(weights) ≤ resampler.threshold * length(weights)
+function ESSThresholdResampler(threshold::Real)
+    return ESSThresholdResampler(threshold, StratifiedResampler())
 end
-function resample_indices(rng::AbstractRNG, resampler::ESSResampler, weights, n::Integer)
+
+function should_resample(resampler::ESSThresholdResampler, weights)
+    return weight_ess(weights) ≤ resampler.threshold * length(weights)
+end
+function resample_indices(
+    rng::AbstractRNG, resampler::ESSThresholdResampler, weights, n::Integer
+)
     return resample_indices(rng, resampler.scheme, weights, n)
 end
 
@@ -467,8 +471,12 @@ end
 logweights(particles) = [p.logweight for p in particles]
 normalized_weights(particles) = softmax(logweights(particles))
 log_normalizing_constant(particles) = logsumexp(logweights(particles))
-"Effective sample size of a normalised weight vector, `1 / Σ wᵢ²`."
-ess(weights) = inv(sum(abs2, weights))
+"""
+Effective sample size of a normalised weight vector, `1 / Σ wᵢ²`. Named for the weights to keep it
+distinct from `MCMCDiagnosticTools.ess`, which Turing re-exports and which measures a *chain's*
+autocorrelation rather than a population's weight degeneracy.
+"""
+weight_ess(weights) = inv(sum(abs2, weights))
 
 # ── Reweighting ───────────────────────────────────────────────────────────────
 
@@ -580,7 +588,7 @@ function sweep!(
         # Post-reweight ESS for this observation: a degeneracy diagnostic (low ESS means few
         # particles carry the weight). After the break, so the finishing pass -- which adds no
         # observation and leaves the weights unchanged -- contributes no spurious entry.
-        push!(ess_per_step, ess(normalized_weights(particles)))
+        push!(ess_per_step, weight_ess(normalized_weights(particles)))
     end
     return logZ, ess_per_step
 end
@@ -611,7 +619,7 @@ struct SMC{R<:AbstractResampler} <: ParticleInference
 end
 
 """
-    SMC([resampler = ESSResampler(0.5)]; multithreaded = false)
+    SMC([resampler = ESSThresholdResampler(0.5)]; multithreaded = false)
     SMC([scheme = StratifiedResampler(), ]threshold; multithreaded = false)
 
 Sequential Monte Carlo sampler. By default stratified resampling is triggered whenever the
@@ -620,13 +628,13 @@ effective sample size drops below half the number of particles.
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
 
-The resampling scheme types (`StratifiedResampler`, `SystematicResampler`, `MultinomialResampler`, `ESSResampler`) are
+The resampling scheme types (`StratifiedResampler`, `SystematicResampler`, `MultinomialResampler`, `ESSThresholdResampler`) are
 not exported; refer to them as e.g. `Turing.Inference.SystematicResampler`.
 """
-SMC(; kwargs...) = SMC(ESSResampler(0.5); kwargs...)
-SMC(threshold::Real; kwargs...) = SMC(ESSResampler(threshold); kwargs...)
+SMC(; kwargs...) = SMC(ESSThresholdResampler(0.5); kwargs...)
+SMC(threshold::Real; kwargs...) = SMC(ESSThresholdResampler(threshold); kwargs...)
 function SMC(scheme::AbstractResampler, threshold::Real; kwargs...)
-    return SMC(ESSResampler(threshold, scheme); kwargs...)
+    return SMC(ESSThresholdResampler(threshold, scheme); kwargs...)
 end
 
 # SMC is a single weighted sweep, not a Markov chain: rather than fake an iteration through
@@ -713,7 +721,7 @@ struct PG{R<:AbstractResampler} <: ParticleInference
 end
 
 """
-    PG(n, [resampler = ESSResampler(0.5)]; multithreaded = false)
+    PG(n, [resampler = ESSThresholdResampler(0.5)]; multithreaded = false)
     PG(n, [scheme = StratifiedResampler(), ]threshold; multithreaded = false)
 
 Particle Gibbs sampler with `n` particles. By default resampling is triggered whenever the
@@ -725,10 +733,10 @@ different algorithm rather than the same draw with one output pinned.
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
 """
-PG(n::Int; kwargs...) = PG(n, ESSResampler(0.5); kwargs...)
-PG(n::Int, threshold::Real; kwargs...) = PG(n, ESSResampler(threshold); kwargs...)
+PG(n::Int; kwargs...) = PG(n, ESSThresholdResampler(0.5); kwargs...)
+PG(n::Int, threshold::Real; kwargs...) = PG(n, ESSThresholdResampler(threshold); kwargs...)
 function PG(n::Int, scheme::AbstractResampler, threshold::Real; kwargs...)
-    return PG(n, ESSResampler(threshold, scheme); kwargs...)
+    return PG(n, ESSThresholdResampler(threshold, scheme); kwargs...)
 end
 
 "Conditional SMC, an alias for [`PG`](@ref)."
