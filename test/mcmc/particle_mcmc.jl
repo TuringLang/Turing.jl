@@ -21,13 +21,16 @@ using Distributions:
     Bernoulli,
     Beta,
     Categorical,
+    Exponential,
     Gamma,
     InverseGamma,
     LogNormal,
     MvNormal,
     Normal,
+    Poisson,
     Uniform,
     logpdf,
+    product_distribution,
     sample
 using FlexiChains: VNChain, has_same_data
 using LinearAlgebra: I
@@ -457,6 +460,50 @@ end
         end
         chn = sample(StableRNG(105), slice_assume([0.4, -0.4]), PG(5), 20)
         @test size(chn, 1) == 20
+    end
+
+    @testset "latents whose dimension varies between executions" begin
+        # The two testsets above cover traces that *changed* and must be rejected. This covers one
+        # that is legitimately different on every execution and must simply work: `k[t]` decides how
+        # many jumps step `t` has, so the reference must reuse `k[t]` before it can reuse a jump
+        # vector of the matching length.
+        #
+        # The target is exact without a reference implementation, and still informative about the
+        # varying dimension. Tilting `k[t] ~ Poisson(1)` by `c^k[t]` gives exactly `Poisson(c)`,
+        # since `e⁻¹c^k/k!` normalises to `e⁻ᶜc^k/k!`. The tilt is the only term that carries
+        # information, and it is a function of the trace's shape, so a reference that replayed or
+        # reweighted the varying-length part wrongly would move `E[k[t]]` off `c`. The observation
+        # itself ignores the latents; it is there to give the sweep its produce points.
+        tilt = 2.0
+        @model function random_dimension(y, c)
+            k = Vector{Int}(undef, length(y))
+            jumps = Vector{Vector{Float64}}(undef, length(y))
+            for t in eachindex(y)
+                k[t] ~ Poisson(1.0)
+                if k[t] > 0
+                    jumps[t] ~ product_distribution(fill(Exponential(1.0), k[t]))
+                else
+                    # A zero-length `product_distribution` is not usable, and `k[t] = 0` has
+                    # probability e⁻¹, so this branch is taken constantly.
+                    jumps[t] = Float64[]
+                end
+                @addlogprob! k[t] * log(c)
+                y[t] ~ Normal(0.0, 1.0)
+            end
+        end
+
+        ndraws = 2_000
+        chn = sample(StableRNG(106), random_dimension(zeros(4), tilt), PG(16), ndraws)
+        @test size(chn, 1) == ndraws
+        ks = reduce(vcat, (reshape(collect(k), 1, :) for k in collect(chn[@varname(k)])))
+        @test size(ks) == (ndraws, 4)
+        # Four standard errors of a Poisson(`tilt`) mean over `ndraws` draws, which also leaves room
+        # for the autocorrelation a Markov chain carries.
+        tol = 4 * sqrt(tilt / ndraws)
+        for t in 1:4
+            @test mean(@view ks[:, t]) ≈ tilt atol = tol
+            @test mean(==(0), @view ks[:, t]) ≈ exp(-tilt) atol = tol
+        end
     end
 
     @testset "addlogprob leads to reweighting" begin
