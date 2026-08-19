@@ -1,9 +1,7 @@
 # 0.46.1
 
-Fixed a bug that biased `PG` / `CSMC` posteriors.
-Particles forked from the reference kept replaying the retained trajectory instead of sampling afresh, so every descendant of the reference was a copy of it and the sweep lost the diversity that makes particle Gibbs valid.
+Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors for any model, whether sampled on its own or as a Gibbs component.
 On a two-state HMM with ten observations, `PG(16)` state marginals sat up to seven Monte Carlo standard errors away from the exact forward-backward values; they are now within one.
-The bug dates back to v0.41.0, and affects any model sampled with `PG` / `CSMC`, whether on its own or as a Gibbs component.
 
 # 0.46.0
 

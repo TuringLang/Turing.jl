@@ -66,11 +66,9 @@ function AdvancedPS.delete_retained!(trace::TracedModel)
     # This method is called if, during a CSMC update, we perform a resampling
     # and choose the reference particle as the trajectory to carry on from.
     # In such a case, we need to ensure that when we continue sampling (i.e.
-    # the next time we hit tilde_assume!!), we don't use the values in the
-    # reference particle but rather sample new values.
-    #
-    # This has to mutate: `AdvancedPS.fork` calls it for its side effect and discards the
-    # return value.
+    # the next time we hit tilde_assume!!), we don't use the values in the 
+    # reference particle but rather sample new values. This has to mutate:
+    # `AdvancedPS.fork` calls it for its side effect and discards the return value.
     trace.resample = true
     return trace
 end

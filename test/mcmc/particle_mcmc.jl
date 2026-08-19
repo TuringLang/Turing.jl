@@ -3,7 +3,7 @@ module ParticleMCMCTests
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-using Distributions: Bernoulli, Beta, Gamma, Normal, Poisson, sample
+using Distributions: Bernoulli, Beta, Categorical, Gamma, Normal, sample
 using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
@@ -168,26 +168,46 @@ end
         @test length(unique(c[:s])) == 1
     end
 
-    @testset "conditional sweeps keep the population diverse" begin
-        # `k[t] ~ Poisson(1)` reweighted by `c^k[t]` is exactly `Poisson(c)`, since `e⁻¹cᵏ/k!`
-        # normalises to `e⁻ᶜcᵏ/k!`, and the reweighting is the only term carrying information:
-        # the sweep alone has to produce `E[k[t]] = c`. A descendant of the reference that
-        # replays the retained trajectory rather than branching off it is a copy of the
-        # reference, and the chain then over-visits that (high weight, hence high `k`)
-        # trajectory: `E[k]` used to come out between 2.4 and 2.7 across eight seeds, against
-        # within 0.05 of 2 once fixed.
-        c = 2.0
-        @model function tilted_poisson(T, c)
-            k = Vector{Int}(undef, T)
-            for t in 1:T
-                k[t] ~ Poisson(1.0)
-                @addlogprob! k[t] * log(c)
+    @testset "conditional sweeps target the exact posterior" begin
+        # A reference particle that is not exactly the retained trajectory shows up here. The
+        # chain's stay probability is the other Gibbs component, so every `z[t]` is
+        # re-conditioned when `i` moves, and the observations are sharp enough to make the
+        # weights uneven; either is enough to bias the marginals. Measured over four seeds, a
+        # correct sweep keeps the mean error under 0.005, descendants that copy the reference
+        # rather than branching off it give 0.020 to 0.028, and a reference rebuilt by
+        # replaying random numbers instead of reusing values gives 0.017 to 0.022.
+        #
+        # Enumerating all `2 * 2^8` configurations and weighting them by the model's own log
+        # density keeps the target out of the hands of a reimplementation.
+        means, sd, stay = (-1.0, 1.0), 0.8, (0.35, 0.65)
+        @model function switching(y)
+            i ~ Categorical(2)
+            z = Vector{Int}(undef, length(y))
+            z[1] ~ Categorical([0.5, 0.5])
+            y[1] ~ Normal(means[z[1]], sd)
+            for t in 2:length(y)
+                p = stay[i]
+                z[t] ~ Categorical(z[t - 1] == 1 ? [p, 1 - p] : [1 - p, p])
+                y[t] ~ Normal(means[z[t]], sd)
             end
         end
-        chn = sample(StableRNG(468), tilted_poisson(4, c), PG(16), 2_000)
-        ks = reduce(vcat, collect(chn[@varname(k)]))
-        @test mean(ks) ≈ c atol = 0.15
-        @test mean(iszero, ks) ≈ exp(-c) atol = 0.025
+        y = [-0.9163, -2.4106, -2.1881, 0.3716, 1.3404, -1.2046, -1.8294, -0.3521]
+        model = switching(y)
+
+        confs = [
+            (i, collect(z)) for i in 1:2 for z in Iterators.product(fill(1:2, length(y))...)
+        ]
+        w = exp.([logjoint(model, (; i=i, z=z)) for (i, z) in confs])
+        w ./= sum(w)
+        exact = [
+            sum(w[k] * (confs[k][2][t] - 1) for k in eachindex(w)) for t in eachindex(y)
+        ]
+
+        alg = Gibbs(@varname(i) => MH(), @varname(z) => CSMC(8))
+        chn = sample(StableRNG(468), model, alg, 6_000)
+        zs = stack(collect(z) for z in chn[@varname(z)])
+        marginals = [mean(view(zs, t, :) .== 2) for t in eachindex(y)]
+        @test mean(abs, marginals .- exact) < 0.01
     end
 
     @testset "addlogprob leads to reweighting" begin
