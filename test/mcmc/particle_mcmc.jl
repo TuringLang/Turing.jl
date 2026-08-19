@@ -3,7 +3,7 @@ module ParticleMCMCTests
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_chain_logp_metadata
 using AdvancedPS: ResampleWithESSThreshold, resample_systematic, resample_multinomial
-using Distributions: Bernoulli, Beta, Gamma, Normal, sample
+using Distributions: Bernoulli, Beta, Gamma, Normal, Poisson, sample
 using FlexiChains: VNChain
 using Random: Random
 using StableRNGs: StableRNG
@@ -166,6 +166,28 @@ end
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
+    end
+
+    @testset "conditional sweeps keep the population diverse" begin
+        # `k[t] ~ Poisson(1)` reweighted by `c^k[t]` is exactly `Poisson(c)`, since `e⁻¹cᵏ/k!`
+        # normalises to `e⁻ᶜcᵏ/k!`, and the reweighting is the only term carrying information:
+        # the sweep alone has to produce `E[k[t]] = c`. A descendant of the reference that
+        # replays the retained trajectory rather than branching off it is a copy of the
+        # reference, and the chain then over-visits that (high weight, hence high `k`)
+        # trajectory: `E[k]` used to come out between 2.4 and 2.7 across eight seeds, against
+        # within 0.05 of 2 once fixed.
+        c = 2.0
+        @model function tilted_poisson(T, c)
+            k = Vector{Int}(undef, T)
+            for t in 1:T
+                k[t] ~ Poisson(1.0)
+                @addlogprob! k[t] * log(c)
+            end
+        end
+        chn = sample(StableRNG(468), tilted_poisson(4, c), PG(16), 2_000)
+        ks = reduce(vcat, collect(chn[@varname(k)]))
+        @test mean(ks) ≈ c atol = 0.15
+        @test mean(iszero, ks) ≈ exp(-c) atol = 0.025
     end
 
     @testset "addlogprob leads to reweighting" begin
