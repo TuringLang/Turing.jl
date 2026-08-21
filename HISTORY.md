@@ -1,3 +1,7 @@
+# 0.46.1
+
+Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whether sampled on their own or as a Gibbs component.
+
 # 0.46.0
 
 ## Breaking changes
