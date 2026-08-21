@@ -510,6 +510,49 @@ end
         end
     end
 
+    @testset "conditional sweeps target the exact posterior" begin
+        # Conditional SMC is invariant only if the reference is exactly the retained path, and
+        # this model is shaped so that either way of getting that wrong biases the marginals.
+        # The observations are sharp enough to keep the weights uneven, so resampling fires
+        # and a descendant of the reference that copies it rather than branching off shows up.
+        # The stay probability is the other Gibbs component, so a reference rebuilt by
+        # replaying random numbers -- `z[t] = z[t-1]` exactly when `u[t] < p` -- lands on a
+        # different path as soon as `i` moves. Mean absolute error over the marginals, across
+        # four seeds: under 0.005 for a correct sweep, 0.020 to 0.028 for the first failure,
+        # 0.017 to 0.022 for the second.
+        #
+        # All `2 * 2^8` configurations enumerate the exact posterior, weighted by the model's
+        # own log density rather than by a reimplementation of it.
+        means, sd, stay = (-1.0, 1.0), 0.8, (0.35, 0.65)
+        @model function switching(y)
+            i ~ Categorical(2)
+            p = stay[i]
+            transition = [p 1-p; 1-p p]
+            z = Vector{Int}(undef, length(y))
+            z[1] ~ Categorical([0.5, 0.5])
+            y[1] ~ Normal(means[z[1]], sd)
+            for t in 2:length(y)
+                z[t] ~ Categorical(transition[z[t - 1], :])
+                y[t] ~ Normal(means[z[t]], sd)
+            end
+        end
+        y = [-0.9163, -2.4106, -2.1881, 0.3716, 1.3404, -1.2046, -1.8294, -0.3521]
+        model = switching(y)
+        T = length(y)
+
+        paths = vec([collect(z) for z in Iterators.product(fill(1:2, T)...)])
+        logws = [logjoint(model, (; i=i, z=path)) for i in 1:2, path in paths]
+        ws = exp.(logws .- maximum(logws))
+        path_probs = vec(sum(ws; dims=1)) ./ sum(ws)   # posterior over paths, `i` summed out
+        exact = [path_probs' * [path[t] == 2 for path in paths] for t in 1:T]
+
+        alg = Gibbs(@varname(i) => MH(), @varname(z) => CSMC(8))
+        chn = sample(StableRNG(468), model, alg, 6_000)
+        draws = stack(collect(z) for z in chn[@varname(z)])   # T x ndraws
+        marginals = [mean(==(2), view(draws, t, :)) for t in 1:T]
+        @test mean(abs, marginals .- exact) < 0.01
+    end
+
     @testset "addlogprob leads to reweighting" begin
         # Make sure that PG takes @addlogprob! into account. It didn't use to:
         # https://github.com/TuringLang/Turing.jl/issues/1996

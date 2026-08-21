@@ -98,3 +98,4 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 
   - Non-breaking changes target `main`; breaking changes target the `breaking` branch.
   - Julia ≥ 1.10.8 required (see `[compat]` in `Project.toml`).
+  - `HISTORY.md`: one line for a bugfix or internal change. Only a breaking change or new feature earns more, and only what a user needs to act on it: what broke, and the old → new form. The mechanism and any measurements belong in the commit and the PR.

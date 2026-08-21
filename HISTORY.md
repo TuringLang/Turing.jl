@@ -19,6 +19,10 @@ The rewrite also brings:
   - **Parallelism** at two independent levels. *Across chains*, SMC/PG work with AbstractMCMC's `MCMCThreads()` / `MCMCDistributed()` like any other sampler — each chain is an independent run. *Within a single sweep*, `SMC(; multithreaded=true)` / `PG(n; multithreaded=true)` spread that sweep's particles across threads. These are separate knobs: the ensemble does not parallelise a sweep, `multithreaded` does not parallelise chains, and they compose. Neither changes the results; start Julia with multiple threads (e.g. `julia -t auto`) for the thread-based paths to take effect.
   - **Equal-weight draws & diagnostics.** `SMC` resamples once at the end of the sweep so the returned particles are an equal-weight sample — `mean(chain[...])` and other summaries need no weighting. `SMC`, `PG`, and `CSMC` chains all carry `log_normalizing_constant`; `SMC` chains additionally carry `ess_per_step`, the per-observation effective sample size across the sweep (a degeneracy diagnostic). For `SMC` the normalizing constant is an unbiased estimate of the marginal likelihood `p(y)`; for `PG` / `CSMC` it is **not**, and must not be used for model comparison — see the `PG` docstring.
 
+# 0.46.1
+
+Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whether sampled on their own or as a Gibbs component.
+
 # 0.46.0
 
 ## Breaking changes
