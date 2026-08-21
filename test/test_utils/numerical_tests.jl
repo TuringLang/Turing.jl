@@ -24,26 +24,6 @@ function check_gdemo(chain; atol=0.2, rtol=0.0)
     )
 end
 
-# Exact posterior means of `MoGtest_default`, i.e. `MoGtest([1.0 1.0 4.0 4.0])`, for
-# `[z1, z2, z3, z4, mu1, mu2]`. The four `z` are discrete, so enumerating all 2^4 cluster
-# assignments and integrating `mu1`, `mu2` out analytically (given `z`, each cluster's
-# observations are Gaussian with a Gaussian prior, so the marginal likelihood and the
-# conditional posterior mean are both closed-form) gives these exactly.
-#
-# These are deliberately *not* the idealised labels `[1, 1, 2, 2, 1, 4]`. The data do not
-# identify the clusters perfectly, so the truth sits 0.046 off each label and 0.072 off each
-# prior mean. Asserting the idealised values spent that 0.072 of the tolerance before any Monte
-# Carlo error -- half of a 0.15 `atol`, and 72% of the 0.1 one used in mcmc/ess.jl -- which made
-# accurate samplers fail intermittently and made the rest look worse than they are.
-const MOGTEST_DEFAULT_MEANS = [
-    1.0455583636758707,
-    1.0455583636758707,
-    1.9544416363241297,
-    1.9544416363241297,
-    1.071541120128846,
-    3.928458879871154,
-]
-
 # Wrapper function to check MoGtest.
 function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
     return check_numerical(
@@ -56,7 +36,7 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
             @varname(mu1),
             @varname(mu2)
         ],
-        MOGTEST_DEFAULT_MEANS;
+        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0];
         atol=atol,
         rtol=rtol,
     )
@@ -73,7 +53,7 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
             @varname(mu1),
             @varname(mu2)
         ],
-        MOGTEST_DEFAULT_MEANS;
+        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0];
         atol=atol,
         rtol=rtol,
     )
