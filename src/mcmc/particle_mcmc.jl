@@ -544,15 +544,15 @@ end
 # sampler rng is untouched here.
 function reweight!(particles, multithreaded::Bool)
     n = length(particles)
-    if multithreaded
-        # A shared counter would race, so collect per-particle results and tally afterwards.
+    n_done = if multithreaded
+        # A shared counter would race, so record per particle and tally afterwards.
         finished = Vector{Bool}(undef, n)
         Threads.@threads for i in 1:n
             finished[i] = advance_particle!(particles[i])
         end
-        n_done = count(finished)
+        count(finished)
     else
-        n_done = count(advance_particle!, particles)
+        count(advance_particle!, particles)
     end
     n_done == 0 && return false
     n_done == n && return true
@@ -573,34 +573,8 @@ end
 # always occupies the last slot, so `isreference` is the single source of truth and resampling cannot
 # disagree with the rest of the sweep about which particle is pinned.
 function resample_propagate!(rng::AbstractRNG, particles, resampler)
-    n = length(particles)
-    conditional = isreference(last(particles))
     weights = normalized_weights(particles)
-    if should_resample(resampler, weights)
-        # A conditional sweep draws the `n-1` free ancestors independently from the categorical
-        # over the weights, whatever scheme `resampler` names -- see the resampling-schemes
-        # section for why the named scheme's conditional version is not simply "pin one draw".
-        ancestors = if conditional
-            resample_indices(rng, MultinomialResampler(), weights, n - 1)
-        else
-            resample_indices(rng, resampler, weights, n)
-        end
-        old = copy(particles)
-        seen = falses(n)
-        for (slot, a) in enumerate(ancestors)
-            # Reuse each surviving parent's object for its first offspring; only extra
-            # offspring -- and any offspring of the retained reference -- need the costly
-            # `deepcopy`. Either way the child is reseeded to continue independently.
-            reuse = !seen[a] && !isreference(old[a])
-            seen[a] = true
-            child = reuse ? reseed!(old[a], rng) : fork(old[a], rng)
-            child.logweight = zero(DynamicPPL.LogProbType)
-            particles[slot] = child
-        end
-        # reference retained, weight reset
-        conditional && (particles[n].logweight = zero(DynamicPPL.LogProbType))
-        return true
-    else
+    if !should_resample(resampler, weights)
         # The reference draws nothing (it reuses retained values), so only the others need a
         # fresh seed for the next step.
         for p in particles
@@ -608,6 +582,32 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler)
         end
         return false
     end
+
+    n = length(particles)
+    conditional = isreference(last(particles))
+    # A conditional sweep draws the `n-1` free ancestors independently from the categorical
+    # over the weights, whatever scheme `resampler` names -- see the resampling-schemes
+    # section for why the named scheme's conditional version is not simply "pin one draw".
+    ancestors = if conditional
+        resample_indices(rng, MultinomialResampler(), weights, n - 1)
+    else
+        resample_indices(rng, resampler, weights, n)
+    end
+    parents = copy(particles)
+    taken = falses(n)
+    for (slot, a) in enumerate(ancestors)
+        # A parent's first offspring continues in the parent's own object; extra offspring need
+        # the costly `deepcopy`, and so does any offspring of the reference, which has to survive
+        # the sweep intact. Either way the child is reseeded to continue independently.
+        first_offspring = !taken[a] && !isreference(parents[a])
+        taken[a] = true
+        child = first_offspring ? reseed!(parents[a], rng) : fork(parents[a], rng)
+        child.logweight = zero(DynamicPPL.LogProbType)
+        particles[slot] = child
+    end
+    # reference retained, weight reset
+    conditional && (particles[n].logweight = zero(DynamicPPL.LogProbType))
+    return true
 end
 
 ##
