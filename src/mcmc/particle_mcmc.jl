@@ -736,13 +736,15 @@ serialised, so a single sweep cannot be spread across processes. Passing `MCMCTh
 and composes with this one.
 
 !!! warning "`log_normalizing_constant` is biased for PG"
-    PG chains carry `log_normalizing_constant`, but unlike [`SMC`](@ref)'s it does **not** estimate
-    `log p(y)` without bias, so it must not be used for model comparison. A conditional sweep
-    retains the reference whatever its weight, and the reference is a draw from the posterior rather
-    than from the proposal, so it usually carries far more likelihood than a fresh particle and
-    inflates the mean weight at every step. Measured against the exact `p(y)` of a linear Gaussian
-    SSM, `E[Ẑ]` overshoots by 80% at `n = 16` and 16% at `n = 64`; the bias decays like `1/n` but
-    stays large at practical `n`. Use `SMC` for an unbiased estimate.
+    PG chains carry `log_normalizing_constant`, but its exponential is not an unbiased estimator of
+    `p(y)` and must not be used for model comparison. A conditional sweep retains the reference
+    whatever its weight. Because the reference is a posterior draw rather than a proposal draw, it
+    usually has much higher likelihood than a fresh particle and inflates the mean weight at each
+    step. In a linear Gaussian SSM with known `p(y)`, `E[Ẑ]` exceeded `p(y)` by 80% at `n = 16`
+    and 16% at `n = 64`; the bias decreased approximately as `1/n` in that experiment but remained
+    substantial at these particle counts. Use [`SMC`](@ref) when an unbiased estimator of `p(y)` is
+    required. Its likelihood-scale estimate `exp(log_normalizing_constant)` is unbiased under the
+    usual particle-filter assumptions.
 """
 PG(n::Int; kwargs...) = PG(n, ESSThresholdResampler(0.5); kwargs...)
 PG(n::Int, threshold::Real; kwargs...) = PG(n, ESSThresholdResampler(threshold); kwargs...)
