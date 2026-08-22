@@ -208,7 +208,7 @@ function advance!(particle::Particle)
 end
 
 function DynamicPPL.tilde_assume!!(
-    ::SMCContext, dist::Distribution, vn::VarName, template, ::DynamicPPL.AbstractVarInfo
+    ::SMCContext, dist::Distribution, vn::VarName, template, vi::DynamicPPL.AbstractVarInfo
 )
     particle = Libtask.get_taped_globals(Particle)
     # A reference reuses the retained value at every address it visits (see the `reference` field);
@@ -226,25 +226,30 @@ function DynamicPPL.tilde_assume!!(
         DynamicPPL.InitFromParams(reference.values, nothing)
     end
     ctx = DynamicPPL.InitContext(particle.rng, strategy, DynamicPPL.UnlinkAll())
-    x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, particle.varinfo)
+    x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, vi)
     particle.varinfo = vi
     push!(particle.assumed_varnames, vn)
     return x, vi
 end
 
-# Routes the observe through the particle's varinfo and stores the result back. The weight is not
-# emitted here -- `ProduceLogLikelihoodAccumulator` produces it as it accumulates, below.
+# Both tilde handlers thread the varinfo the model passed in, and mirror the result onto the
+# particle for the sweep to read between produces. Reading `particle.varinfo` instead would discard
+# whatever the model body accumulated since the previous tilde: `@addlogprob!` reaches the varinfo
+# directly rather than through a handler, so its term would never reach a chain's `loglikelihood`.
+#
+# The weight is not emitted here -- `ProduceLogLikelihoodAccumulator` produces it as it accumulates,
+# below.
 function DynamicPPL.tilde_observe!!(
     ::SMCContext,
     dist::Distribution,
     left,
     vn::Union{VarName,Nothing},
     template,
-    ::DynamicPPL.AbstractVarInfo,
+    vi::DynamicPPL.AbstractVarInfo,
 )
     particle = Libtask.get_taped_globals(Particle)
     left, vi = DynamicPPL.tilde_observe!!(
-        DynamicPPL.DefaultContext(), dist, left, vn, template, particle.varinfo
+        DynamicPPL.DefaultContext(), dist, left, vn, template, vi
     )
     particle.varinfo = vi
     return left, vi
@@ -295,6 +300,57 @@ function DynamicPPL.accumulate_observe!!(
     return DynamicPPL.acclogp(acc, Distributions.loglikelihood(dist, left))
 end
 
+# `@addlogprob!` and `:=` update the varinfo without passing through a tilde handler. A later handler
+# mirrors the result onto the particle, but a *trailing* one has no later handler, and the final
+# varinfo is unreachable: `Libtask.consume` computes the evaluator's return value and returns
+# `nothing` once the model is done. These two mirror as they happen, so a chain reports a trailing
+# `@addlogprob!` term and a trailing `:=` value as it would under any other sampler.
+# The produce-aware accumulator only ever exists inside a `TapedTask` (`gibbs_update_state!!` swaps
+# it out for its out-of-task re-evaluation), so its presence is what identifies a particle varinfo.
+function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
+    acc_name = Val(:LogLikelihood)
+    if DynamicPPL.hasacc(vi, acc_name) &&
+        DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
+        Libtask.get_taped_globals(Particle).varinfo = vi
+    end
+    return vi
+end
+
+function DynamicPPL.accloglikelihood!!(
+    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+)
+    acc_name = Val(:LogLikelihood)
+    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
+        return vi
+    end
+    return mirror_onto_particle(
+        DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
+    )
+end
+
+function DynamicPPL.acclogprior!!(
+    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+)
+    acc_name = Val(:LogPrior)
+    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
+        return vi
+    end
+    return mirror_onto_particle(
+        DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
+    )
+end
+
+function DynamicPPL.store_coloneq_value!!(
+    ::SMCContext, vn::VarName, right, template, ::DynamicPPL.AbstractVarInfo
+)
+    particle = Libtask.get_taped_globals(Particle)
+    vi = DynamicPPL.store_coloneq_value!!(
+        DynamicPPL.DefaultContext(), vn, right, template, particle.varinfo
+    )
+    particle.varinfo = vi
+    return vi
+end
+
 # Tell Libtask which calls may contain a `produce`, so it instruments them. The produce itself is in
 # `acclogp`; everything else here is marked because it sits on a path that reaches it. Over-
 # approximating is safe (a wrongly-marked call is merely instrumented); missing a real one is not.
@@ -319,6 +375,11 @@ Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 # along, and they are kept on purpose: `ParamsWithStats` reads them straight off this varinfo to
 # fill a chain's `logprior` and `logjoint` columns. Dropping them to save the per-particle logpdf
 # work would not error -- the read is guarded by `hasacc` -- it would silently omit those columns.
+#
+# `:=` values are recorded too, so a chain reports them as it does under any other sampler. They
+# take no part in a sweep: the model recomputes them on every execution, and a reference replays
+# only addresses it assumed (see `tilde_assume!!`), so their presence in the retained values is
+# inert.
 function particle_varinfo()
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
@@ -808,8 +869,13 @@ function gibbs_update_state!!(
     # Re-initialise the reference varinfo with the values conditioned by other Gibbs
     # components. Mutating in place is safe: the caller replaces this state with the value we
     # return and never reads the pre-update one again.
-    state.varinfo = last(
-        DynamicPPL.init!!(model, state.varinfo, init, DynamicPPL.UnlinkAll())
-    )
+    #
+    # This runs outside any task, where the produce-aware accumulator has no business: its
+    # `produce` is inert, and the mirroring keyed on it would write onto whichever particle the
+    # calling task last consumed. Swap in the plain accumulator and restore afterwards.
+    vi = DynamicPPL.setacc!!(state.varinfo, DynamicPPL.LogLikelihoodAccumulator())
+    vi = last(DynamicPPL.init!!(model, vi, init, DynamicPPL.UnlinkAll()))
+    loglike = DynamicPPL.logp(DynamicPPL.getacc(vi, Val(:LogLikelihood)))
+    state.varinfo = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator(loglike))
     return state
 end
