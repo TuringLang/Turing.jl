@@ -9,12 +9,8 @@
 # (PG/CSMC) runs a *conditional* sweep -- one particle is a fixed reference trajectory -- inside
 # an MCMC loop.
 #
-# The reference reproduces the retained trajectory by *reusing its values*: the sampler state
-# carries those values, and the reference re-runs the model with `InitFromParams`, so it stays the
-# retained trajectory even when the model is re-conditioned between Gibbs sweeps (e.g. a
-# state-space transition prior that depends on a parameter owned by another Gibbs component). A
-# particle forked from the reference forgets the remaining values (in `reseed!`), so branching
-# samples fresh with no per-particle flag.
+# The reference reproduces the retained trajectory by reusing its values rather than replaying its
+# random draws (see the `reference` field for why); a fork forgets them in `reseed!`.
 #
 # Reference: Andrieu, Doucet & Holenstein, "Particle Markov chain Monte Carlo methods", Journal of
 # the Royal Statistical Society: Series B 72(3), 269-342 (2010).
@@ -34,14 +30,11 @@ function particle_rng(rng::AbstractRNG=Random.default_rng())
     return Random.seed!(Random123.Philox2x(), rand(rng, Random.Sampler(rng, UInt64)))
 end
 
-# Derive a fresh seed from `key`. Splitting one generator into many by re-seeding is fragile
-# in two ways: the derived seeds can yield *correlated* streams (Steele et al., "Fast
-# Splittable Pseudorandom Number Generators", OOPSLA 2014), and a stdlib `MersenneTwister`
-# derivation is not identical across Julia versions (Julia does not guarantee reproducible
-# streams), which made SMC/PG drift between versions even under a StableRNG. Both bit the
-# previous AdvancedPS implementation (#2781, AdvancedPS.jl#110). Philox is a counter-based
-# generator with a fixed, portable algorithm and strong avalanche, so deriving the seed
-# through it is both well-decorrelated from its parent and version-stable.
+# Derive a fresh seed from `key`. Re-seeding to split one generator into many can yield correlated
+# streams (Steele et al., "Fast Splittable Pseudorandom Number Generators", OOPSLA 2014), and a
+# `MersenneTwister` derivation is not stable across Julia versions, which drifted SMC/PG results
+# even under a StableRNG (#2781, AdvancedPS.jl#110). Philox is counter-based with a fixed
+# algorithm, so a seed derived through it is both decorrelated and version-stable.
 split_key(key::Integer) = rand(Random.seed!(Random123.Philox2x(), key), typeof(key))
 
 "Reseed from the generator's own current state (used between steps when not resampling)."
@@ -104,11 +97,9 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # is ever changed.
     logweight::WT
     # `nothing` unless this particle is a CSMC reference; otherwise the retained trajectory's raw
-    # values, which the reference reproduces by reusing them (`InitFromParams` in `tilde_assume!!`).
-    # Reusing the *value* rather than replaying the RNG draw is what keeps the reference on that
-    # trajectory when Gibbs re-conditions the model: a draw is x = g(u; θ) in the RNG output u and
-    # the distribution parameters θ, so replaying u after θ → θ' yields g(u; θ') ≠ x -- e.g.
-    # x ~ Normal(μ, 1) is μ + Φ⁻¹(u), which shifts by μ' − μ.
+    # values, which it reuses (`InitFromParams` in `tilde_assume!!`). Reusing the *value* rather than
+    # replaying the RNG draw is what survives Gibbs re-conditioning: a draw is x = g(u; θ), so
+    # replaying u after θ → θ' gives g(u; θ') ≠ x -- μ + Φ⁻¹(u) shifts by μ' − μ.
     reference::Union{Nothing,DynamicPPL.VarNamedTuple}
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
@@ -171,9 +162,9 @@ Run the particle to its next `observe`, returning the incremental log-likelihood
 """
 function advance!(particle::Particle)
     score = Libtask.consume(particle.task)
-    # `tilde_assume!!` already rejects any address outside the retained set, so once the
-    # reference has run to completion the only discrepancy left to catch is a retained address
-    # it never visited (e.g. a branch that stopped being taken after re-conditioning).
+    # `tilde_assume!!` already rejects an address the retained values lack, so the only
+    # discrepancy left to catch here is a retained address the reference never visited (e.g. a
+    # branch that stopped being taken after re-conditioning).
     reference = particle.reference
     if score === nothing && reference !== nothing
         dropped = setdiff(
@@ -249,20 +240,13 @@ end
 DynamicPPL.accumulator_name(::Type{<:ProduceLogLikelihoodAccumulator}) = :LogLikelihood
 DynamicPPL.logp(acc::ProduceLogLikelihoodAccumulator) = acc.logp
 
-# The produce lives here, in the single place the likelihood is accumulated, so `val` *is* the
-# increment: "the produced weight equals the accumulator's increment" becomes structural rather than
-# an invariant to keep two call sites in step with. Both routes reach the accumulator through exactly
-# one `acclogp` -- an `observe` via `accumulate_observe!!`, and `@addlogprob!` via
-# `accloglikelihood!!` -> `map_accumulator!!` -- so each emits exactly one weight, which is what
-# gets `@addlogprob!` terms into the weight as well as the accumulator (issue #1996).
-#
-# Accumulator merging cannot fire a spurious produce: `combine` adds the two `logp`s directly rather
-# than going through `acclogp`, so a submodel's varinfo folding into its parent's stays silent.
-#
-# `produce` suspends the task before the caller assigns the updated varinfo back onto the particle, so
-# a *suspended* particle's accumulated total lags this term. Nothing reads it in that state -- the
-# sweep reweights from `logweight`, and every varinfo read (`pg_transition_and_state`,
-# `gibbs_get_raw_values`, SMC's bundling) happens once the model has run to completion.
+# The produce lives in the one place the likelihood is accumulated, so `val` *is* the increment:
+# "produced weight equals accumulated increment" is structural rather than an invariant two call
+# sites must keep in step. `observe` and `@addlogprob!` both arrive through exactly one `acclogp`,
+# which is what gets `@addlogprob!` into the weight (issue #1996). `combine` adds the two `logp`s
+# directly rather than through `acclogp`, so folding a submodel's varinfo into its parent's stays
+# silent. `produce` suspends before the caller stores the updated varinfo, so a *suspended*
+# particle's total lags this term; every varinfo read happens after the model has run to completion.
 function DynamicPPL.acclogp(acc::ProduceLogLikelihoodAccumulator, val)
     Libtask.produce(val)
     return ProduceLogLikelihoodAccumulator(DynamicPPL.logp(acc) + val)
@@ -279,13 +263,12 @@ function DynamicPPL.accumulate_observe!!(
     return DynamicPPL.acclogp(acc, Distributions.loglikelihood(dist, left))
 end
 
-# `@addlogprob!` and `:=` update the varinfo without passing through a tilde handler. A later handler
-# mirrors the result onto the particle, but a *trailing* one has no later handler, and the final
-# varinfo is unreachable: `Libtask.consume` computes the evaluator's return value and returns
-# `nothing` once the model is done. These two mirror as they happen, so a chain reports a trailing
-# `@addlogprob!` term and a trailing `:=` value as it would under any other sampler.
-# The produce-aware accumulator only ever exists inside a `TapedTask` (`gibbs_update_state!!` swaps
-# it out for its out-of-task re-evaluation), so its presence is what identifies a particle varinfo.
+# `@addlogprob!` and `:=` update the varinfo without passing through a tilde handler, so a trailing
+# one has nothing after it to mirror the result onto the particle, and the final varinfo is
+# unreachable: `Libtask.consume` discards the evaluator's return value once the model is done. The
+# methods below therefore mirror as the update happens, keyed on the produce-aware accumulator,
+# which exists only inside a `TapedTask` (`gibbs_update_state!!` swaps it out) and so identifies a
+# particle varinfo.
 function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
     acc_name = Val(:LogLikelihood)
     if DynamicPPL.hasacc(vi, acc_name) &&
@@ -295,38 +278,34 @@ function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
     return vi
 end
 
-function DynamicPPL.accloglikelihood!!(
-    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
-)
-    acc_name = Val(:LogLikelihood)
+function acclogp_and_mirror!!(vi, acc_name, logp, ignore_missing_accumulator)
     if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
         return vi
     end
     return mirror_onto_particle(
         DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
     )
+end
+
+function DynamicPPL.accloglikelihood!!(
+    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+)
+    return acclogp_and_mirror!!(vi, Val(:LogLikelihood), logp, ignore_missing_accumulator)
 end
 
 function DynamicPPL.acclogprior!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
-    acc_name = Val(:LogPrior)
-    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
-        return vi
-    end
-    return mirror_onto_particle(
-        DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
-    )
+    return acclogp_and_mirror!!(vi, Val(:LogPrior), logp, ignore_missing_accumulator)
 end
 
 function DynamicPPL.store_coloneq_value!!(
-    ::SMCContext, vn::VarName, right, template, ::DynamicPPL.AbstractVarInfo
+    ::SMCContext, vn::VarName, right, template, vi::DynamicPPL.AbstractVarInfo
 )
-    particle = Libtask.get_taped_globals(Particle)
     vi = DynamicPPL.store_coloneq_value!!(
-        DynamicPPL.DefaultContext(), vn, right, template, particle.varinfo
+        DynamicPPL.DefaultContext(), vn, right, template, vi
     )
-    particle.varinfo = vi
+    Libtask.get_taped_globals(Particle).varinfo = vi
     return vi
 end
 
@@ -349,16 +328,11 @@ Libtask.@might_produce(DynamicPPL.acclogp!!)
 # See https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
-# Swap the default likelihood accumulator for the produce-aware one that drives reweighting, and
-# add the raw sampled values. `OnlyAccsVarInfo`'s defaults also bring `LogPrior` and `LogJacobian`
-# along, and they are kept on purpose: `ParamsWithStats` reads them straight off this varinfo to
-# fill a chain's `logprior` and `logjoint` columns. Dropping them to save the per-particle logpdf
-# work would not error -- the read is guarded by `hasacc` -- it would silently omit those columns.
-#
-# `:=` values are recorded too, so a chain reports them as it does under any other sampler. They
-# take no part in a sweep: the model recomputes them on every execution, and a reference replays
-# only addresses it assumed (see `tilde_assume!!`), so their presence in the retained values is
-# inert.
+# Swap the default likelihood accumulator for the produce-aware one that drives reweighting, and add
+# the raw sampled values (`:=` included, so a chain reports them as under any other sampler; they
+# take no part in a sweep). `OnlyAccsVarInfo`'s default `LogPrior` and `LogJacobian` are kept on
+# purpose: `ParamsWithStats` reads them off this varinfo to fill a chain's `logprior` and `logjoint`
+# columns, and dropping them would silently omit those columns rather than error.
 function particle_varinfo()
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
@@ -510,17 +484,9 @@ end
 # Advance every particle by one observation; return `true` once all have finished. A model
 # whose number of observations varies across executions leaves particles out of step.
 #
-# `multithreaded` is *within-sweep* parallelism -- spreading this sweep's particle evaluations
-# across threads. It is a separate axis from AbstractMCMC's chain-level ensemble
-# (`MCMCThreads`/`MCMCDistributed`, which runs whole chains independently); the two compose.
-# Only threading is offered here, not distribution: particles resample every step (all-to-all)
-# and are live Libtask tasks, so spreading one sweep across processes would be communication-
-# bound rather than a speed-up.
-#
-# Each particle advances only its own state (rng, varinfo, task), and its rng was already
-# seeded serially in `resample_propagate!`, so the multithreaded loop is race-free and gives
-# results identical to the serial one. Only the model evaluations parallelise; the shared
-# sampler rng is untouched here.
+# Each particle advances only its own state (rng, varinfo, task), and its rng was already seeded
+# serially in `resample_propagate!`, so the multithreaded loop is race-free and gives results
+# identical to the serial one; the shared sampler rng is untouched here.
 function reweight!(particles, multithreaded::Bool)
     n = length(particles)
     n_done = if multithreaded
@@ -709,11 +675,8 @@ function AbstractMCMC.sample(
         rng, particles, sampler.resampler, sampler.multithreaded; ess=true
     )
     weights = normalized_weights(particles)
-    # One final resampling step, so the returned particles are an equal-weight sample. The
-    # sweep ends on a reweight, leaving the population weighted; resampling once here makes the
-    # result a standard unweighted chain (so `mean(chain[...])` and friends need no weighting),
-    # at the cost of a little resampling variance. Unconditional -- unlike the ESS-gated
-    # resampling inside the sweep.
+    # The sweep ends on a reweight, so resample once more -- unconditionally, unlike the ESS-gated
+    # resampling inside it -- to return an equal-weight sample that needs no weighting downstream.
     ancestors = resample_indices(rng, sampler.resampler, weights, nparticles)
     # `log_normalizing_constant` and `ess_per_step` are sweep-level, so every returned particle carries the
     # same values.
@@ -816,11 +779,9 @@ function AbstractMCMC.step(
 )
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
-    # Passing `state` makes this the reference, pinned to the retained trajectory by value (see
-    # the `reference` field). Its own generator is never read, since every draw is supplied by value --
-    # only its forks' are, and `reseed!` gives those fresh seeds. So it carries the retained
-    # generator forward rather than taking a fresh one, which keeps the sweep from drawing anything
-    # from `rng` on its behalf; the copy just avoids aliasing `state`.
+    # Passing `state` makes this the reference (see the `reference` field). Its own generator is
+    # never read -- every draw comes from the retained values, and its forks get fresh seeds from
+    # `reseed!` -- so it carries the retained one forward; the copy just avoids aliasing `state`.
     reference = Particle(model, deepcopy(state.rng), state)
     # `n - 1` fresh particles, with the reference last -- the slot `resample_propagate!` retains.
     particles = [Particle(model, particle_rng(rng)) for _ in 1:(n - 1)]

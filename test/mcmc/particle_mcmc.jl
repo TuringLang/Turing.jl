@@ -369,7 +369,7 @@ end
             sweep!(rng, particles, ESSThresholdResampler(0.5), false)
             state = draw(particles)
             allok = true
-            nlatents = 0
+            nretained = 0
             for _ in 1:nsteps
                 ref = Particle(model, particle_rng(rng), state)
                 parts = [Particle(model, particle_rng(rng)) for _ in 1:(N - 1)]
@@ -377,18 +377,18 @@ end
                 sweep!(rng, parts, ESSThresholdResampler(0.5), false)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 state = draw(parts)
-                nlatents = length(keys(get_raw_values(state.varinfo)))
+                nretained = length(keys(get_raw_values(state.varinfo)))
             end
-            return allok, nlatents
+            return allok, nretained
         end
 
         rng = StableRNG(1234)
         y = randn(rng, 10)
         # ρ plus x[1:length(y)+1]: the retained trajectory must span every latent, so that the
         # next reference is pinned on all of them rather than silently redrawing the rest.
-        allok, nlatents = run_csmc(state_space_model(y), 3, 30, rng)
+        allok, nretained = run_csmc(state_space_model(y), 3, 30, rng)
         @test allok                             # reference regenerated exactly every step
-        @test nlatents == length(y) + 2
+        @test nretained == length(y) + 2
     end
 
     @testset "reference is pinned to retained values under re-conditioning" begin
@@ -447,11 +447,10 @@ end
         end
     end
 
-    @testset "value replay tracks slice assumes by their assumed address" begin
-        # `x[1:2] ~ MvNormal(...)` is assumed under the single address `x[1:2]` but stored in
-        # the retained values under the keys `x[1]`, `x[2]`. The expected-address set must
-        # therefore come from what the trajectory assumed, not from the retained values' keys,
-        # or every slice assume looks like a changed trace.
+    @testset "value replay handles a slice assume" begin
+        # `x[1:2] ~ MvNormal(...)` is assumed under the single address `x[1:2]` but stored in the
+        # retained values under the keys `x[1]`, `x[2]`. The reference has to reuse it anyway, which
+        # it does because `haskey` resolves the slice against those keys.
         @model function slice_assume(y)
             x = Vector{Float64}(undef, 2)
             x[1:2] ~ MvNormal(zeros(2), I)
