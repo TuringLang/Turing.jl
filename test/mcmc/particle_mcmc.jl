@@ -377,7 +377,7 @@ end
                 sweep!(rng, parts, ESSThresholdResampler(0.5), false)
                 allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
                 state = draw(parts)
-                nlatents = length(state.assumed_varnames)
+                nlatents = length(keys(get_raw_values(state.varinfo)))
             end
             return allok, nlatents
         end

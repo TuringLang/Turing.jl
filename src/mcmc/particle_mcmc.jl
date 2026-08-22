@@ -92,9 +92,8 @@ separate state struct).
 
 Without `retained` the particle draws from the prior. Given the previous sweep's retained particle it
 becomes a conditional-SMC reference pinned to that trajectory, erroring if its execution reaches an
-address the retained trajectory lacks or finishes without reaching one it has. Taking the whole
-particle, rather than its values and addresses separately, is what makes a half-specified reference
-unrepresentable; only those two pieces are kept, so the retained particle is not held alive.
+address the retained trajectory lacks or finishes without reaching one it has. Only that trajectory's
+raw values are copied out, so the retained particle itself is not held alive.
 """
 mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
@@ -104,28 +103,13 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # `logweight` tracks whatever `DynamicPPL.LogProbType` is, so weights follow suit if it
     # is ever changed.
     logweight::WT
-    # `nothing` unless this particle is a CSMC reference; one field rather than two so the pair
-    # cannot get out of step, and so `isreference` has a single thing to test.
-    #
-    # `values` is the retained trajectory, which the reference reproduces by reusing it
-    # (`InitFromParams` in `tilde_assume!!`). Reusing the *value* rather than replaying the RNG draw
-    # is what keeps the reference on that trajectory when Gibbs re-conditions the model: a draw is
-    # x = g(u; θ) in the RNG output u and the distribution parameters θ, so replaying u after θ → θ'
-    # yields g(u; θ') ≠ x -- e.g. x ~ Normal(μ, 1) is μ + Φ⁻¹(u), which shifts by μ' − μ.
-    #
-    # `varnames` is the set of addresses the retained trajectory assumed, and cannot be recovered
-    # from `values`: a slice assume such as `x[1:2] ~ MvNormal(...)` is stored under the keys `x[1]`,
-    # `x[2]` but assumed under the single address `x[1:2]`, so comparing against those keys would
-    # report a spurious trace change. Without it an address the retained trajectory never had would
-    # silently draw from the prior, corrupting the reference.
-    reference::Union{
-        Nothing,
-        @NamedTuple{values::DynamicPPL.VarNamedTuple, varnames::Set{DynamicPPL.VarName}}
-    }
-    # Addresses assumed by this execution, in the same form as `reference.varnames`. Survives
-    # forking, so a particle that becomes the retained state hands the complete set to the next
-    # reference; a reference must finish having assumed exactly that set.
-    assumed_varnames::Set{DynamicPPL.VarName}
+    # `nothing` unless this particle is a CSMC reference; otherwise the retained trajectory's raw
+    # values, which the reference reproduces by reusing them (`InitFromParams` in `tilde_assume!!`).
+    # Reusing the *value* rather than replaying the RNG draw is what keeps the reference on that
+    # trajectory when Gibbs re-conditions the model: a draw is x = g(u; θ) in the RNG output u and
+    # the distribution parameters θ, so replaying u after θ → θ' yields g(u; θ') ≠ x -- e.g.
+    # x ~ Normal(μ, 1) is μ + Φ⁻¹(u), which shifts by μ' − μ.
+    reference::Union{Nothing,DynamicPPL.VarNamedTuple}
     task::Libtask.TapedTask
     # `task` is filled in once the particle exists, because the task must capture the
     # particle as its taped globals (a back-reference). This has to be an inner constructor
@@ -134,15 +118,9 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
         vi::DynamicPPL.AbstractVarInfo, rng::RT, retained::Union{Nothing,Particle}=nothing
     ) where {RT<:AbstractRNG}
         w = zero(DynamicPPL.LogProbType)
-        reference = if retained === nothing
-            nothing
-        else
-            (;
-                values=DynamicPPL.get_raw_values(retained.varinfo),
-                varnames=copy(retained.assumed_varnames),
-            )
-        end
-        return new{RT,typeof(w)}(vi, rng, w, reference, Set{DynamicPPL.VarName}())
+        reference =
+            retained === nothing ? nothing : DynamicPPL.get_raw_values(retained.varinfo)
+        return new{RT,typeof(w)}(vi, rng, w, reference)
     end
 end
 
@@ -198,7 +176,9 @@ function advance!(particle::Particle)
     # it never visited (e.g. a branch that stopped being taken after re-conditioning).
     reference = particle.reference
     if score === nothing && reference !== nothing
-        dropped = setdiff(reference.varnames, particle.assumed_varnames)
+        dropped = setdiff(
+            keys(reference), keys(DynamicPPL.get_raw_values(particle.varinfo))
+        )
         isempty(dropped) || error(
             "the reference execution trace changed while replaying retained values " *
             "(retained addresses never reached: $(collect(dropped)))",
@@ -219,16 +199,15 @@ function DynamicPPL.tilde_assume!!(
     strategy = if reference === nothing
         DynamicPPL.InitFromPrior()
     else
-        vn in reference.varnames || error(
+        haskey(reference, vn) || error(
             "the reference execution trace changed while replaying retained values " *
             "(new address: $vn)",
         )
-        DynamicPPL.InitFromParams(reference.values, nothing)
+        DynamicPPL.InitFromParams(reference, nothing)
     end
     ctx = DynamicPPL.InitContext(particle.rng, strategy, DynamicPPL.UnlinkAll())
     x, vi = DynamicPPL.tilde_assume!!(ctx, dist, vn, template, vi)
     particle.varinfo = vi
-    push!(particle.assumed_varnames, vn)
     return x, vi
 end
 
