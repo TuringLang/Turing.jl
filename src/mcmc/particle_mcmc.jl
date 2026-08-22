@@ -659,6 +659,10 @@ effective sample size drops below half the number of particles.
 
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
+Threads are the only option here: a suspended particle is a live Libtask task and cannot be
+serialised, so a single sweep cannot be spread across processes. Passing `MCMCThreads()` or
+`MCMCDistributed()` to [`sample`](@ref) parallelises whole chains instead, which is a separate axis
+and composes with this one.
 
 The resampling scheme types (`StratifiedResampler`, `SystematicResampler`, `MultinomialResampler`, `ESSThresholdResampler`) are
 not exported; refer to them as e.g. `Turing.Inference.SystematicResampler`.
@@ -763,6 +767,10 @@ the weights, for the reason given in the resampling-schemes section of this file
 
 Set `multithreaded = true` to evaluate the particles across threads within each sweep; results are
 unchanged (start Julia with multiple threads, e.g. `julia -t auto`, for this to have effect).
+Threads are the only option here: a suspended particle is a live Libtask task and cannot be
+serialised, so a single sweep cannot be spread across processes. Passing `MCMCThreads()` or
+`MCMCDistributed()` to [`sample`](@ref) parallelises whole chains instead, which is a separate axis
+and composes with this one.
 
 !!! warning "`log_normalizing_constant` is biased for PG"
     PG chains carry `log_normalizing_constant`, but unlike [`SMC`](@ref)'s it does **not** estimate
