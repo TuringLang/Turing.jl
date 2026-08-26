@@ -26,9 +26,7 @@ import Random123
 # `Particle` names the generator type in its signature.
 
 "A fresh counter-based generator for one particle, seeded from `rng`."
-function particle_rng(rng::AbstractRNG=Random.default_rng())
-    return Random.seed!(Random123.Philox2x(), rand(rng, Random.Sampler(rng, UInt64)))
-end
+particle_rng(rng::AbstractRNG) = Random.seed!(Random123.Philox2x(), rand(rng, UInt64))
 
 # Derive a fresh seed from `key`. Re-seeding to split one generator into many can yield correlated
 # streams (Steele et al., "Fast Splittable Pseudorandom Number Generators", OOPSLA 2014), and a
@@ -207,9 +205,6 @@ end
 # particle for the sweep to read between produces. Reading `particle.varinfo` instead would discard
 # whatever the model body accumulated since the previous tilde: `@addlogprob!` reaches the varinfo
 # directly rather than through a handler, so its term would never reach a chain's `loglikelihood`.
-#
-# The weight is not emitted here -- `ProduceLogLikelihoodAccumulator` produces it as it accumulates,
-# below.
 function DynamicPPL.tilde_observe!!(
     ::SMCContext,
     dist::Distribution,
@@ -534,9 +529,9 @@ end
 # refresh each ordinary particle's seed so the next step draws fresh randomness. Returns whether it
 # resampled, which tells `sweep!` what the total weight now is without recomputing it.
 #
-# Whether this is a conditional sweep is read off the particles rather than passed in: the reference
-# always occupies the last slot, so `isreference` is the single source of truth and resampling cannot
-# disagree with the rest of the sweep about which particle is pinned.
+# A conditional sweep is recognised by its reference particle, which always occupies the last slot,
+# rather than by a flag passed in, so resampling cannot disagree with the rest of the sweep about
+# which particle is pinned.
 function resample_propagate!(rng::AbstractRNG, particles, resampler)
     weights = normalized_weights(particles)
     if !should_resample(resampler, weights)
@@ -580,8 +575,8 @@ end
 ##
 
 # Run a full particle sweep in place, returning the log-evidence estimate and -- when `ess` is set --
-# the per-observation effective sample sizes. Only `SMC` reports those, and `PG` runs thousands of
-# sweeps, so computing them unconditionally would be pure waste on the sampler that sweeps most.
+# the per-observation effective sample sizes. Only `SMC` reports those; `PG` runs thousands of
+# sweeps and would pay for them every time.
 function sweep!(
     rng::AbstractRNG, particles, resampler, multithreaded::Bool; ess::Bool=false
 )
@@ -687,6 +682,9 @@ function warn_initial_params_ignored(name, initial_params)
     return nothing
 end
 
+# An extension hook: `TuringMCMCChainsExt` overrides this to flatten `ess_per_step` into scalars.
+# It cannot specialise `AbstractMCMC.bundle_samples` on `SMC` instead, because the flattened
+# transitions have to be handed back to the generic method and that call would recurse.
 function bundle_smc_samples(transitions, model, sampler, state, chain_type; kwargs...)
     return AbstractMCMC.bundle_samples(
         transitions, model, sampler, state, chain_type; kwargs...

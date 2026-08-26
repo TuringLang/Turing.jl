@@ -96,9 +96,11 @@ end
 end
 
 "Run a particle to completion."
-run_to_end!(p) = (while advance!(p) !== nothing
-end;
-p)
+function run_to_end!(p)
+    while advance!(p) !== nothing
+    end
+    return p
+end
 
 #
 # SMC
@@ -120,10 +122,6 @@ p)
                 normal(), SMC(), nparticles
             )
         end
-    end
-
-    @testset "basic model" begin
-        tested = sample(normal(), SMC(), 100)
     end
 
     @testset "resampling schemes" begin
@@ -427,8 +425,8 @@ end
         # N) and check it reproduces the trajectory we retained. Wrapped in a function to keep
         # the mutating loop out of test soft scope.
         function run_csmc(model, N, nsteps, rng)
-            # The sampler's own selection rule, not a reimplementation of it: if `pg_transition_and`
-            # `_state` ever changes how the retained particle is chosen, this test follows.
+            # Call the sampler's own selection rule rather than reimplement it, so this test
+            # follows any change to how the retained particle is chosen.
             draw(ps) = last(pg_transition_and_state(rng, ps, 0.0, true))
             particles = [Particle(model, particle_rng(rng)) for _ in 1:N]
             sweep!(rng, particles, ESSThresholdResampler(0.5), false)
