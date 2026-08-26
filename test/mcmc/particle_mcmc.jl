@@ -781,6 +781,22 @@ end
         @test advance!(particle) ≈ -log(2)
     end
 
+    @testset "both fields of a named addlogprob are weighted" begin
+        # DynamicPPL's `acclogp!!` splits a two-field `@addlogprob!` across `acclogprior!!` and
+        # `accloglikelihood!!`; both have to produce, or the sweep silently drops one term from the
+        # weight. Sorted because which arrives first is DynamicPPL's to decide.
+        @model function both_terms()
+            x ~ Normal()
+            @addlogprob! (; loglikelihood=-2.0, logprior=-1.0)
+        end
+        particle = Particle(both_terms(), particle_rng(Xoshiro(23)))
+        scores = Float64[]
+        while (score = advance!(particle)) !== nothing
+            push!(scores, score)
+        end
+        @test sort(scores) == [-2.0, -1.0]
+    end
+
     @testset "reference consumes no randomness" begin
         # The reference reproduces the retained trajectory purely from its values, so its own
         # generator is never consulted. Pinning that down is what lets the reference be handed an

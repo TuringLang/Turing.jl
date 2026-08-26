@@ -296,9 +296,12 @@ function DynamicPPL.accloglikelihood!!(
     return acclogp_and_mirror!!(vi, Val(:LogLikelihood), logp, ignore_missing_accumulator)
 end
 
-# An explicit `logprior` term -- `@addlogprob! (; logprior=...)`, which DynamicPPL routes here -- is
-# absent from the prior proposal and therefore belongs in the importance weight. Ordinary
-# assumed-prior terms remain unproduced because the proposal includes them already.
+# Particles are drawn from the prior, so an ordinary `x ~ Dist` term needs no weight of its own --
+# the draw already accounts for it. A `logprior` term added by hand never influenced a draw, so it
+# has to enter the importance weight explicitly. The produce is spelled out here only because
+# `LogPrior` is DynamicPPL's ordinary accumulator; a `loglikelihood` field needs none, since
+# `ProduceLogLikelihoodAccumulator` produces as it accumulates. A two-field `@addlogprob!` therefore
+# produces twice: the same weight, and one more point at which the sweep may resample.
 function DynamicPPL.acclogprior!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
@@ -605,9 +608,9 @@ function sweep!(
         logZ += total - logZ0
         logZ0 = total
         done && break
-        # Post-reweight ESS for this observation: a degeneracy diagnostic (low ESS means few
-        # particles carry the weight). After the break, so the finishing pass -- which adds no
-        # observation and leaves the weights unchanged -- contributes no spurious entry.
+        # Post-reweight ESS for this filtering step: a degeneracy diagnostic, one entry per produce,
+        # so an `@addlogprob!` contributes one alongside the observations. After the break, so the
+        # finishing pass -- which produces nothing and leaves the weights alone -- adds no entry.
         ess && push!(ess_per_step, weight_ess(normalized_weights(particles)))
         # Resample between observations, never before the first: there the weights are still all
         # equal, so a multinomial draw -- what every conditional sweep uses -- would duplicate
