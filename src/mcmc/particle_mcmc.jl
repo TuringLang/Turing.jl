@@ -77,20 +77,19 @@ DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 
 """
     Particle(model, rng)
-    Particle(model, rng, retained::Particle)
+    Particle(model, rng, reference::DynamicPPL.VarNamedTuple)
 
 A single particle: a suspended `model` execution together with its `varinfo`, its own `rng`, and an
-accumulated `logweight`. It also serves directly as the particle Gibbs sampler state (there is no
-separate state struct).
+accumulated `logweight`.
 
-Without `retained` the particle draws from the prior. Given the previous sweep's retained particle it
+Without `reference` the particle draws from the prior. Given a retained trajectory's raw values it
 becomes a conditional-SMC reference pinned to that trajectory, erroring if its execution reaches an
-address the retained trajectory lacks or finishes without reaching one it has. Only that trajectory's
-raw values are copied out, so the retained particle itself is not held alive.
+address that trajectory lacks or finishes without reaching one it has.
 """
 mutable struct Particle{RT<:AbstractRNG,WT<:Real}
-    # Abstract on purpose: the VarInfo type can change during PG-inside-Gibbs. Accesses go
-    # through Libtask's (already type-unstable) taped globals, so this costs nothing extra.
+    # Abstract on purpose: the varinfo type changes as the execution proceeds, since each new
+    # address widens the raw-value accumulator's `VarNamedTuple`. Accesses go through Libtask's
+    # (already type-unstable) taped globals, so this costs nothing extra.
     varinfo::DynamicPPL.AbstractVarInfo
     rng::RT
     # `logweight` tracks whatever `DynamicPPL.LogProbType` is, so weights follow suit if it
@@ -106,22 +105,24 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # particle as its taped globals (a back-reference). This has to be an inner constructor
     # for that reason: `task` is left undefined here and set immediately after.
     function Particle(
-        vi::DynamicPPL.AbstractVarInfo, rng::RT, retained::Union{Nothing,Particle}=nothing
+        vi::DynamicPPL.AbstractVarInfo,
+        rng::RT,
+        reference::Union{Nothing,DynamicPPL.VarNamedTuple}=nothing,
     ) where {RT<:AbstractRNG}
         w = zero(DynamicPPL.LogProbType)
-        reference =
-            retained === nothing ? nothing : DynamicPPL.get_raw_values(retained.varinfo)
         return new{RT,typeof(w)}(vi, rng, w, reference)
     end
 end
 
 function Particle(
-    model::DynamicPPL.Model, rng::AbstractRNG, retained::Union{Nothing,Particle}=nothing
+    model::DynamicPPL.Model,
+    rng::AbstractRNG,
+    reference::Union{Nothing,DynamicPPL.VarNamedTuple}=nothing,
 )
     model = DynamicPPL.setleafcontext(model, SMCContext())
     varinfo = particle_varinfo()
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
-    particle = Particle(varinfo, rng, retained)
+    particle = Particle(varinfo, rng, reference)
     particle.task = Libtask.TapedTask(particle, model.f, args...; kwargs...)
     return particle
 end
@@ -267,7 +268,7 @@ end
 # one has nothing after it to mirror the result onto the particle, and the final varinfo is
 # unreachable: `Libtask.consume` discards the evaluator's return value once the model is done. The
 # methods below therefore mirror as the update happens, keyed on the produce-aware accumulator,
-# which exists only inside a `TapedTask` (`gibbs_update_state!!` swaps it out) and so identifies a
+# which only a particle carries (`trajectory_varinfo` is the set without it) and so identifies a
 # particle varinfo.
 #
 # `:=` is dispatched on the context, so its method below takes `SMCContext`. `@addlogprob!` has no
@@ -334,16 +335,21 @@ Libtask.@might_produce(DynamicPPL.acclogp!!)
 # See https://github.com/TuringLang/Libtask.jl/issues/217.
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
-# Swap the default likelihood accumulator for the produce-aware one that drives reweighting, and add
-# the raw sampled values (`:=` included, so a chain reports them as under any other sampler; they
-# take no part in a sweep). `OnlyAccsVarInfo`'s default `LogPrior` and `LogJacobian` are kept on
-# purpose: `ParamsWithStats` reads them off this varinfo to fill a chain's `logprior` and `logjoint`
-# columns, and dropping them would silently omit those columns rather than error.
+# Add the raw sampled values (`:=` included, so a chain reports them as under any other sampler;
+# they take no part in a sweep). `OnlyAccsVarInfo`'s default `LogPrior` and `LogJacobian` are kept
+# on purpose: `ParamsWithStats` reads them off this varinfo to fill a chain's `logprior` and
+# `logjoint` columns, and dropping them would silently omit those columns rather than error.
+function trajectory_varinfo()
+    return DynamicPPL.setacc!!(
+        DynamicPPL.OnlyAccsVarInfo(), DynamicPPL.RawValueAccumulator(true)
+    )
+end
+
+# A particle's varinfo is the same set with the produce-aware likelihood accumulator in place of the
+# default one. Outside a sweep use `trajectory_varinfo`: there a `produce` has no task to suspend,
+# and the mirroring keyed on that accumulator would write onto an unrelated particle.
 function particle_varinfo()
-    vi = DynamicPPL.OnlyAccsVarInfo()
-    vi = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator())
-    vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
-    return vi
+    return DynamicPPL.setacc!!(trajectory_varinfo(), ProduceLogLikelihoodAccumulator())
 end
 
 #
@@ -765,9 +771,18 @@ end
 "Conditional SMC, an alias for [`PG`](@ref)."
 const CSMC = PG
 
-# PG's sampler state is just the retained `Particle`: it already carries the reference
-# trajectory's `varinfo` and `rng` (its `task`/`logweight` are then unused), so there is no
-# dedicated state struct.
+"""
+    PGState(trajectory)
+
+Particle Gibbs sampler state: the retained trajectory's raw values, which the next sweep's
+reference particle reuses. Plain data, because sampler state has to survive `save_state=true` and
+`MCMCDistributed()`, whereas the [`Particle`](@ref) it is read off owns a live `Libtask.TapedTask`
+that cannot be serialised. Nothing else needs carrying over: the reference consumes no randomness of
+its own, and every other particle is seeded from the sampler's `rng`.
+"""
+struct PGState{V<:DynamicPPL.VarNamedTuple}
+    trajectory::V
+end
 
 # First iteration: an ordinary (unconditional) particle sweep.
 function AbstractMCMC.step(
@@ -785,16 +800,16 @@ function AbstractMCMC.step(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
     sampler::PG,
-    state::Particle;
+    state::PGState;
     discard_sample=false,
     kwargs...,
 )
     error_if_threadsafe_eval(model)
     n = sampler.nparticles
-    # Passing `state` makes this the reference (see the `reference` field). Its own generator is
-    # never read -- every draw comes from the retained values, and its forks get fresh seeds from
-    # `reseed!` -- so it carries the retained one forward; the copy just avoids aliasing `state`.
-    reference = Particle(model, deepcopy(state.rng), state)
+    # Passing the retained trajectory makes this the reference (see the `reference` field). It is
+    # handed a generator like any other particle, but never reads it: every draw comes from the
+    # retained values, and its forks are reseeded from `rng` in `reseed!`.
+    reference = Particle(model, particle_rng(rng), state.trajectory)
     # `n - 1` fresh particles, with the reference last -- the slot `resample_propagate!` retains.
     particles = [Particle(model, particle_rng(rng)) for _ in 1:(n - 1)]
     push!(particles, reference)
@@ -813,29 +828,23 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
             deepcopy(retained.varinfo), (; log_normalizing_constant=logZ)
         )
     end
-    return transition, retained
+    return transition, PGState(DynamicPPL.get_raw_values(retained.varinfo))
 end
 
 #
 # Gibbs interface
 #
 
-gibbs_get_raw_values(state::Particle) = DynamicPPL.get_raw_values(state.varinfo)
+gibbs_get_raw_values(state::PGState) = state.trajectory
 
 function gibbs_update_state!!(
-    ::PG, state::Particle, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
+    ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
+    # Re-derive the retained trajectory under the values the other Gibbs components have since
+    # updated, keeping only the addresses this model still visits. The `nothing` fallback errors on
+    # an address `global_vals` lacks rather than inventing one; `GibbsContext` puts every address
+    # the component owns into the global values before we get here.
     init = DynamicPPL.InitFromParams(global_vals, nothing)
-    # Re-initialise the reference varinfo with the values conditioned by other Gibbs
-    # components. Mutating in place is safe: the caller replaces this state with the value we
-    # return and never reads the pre-update one again.
-    #
-    # This runs outside any task, where the produce-aware accumulator has no business: its
-    # `produce` is inert, and the mirroring keyed on it would write onto whichever particle the
-    # calling task last consumed. Swap in the plain accumulator and restore afterwards.
-    vi = DynamicPPL.setacc!!(state.varinfo, DynamicPPL.LogLikelihoodAccumulator())
-    vi = last(DynamicPPL.init!!(model, vi, init, DynamicPPL.UnlinkAll()))
-    loglike = DynamicPPL.logp(DynamicPPL.getacc(vi, Val(:LogLikelihood)))
-    state.varinfo = DynamicPPL.setacc!!(vi, ProduceLogLikelihoodAccumulator(loglike))
-    return state
+    vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
+    return PGState(DynamicPPL.get_raw_values(vi))
 end

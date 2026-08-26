@@ -35,6 +35,7 @@ using Distributions:
 using FlexiChains: VNChain, has_same_data
 using LinearAlgebra: I
 using Random: Random, Xoshiro
+using Serialization: deserialize, serialize
 using SpecialFunctions: logbeta
 using StableRNGs: StableRNG
 using Test: @test, @test_logs, @test_throws, @testset
@@ -324,7 +325,7 @@ end
             rng = StableRNG(77)
             retained = Particle(model, particle_rng(rng))
             run_to_end!(retained)
-            reference = Particle(model, particle_rng(rng), retained)
+            reference = Particle(model, particle_rng(rng), get_raw_values(retained.varinfo))
             particles = [Particle(model, particle_rng(rng)) for _ in 1:4]
             push!(particles, reference)
             sweep!(StableRNG(78), particles, scheme, false)
@@ -340,6 +341,18 @@ end
         c = sample(gdemo_default, PG(1), 1_000)
         @test length(unique(c[:m])) == 1
         @test length(unique(c[:s])) == 1
+    end
+
+    @testset "the saved state survives serialisation" begin
+        chn = sample(StableRNG(24), gdemo_default, PG(5), 10; save_state=true)
+        io = IOBuffer()
+        serialize(io, chn)
+        seekstart(io)
+        state = only(loadstate(deserialize(io)))
+        # With one particle the reference is the whole population, so every draw is the retained
+        # trajectory: the round-tripped state has to still carry it.
+        resumed = sample(StableRNG(25), gdemo_default, PG(1), 5; initial_state=state)
+        @test length(unique(resumed[:m])) == 1
     end
 
     @testset "ensuring reference consistency" begin
@@ -370,13 +383,13 @@ end
             allok = true
             nretained = 0
             for _ in 1:nsteps
-                ref = Particle(model, particle_rng(rng), state)
+                ref = Particle(model, particle_rng(rng), state.trajectory)
                 parts = [Particle(model, particle_rng(rng)) for _ in 1:(N - 1)]
                 push!(parts, ref)
                 sweep!(rng, parts, ESSThresholdResampler(0.5), false)
-                allok &= get_raw_values(parts[N].varinfo) == get_raw_values(state.varinfo)
+                allok &= get_raw_values(parts[N].varinfo) == state.trajectory
                 state = draw(parts)
-                nretained = length(keys(get_raw_values(state.varinfo)))
+                nretained = length(keys(state.trajectory))
             end
             return allok, nretained
         end
@@ -407,7 +420,7 @@ end
         reference = Particle(
             reconditioned(2.0) | (@varname(a) => 5.0),   # x's prior shifted far away
             particle_rng(rng),
-            retained,
+            retained_vals,
         )
         run_to_end!(reference)
         @test get_raw_values(reference.varinfo) == retained_vals
@@ -427,7 +440,9 @@ end
         rng = StableRNG(91)
         retained = Particle(branch_changes(true, 0.0), particle_rng(rng))
         run_to_end!(retained)
-        reference = Particle(branch_changes(false, 0.0), particle_rng(rng), retained)
+        reference = Particle(
+            branch_changes(false, 0.0), particle_rng(rng), get_raw_values(retained.varinfo)
+        )
         @test_throws "reference execution trace changed" advance!(reference)
 
         @model function branch_drops(flag, y)
@@ -439,7 +454,9 @@ end
         end
         retained = Particle(branch_drops(true, 0.0), particle_rng(rng))
         run_to_end!(retained)
-        reference = Particle(branch_drops(false, 0.0), particle_rng(rng), retained)
+        reference = Particle(
+            branch_drops(false, 0.0), particle_rng(rng), get_raw_values(retained.varinfo)
+        )
         @test_throws "reference execution trace changed" begin
             run_to_end!(reference)
         end
@@ -703,7 +720,7 @@ end
         values = get_raw_values(retained.varinfo)
 
         scrambler = Xoshiro(99)
-        reference = Particle(normal(), particle_rng(Xoshiro(7)), retained)
+        reference = Particle(normal(), particle_rng(Xoshiro(7)), values)
         while (
             Random.seed!(reference.rng, rand(scrambler, UInt64)); advance!(reference)
         ) !== nothing
