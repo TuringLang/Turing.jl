@@ -272,9 +272,9 @@ end
 # particle varinfo.
 #
 # `:=` is dispatched on the context, so its method below takes `SMCContext`. `@addlogprob!` has no
-# such hook, so the two accumulator methods extend DynamicPPL's own and reproduce their bodies.
-# They dispatch on `OnlyAccsVarInfo`, which every sampler uses, so they must stay behaviourally
-# identical to DynamicPPL's; they belong there once it offers a context-dispatched entry point.
+# such hook, so the accumulator methods extend DynamicPPL's own. They dispatch on
+# `OnlyAccsVarInfo`, which every sampler uses, so their non-particle behaviour must stay identical
+# to DynamicPPL's; they belong there once it offers a context-dispatched entry point.
 function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
     acc_name = Val(:LogLikelihood)
     if DynamicPPL.hasacc(vi, acc_name) &&
@@ -303,6 +303,37 @@ function DynamicPPL.acclogprior!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
     return acclogp_and_mirror!!(vi, Val(:LogPrior), logp, ignore_missing_accumulator)
+end
+
+# An explicit `logprior` term is absent from the prior proposal and therefore belongs in the
+# importance weight. Ordinary assumed-prior terms remain unproduced because the proposal includes
+# them already.
+function DynamicPPL.acclogp!!(
+    vi::DynamicPPL.OnlyAccsVarInfo,
+    logp::NamedTuple{names};
+    ignore_missing_accumulator=false,
+) where {names}
+    if !(
+        names == (:logprior, :loglikelihood) ||
+        names == (:loglikelihood, :logprior) ||
+        names == (:logprior,) ||
+        names == (:loglikelihood,)
+    )
+        error("logp must have fields logprior and/or loglikelihood and no other fields.")
+    end
+    if haskey(logp, :logprior)
+        if DynamicPPL.hasacc(vi, Val(:LogLikelihood)) &&
+            DynamicPPL.getacc(vi, Val(:LogLikelihood)) isa ProduceLogLikelihoodAccumulator
+            Libtask.produce(logp.logprior)
+        end
+        vi = DynamicPPL.acclogprior!!(vi, logp.logprior; ignore_missing_accumulator)
+    end
+    if haskey(logp, :loglikelihood)
+        vi = DynamicPPL.accloglikelihood!!(
+            vi, logp.loglikelihood; ignore_missing_accumulator
+        )
+    end
+    return vi
 end
 
 function DynamicPPL.store_coloneq_value!!(

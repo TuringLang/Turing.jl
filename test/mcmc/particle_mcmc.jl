@@ -623,6 +623,26 @@ end
         @test mean(c2[:x]) > 0.7
     end
 
+    @testset "named addlogprob terms lead to reweighting" begin
+        @model function constrained_logp(component)
+            x ~ Bernoulli(0.5)
+            penalty = x == 1 ? 0.0 : -Inf
+            if component === :logprior
+                @addlogprob! (; logprior=penalty)
+            else
+                @addlogprob! (; loglikelihood=penalty)
+            end
+        end
+
+        for component in (:logprior, :loglikelihood)
+            model = constrained_logp(component)
+            smc = sample(StableRNG(469), model, SMC(), 64)
+            pg = sample(StableRNG(469), model, PG(8), 30)
+            @test all(isone, smc[:x])
+            @test all(isone, pg[:x])
+        end
+    end
+
     @testset "keyword argument handling" begin
         @model function kwarg_demo(y; n=0.0)
             x ~ Normal(n)
