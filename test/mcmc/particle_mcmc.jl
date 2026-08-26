@@ -76,7 +76,6 @@ end
     return a, b
 end
 
-# Nondeterministic evaluation order, which the particle samplers must refuse.
 # As `normal()` but centred at zero; used where the replay test wants a different trajectory.
 @model function centred_normal()
     a ~ Normal(0, 1)
@@ -392,11 +391,10 @@ end
     end
 
     @testset "reference is pinned to retained values under re-conditioning" begin
-        # Finding 1 regression. In Gibbs the model is re-conditioned between sweeps, so the
-        # CSMC reference must reproduce the *retained values* rather than re-draw them from the
-        # (now different) prior. Retain a trajectory under one conditioning, rebuild the
-        # reference under another; value-pinning keeps the trajectory, whereas re-drawing from
-        # the prior -- the pre-fix behaviour -- would follow the shifted prior instead.
+        # In Gibbs the model is re-conditioned between sweeps, so the CSMC reference must
+        # reproduce the *retained values* rather than re-draw them from the (now different) prior.
+        # Retain a trajectory under one conditioning, then rebuild the reference under another:
+        # value-pinning keeps the trajectory, whereas re-drawing would follow the shifted prior.
         @model function reconditioned(y)
             a ~ Normal(0, 10)
             x ~ Normal(a, 1)                # x's prior depends on a, owned by another component
