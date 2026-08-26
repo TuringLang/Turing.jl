@@ -653,6 +653,12 @@ end
 
 abstract type ParticleInference <: AbstractSampler end
 
+function require_positive_particle_count(nparticles::Integer)
+    nparticles > 0 ||
+        throw(ArgumentError("number of particles must be positive; got $nparticles"))
+    return nothing
+end
+
 """
 $(TYPEDEF)
 
@@ -728,6 +734,7 @@ function AbstractMCMC.sample(
     verbose=false,
     kwargs...,
 )
+    require_positive_particle_count(nparticles)
     check_model && Turing._check_model(model, sampler)
     error_if_threadsafe_eval(model)
     if discard_initial > 0 || thinning > 1
@@ -787,6 +794,7 @@ struct PG{R<:AbstractResampler} <: ParticleInference
     function PG(
         nparticles::Int, resampler::R; multithreaded::Bool=false
     ) where {R<:AbstractResampler}
+        require_positive_particle_count(nparticles)
         return new{R}(nparticles, resampler, multithreaded)
     end
 end

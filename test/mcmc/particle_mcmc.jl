@@ -115,6 +115,11 @@ p)
         @test SMC().multithreaded == false
         @test SMC(; multithreaded=true).multithreaded == true
         @test SMC(SystematicResampler(); multithreaded=true).multithreaded == true
+        for nparticles in (0, -1)
+            @test_throws "number of particles must be positive" sample(
+                normal(), SMC(), nparticles
+            )
+        end
     end
 
     @testset "basic model" begin
@@ -289,6 +294,9 @@ end
         @test PG(10).multithreaded == false
         @test PG(10; multithreaded=true).multithreaded == true
         @test PG(80, MultinomialResampler(), 0.6; multithreaded=true).multithreaded == true
+        for nparticles in (0, -1)
+            @test_throws "number of particles must be positive" PG(nparticles)
+        end
     end
 
     @testset "chain log-density metadata" begin
