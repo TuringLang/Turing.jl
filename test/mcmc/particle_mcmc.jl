@@ -34,6 +34,7 @@ using Distributions:
     sample
 using FlexiChains: VNChain, has_same_data
 using LinearAlgebra: I
+using MCMCChains: MCMCChains
 using Random: Random, Xoshiro
 using Serialization: deserialize, serialize
 using SpecialFunctions: logbeta
@@ -182,6 +183,16 @@ p)
         # Check that they're all equal.
         @test chains_smc[:log_normalizing_constant] ≈
             fill(smc_log_normalizing_constant, 100)
+    end
+
+    @testset "MCMCChains preserves ess_per_step" begin
+        flexi = sample(StableRNG(101), test(), SMC(), 32)
+        mcmcchains = sample(StableRNG(101), test(), SMC(), 32; chain_type=MCMCChains.Chains)
+        ess_names = MCMCChains.namesingroup(mcmcchains, :ess_per_step)
+        ess = [first(mcmcchains[name]) for name in ess_names]
+        @test ess == first(flexi[:ess_per_step])
+        @test length(ess_names) == 2
+        @test :ess_per_step ∉ MCMCChains.names(mcmcchains, :internals)
     end
 
     @testset "multithreaded execution matches serial" begin

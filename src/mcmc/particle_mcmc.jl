@@ -704,6 +704,12 @@ function warn_initial_params_ignored(name, initial_params)
     return nothing
 end
 
+function bundle_smc_samples(transitions, model, sampler, state, chain_type; kwargs...)
+    return AbstractMCMC.bundle_samples(
+        transitions, model, sampler, state, chain_type; kwargs...
+    )
+end
+
 # SMC is a single weighted sweep, not a Markov chain: rather than fake an iteration through
 # AbstractMCMC's step loop (returning the population one particle at a time), we run the sweep
 # and bundle the whole population into the chain in one shot. `discard_initial`/`thinning`
@@ -753,9 +759,7 @@ function AbstractMCMC.sample(
             particles[a].varinfo, (; log_normalizing_constant=logZ, ess_per_step)
         )
     end
-    chain = AbstractMCMC.bundle_samples(
-        transitions, model, sampler, nothing, chain_type; kwargs...
-    )
+    chain = bundle_smc_samples(transitions, model, sampler, nothing, chain_type; kwargs...)
     post_sample_hook(chain, sampler; verbose)
     return chain
 end
