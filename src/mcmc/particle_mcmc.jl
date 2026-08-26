@@ -585,11 +585,20 @@ function sweep!(
     # `log(n)`; otherwise the weights are untouched and it is still last step's total. Either way
     # there is nothing to recompute -- particles start at weight zero, hence `log(n)` initially.
     logZ0 = log(oftype(logZ, length(particles)))
+    nobs = 0
     while true
         done = reweight!(particles, multithreaded)
+        nobs += 1
         # Each observation contributes the log-ratio of total weight it adds; summed over the
         # sweep these telescope into an estimate of the model's log-evidence log p(y).
         total = log_normalizing_constant(particles)
+        # A non-finite total means every particle is dead, which would otherwise surface as a
+        # `Categorical` domain error over all-`NaN` weights. `nobs` names a real observation: the
+        # finishing pass leaves the weights alone, so it can never be the first to fail here.
+        isfinite(total) || error(
+            "all $(length(particles)) particles have zero probability at observation $nobs " *
+            "(total log weight $total), so the sweep cannot continue.",
+        )
         logZ += total - logZ0
         logZ0 = total
         done && break

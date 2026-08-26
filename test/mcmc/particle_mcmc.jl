@@ -200,6 +200,17 @@ p)
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 
+    @testset "reports a population that has died out" begin
+        # Every particle scoring `-Inf` leaves nothing to resample from. The sweep has to say so,
+        # naming the observation, rather than let `Categorical` reject the all-`NaN` weights.
+        @model function impossible()
+            x ~ Normal()
+            1.5 ~ Normal(x)
+            return 1 ~ Bernoulli(0)
+        end
+        @test_throws "zero probability at observation 2" sample(impossible(), SMC(), 5)
+    end
+
     @testset "discard_initial, thinning, initial_params and callback are ignored" begin
         @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
             normal(), SMC(), 10; initial_params=(; a=1.0)
