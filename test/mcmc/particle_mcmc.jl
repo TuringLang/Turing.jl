@@ -200,6 +200,20 @@ p)
         @test_throws ArgumentError sample(model, SMC(), 100)
     end
 
+    @testset "does not resample an already equal-weight population" begin
+        # A bare scheme resamples after the last observation, so the sweep ends equal-weight and
+        # the closing resample has nothing to correct: a second multinomial draw would only
+        # duplicate particles. Replay the sweep on the same seed -- the chain must be its
+        # population, particle for particle.
+        n, seed = 8, 6
+        rng = StableRNG(seed)
+        particles = [Particle(normal(), particle_rng(rng)) for _ in 1:n]
+        sweep!(rng, particles, MultinomialResampler(), false)
+        expected = sort([get_raw_values(p.varinfo)[@varname(a)] for p in particles])
+        chn = sample(StableRNG(seed), normal(), SMC(MultinomialResampler()), n)
+        @test sort(vec(chn[@varname(a)])) == expected
+    end
+
     @testset "reports a population that has died out" begin
         # Every particle scoring `-Inf` leaves nothing to resample from. The sweep has to say so,
         # naming the observation, rather than let `Categorical` reject the all-`NaN` weights.

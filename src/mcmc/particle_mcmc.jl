@@ -706,10 +706,15 @@ function AbstractMCMC.sample(
     logZ, ess_per_step = sweep!(
         rng, particles, sampler.resampler, sampler.multithreaded; ess=true
     )
-    weights = normalized_weights(particles)
     # The sweep ends on a reweight, so resample once more -- unconditionally, unlike the ESS-gated
     # resampling inside it -- to return an equal-weight sample that needs no weighting downstream.
-    ancestors = resample_indices(rng, sampler.resampler, weights, nparticles)
+    # Unless it is one already, which it is whenever the sweep's last act was a resample: drawing
+    # again over equal weights would only add duplicates.
+    ancestors = if allequal(logweights(particles))
+        eachindex(particles)
+    else
+        resample_indices(rng, sampler.resampler, normalized_weights(particles), nparticles)
+    end
     # `log_normalizing_constant` and `ess_per_step` are sweep-level, so every returned particle carries the
     # same values.
     transitions = map(ancestors) do a
