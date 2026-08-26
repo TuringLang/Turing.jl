@@ -655,6 +655,15 @@ function SMC(scheme::AbstractResampler, threshold::Real; kwargs...)
     return SMC(ESSThresholdResampler(threshold, scheme); kwargs...)
 end
 
+# Neither sampler has anywhere to put a user-supplied starting point: both draw their particles from
+# the prior. `InitFromPrior` is what the ensemble wrapper injects per chain, not a user request.
+function warn_initial_params_ignored(name, initial_params)
+    if initial_params !== nothing && !(initial_params isa DynamicPPL.InitFromPrior)
+        @warn "$name draws its particles from the prior; `initial_params` is ignored."
+    end
+    return nothing
+end
+
 # SMC is a single weighted sweep, not a Markov chain: rather than fake an iteration through
 # AbstractMCMC's step loop (returning the population one particle at a time), we run the sweep
 # and bundle the whole population into the chain in one shot. `discard_initial`/`thinning`
@@ -678,9 +687,7 @@ function AbstractMCMC.sample(
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
     end
-    if initial_params !== nothing && !(initial_params isa DynamicPPL.InitFromPrior)
-        @warn "SMC draws its initial population from the prior; `initial_params` is ignored."
-    end
+    warn_initial_params_ignored("SMC", initial_params)
     # Accepted only so it can be reported as ignored: AbstractMCMC's contract is one callback
     # per step, and SMC is a single sweep, so there is no iteration to call back from.
     if callback !== nothing
@@ -786,9 +793,15 @@ end
 
 # First iteration: an ordinary (unconditional) particle sweep.
 function AbstractMCMC.step(
-    rng::AbstractRNG, model::DynamicPPL.Model, sampler::PG; discard_sample=false, kwargs...
+    rng::AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::PG;
+    initial_params=nothing,
+    discard_sample=false,
+    kwargs...,
 )
     error_if_threadsafe_eval(model)
+    warn_initial_params_ignored("PG", initial_params)
     particles = [Particle(model, particle_rng(rng)) for _ in 1:(sampler.nparticles)]
     logZ, _ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)

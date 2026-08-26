@@ -343,6 +343,15 @@ end
         @test length(unique(c[:s])) == 1
     end
 
+    @testset "initial_params is ignored" begin
+        # PG's first sweep draws from the prior, so there is nowhere to put a starting point.
+        @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
+            normal(), PG(5), 10; initial_params=(; a=1.0)
+        )
+        # `InitFromPrior()` is what the ensemble wrapper injects per chain, not a user request.
+        @test_logs sample(Xoshiro(1), normal(), PG(5), MCMCSerial(), 10, 2; progress=false)
+    end
+
     @testset "the saved state survives serialisation" begin
         chn = sample(StableRNG(24), gdemo_default, PG(5), 10; save_state=true)
         io = IOBuffer()
