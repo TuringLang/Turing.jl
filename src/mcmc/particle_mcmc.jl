@@ -271,8 +271,9 @@ end
 # particle varinfo.
 #
 # `:=` is dispatched on the context, so its method below takes `SMCContext`. `@addlogprob!` has no
-# such hook, so the two accumulator methods extend DynamicPPL's own and reproduce their bodies;
-# they belong in DynamicPPL once it offers a context-dispatched entry point for `@addlogprob!`.
+# such hook, so the two accumulator methods extend DynamicPPL's own and reproduce their bodies.
+# They dispatch on `OnlyAccsVarInfo`, which every sampler uses, so they must stay behaviourally
+# identical to DynamicPPL's; they belong there once it offers a context-dispatched entry point.
 function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
     acc_name = Val(:LogLikelihood)
     if DynamicPPL.hasacc(vi, acc_name) &&
@@ -318,7 +319,7 @@ end
 # approximating is safe (a wrongly-marked call is merely instrumented); missing a real one is not.
 #
 #   observe:      tilde_observe!! -> accumulate_observe!! -> acclogp
-#   @addlogprob!: accloglikelihood!! -> map_accumulator!! -> acclogp
+#   @addlogprob!: accloglikelihood!! -> acclogp_and_mirror!! -> map_accumulator!! -> acclogp
 #                 (the `@addlogprob! (; ...)` NamedTuple form routes through acclogp!! first)
 #   Gibbs:        GibbsContext turns a tilde_assume!! into a tilde_observe!!
 Libtask.@might_produce(DynamicPPL.tilde_observe!!)
@@ -326,6 +327,7 @@ Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
 Libtask.@might_produce(DynamicPPL.acclogp)
 Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
+Libtask.@might_produce(acclogp_and_mirror!!)
 Libtask.@might_produce(DynamicPPL.map_accumulator!!)
 Libtask.@might_produce(DynamicPPL.acclogp!!)
 # Every model / submodel evaluator takes a `DynamicPPL.Model`, so this covers them all.
