@@ -1,3 +1,24 @@
+# 0.47.0
+
+## Breaking changes
+
+### Particle MCMC (SMC and PG)
+
+`SMC` and `PG` / `CSMC` have been reimplemented natively and no longer depend on AdvancedPS.
+
+Resampling schemes are now types rather than functions — `StratifiedResampler()`, `SystematicResampler()`, and `MultinomialResampler()` (in `Turing.Inference`), optionally wrapped in `ESSThresholdResampler(threshold, scheme)` to resample only when the effective sample size falls below `threshold * nparticles`; for example `SMC(Turing.Inference.SystematicResampler())`, `SMC(0.5)`, or `PG(10, Turing.Inference.MultinomialResampler(), 0.5)`.
+The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, …) is gone.
+
+The default scheme is now **stratified** rather than systematic: it stays consistent as the number of particles grows, which systematic does not.
+The selected scheme applies to unconditional sweeps; `PG` / `CSMC` draw the ancestors of a conditional sweep from the categorical over the weights, since a correct conditional version of stratified or systematic resampling is scheme-specific rather than "pin one draw and keep the rest".
+Exact draws may therefore differ from previous releases, but remain statistically consistent (the same target distribution).
+
+The rewrite also brings:
+
+  - **Reproducibility.** Internal seeds are derived through a counter-based (Philox) generator, so a fixed user seed gives the same draws on every Julia version and platform, and splitting one stream into many is better decorrelated. Previously, results could drift between Julia versions even under a `StableRNG` (https://github.com/TuringLang/Turing.jl/issues/2781).
+  - **Parallelism** at two independent levels. *Across chains*, SMC/PG work with AbstractMCMC's `MCMCThreads()` / `MCMCDistributed()` like any other sampler — each chain is an independent run. *Within a single sweep*, `SMC(; multithreaded=true)` / `PG(n; multithreaded=true)` spread that sweep's particles across threads. These are separate knobs: the ensemble does not parallelise a sweep, `multithreaded` does not parallelise chains, and they compose. Neither changes the results; start Julia with multiple threads (e.g. `julia -t auto`) for the thread-based paths to take effect.
+  - **Equal-weight draws & diagnostics.** `SMC` resamples once at the end of the sweep so the returned particles are an equal-weight sample — `mean(chain[...])` and other summaries need no weighting. `SMC`, `PG`, and `CSMC` chains all carry `log_normalizing_constant`; `SMC` chains additionally carry `ess_per_step`, the per-observation effective sample size across the sweep (a degeneracy diagnostic). For `SMC` the normalizing constant is an unbiased estimate of the marginal likelihood `p(y)`; for `PG` / `CSMC` it is **not**, and must not be used for model comparison — see the `PG` docstring.
+
 # 0.46.1
 
 Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whether sampled on their own or as a Gibbs component.
