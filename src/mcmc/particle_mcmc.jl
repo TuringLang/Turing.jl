@@ -580,8 +580,6 @@ function sweep!(
     # there is nothing to recompute -- particles start at weight zero, hence `log(n)` initially.
     logZ0 = log(oftype(logZ, length(particles)))
     while true
-        resampled = resample_propagate!(rng, particles, resampler)
-        resampled && (logZ0 = log(oftype(logZ, length(particles))))
         done = reweight!(particles, multithreaded)
         # Each observation contributes the log-ratio of total weight it adds; summed over the
         # sweep these telescope into an estimate of the model's log-evidence log p(y).
@@ -593,6 +591,12 @@ function sweep!(
         # particles carry the weight). After the break, so the finishing pass -- which adds no
         # observation and leaves the weights unchanged -- contributes no spurious entry.
         ess && push!(ess_per_step, weight_ess(normalized_weights(particles)))
+        # Resample between observations, never before the first: there the weights are still all
+        # equal, so a multinomial draw -- what every conditional sweep uses -- would duplicate
+        # particles before any data. One resample is still spent after the last observation, since
+        # a particle reveals that it has finished only by producing nothing, one pass later.
+        resampled = resample_propagate!(rng, particles, resampler)
+        resampled && (logZ0 = log(oftype(logZ, length(particles))))
     end
     return logZ, ess_per_step
 end
