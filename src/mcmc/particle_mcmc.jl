@@ -275,12 +275,14 @@ end
 # such hook, so the accumulator methods extend DynamicPPL's own. They dispatch on
 # `OnlyAccsVarInfo`, which every sampler uses, so their non-particle behaviour must stay identical
 # to DynamicPPL's; they belong there once it offers a context-dispatched entry point.
-function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
+function is_particle_varinfo(vi::DynamicPPL.OnlyAccsVarInfo)
     acc_name = Val(:LogLikelihood)
-    if DynamicPPL.hasacc(vi, acc_name) &&
-        DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
-        Libtask.get_taped_globals(Particle).varinfo = vi
-    end
+    return DynamicPPL.hasacc(vi, acc_name) &&
+           DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
+end
+
+function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
+    is_particle_varinfo(vi) && (Libtask.get_taped_globals(Particle).varinfo = vi)
     return vi
 end
 
@@ -299,41 +301,14 @@ function DynamicPPL.accloglikelihood!!(
     return acclogp_and_mirror!!(vi, Val(:LogLikelihood), logp, ignore_missing_accumulator)
 end
 
+# An explicit `logprior` term -- `@addlogprob! (; logprior=...)`, which DynamicPPL routes here -- is
+# absent from the prior proposal and therefore belongs in the importance weight. Ordinary
+# assumed-prior terms remain unproduced because the proposal includes them already.
 function DynamicPPL.acclogprior!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
+    is_particle_varinfo(vi) && Libtask.produce(logp)
     return acclogp_and_mirror!!(vi, Val(:LogPrior), logp, ignore_missing_accumulator)
-end
-
-# An explicit `logprior` term is absent from the prior proposal and therefore belongs in the
-# importance weight. Ordinary assumed-prior terms remain unproduced because the proposal includes
-# them already.
-function DynamicPPL.acclogp!!(
-    vi::DynamicPPL.OnlyAccsVarInfo,
-    logp::NamedTuple{names};
-    ignore_missing_accumulator=false,
-) where {names}
-    if !(
-        names == (:logprior, :loglikelihood) ||
-        names == (:loglikelihood, :logprior) ||
-        names == (:logprior,) ||
-        names == (:loglikelihood,)
-    )
-        error("logp must have fields logprior and/or loglikelihood and no other fields.")
-    end
-    if haskey(logp, :logprior)
-        if DynamicPPL.hasacc(vi, Val(:LogLikelihood)) &&
-            DynamicPPL.getacc(vi, Val(:LogLikelihood)) isa ProduceLogLikelihoodAccumulator
-            Libtask.produce(logp.logprior)
-        end
-        vi = DynamicPPL.acclogprior!!(vi, logp.logprior; ignore_missing_accumulator)
-    end
-    if haskey(logp, :loglikelihood)
-        vi = DynamicPPL.accloglikelihood!!(
-            vi, logp.loglikelihood; ignore_missing_accumulator
-        )
-    end
-    return vi
 end
 
 function DynamicPPL.store_coloneq_value!!(
@@ -352,13 +327,15 @@ end
 #
 #   observe:      tilde_observe!! -> accumulate_observe!! -> acclogp
 #   @addlogprob!: accloglikelihood!! -> acclogp_and_mirror!! -> map_accumulator!! -> acclogp
-#                 (the `@addlogprob! (; ...)` NamedTuple form routes through acclogp!! first)
+#                 (the `@addlogprob! (; ...)` NamedTuple form arrives via acclogp!!, and its
+#                 `logprior` field produces in acclogprior!! itself)
 #   Gibbs:        GibbsContext turns a tilde_assume!! into a tilde_observe!!
 Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
 Libtask.@might_produce(DynamicPPL.acclogp)
 Libtask.@might_produce(DynamicPPL.tilde_assume!!)
 Libtask.@might_produce(DynamicPPL.accloglikelihood!!)
+Libtask.@might_produce(DynamicPPL.acclogprior!!)
 Libtask.@might_produce(acclogp_and_mirror!!)
 Libtask.@might_produce(DynamicPPL.map_accumulator!!)
 Libtask.@might_produce(DynamicPPL.acclogp!!)
