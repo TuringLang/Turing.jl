@@ -708,7 +708,7 @@ function AbstractMCMC.sample(
     thinning=1,
     initial_params=nothing,
     callback=nothing,
-    verbose=false,
+    verbose::Bool=true,
     kwargs...,
 )
     require_positive_particle_count(nparticles)
