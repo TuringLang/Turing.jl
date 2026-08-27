@@ -107,6 +107,28 @@ end
     @test_throws MethodError Gibbs("x" => NUTS())
 end
 
+@testset "latent declared as a missing model argument" begin
+    # Conditioning has to reach a variable that is also a model argument: Gibbs conditions
+    # every non-target variable, and here the non-target `x` is an argument bound to
+    # `missing`. Needs DynamicPPL to let `condition` take precedence over a missing argument
+    # (DynamicPPL.jl#1457); otherwise `missing` is passed to the likelihood and errors.
+    @model function impute(x)
+        m ~ Normal(0, 1)
+        x ~ Normal(m, 1)
+        return 2.0 ~ Normal(x, 1)
+    end
+    chn = sample(
+        StableRNG(468),
+        impute(missing),
+        Gibbs(@varname(m) => MH(), @varname(x) => MH()),
+        2000;
+        progress=false,
+    )
+    # Conjugate posterior: E[m] = 2/3, E[x] = 4/3.
+    @test mean(chn[@varname(m)]) ≈ 2 / 3 atol = 0.15
+    @test mean(chn[@varname(x)]) ≈ 4 / 3 atol = 0.15
+end
+
 @testset "Missing Gibbs samplers throw error" begin
     @model function gdemo_missing(x, y)
         s² ~ InverseGamma(2, 3)
