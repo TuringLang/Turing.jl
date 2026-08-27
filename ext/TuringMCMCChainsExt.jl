@@ -2,10 +2,10 @@ module TuringMCMCChainsExt
 
 using Turing
 using Turing: AbstractMCMC, DynamicPPL
-using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState, _get_n_walkers
+using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState, SMC, _get_n_walkers
 using MCMCChains: MCMCChains
 
-import Turing.Inference: post_sample_hook
+import Turing.Inference: bundle_smc_samples, post_sample_hook
 
 """
     loadstate(chain::MCMCChains.Chains)
@@ -42,6 +42,28 @@ function AbstractMCMC.bundle_samples(
         )
     end
     return AbstractMCMC.chainscat(chains...)
+end
+
+function bundle_smc_samples(
+    transitions::Vector{<:DynamicPPL.ParamsWithStats},
+    model::DynamicPPL.Model,
+    sampler::SMC,
+    state,
+    ::Type{MCMCChains.Chains};
+    kwargs...,
+)
+    # MCMCChains drops non-scalar statistics, so give each filtering step its own internal.
+    ess_per_step = first(transitions).stats.ess_per_step
+    ess_names = ntuple(i -> Symbol("ess_per_step[$i]"), length(ess_per_step))
+    ess_stats = NamedTuple{ess_names}(Tuple(ess_per_step))
+    scalar_transitions = map(transitions) do transition
+        names = filter(!=(:ess_per_step), keys(transition.stats))
+        stats = merge(NamedTuple{names}(transition.stats), ess_stats)
+        DynamicPPL.ParamsWithStats(transition.params, stats)
+    end
+    return AbstractMCMC.bundle_samples(
+        scalar_transitions, model, sampler, state, MCMCChains.Chains; kwargs...
+    )
 end
 
 """

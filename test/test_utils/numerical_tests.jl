@@ -25,6 +25,9 @@ function check_gdemo(chain; atol=0.2, rtol=0.0)
 end
 
 # Wrapper function to check MoGtest.
+# The reference values are the exact posterior means, not the idealised labels
+# [1, 1, 2, 2, 1, 4]: the data do not identify the clusters perfectly, so asserting the
+# labels spends 0.07 of the tolerance before any Monte Carlo error.
 function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
     return check_numerical(
         chain,
@@ -36,7 +39,7 @@ function check_MoGtest_default(chain; atol=0.2, rtol=0.0)
             @varname(mu1),
             @varname(mu2)
         ],
-        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0];
+        [1.05, 1.05, 1.95, 1.95, 1.07, 3.93];
         atol=atol,
         rtol=rtol,
     )
@@ -53,7 +56,7 @@ function check_MoGtest_default_z_vector(chain; atol=0.2, rtol=0.0)
             @varname(mu1),
             @varname(mu2)
         ],
-        [1.0, 1.0, 2.0, 2.0, 1.0, 4.0];
+        [1.05, 1.05, 1.95, 1.95, 1.07, 3.93];
         atol=atol,
         rtol=rtol,
     )
