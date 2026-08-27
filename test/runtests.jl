@@ -4,7 +4,6 @@ using Pkg
 using Random: seed!
 using Test
 using TimerOutputs: TimerOutputs, @timeit
-using AbstractMCMC: AbstractMCMC
 import Turing
 
 # Fix the global Random.seed for reproducibility.
@@ -15,7 +14,7 @@ include("test_utils/numerical_tests.jl")
 include("test_utils/sampler.jl")
 include("test_utils/exact_ssm.jl")
 
-AbstractMCMC.setprogress!(false)
+Turing.setprogress!(false)
 included_paths, excluded_paths = parse_args(ARGS)
 
 # Filter which tests to run and collect timing and allocations information to show in a

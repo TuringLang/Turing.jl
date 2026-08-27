@@ -14,6 +14,7 @@ using LogDensityProblems: LogDensityProblems
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
+using AbstractMCMC: setprogress!
 using FlexiChains
 
 using Printf: Printf
@@ -126,6 +127,8 @@ export
     AutoReverseDiff,
     AutoMooncake,
     AutoEnzyme,
+    # Progress logging - re-exported from AbstractMCMC
+    setprogress!,
     # Distributions
     Flat,
     FlatPos,

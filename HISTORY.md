@@ -26,9 +26,9 @@ The rewrite also brings:
   - A degeneracy diagnostic. `SMC` chains carry `ess_per_step`, the effective sample size after each filtering step; one entry per likelihood term, so an `@addlogprob!` adds one alongside the observations. MCMCChains exposes the entries as `ess_per_step[1]`, `ess_per_step[2]`, and so on.
   - For `SMC`, `exp(log_normalizing_constant)` is an unbiased estimator of the marginal likelihood `p(y)` under the usual particle-filter assumptions. For `PG` / `CSMC` it is biased and must not be used for model comparison (see the `PG` docstring).
 
-### Progress logging
+## Other changes
 
-`Turing.PROGRESS` is removed. Progress logging state now lives in `AbstractMCMC.PROGRESS`, and `setprogress!` is re-exported from AbstractMCMC, so `Turing.setprogress!(false)` keeps working.
+`setprogress!` is now a re-export of `AbstractMCMC.setprogress!`, so `Turing.setprogress!(false)` keeps working and there is a single progress logging switch instead of two. The internal `Turing.PROGRESS` flag is gone, its state lives in `AbstractMCMC.PROGRESS`.
 
 # 0.46.1
 

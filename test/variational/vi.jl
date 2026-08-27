@@ -3,7 +3,7 @@ module AdvancedVITests
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
 
-import AbstractMCMC
+using AbstractMCMC: AbstractMCMC
 using AdvancedVI
 using Bijectors: Bijectors
 using Distributions: Dirichlet, Normal

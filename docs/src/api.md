@@ -144,6 +144,10 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 | `AutoMooncake`    | [`ADTypes.AutoMooncake`](@extref)    | Mooncake.jl backend    |
 | `AutoReverseDiff` | [`ADTypes.AutoReverseDiff`](@extref) | ReverseDiff.jl backend |
 
+### Debugging
+
+`setprogress!` is re-exported from AbstractMCMC. See [`AbstractMCMC.setprogress!`](@extref).
+
 ### Distributions
 
 These distributions are defined in Turing.jl, but not in Distributions.jl.
