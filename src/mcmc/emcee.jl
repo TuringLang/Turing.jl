@@ -85,7 +85,11 @@ function AbstractMCMC.step(
         DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vi),
         map(vis) do vi
             vi = DynamicPPL.link!!(vi, model)
-            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
+            AMH.Transition(
+                DynamicPPL.internal_values_as_vector(vi),
+                DynamicPPL.getlogjoint_internal(vi),
+                false,
+            )
         end,
     )
 
