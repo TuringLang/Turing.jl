@@ -62,7 +62,7 @@ with Turing.jl:
   VarInfo before evaluation, and ensures that the parameter values passed to your sampler
   will always be in unconstrained (Euclidean) space.
 
-- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want to disallow your sampler
+- `Turing.Inference.is_gibbs_component(::MySampler)`: If you want to disallow your sampler
   from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
   that the default is `true`, so you should only need to implement this in special cases.
 """

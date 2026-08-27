@@ -94,7 +94,7 @@ struct GibbsConditional{C} <: AbstractSampler
     get_cond_dists::C
 end
 
-isgibbscomponent(::GibbsConditional) = true
+is_gibbs_component(::GibbsConditional) = true
 
 """
     build_values_vnt(model::DynamicPPL.Model)

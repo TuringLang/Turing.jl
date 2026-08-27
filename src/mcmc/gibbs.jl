@@ -16,20 +16,20 @@
 #
 
 """
-    isgibbscomponent(spl::AbstractSampler)
+    is_gibbs_component(spl::AbstractSampler)
 
 Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
 Defaults to `true` if no method has been defined for a particular sampler.
 """
-isgibbscomponent(::AbstractSampler) = true
-isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::Prior) = false
-isgibbscomponent(::Emcee) = false
-isgibbscomponent(::SGLD) = false
-isgibbscomponent(::SGHMC) = false
-isgibbscomponent(::SMC) = false
+is_gibbs_component(::AbstractSampler) = true
+is_gibbs_component(spl::RepeatSampler) = is_gibbs_component(spl.sampler)
+is_gibbs_component(spl::ExternalSampler) = is_gibbs_component(spl.sampler)
+is_gibbs_component(::Prior) = false
+is_gibbs_component(::Emcee) = false
+is_gibbs_component(::SGLD) = false
+is_gibbs_component(::SGHMC) = false
+is_gibbs_component(::SMC) = false
 
 """
     Turing.Inference.gibbs_get_raw_values(state)
@@ -222,7 +222,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: Abstr
         end
 
         for spl in samplers
-            if !isgibbscomponent(spl)
+            if !is_gibbs_component(spl)
                 msg = "All samplers must be valid Gibbs components, $(spl) is not."
                 throw(ArgumentError(msg))
             end

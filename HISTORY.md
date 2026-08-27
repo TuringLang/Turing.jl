@@ -36,6 +36,8 @@ Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whethe
 
 Gibbs now conditions component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is removed along with `Turing.Inference.make_conditional`.
 
+`Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.is_gibbs_component`.
+
 # 0.46.0
 
 ## Breaking changes
