@@ -49,7 +49,9 @@ using Turing.Variational
 
     @testset "default interface" begin
         for q0 in [q_meanfield_gaussian, q_fullrank_gaussian]
-            result = vi(gdemo_default, q0, 100; show_progress=Turing.PROGRESS[], adtype)
+            result = vi(
+                gdemo_default, q0, 100; show_progress=AbstractMCMC.PROGRESS[], adtype
+            )
             @test result isa Turing.Variational.VIResult
             @test rand(result) isa DynamicPPL.VarNamedTuple
             @test rand(result, 2) isa Vector{<:DynamicPPL.VarNamedTuple}
@@ -76,7 +78,7 @@ using Turing.Variational
             q_fullrank_gaussian,
             T;
             algorithm,
-            show_progress=Turing.PROGRESS[],
+            show_progress=AbstractMCMC.PROGRESS[],
         )
         c2 = rand(result, 10)
         @test c2 isa Vector{<:DynamicPPL.VarNamedTuple}
@@ -105,7 +107,7 @@ using Turing.Variational
             q_fullrank_gaussian,
             T;
             algorithm,
-            show_progress=Turing.PROGRESS[],
+            show_progress=AbstractMCMC.PROGRESS[],
         )
 
         N = 1000
