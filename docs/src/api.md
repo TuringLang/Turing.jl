@@ -146,9 +146,7 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 
 ### Debugging
 
-```@docs
-setprogress!
-```
+`setprogress!` is re-exported from AbstractMCMC. See [`AbstractMCMC.setprogress!`](@extref).
 
 ### Distributions
 

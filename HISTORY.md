@@ -1,3 +1,7 @@
+# 0.47.1
+
+`setprogress!` is now a re-export of `AbstractMCMC.setprogress!`, so `Turing.setprogress!(false)` keeps working and there is a single progress logging switch instead of two. The internal `Turing.PROGRESS` flag is gone, its state lives in `AbstractMCMC.PROGRESS`.
+
 # 0.47.0
 
 ## Breaking changes
