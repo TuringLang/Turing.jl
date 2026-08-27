@@ -233,9 +233,9 @@ end
     end
 end
 
-@testset verbose = true "AD / GibbsContext" begin
-    # Gibbs sampling needs some extra AD testing because the models are
-    # executed with GibbsContext and a subsetted varinfo. (see e.g.
+@testset verbose = true "AD / Gibbs conditioning" begin
+    # Gibbs sampling needs some extra AD testing because the models are executed
+    # conditioned on the other components' variables. (see e.g.
     # `gibbs_initialstep_recursive` and `gibbs_step_recursive` in
     # src/mcmc/gibbs.jl -- the code here mimics what happens in those
     # functions)
@@ -249,11 +249,16 @@ end
             global_vnt = rand(model)
             @testset for varnames in ([@varname(s)], [@varname(m)])
                 @info "Testing Gibbs AD with model=$(model.f), varnames=$varnames"
-                conditioned_model = Turing.Inference.make_conditional(
-                    model, varnames, deepcopy(global_vnt)
+                conditioned_model = DynamicPPL.condition(
+                    model,
+                    Turing.Inference.conditioned_values(deepcopy(global_vnt), varnames),
                 )
                 @test run_ad(
-                    model, adtype; rng=StableRNG(123), test=true, benchmark=false
+                    conditioned_model,
+                    adtype;
+                    rng=StableRNG(123),
+                    test=true,
+                    benchmark=false,
                 ) isa Any
             end
         end

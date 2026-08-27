@@ -320,7 +320,7 @@ end
 #   @addlogprob!: accloglikelihood!! -> acclogp_and_mirror!! -> map_accumulator!! -> acclogp
 #                 (the `@addlogprob! (; ...)` NamedTuple form arrives via acclogp!!, and its
 #                 `logprior` field produces in acclogprior!! itself)
-#   Gibbs:        GibbsContext turns a tilde_assume!! into a tilde_observe!!
+#   Gibbs:        a conditioned variable is an observation, so it hits tilde_observe!!
 Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
 Libtask.@might_produce(DynamicPPL.acclogp)
@@ -889,8 +889,8 @@ function gibbs_update_state!!(
 )
     # Re-derive the retained trajectory under the values the other Gibbs components have since
     # updated, keeping only the addresses this model still visits. The `nothing` fallback errors on
-    # an address `global_vals` lacks rather than inventing one; `GibbsContext` puts every address
-    # the component owns into the global values before we get here.
+    # an address `global_vals` lacks rather than inventing one; Gibbs merges every address the
+    # component owns into the global values before we get here.
     init = DynamicPPL.InitFromParams(global_vals, nothing)
     vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
     return PGState(DynamicPPL.get_raw_values(vi))

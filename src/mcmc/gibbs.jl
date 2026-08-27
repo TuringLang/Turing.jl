@@ -1,6 +1,19 @@
-###################################################
-# Interface for other samplers to work with Gibbs #
-###################################################
+#
+# Gibbs sampling
+#
+
+# Gibbs partitions the model's variables into blocks, one component sampler each, and sweeps
+# the blocks in turn. To step a block, the model is `condition`ed on the current values of
+# every variable outside it, so the component samples that block's full conditional.
+#
+# Those shared values are threaded explicitly, as an immutable `VarNamedTuple` of raw values:
+# each component's step returns the values it is responsible for, which are merged to form the
+# next component's conditioning set. Nothing is written in place, so every particle and
+# component in a sweep reads the same frozen snapshot.
+
+#
+# Interface for other samplers to work with Gibbs
+#
 
 """
     isgibbscomponent(spl::AbstractSampler)
@@ -125,241 +138,37 @@ function gibbs_recompute_ldf_and_params(
     return new_ldf, new_params, accs
 end
 
-###############################
-# Gibbs implementation itself #
-###############################
-
-can_be_wrapped(::DynamicPPL.AbstractContext) = true
-can_be_wrapped(::DynamicPPL.AbstractParentContext) = false
-can_be_wrapped(ctx::DynamicPPL.PrefixContext) = can_be_wrapped(DynamicPPL.childcontext(ctx))
-
-# Basically like a `DynamicPPL.FixedContext` but
-# 1. Hijacks the tilde pipeline to fix variables.
-# 2. Computes the log-probability of the fixed variables.
 #
-# Purpose: avoid triggering resampling of variables we're conditioning on.
-# - Using standard `DynamicPPL.condition` results in conditioned variables being treated
-#   as observations in the truest sense, i.e. we hit `DynamicPPL.tilde_observe!!`.
-# - But `observe` is overloaded by some samplers, e.g. `CSMC`, which can lead to
-#   undesirable behavior, e.g. `CSMC` triggering a resampling for every conditioned variable
-#   rather than only for the "true" observations.
-# - `GibbsContext` allows us to perform conditioning while still hit the `assume` pipeline
-#   rather than the `observe` pipeline for the conditioned variables.
+# Gibbs implementation itself
+#
+
 """
-    GibbsContext(target_varnames, global_vnt, context)
+    conditioned_values(global_vnt, target_variables)
 
-A context used in the implementation of the Turing.jl Gibbs sampler.
+Return the values in `global_vnt` for every variable *not* sampled by this Gibbs component,
+i.e. the ones it conditions on.
 
-There will be one `GibbsContext` for each iteration of a component sampler.
-
-`target_varnames` is a a tuple of `VarName`s that the current component sampler is sampling.
-For those `VarName`s, `GibbsContext` will just pass `tilde_assume!!` calls to its child
-context. For other variables, their values will be fixed to the values they have in
-`global_vnt`.
-
-# Fields
-$(FIELDS)
+Conditioned variables reach `tilde_observe!!`, so particle samplers reweight on them. That is
+what makes the component's target distribution correct: a conditioned variable the target
+depends on must reweight the sweep, and one it does not contributes the same increment to
+every particle, which ESS-gated resampling ignores.
 """
-struct GibbsContext{
-    VNs<:Tuple{Vararg{VarName}},
-    GV<:Ref{<:DynamicPPL.VarNamedTuple},
-    Ctx<:DynamicPPL.AbstractContext,
-} <: DynamicPPL.AbstractParentContext
-    """
-    the VarNames being sampled
-    """
-    target_varnames::VNs
-    """
-    a `Ref` to the global `VarNamedTuple` object that holds raw values for all variables,
-    both those fixed and those being sampled. We use a `Ref` because this field may need
-    to be updated if new variables are introduced.
-    """
-    global_vnt::GV
-    """
-    the child context that tilde calls will eventually be passed onto.
-    """
-    context::Ctx
-
-    function GibbsContext(target_varnames, global_vnt, context)
-        if !can_be_wrapped(context)
-            error("GibbsContext can only wrap a leaf or prefix context, not a $(context).")
-        end
-        target_varnames = tuple(target_varnames...)  # Allow vectors.
-        return new{typeof(target_varnames),typeof(global_vnt),typeof(context)}(
-            target_varnames, global_vnt, context
-        )
-    end
-end
-
-function GibbsContext(target_varnames, global_vnt)
-    return GibbsContext(target_varnames, global_vnt, DynamicPPL.DefaultContext())
-end
-
-DynamicPPL.childcontext(context::GibbsContext) = context.context
-function DynamicPPL.setchildcontext(context::GibbsContext, childcontext)
-    return GibbsContext(context.target_varnames, context.global_vnt, childcontext)
-end
-
-get_global_vnt(context::GibbsContext) = context.global_vnt[]
-
-function set_global_vnt!(context::GibbsContext, new_global_vnt)
-    context.global_vnt[] = new_global_vnt
-    return nothing
-end
-
-# has and get
-function has_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return DynamicPPL.haskey(get_global_vnt(context), vn)
-end
-function has_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
-    num_conditioned = count(Iterators.map(Base.Fix1(has_conditioned_gibbs, context), vns))
-    if (num_conditioned != 0) && (num_conditioned != length(vns))
-        error(
-            "Some but not all of the variables in `vns` have been conditioned on. " *
-            "Having mixed conditioning like this is not supported in GibbsContext.",
-        )
-    end
-    return num_conditioned > 0
-end
-
-function get_conditioned_gibbs(context::GibbsContext, vn::VarName)
-    return get_global_vnt(context)[vn]
-end
-function get_conditioned_gibbs(context::GibbsContext, vns::AbstractArray{<:VarName})
-    return map(Base.Fix1(get_conditioned_gibbs, context), vns)
-end
-
-function is_target_varname(ctx::GibbsContext, vn::VarName)
-    return any(Base.Fix2(AbstractPPL.subsumes, vn), ctx.target_varnames)
-end
-
-function is_target_varname(context::GibbsContext, vns::AbstractArray{<:VarName})
-    num_target = count(Iterators.map(Base.Fix1(is_target_varname, context), vns))
-    if (num_target != 0) && (num_target != length(vns))
-        error(
-            "Some but not all of the variables in `vns` are target variables. " *
-            "Having mixed targeting like this is not supported in GibbsContext.",
-        )
-    end
-    return num_target > 0
-end
-
-# Copied from DynamicPPL to avoid having to export
-optic_skip_length(::AbstractPPL.Iden) = 0
-optic_skip_length(c::AbstractPPL.Index) = 1 + optic_skip_length(c.child)
-optic_skip_length(c::AbstractPPL.Property) = 1 + optic_skip_length(c.child)
-
-# Tilde pipeline
-function DynamicPPL.tilde_assume!!(
-    context::GibbsContext,
-    right::Distribution,
-    vn::VarName,
-    template::Any,
-    vi::DynamicPPL.AbstractVarInfo,
+function conditioned_values(
+    global_vnt::DynamicPPL.VarNamedTuple, target_variables::AbstractVector{<:VarName}
 )
-    child_context = DynamicPPL.childcontext(context)
-
-    # Note that `child_context` may contain `PrefixContext`s -- in which case
-    # we need to make sure that vn is appropriately prefixed before we handle
-    # the `GibbsContext` behaviour below. For example, consider the following:
-    #      @model inner() = x ~ Normal()
-    #      @model outer() = a ~ to_submodel(inner())
-    # If we run this with `Gibbs(@varname(a.x) => MH())`, then when we are
-    # executing the submodel, the `context` will contain the `@varname(a.x)`
-    # variable; `child_context` will contain `PrefixContext(@varname(a))`; and
-    # `vn` will just be `@varname(x)`. If we just simply run
-    # `is_target_varname(context, vn)`, it will return false, and everything
-    # will be messed up.
-    # TODO(penelopeysm): This 'problem' could be solved if we made GibbsContext a
-    # leaf context and wrapped the PrefixContext _above_ the GibbsContext, so
-    # that the prefixing would be handled by tilde_assume(::PrefixContext, ...)
-    # _before_ we hit this method.
-    # In the current state of GibbsContext, doing this would require
-    # special-casing the way PrefixContext is used to wrap the leaf context.
-    # This is very inconvenient because PrefixContext's behaviour is defined in
-    # DynamicPPL, and we would basically have to create a new method in Turing
-    # and override it for GibbsContext. Indeed, a better way to do this would
-    # be to make GibbsContext a leaf context. In this case, we would be able to
-    # rely on the existing behaviour of DynamicPPL.make_evaluate_args_and_kwargs
-    # to correctly wrap the PrefixContext around the GibbsContext. This is very
-    # tricky to correctly do now, but once we remove the other leaf contexts
-    # (i.e. PriorContext and LikelihoodContext), we should be able to do this.
-    # This is already implemented in
-    # https://github.com/TuringLang/DynamicPPL.jl/pull/885/ but not yet
-    # released. Exciting!
-    child_context, aggregated_prefixes = DynamicPPL.extract_prefixes(child_context)
-    if aggregated_prefixes !== nothing
-        vn = AbstractPPL.prefix(vn, aggregated_prefixes)
-        n = optic_skip_length(AbstractPPL.getoptic(aggregated_prefixes)) + 1
-        template = DynamicPPL.SkipTemplate{n}(template)
+    # A key is conditioned only if it is disjoint from every target, tested in both
+    # directions: a key can be finer than a target (`x` covers `x[1]`) or coarser than one
+    # (a component owning `x[1]` writes back the whole `x`), and conditioning a target on
+    # its own stale value would leave the component with nothing to sample.
+    function is_disjoint(vn)
+        return !any(
+            t -> AbstractPPL.subsumes(t, vn) || AbstractPPL.subsumes(vn, t),
+            target_variables,
+        )
     end
-
-    return if is_target_varname(context, vn)
-        # Fall back to the default behavior.
-        DynamicPPL.tilde_assume!!(child_context, right, vn, template, vi)
-    elseif has_conditioned_gibbs(context, vn)
-        # This branch means that a different sampler is supposed to handle this
-        # variable. From the perspective of this sampler, this variable is
-        # conditioned on, so we can just treat it as an observation.
-        # The only catch is that the value that we need is to be obtained from
-        # the global VNT (since the local VarInfo has no knowledge of it).
-        # Note that tilde_observe!! will trigger resampling in particle methods
-        # for variables that are handled by other Gibbs component samplers.
-        val = get_conditioned_gibbs(context, vn)
-        DynamicPPL.tilde_observe!!(child_context, right, val, vn, template, vi)
-    else
-        # If the varname has not been conditioned on, nor is it a target variable, its
-        # presumably a new variable that should be sampled from its prior. We need to add
-        # this new variable to the global `vnt` of the context, but not to the local one
-        # being used by the current sampler.
-        #
-        # TODO(penelopeysm): This branch is very hard to hit, but it will crash if it is
-        # hit: see https://github.com/TuringLang/Turing.jl/issues/2810
-        value = rand(right)
-        vnt = get_global_vnt(context)
-        vnt = DynamicPPL.templated_setindex!!(vnt, value, vn, template)
-        set_global_vnt!(context, vnt)
-        # Return the value (so that it can be used in the model), plus the unmodified local
-        # varinfo
-        value, vi
-    end
-end
-
-"""
-    make_conditional(model, target_variables, global_vnt)
-
-Return a new, conditioned model for a component of a Gibbs sampler.
-
-# Arguments
-
-- `model::DynamicPPL.Model`: The model to condition.
-
-- `target_variables::AbstractVector{<:VarName}`: The target variables of the component
-  sampler. These will _not_ be conditioned.
-
-- `global_vnt::DynamicPPL.VarNamedTuple`: Raw values for all variables in the model, which
-  are used for all variables that are *not* in `target_variables`.
-
-# Returns
-
-- A new model with the variables _not_ in `target_variables` conditioned.
-
-- The `GibbsContext` object that will be used to condition the variables. This is necessary
-because evaluation can mutate its `global_vnt` field, which we need to access later.
-"""
-function make_conditional(
-    model::DynamicPPL.Model,
-    target_variables::AbstractVector{<:VarName},
-    global_vnt::DynamicPPL.VarNamedTuple,
-)
-    # Insert the `GibbsContext` just before the leaf.
-    # 1. Extract the `leafcontext` from `model` and wrap in `GibbsContext`.
-    gibbs_context_inner = GibbsContext(
-        target_variables, Ref(global_vnt), DynamicPPL.leafcontext(model.context)
+    return DynamicPPL.subset(
+        global_vnt, Tuple(Iterators.filter(is_disjoint, keys(global_vnt)))
     )
-    # 2. Set the leaf context to be the `GibbsContext` wrapping `leafcontext(model.context)`.
-    gibbs_context = DynamicPPL.setleafcontext(model.context, gibbs_context_inner)
-    return DynamicPPL.contextualize(model, gibbs_context), gibbs_context_inner
 end
 
 to_varname(x::VarName) = x
@@ -547,7 +356,7 @@ function gibbs_initialstep_recursive(
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    conditioned_model, context = make_conditional(model, varnames, vnt)
+    conditioned_model = DynamicPPL.condition(model, conditioned_values(vnt, varnames))
 
     # Take initial step with the current sampler.
     _, new_state = step_function(
@@ -560,12 +369,9 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
-    new_vnt_local = gibbs_get_raw_values(new_state)
-    # Merge in any new variables that were introduced during the step, but that
-    # were not in the domain of the current sampler.
-    vnt = merge(vnt, get_global_vnt(context))
-    # Merge the new values for all the variables sampled by the current sampler.
-    vnt = merge(vnt, new_vnt_local)
+    # New values for the variables this sampler is responsible for, plus any variable it
+    # encountered that no component owns yet: both arrive in its own raw values.
+    vnt = merge(vnt, gibbs_get_raw_values(new_state))
 
     states = (states..., new_state)
     return gibbs_initialstep_recursive(
@@ -665,7 +471,9 @@ function gibbs_step_recursive(
     state, states_tail... = states
 
     # Construct the conditional model that this sampler should use.
-    conditioned_model, context = make_conditional(model, varnames, global_vnt)
+    conditioned_model = DynamicPPL.condition(
+        model, conditioned_values(global_vnt, varnames)
+    )
     # Update the sampler's state based on global values that were provided by other
     # samplers.
     state = gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
@@ -679,8 +487,7 @@ function gibbs_step_recursive(
     )
 
     # The current sampler will return some raw values, which we update the global VNT with.
-    new_vnt_local = gibbs_get_raw_values(new_state)
-    new_global_vnt = merge(get_global_vnt(context), new_vnt_local)
+    new_global_vnt = merge(global_vnt, gibbs_get_raw_values(new_state))
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(

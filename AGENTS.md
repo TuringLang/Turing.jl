@@ -48,7 +48,7 @@ For how the model and inference machinery works under the hood, see the [Dynamic
 
 ### Gibbs sampler
 
-The Gibbs sampler (`src/mcmc/gibbs.jl`) is the most complex piece in Turing.jl. It maintains a global `VarNamedTuple` of raw values for all variables. On each iteration, it conditions the model on the non-target variables via `GibbsContext`, runs the component sampler, and updates the global state.
+The Gibbs sampler (`src/mcmc/gibbs.jl`) is the most complex piece in Turing.jl. It threads a `VarNamedTuple` of raw values for all variables through the sweep. To step a component, it `condition`s the model on the values of every variable that component does not sample (`conditioned_values` picks them out), runs the component sampler, and merges the values it returns into the next component's conditioning set. The threaded `VarNamedTuple` is never mutated in place.
 
 To plug a sampler into Gibbs, implement:
 

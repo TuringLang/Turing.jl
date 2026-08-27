@@ -13,17 +13,22 @@ ADTYPES = (
 )
 MODELS = DynamicPPL.TestUtils.DEMO_MODELS
 
-@testset verbose = true "AD / GibbsContext" begin
+@testset verbose = true "AD / Gibbs conditioning" begin
     @testset "adtype=$adtype_name" for (adtype_name, adtype) in ADTYPES
         @testset "model=$(model.f)" for model in MODELS
             global_vnt = rand(model)
             @testset for varnames in ([@varname(s)], [@varname(m)])
                 @info "Testing Gibbs AD with adtype=$(adtype_name), model=$(model.f), varnames=$varnames"
-                conditioned_model = Turing.Inference.make_conditional(
-                    model, varnames, deepcopy(global_vnt)
+                conditioned_model = DynamicPPL.condition(
+                    model,
+                    Turing.Inference.conditioned_values(deepcopy(global_vnt), varnames),
                 )
                 @test run_ad(
-                    model, adtype; rng=StableRNG(468), test=true, benchmark=false
+                    conditioned_model,
+                    adtype;
+                    rng=StableRNG(468),
+                    test=true,
+                    benchmark=false,
                 ) isa Any
             end
         end

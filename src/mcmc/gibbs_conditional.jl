@@ -99,47 +99,17 @@ isgibbscomponent(::GibbsConditional) = true
 """
     build_values_vnt(model::DynamicPPL.Model)
 
-Traverse the context stack of `model` and build a `VarNamedTuple` of all the variable values
-that are set in GibbsContext, ConditionContext, or FixedContext.
+Build a `VarNamedTuple` of the values of every variable this component conditions on: those
+Gibbs conditioned on the other components' current values, those the user conditioned or
+fixed, and those supplied as model arguments.
 """
 function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
-    cond_vals = DynamicPPL.conditioned(context)
-    fixed_vals = DynamicPPL.fixed(context)
-    # model.args is a NamedTuple
-    arg_vals = DynamicPPL.VarNamedTuple(model.args)
-    # Extract values from the GibbsContext itself, as a VNT.
-    init_strat = DynamicPPL.InitFromParams(get_gibbs_global_vnt(context), nothing)
-    oavi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
-    # We need to remove the Gibbs conditioning so that we can get all variables in the
-    # accumulator (otherwise those that are conditioned on in `model` will not be included).
-    defmodel = replace_gibbs_context(model)
-    _, oavi = DynamicPPL.init!!(defmodel, oavi, init_strat, DynamicPPL.UnlinkAll())
-    global_vals = DynamicPPL.get_raw_values(oavi)
-    # Merge them.
-    return merge(global_vals, cond_vals, fixed_vals, arg_vals)
-end
-
-replace_gibbs_context(::GibbsContext) = DefaultContext()
-replace_gibbs_context(::DynamicPPL.AbstractContext) = DefaultContext()
-function replace_gibbs_context(c::DynamicPPL.AbstractParentContext)
-    return DynamicPPL.setchildcontext(c, replace_gibbs_context(DynamicPPL.childcontext(c)))
-end
-function replace_gibbs_context(m::DynamicPPL.Model)
-    return DynamicPPL.contextualize(m, replace_gibbs_context(m.context))
-end
-
-function get_gibbs_global_vnt(context::GibbsContext)
-    return get_global_vnt(context)
-end
-function get_gibbs_global_vnt(context::DynamicPPL.AbstractParentContext)
-    return get_gibbs_global_vnt(DynamicPPL.childcontext(context))
-end
-function get_gibbs_global_vnt(::DynamicPPL.AbstractContext)
-    msg = """No GibbsContext found in context stack. Are you trying to use \
-        GibbsConditional outside of Gibbs?
-        """
-    throw(ArgumentError(msg))
+    return merge(
+        DynamicPPL.conditioned(context),
+        DynamicPPL.fixed(context),
+        DynamicPPL.VarNamedTuple(model.args),
+    )
 end
 
 @inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarNamedTuple) =
@@ -184,13 +154,33 @@ function DynamicPPL.init(
     )
 end
 
+"""
+Error unless this `GibbsConditional` step is being taken by Gibbs.
+
+`GibbsConditional` samples from conditionals that Gibbs supplies by conditioning the model on
+the other components' values, and it returns no transition, so running it on its own produces
+neither the right target nor a usable chain. Gibbs is the only caller that discards the
+sample, which is how we tell the two apart.
+"""
+function error_if_outside_gibbs(discard_sample::Bool)
+    discard_sample && return nothing
+    return throw(
+        ArgumentError(
+            "GibbsConditional can only be used as a component of Gibbs. " *
+            "Are you trying to use GibbsConditional outside of Gibbs?",
+        ),
+    )
+end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     ::GibbsConditional;
     initial_params,
+    discard_sample::Bool=false,
     kwargs...,
 )
+    error_if_outside_gibbs(discard_sample)
     accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
@@ -203,10 +193,12 @@ function AbstractMCMC.step(
     model::DynamicPPL.Model,
     sampler::GibbsConditional,
     state::DynamicPPL.OnlyAccsVarInfo;
+    discard_sample::Bool=false,
     kwargs...,
 )
-    # Get all the conditioned variable values from the model context. This is assumed to
-    # include a GibbsContext as part of the context stack.
+    error_if_outside_gibbs(discard_sample)
+    # Get all the conditioned variable values from the model context. Gibbs conditions the
+    # component's non-target variables, so they are in the stack by the time we get here.
     condvals = build_values_vnt(model)
     # `sampler.get_cond_dists(condvals)` could return many things, unfortunately, so we need
     # to handle the different cases.

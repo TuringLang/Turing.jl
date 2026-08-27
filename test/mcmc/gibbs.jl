@@ -30,7 +30,7 @@ function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, paren
     end
 end
 
-@testset verbose = true "GibbsContext" begin
+@testset verbose = true "Gibbs conditioning" begin
     @testset "type stability" begin
         struct Wrapper{T<:Real}
             a::T
@@ -70,36 +70,16 @@ end
         @testset "$(target_vns)" for target_vns in target_vn_combinations
             global_vnt = rand(model)
             target_vns = collect(target_vns)
-            local_vnt = DynamicPPL.subset(global_vnt, target_vns)
-            ctx = Turing.Inference.GibbsContext(
-                target_vns, Ref(global_vnt), DynamicPPL.DefaultContext()
-            )
+            conditioned = Turing.Inference.conditioned_values(global_vnt, target_vns)
 
-            # Check that the correct varnames are conditioned, and that getting their
-            # values is type stable when the varinfo is.
+            # The component conditions on exactly the variables it does not sample.
             for k in keys(global_vnt)
                 is_target = any(Iterators.map(vn -> DynamicPPL.subsumes(vn, k), target_vns))
-                @test Turing.Inference.is_target_varname(ctx, k) == is_target
-                if !is_target
-                    @inferred Turing.Inference.get_conditioned_gibbs(ctx, k)
-                end
-            end
-
-            # Check the type stability also when using .~.
-            for k in all_varnames
-                # The map(identity, ...) part is there to concretise the eltype.
-                subkeys = map(
-                    identity, filter(vn -> DynamicPPL.subsumes(k, vn), keys(global_vnt))
-                )
-                is_target = (k in target_vns)
-                @test Turing.Inference.is_target_varname(ctx, subkeys) == is_target
-                if !is_target
-                    @inferred Turing.Inference.get_conditioned_gibbs(ctx, subkeys)
-                end
+                @test DynamicPPL.haskey(conditioned, k) == !is_target
             end
 
             # Check that init!! is type stable.
-            conditioned_model = DynamicPPL.contextualize(model, ctx)
+            conditioned_model = DynamicPPL.condition(model, conditioned)
             accs = DynamicPPL.OnlyAccsVarInfo()
             _, accs = @inferred DynamicPPL.init!!(
                 conditioned_model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
@@ -168,20 +148,9 @@ end
         )
     end
 
-    # targets_and_algs will be a list of tuples, where the first element is the target_vns
-    # of a component sampler, and the second element is the component sampler itself.
-    # It is modified by the capture_targets_and_algs function.
-    targets_and_algs = Any[]
-
-    function capture_targets_and_algs(sampler, context::DynamicPPL.AbstractParentContext)
-        if context isa Inference.GibbsContext
-            push!(targets_and_algs, (context.target_varnames, sampler))
-        end
-        return capture_targets_and_algs(sampler, DynamicPPL.childcontext(context))
-    end
-    function capture_targets_and_algs(sampler, ::DynamicPPL.AbstractContext)
-        return nothing  # Leaf context.
-    end
+    # conditioned_and_algs records, for every component step, the variables that component
+    # was conditioned on and the sampler that ran. It is filled by the `step` method below.
+    conditioned_and_algs = Any[]
 
     # The methods that capture testing information for us.
     function AbstractMCMC.step(
@@ -191,7 +160,10 @@ end
         args...;
         kwargs...,
     )
-        capture_targets_and_algs(sampler.inner, model.context)
+        push!(
+            conditioned_and_algs,
+            (keys(DynamicPPL.conditioned(model.context)), sampler.inner),
+        )
         return AbstractMCMC.step(rng, model, sampler.inner, args...; kwargs...)
     end
 
@@ -258,9 +230,18 @@ end
         ((@varname(q.a),), mh),
         ((@varname(r[1]),), mh),
     ]
-    @test targets_and_algs == vcat(
+    expected = vcat(
         expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
     )
+    @test length(conditioned_and_algs) == length(expected)
+    # Each component runs the expected sampler, and is conditioned on every variable except
+    # the ones it samples.
+    for ((targets, alg), (conditioned, actual_alg)) in zip(expected, conditioned_and_algs)
+        @test actual_alg === alg
+        overlaps(a, b) = DynamicPPL.subsumes(a, b) || DynamicPPL.subsumes(b, a)
+        @test !any(t -> any(k -> overlaps(t, k), conditioned), targets)
+        @test !isempty(conditioned)
+    end
 end
 
 @testset "Equivalence of RepeatSampler and repeating Sampler" begin
