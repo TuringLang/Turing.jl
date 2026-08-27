@@ -869,6 +869,8 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
     transition = if discard_sample
         nothing
     else
+        # Copied because `ParamsWithStats` densifies the raw values, and `!!` lets it do so in
+        # place; the state below has to keep the trajectory the next reference will replay.
         DynamicPPL.ParamsWithStats(
             deepcopy(retained.varinfo), (; log_normalizing_constant=logZ)
         )
@@ -893,5 +895,3 @@ function gibbs_update_state!!(
     vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
     return PGState(DynamicPPL.get_raw_values(vi))
 end
-        # Copied because `ParamsWithStats` densifies the raw values, and `!!` lets it do so in
-        # place; the state below has to keep the trajectory the next reference will replay.

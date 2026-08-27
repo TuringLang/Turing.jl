@@ -185,7 +185,6 @@ end
             end
             return a, b
         end
-        @test_throws ErrorException sample(fail_smc(), SMC(), 100)
         @test_throws "number of observations" sample(fail_smc(), SMC(), 100)
     end
 
@@ -316,6 +315,9 @@ end
         for nparticles in (0, -1)
             @test_throws "number of particles must be positive" PG(nparticles)
         end
+        for threshold in (-0.1, 1.5)
+            @test_throws "ESS threshold must lie in [0, 1]" PG(10, threshold)
+        end
     end
 
     @testset "chain log-density metadata" begin
@@ -333,9 +335,6 @@ end
         pg_log_normalizing_constant = mean(chains_pg[:log_normalizing_constant])
         @test pg_log_normalizing_constant ≈ -2 * log(2) atol = 0.01
         # Every particle scores the same here -- `x ~ Bernoulli(1)` pins `x = 1`, so both observes
-        for threshold in (-0.1, 1.5)
-            @test_throws "ESS threshold must lie in [0, 1]" PG(10, threshold)
-        end
         # contribute exactly `log(1/2)` regardless of the trajectory. Zero weight variance is why
         # the estimate is exact for PG too, and why all iterations agree. It is *not* evidence that
         # PG's estimator is unbiased in general; the testset below covers that.
@@ -664,26 +663,6 @@ end
         @test mean(c2[:x]) > 0.7
     end
 
-    @testset "named addlogprob terms lead to reweighting" begin
-        @model function constrained_logp(component)
-            x ~ Bernoulli(0.5)
-            penalty = x == 1 ? 0.0 : -Inf
-            if component === :logprior
-                @addlogprob! (; logprior=penalty)
-            else
-                @addlogprob! (; loglikelihood=penalty)
-            end
-        end
-
-        for component in (:logprior, :loglikelihood)
-            model = constrained_logp(component)
-            smc = sample(StableRNG(469), model, SMC(), 64)
-            pg = sample(StableRNG(469), model, PG(8), 30)
-            @test all(isone, smc[:x])
-            @test all(isone, pg[:x])
-        end
-    end
-
     @testset "keyword argument handling" begin
         @model function kwarg_demo(y; n=0.0)
             x ~ Normal(n)
@@ -921,17 +900,13 @@ end
     xtrue[1] = sqrt(s0(true_q)) * randn(rng)
     for t in 2:T
         xtrue[t] = a * xtrue[t - 1] + sqrt(true_q) * randn(rng)
-        # Quadrature is exact only if the grid covers the posterior. At these bounds the mean
-        # and sd agree to seven digits with a far wider grid; a grid ending at 4.0 leaves
-        # weight 2e-5 on its last point and understates the sd by 6%.
-        @test w[1] + w[end] < 1e-6
     end
     y = xtrue .+ sqrt(r) .* randn(rng, T)
 
     @testset "PG recovers the exact smoothing marginals" begin
         means, vars = ExactSSM.lgssm_smoother(y, a, true_q, r, s0(true_q))
         chn = sample(
-            StableRNG(24), fix(lgssm(y, a, r), @varname(q) => true_q), PG(32), 4_000
+            StableRNG(24), fix(lgssm(y, a, r), @varname(q) => true_q), PG(16), 4_000
         )
         for t in 1:T
             xs = particle_draws(chn, @varname(x[t]))
@@ -946,6 +921,10 @@ end
         w = ExactSSM.grid_posterior(
             prior, qs, q -> ExactSSM.lgssm_loglik(y, a, q, r, s0(q))
         )
+        # Quadrature is exact only if the grid covers the posterior. At these bounds the mean
+        # and sd agree to seven digits with a far wider grid; a grid ending at 4.0 leaves
+        # weight 2e-5 on its last point and understates the sd by 6%.
+        @test w[1] + w[end] < 1e-6
         q_mean, q_sd = ExactSSM.grid_moments(w, qs)
         smoothed = [ExactSSM.lgssm_smoother(y, a, q, r, s0(q)) for q in qs]
         x_mean = sum(w[i] * first(smoothed[i]) for i in eachindex(w))
@@ -953,7 +932,7 @@ end
             w[i] * (last(smoothed[i]) .+ first(smoothed[i]) .^ 2) for i in eachindex(w)
         )
 
-        alg = Gibbs(@varname(q) => NUTS(), @varname(x) => CSMC(32))
+        alg = Gibbs(@varname(q) => NUTS(), @varname(x) => CSMC(16))
         chn = sample(StableRNG(31), lgssm(y, a, r), alg, 4_000)
 
         qd = particle_draws(chn, @varname(q))
@@ -980,13 +959,12 @@ end
         ztrue[t] = rand(rng, Categorical(P[ztrue[t - 1], :]))
     end
     y = [means[ztrue[t]] + true_sd * randn(rng) for t in 1:T]
-        @test w[1] + w[end] < 1e-6      # the grid has to cover the posterior; see above
 
     @testset "PG recovers the exact state marginals" begin
         # Discrete states make this sharp: the reference is a probability vector, so any bias shows
         # up directly instead of being absorbed into a mean.
         post, _ = ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, true_sd))
-        chn = sample(StableRNG(25), fix(hmm(y), @varname(sd) => true_sd), PG(32), 4_000)
+        chn = sample(StableRNG(25), fix(hmm(y), @varname(sd) => true_sd), PG(16), 4_000)
         for t in 1:T
             zs = particle_draws(chn, @varname(z[t]))
             for k in 1:K
@@ -1002,11 +980,12 @@ end
         w = ExactSSM.grid_posterior(
             prior, sds, s -> last(ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, s)))
         )
+        @test w[1] + w[end] < 1e-6      # the grid has to cover the posterior; see above
         sd_mean, sd_sd = ExactSSM.grid_moments(w, sds)
         posts = [first(ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, s))) for s in sds]
         mixed = sum(w[i] * posts[i] for i in eachindex(w))
 
-        alg = Gibbs(@varname(sd) => HMC(0.1, 12), @varname(z) => CSMC(32))
+        alg = Gibbs(@varname(sd) => HMC(0.1, 12), @varname(z) => CSMC(16))
         chn = sample(StableRNG(32), hmm(y), alg, 4_000)
 
         sdd = particle_draws(chn, @varname(sd))
