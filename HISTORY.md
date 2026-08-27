@@ -11,7 +11,7 @@ For example `SMC(Turing.Inference.SystematicResampler())`, `SMC(0.5)`, or `PG(10
 The old function-based API (`resample_systematic`, `AdvancedPS.ResampleWithESSThreshold`, ...) is gone.
 
 The default scheme is now stratified rather than systematic: it stays consistent as the number of particles grows, which systematic does not.
-The selected scheme applies to unconditional sweeps; `PG` / `CSMC` draw the ancestors of a conditional sweep from the categorical over the weights, since a correct conditional version of stratified or systematic resampling is scheme-specific rather than "pin one draw and keep the rest".
+The selected scheme applies to unconditional sweeps only; `PG` / `CSMC` draw a conditional sweep's ancestors from the categorical over the weights.
 Exact draws may therefore differ from previous releases, but remain statistically consistent (the same target distribution).
 
 Chain statistics have changed: `chain[:logevidence]` is now `chain[:log_normalizing_constant]`, and SMC's per-particle `weight` is gone, since the returned particles are now equal-weight.
@@ -20,7 +20,9 @@ The rewrite also brings:
 
   - Reproducibility. Internal seeds are derived through a counter-based (Philox) generator, so a fixed user seed gives the same draws on every Julia version and platform. Previously, results could drift between Julia versions even under a `StableRNG` (https://github.com/TuringLang/Turing.jl/issues/2781).
   - Parallelism within a sweep. `SMC(; multithreaded=true)` / `PG(n; multithreaded=true)` spread that sweep's particles across threads without changing the results; start Julia with multiple threads (e.g. `julia -t auto`) for this to take effect. It is independent of `MCMCThreads()` / `MCMCDistributed()`, which parallelise whole chains and work with SMC/PG as with any other sampler.
-  - Equal-weight draws and diagnostics. `SMC` resamples once at the end of the sweep, so `mean(chain[...])` and other summaries need no weighting. `SMC` chains also carry `ess_per_step`, the effective sample size after each filtering step of the sweep (a degeneracy diagnostic). A step is one likelihood term, so an `@addlogprob!` adds an entry alongside the observations. `chain[:ess_per_step]` is the vector, and MCMCChains exposes its entries as `ess_per_step[1]`, `ess_per_step[2]`, and so on, selectable together with `MCMCChains.group(chain, :ess_per_step)`. For `SMC`, `exp(log_normalizing_constant)` is an unbiased estimator of the marginal likelihood `p(y)` under the usual particle-filter assumptions; for `PG` / `CSMC` it is biased and must not be used for model comparison (see the `PG` docstring).
+  - Equal-weight draws. `SMC` resamples once at the end of the sweep, so `mean(chain[...])` and other summaries need no weighting.
+  - A degeneracy diagnostic. `SMC` chains carry `ess_per_step`, the effective sample size after each filtering step; one entry per likelihood term, so an `@addlogprob!` adds one alongside the observations. MCMCChains exposes the entries as `ess_per_step[1]`, `ess_per_step[2]`, and so on.
+  - For `SMC`, `exp(log_normalizing_constant)` is an unbiased estimator of the marginal likelihood `p(y)` under the usual particle-filter assumptions. For `PG` / `CSMC` it is biased and must not be used for model comparison (see the `PG` docstring).
 
 # 0.46.1
 

@@ -88,10 +88,9 @@ mutable struct Particle{RT<:AbstractRNG,WT<:Real}
     # replaying the RNG draw is what survives Gibbs re-conditioning: a draw is x = g(u; θ), so
     # replaying u after θ → θ' gives g(u; θ') ≠ x -- μ + Φ⁻¹(u) shifts by μ' − μ.
     reference::Union{Nothing,DynamicPPL.VarNamedTuple}
+    # Left undefined here and set immediately after construction: the task has to capture the
+    # particle as its taped globals, a back-reference the particle cannot supply before it exists.
     task::Libtask.TapedTask
-    # `task` is filled in once the particle exists, because the task must capture the
-    # particle as its taped globals (a back-reference). This has to be an inner constructor
-    # for that reason: `task` is left undefined here and set immediately after.
     function Particle(
         vi::DynamicPPL.AbstractVarInfo,
         rng::RT,
@@ -266,18 +265,13 @@ function is_particle_varinfo(vi::DynamicPPL.OnlyAccsVarInfo)
            DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
 end
 
-function mirror_onto_particle(vi::DynamicPPL.OnlyAccsVarInfo)
-    is_particle_varinfo(vi) && (Libtask.get_taped_globals(Particle).varinfo = vi)
-    return vi
-end
-
 function acclogp_and_mirror!!(vi, acc_name, logp, ignore_missing_accumulator)
     if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
         return vi
     end
-    return mirror_onto_particle(
-        DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
-    )
+    vi = DynamicPPL.map_accumulator!!(acc -> DynamicPPL.acclogp(acc, logp), vi, acc_name)
+    is_particle_varinfo(vi) && (Libtask.get_taped_globals(Particle).varinfo = vi)
+    return vi
 end
 
 function DynamicPPL.accloglikelihood!!(
@@ -480,8 +474,7 @@ weight_ess(weights) = inv(sum(abs2, weights))
 ##
 
 # Advance one particle by one observation, folding its incremental weight in; return `true`
-# once it has finished (produced nothing). Factored out so the serial and multithreaded loops in
-# `reweight!` share one body.
+# once it has finished (produced nothing).
 function advance_particle!(p::Particle)
     score = advance!(p)
     score === nothing && return true
@@ -551,7 +544,6 @@ function resample_propagate!(rng::AbstractRNG, particles, resampler)
         child.logweight = zero(DynamicPPL.LogProbType)
         particles[slot] = child
     end
-    # reference retained, weight reset
     conditional && (particles[n].logweight = zero(DynamicPPL.LogProbType))
     return true
 end
@@ -567,8 +559,6 @@ function sweep!(
     rng::AbstractRNG, particles, resampler, multithreaded::Bool; ess::Bool=false
 )
     logZ = zero(DynamicPPL.LogProbType)
-    # The ESS values are computed from the particle weights, so they follow whatever
-    # `DynamicPPL.LogProbType` is rather than being pinned to `Float64`.
     ess_per_step = DynamicPPL.LogProbType[]
     # Total log weight entering the step. Resampling zeroes every weight, so it is then exactly
     # `log(n)`; otherwise the weights are untouched and it is still last step's total. Either way
@@ -879,3 +869,5 @@ function gibbs_update_state!!(
     vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
     return PGState(DynamicPPL.get_raw_values(vi))
 end
+        # Copied because `ParamsWithStats` densifies the raw values, and `!!` lets it do so in
+        # place; the state below has to keep the trajectory the next reference will replay.

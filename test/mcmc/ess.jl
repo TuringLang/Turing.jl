@@ -61,8 +61,7 @@ using Turing
         @testset "gdemo with CSMC + ESS" begin
             alg = Gibbs(:s => CSMC(15), :m => ESS())
             # CSMC mixes `s` slowly, and multinomial ancestor draws in a conditional sweep are
-            # noisier still, so 3_000 draws leave |err| 0.212 against `atol = 0.1`; 10_000 bring
-            # it to 0.061. Suspect the draw count before the sampler if this starts failing.
+            # noisier still: 3_000 draws leave |err| 0.212 against `atol = 0.1`, 10_000 give 0.061.
             chain = sample(StableRNG(seed), gdemo(1.5, 2.0), alg, 10_000)
             check_gdemo(chain; atol=0.1)
         end
