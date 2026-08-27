@@ -38,7 +38,7 @@ CI matrix: Julia stable + min, Ubuntu/Windows/macOS, 1 and 2 threads.
 
 Most complexity is in DynamicPPL. Turing.jl contains:
 
-  - **Sampler implementations** (`src/mcmc/`): HMC/NUTS/HMCDA (wrapping AdvancedHMC), MH (wrapping AdvancedMH), particle samplers SMC/PG/CSMC (wrapping AdvancedPS), ESS (wrapping EllipticalSliceSampling), SGLD/SGHMC, Emcee, and Gibbs.
+  - **Sampler implementations** (`src/mcmc/`): HMC/NUTS/HMCDA (wrapping AdvancedHMC), MH (wrapping AdvancedMH), particle samplers SMC/PG/CSMC (implemented natively in `particle_mcmc.jl` on top of Libtask coroutines), ESS (wrapping EllipticalSliceSampling), SGLD/SGHMC, Emcee, and Gibbs.
   - **External sampler interface** (`src/mcmc/external_sampler.jl`): The `externalsampler()` wrapper lets any `AbstractMCMC.AbstractSampler` that implements `step` for `LogDensityModel` work with Turing models. This is the easier path for new samplers — it only requires a dependency on AbstractMCMC and the LogDensityProblems.jl interface, with no Turing internals. The tradeoff is less power: you can only interact with the model as a black-box log-density function, just like using `LogDensityFunction` directly.
   - **Variational inference** (`src/variational/`): Wraps AdvancedVI algorithms.
   - **Mode estimation** (`src/optimisation/`): MAP and MLE via Optimization.jl.
