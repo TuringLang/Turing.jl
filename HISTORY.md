@@ -16,6 +16,8 @@ Exact draws may therefore differ from previous releases, but remain statisticall
 
 Chain statistics have changed: `chain[:logevidence]` is now `chain[:log_normalizing_constant]`, and SMC's per-particle `weight` is gone, since the returned particles are now equal-weight.
 
+`SMC` no longer has a sampler state, because it runs one sweep rather than an MCMC loop: `save_state` and `initial_state` are now warned about and ignored, so `loadstate` has nothing to return for an `SMC` chain. `PG` / `CSMC` are unaffected.
+
 The rewrite also brings:
 
   - Reproducibility. Internal seeds are derived through a counter-based (Philox) generator, so a fixed user seed gives the same draws on every Julia version and platform. Previously, results could drift between Julia versions even under a `StableRNG` (https://github.com/TuringLang/Turing.jl/issues/2781).

@@ -684,8 +684,8 @@ end
 
 # SMC is a single weighted sweep, not a Markov chain: rather than fake an iteration through
 # AbstractMCMC's step loop (returning the population one particle at a time), we run the sweep
-# and bundle the whole population into the chain in one shot. `discard_initial`/`thinning`
-# therefore have nothing to apply to.
+# and bundle the whole population into the chain in one shot. `discard_initial`/`thinning` and the
+# state keywords therefore have nothing to apply to.
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
@@ -696,6 +696,8 @@ function AbstractMCMC.sample(
     discard_initial=0,
     thinning=1,
     initial_params=nothing,
+    initial_state=nothing,
+    save_state::Bool=false,
     callback=nothing,
     verbose::Bool=true,
     kwargs...,
@@ -705,6 +707,11 @@ function AbstractMCMC.sample(
     error_if_threadsafe_eval(model)
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."
+    end
+    # Caught here rather than forwarded: `save_state` would otherwise store `nothing` as the
+    # chain's sampler state, and `initial_state` would be dropped without a word.
+    if save_state || initial_state !== nothing
+        @warn "SMC runs one sweep and keeps no sampler state; `save_state` and `initial_state` are ignored."
     end
     warn_initial_params_ignored("SMC", initial_params)
     # Accepted only so it can be reported as ignored: AbstractMCMC's contract is one callback

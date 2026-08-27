@@ -242,7 +242,7 @@ end
         @test_throws "zero probability at observation 2" sample(impossible(), SMC(), 5)
     end
 
-    @testset "discard_initial, thinning, initial_params and callback are ignored" begin
+    @testset "unsupported keywords are reported as ignored" begin
         @test_logs (:warn, r"initial_params.*ignored") match_mode = :any sample(
             normal(), SMC(), 10; initial_params=(; a=1.0)
         )
@@ -261,22 +261,20 @@ end
         )
         @test !called
 
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; discard_initial=5)
-        chn = sample(normal(), SMC(), 10; discard_initial=5)
-        @test size(chn, 1) == 10
-        @test chn isa VNChain
-
-        @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; thinning=3)
-        chn2 = sample(normal(), SMC(), 10; thinning=3)
-        @test size(chn2, 1) == 10
-        @test chn2 isa VNChain
-
-        @test_logs (:warn, r"ignored") sample(
-            normal(), SMC(), 10; discard_initial=2, thinning=2
+        # SMC keeps no sampler state, so neither state keyword has anything to act on; without
+        # this, `save_state=true` would silently store `nothing` in the chain.
+        @test_logs (:warn, r"save_state.*ignored") sample(
+            normal(), SMC(), 10; save_state=true
         )
-        chn3 = sample(normal(), SMC(), 10; discard_initial=2, thinning=2)
-        @test size(chn3, 1) == 10
-        @test chn3 isa VNChain
+        @test_logs (:warn, r"initial_state.*ignored") sample(
+            normal(), SMC(), 10; initial_state=1
+        )
+
+        for kw in ((; discard_initial=5), (; thinning=3), (; discard_initial=2, thinning=2))
+            chn = @test_logs (:warn, r"ignored") sample(normal(), SMC(), 10; kw...)
+            @test size(chn, 1) == 10
+            @test chn isa VNChain
+        end
     end
 end
 
