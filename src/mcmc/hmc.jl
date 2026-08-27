@@ -13,6 +13,7 @@ struct HMCState{
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     L<:DynamicPPL.LogDensityFunction,
+    S<:NamedTuple,
 }
     i::Int
     kernel::TKernel
@@ -20,6 +21,9 @@ struct HMCState{
     z::PhType
     adaptor::TAdapt
     ldf::L
+    # Statistics of the last step, kept so that they survive Gibbs, which drops component
+    # transitions (see `gibbs_get_stats`).
+    stat::S
 end
 
 ###
@@ -202,7 +206,7 @@ function AbstractMCMC.step(
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
 
-    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf)
+    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf, NamedTuple())
 
     return transition, state
 end
@@ -246,7 +250,7 @@ function AbstractMCMC.step(
     else
         DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
     end
-    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
+    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf, t.stat)
 
     return transition, newstate
 end
@@ -498,6 +502,8 @@ function gibbs_get_raw_values(state::HMCState)
     return pws.params
 end
 
+gibbs_get_stats(state::HMCState) = state.stat
+
 function gibbs_update_state!!(
     spl::Hamiltonian,
     state::HMCState,
@@ -515,5 +521,7 @@ function gibbs_update_state!!(
     # We also need to update the position variables in the PhasePoint.
     new_z = deepcopy(state.z)
     new_z.θ .= new_params
-    return HMCState(state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf)
+    return HMCState(
+        state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf, state.stat
+    )
 end

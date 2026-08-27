@@ -154,14 +154,9 @@ function DynamicPPL.init(
     )
 end
 
-"""
-Error unless this `GibbsConditional` step is being taken by Gibbs.
-
-`GibbsConditional` samples from conditionals that Gibbs supplies by conditioning the model on
-the other components' values, and it returns no transition, so running it on its own produces
-neither the right target nor a usable chain. Gibbs is the only caller that discards the
-sample, which is how we tell the two apart.
-"""
+# `GibbsConditional` needs the conditioning Gibbs supplies, and returns no transition, so on
+# its own it yields neither the right target nor a usable chain. Gibbs is the only caller that
+# discards the sample, which is how we tell the two apart.
 function error_if_outside_gibbs(discard_sample::Bool)
     discard_sample && return nothing
     return throw(

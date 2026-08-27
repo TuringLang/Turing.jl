@@ -633,6 +633,64 @@ end
         end
     end
 
+    @testset "component sampler stats reach the chain" begin
+        @model function two_normals()
+            h ~ Normal()
+            m ~ Normal()
+            return 0.0 ~ Normal(h + m)
+        end
+        chn = sample(
+            StableRNG(468),
+            two_normals(),
+            Gibbs(@varname(h) => HMC(0.1, 5), @varname(m) => MH()),
+            10;
+            progress=false,
+        )
+        # HMC's diagnostics are prefixed with the variables that component samples. As for a
+        # standalone HMC chain, the initial step has no stats, so the first entry is missing.
+        acceptance = collect(skipmissing(vec(chn[Symbol("h_acceptance_rate")])))
+        @test length(acceptance) == 9
+        @test all(0 .<= acceptance .<= 1)
+        @test all(>(0), collect(skipmissing(vec(chn[Symbol("h_n_steps")]))))
+
+        # Components sampling the same variables are distinguished by their index.
+        chn2 = sample(
+            StableRNG(468),
+            two_normals(),
+            Gibbs(
+                @varname(h) => HMC(0.1, 5), @varname(h) => HMC(0.1, 5), @varname(m) => MH()
+            ),
+            5;
+            progress=false,
+        )
+        @test !isempty(collect(skipmissing(vec(chn2[Symbol("h_1_acceptance_rate")]))))
+        @test !isempty(collect(skipmissing(vec(chn2[Symbol("h_2_acceptance_rate")]))))
+
+        # Statistic names must not parse as variable names: chain packages read variable
+        # structure back out of them, so a stat called `x[1]_acceptance_rate` would be served
+        # up as one of `x`'s draws (`MCMCChains.namesingroup(chn, :x)` matches `x[`).
+        @model function indexed()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal()
+            x[2] ~ Normal()
+            return 0.0 ~ Normal(x[1] + x[2])
+        end
+        chn3 = sample(
+            StableRNG(468),
+            indexed(),
+            Gibbs(@varname(x[1]) => HMC(0.1, 5), @varname(x[2]) => HMC(0.1, 5)),
+            5;
+            progress=false,
+        )
+        stat_names = filter(
+            n -> occursin("acceptance_rate", string(n)), string.(collect(keys(chn3)))
+        )
+        @test length(stat_names) == 2
+        @test !any(
+            n -> occursin('[', n) || occursin(']', n) || occursin('.', n), stat_names
+        )
+    end
+
     @testset "component samplers keep their own init strategy" begin
         # Each variable is initialised by the strategy of the component that samples it, so
         # HMC's `InitFromUniform(-2, 2)` still applies to `h` inside Gibbs. `Beta(1, 1)` is

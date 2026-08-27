@@ -3,13 +3,12 @@
 #
 
 # Gibbs partitions the model's variables into blocks, one component sampler each, and sweeps
-# the blocks in turn. To step a block, the model is `condition`ed on the current values of
+# the blocks in turn: to step a block, the model is `condition`ed on the current values of
 # every variable outside it, so the component samples that block's full conditional.
 #
-# Those shared values are threaded explicitly, as an immutable `VarNamedTuple` of raw values:
-# each component's step returns the values it is responsible for, which are merged to form the
-# next component's conditioning set. Nothing is written in place, so every particle and
-# component in a sweep reads the same frozen snapshot.
+# Those values are threaded explicitly as an immutable `VarNamedTuple` -- each component's
+# step returns the values it owns, which are merged to form the next component's conditioning
+# set. Nothing is written in place, so everything in a sweep reads one frozen snapshot.
 
 #
 # Interface for other samplers to work with Gibbs
@@ -58,6 +57,18 @@ used for evaluation in the component sampler *must* contain a `RawValueAccumulat
 function gibbs_get_raw_values(state::AbstractVarInfo)
     return DynamicPPL.get_raw_values(state)
 end
+
+"""
+    Turing.Inference.gibbs_get_stats(state)
+
+Return a `NamedTuple` of sampler statistics (acceptance rates, step sizes, and so on) for
+the last step taken from `state`.
+
+Gibbs discards its component samplers' transitions -- reading parameters off them would cost
+a model re-evaluation -- so a component that wants its statistics to reach the chain has to
+carry them on its state. Defaults to no statistics.
+"""
+gibbs_get_stats(::Any) = NamedTuple()
 
 """
     Turing.Inference.gibbs_update_state!!(
@@ -156,19 +167,14 @@ every particle, which ESS-gated resampling ignores.
 function conditioned_values(
     global_vnt::DynamicPPL.VarNamedTuple, target_variables::AbstractVector{<:VarName}
 )
-    # A key is conditioned only if it is disjoint from every target, tested in both
-    # directions: a key can be finer than a target (`x` covers `x[1]`) or coarser than one
-    # (a component owning `x[1]` writes back the whole `x`), and conditioning a target on
-    # its own stale value would leave the component with nothing to sample.
-    function is_disjoint(vn)
-        return !any(
-            t -> AbstractPPL.subsumes(t, vn) || AbstractPPL.subsumes(vn, t),
-            target_variables,
-        )
-    end
-    return DynamicPPL.subset(
-        global_vnt, Tuple(Iterators.filter(is_disjoint, keys(global_vnt)))
+    # Overlap is tested in both directions because a key can be finer than a target (`x`
+    # covers `x[1]`) or coarser than one (a component owning `x[1]` writes back the whole
+    # `x`); conditioning a target on its own stale value would leave nothing to sample.
+    overlaps(a, b) = AbstractPPL.subsumes(a, b) || AbstractPPL.subsumes(b, a)
+    conditioned = Tuple(
+        vn for vn in keys(global_vnt) if !any(t -> overlaps(t, vn), target_variables)
     )
+    return DynamicPPL.subset(global_vnt, conditioned)
 end
 
 to_varname(x::VarName) = x
@@ -270,6 +276,32 @@ function init_strategy(spl::Gibbs)
     return GibbsInitStrategy(spl.varnames, map(init_strategy, spl.samplers))
 end
 
+"""
+    component_stats(spl::Gibbs, states)
+
+Collect the component samplers' statistics into one `NamedTuple`, prefixing each with the
+symbols of the variables that component samples, so that two components reporting e.g.
+`acceptance_rate` do not collide. Components sampling the same symbols are further
+distinguished by their index.
+
+The prefix uses each variable's symbol rather than its whole `VarName` because chain packages
+read variable structure back out of these names: `MCMCChains.namesingroup(chn, :x)` matches
+anything beginning `x[`, so a statistic named `x[1]_acceptance_rate` would be served up as one
+of `x`'s draws. A symbol carries no optic, so it cannot be parsed as part of another variable.
+"""
+function component_stats(spl::Gibbs, states)
+    prefixes = map(vns -> join(unique(map(AbstractPPL.getsym, vns)), "_"), spl.varnames)
+    stats = NamedTuple()
+    for (i, (prefix, state)) in enumerate(zip(prefixes, states))
+        component = gibbs_get_stats(state)
+        isempty(component) && continue
+        name = count(==(prefix), prefixes) > 1 ? string(prefix, "_", i) : prefix
+        names = map(k -> Symbol(name, "_", k), keys(component))
+        stats = merge(stats, NamedTuple{names}(values(component)))
+    end
+    return stats
+end
+
 function check_all_variables_handled(vns, spl::Gibbs)
     handled_vars = Iterators.flatten(spl.varnames)
     missing_vars = [
@@ -317,7 +349,9 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+        DynamicPPL.ParamsWithStats(
+            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
+        )
     end
     return transition, GibbsState(vnt, states)
 end
@@ -350,7 +384,9 @@ function AbstractMCMC.step_warmup(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+        DynamicPPL.ParamsWithStats(
+            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
+        )
     end
     return transition, GibbsState(vnt, states)
 end
@@ -434,7 +470,9 @@ function AbstractMCMC.step(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+        DynamicPPL.ParamsWithStats(
+            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
+        )
     end
     return transition, GibbsState(vnt, states)
 end
@@ -465,7 +503,9 @@ function AbstractMCMC.step_warmup(
     transition = if discard_sample
         nothing
     else
-        DynamicPPL.ParamsWithStats(DynamicPPL.InitFromParams(vnt), model)
+        DynamicPPL.ParamsWithStats(
+            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
+        )
     end
     return transition, GibbsState(vnt, states)
 end
