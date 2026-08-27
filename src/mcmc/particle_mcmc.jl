@@ -18,25 +18,15 @@
 using StatsFuns: softmax, logsumexp
 import Random123
 
-#
-# Particle random number generation
-#
-
-# Each particle owns a counter-based `Random123.Philox2x`. This section comes first because
-# `Particle` names the generator type in its signature.
-
+# Each particle owns a counter-based `Random123.Philox2x` seeded from the sampler's own
+# generator. Splitting one generator into many by reseeding can yield correlated streams
+# (Steele et al., "Fast Splittable Pseudorandom Number Generators", OOPSLA 2014), and a
+# `MersenneTwister` derivation is not stable across Julia versions, which drifted SMC/PG
+# results even under a StableRNG (#2781, AdvancedPS.jl#110). Philox is counter-based with a
+# fixed algorithm, so the derived streams are both decorrelated and version-stable.
+# `Philox2x()` would draw a throwaway seed from the OS, hence the explicit constructor.
 "A fresh counter-based generator for one particle, seeded from `rng`."
-particle_rng(rng::AbstractRNG) = Random.seed!(Random123.Philox2x(), rand(rng, UInt64))
-
-# Derive a fresh seed from `key`. Re-seeding to split one generator into many can yield correlated
-# streams (Steele et al., "Fast Splittable Pseudorandom Number Generators", OOPSLA 2014), and a
-# `MersenneTwister` derivation is not stable across Julia versions, which drifted SMC/PG results
-# even under a StableRNG (#2781, AdvancedPS.jl#110). Philox is counter-based with a fixed
-# algorithm, so a seed derived through it is both decorrelated and version-stable.
-split_key(key::Integer) = rand(Random.seed!(Random123.Philox2x(), key), typeof(key))
-
-"Reseed from the generator's own current state (used between steps when not resampling)."
-refresh!(rng::Random123.Philox2x) = Random.seed!(rng, split_key(rng.key))
+particle_rng(rng::AbstractRNG) = Random123.Philox2x(UInt64, rand(rng, UInt64))
 
 #
 # Model evaluation via Libtask
@@ -528,23 +518,16 @@ end
 ## Resample and propagate
 ##
 
-# Resample (if the scheme calls for it) and propagate the survivors, or -- when not resampling --
-# refresh each ordinary particle's seed so the next step draws fresh randomness. Returns whether it
-# resampled, which tells `sweep!` what the total weight now is without recomputing it.
+# Resample, if the scheme calls for it, and propagate the survivors. Returns whether it resampled,
+# which tells `sweep!` what the total weight now is without recomputing it.
 #
 # A conditional sweep is recognised by its reference particle, which always occupies the last slot,
 # rather than by a flag passed in, so resampling cannot disagree with the rest of the sweep about
 # which particle is pinned.
 function resample_propagate!(rng::AbstractRNG, particles, resampler)
     weights = normalized_weights(particles)
-    if !should_resample(resampler, weights)
-        # The reference draws nothing (it reuses retained values), so only the others need a
-        # fresh seed for the next step.
-        for p in particles
-            isreference(p) || refresh!(p.rng)
-        end
-        return false
-    end
+    # Not resampling leaves every particle to continue on its own generator, untouched.
+    should_resample(resampler, weights) || return false
 
     n = length(particles)
     conditional = isreference(last(particles))
