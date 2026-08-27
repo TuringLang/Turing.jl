@@ -243,6 +243,33 @@ struct GibbsState{V<:DynamicPPL.VarNamedTuple,S}
     states::S
 end
 
+"""
+    GibbsInitStrategy(varnames, strategies)
+
+Initialise each variable with the strategy of the component sampler that samples it, so that
+e.g. an `HMC` component still gets its `InitFromUniform` starting point inside Gibbs. A
+variable no component claims falls back to the prior.
+"""
+struct GibbsInitStrategy{V,S} <: DynamicPPL.AbstractInitStrategy
+    varnames::V
+    strategies::S
+end
+
+function DynamicPPL.init(
+    rng::Random.AbstractRNG, vn::VarName, dist::Distribution, strategy::GibbsInitStrategy
+)
+    for (vns, component_strategy) in zip(strategy.varnames, strategy.strategies)
+        if any(Base.Fix2(AbstractPPL.subsumes, vn), vns)
+            return DynamicPPL.init(rng, vn, dist, component_strategy)
+        end
+    end
+    return DynamicPPL.init(rng, vn, dist, DynamicPPL.InitFromPrior())
+end
+
+function init_strategy(spl::Gibbs)
+    return GibbsInitStrategy(spl.varnames, map(init_strategy, spl.samplers))
+end
+
 function check_all_variables_handled(vns, spl::Gibbs)
     handled_vars = Iterators.flatten(spl.varnames)
     missing_vars = [

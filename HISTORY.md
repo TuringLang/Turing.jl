@@ -38,6 +38,8 @@ Gibbs now conditions component samplers with `DynamicPPL.condition` instead of i
 
 `Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.is_gibbs_component`.
 
+Gibbs now initialises each variable with the init strategy of the component sampler that samples it, so e.g. an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
+
 # 0.46.0
 
 ## Breaking changes

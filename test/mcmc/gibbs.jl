@@ -633,6 +633,31 @@ end
         end
     end
 
+    @testset "component samplers keep their own init strategy" begin
+        # Each variable is initialised by the strategy of the component that samples it, so
+        # HMC's `InitFromUniform(-2, 2)` still applies to `h` inside Gibbs. `Beta(1, 1)` is
+        # linked by the logit, so that range is `logistic(-2) < h < logistic(2)`.
+        @model function beta_beta()
+            h ~ Beta(1, 1)
+            return m ~ Beta(1, 1)
+        end
+        lo, hi = inv(1 + exp(2)), inv(1 + exp(-2))
+        # One sample per chain, so every draw is a freshly initialised one.
+        chn = sample(
+            StableRNG(468),
+            beta_beta(),
+            Gibbs(@varname(h) => HMC(0.1, 5), @varname(m) => MH()),
+            MCMCThreads(),
+            1,
+            100;
+            progress=false,
+        )
+        @test all(h -> lo < h < hi, vec(chn[@varname(h)]))
+        # `m` is sampled by MH, which initialises from the prior, so it is not restricted to
+        # the range HMC would use.
+        @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
+    end
+
     @testset "non-identity varnames" begin
         struct Wrap{T}
             a::T
