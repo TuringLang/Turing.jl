@@ -142,6 +142,26 @@ end
         @test chn_strat[@varname(p)] != chn_multi[@varname(p)]
     end
 
+    @testset "offspring counts follow the weights" begin
+        # `E[Oᵏ] = n·Wᵏ` is what makes a scheme unbiased; for systematic resampling it holds
+        # within one offspring on every single draw, which is a far sharper check than the mean.
+        weights = [0.05, 0.35, 0.1, 0.4, 0.1]
+        n = 20
+        expected = n .* weights
+        counts(scheme, seed) = [
+            count(==(k), resample_indices(Xoshiro(seed), scheme, weights, n)) for
+            k in eachindex(weights)
+        ]
+        @test all(
+            all(floor.(expected) .<= counts(SystematicResampler(), s) .<= ceil.(expected))
+            for s in 1:200
+        )
+        for scheme in (StratifiedResampler(), SystematicResampler(), MultinomialResampler())
+            average = mean(counts(scheme, s) for s in 1:4_000)
+            @test average ≈ expected atol = 0.1
+        end
+    end
+
     @testset "stratified/systematic resampling never index past the end" begin
         # softmax can return weights summing to slightly under one; the cumulative walk must
         # not run off the end of the last stratum. Exaggerate the undersum so the (otherwise
@@ -901,6 +921,10 @@ end
     xtrue[1] = sqrt(s0(true_q)) * randn(rng)
     for t in 2:T
         xtrue[t] = a * xtrue[t - 1] + sqrt(true_q) * randn(rng)
+        # Quadrature is exact only if the grid covers the posterior. At these bounds the mean
+        # and sd agree to seven digits with a far wider grid; a grid ending at 4.0 leaves
+        # weight 2e-5 on its last point and understates the sd by 6%.
+        @test w[1] + w[end] < 1e-6
     end
     y = xtrue .+ sqrt(r) .* randn(rng, T)
 
@@ -918,7 +942,7 @@ end
 
     @testset "Gibbs(q => NUTS, x => CSMC) recovers the exact posterior" begin
         prior = InverseGamma(3, 2)
-        qs = range(0.05, 4.0; length=400)
+        qs = range(0.005, 12.0; length=1_200)
         w = ExactSSM.grid_posterior(
             prior, qs, q -> ExactSSM.lgssm_loglik(y, a, q, r, s0(q))
         )
@@ -956,6 +980,7 @@ end
         ztrue[t] = rand(rng, Categorical(P[ztrue[t - 1], :]))
     end
     y = [means[ztrue[t]] + true_sd * randn(rng) for t in 1:T]
+        @test w[1] + w[end] < 1e-6      # the grid has to cover the posterior; see above
 
     @testset "PG recovers the exact state marginals" begin
         # Discrete states make this sharp: the reference is a probability vector, so any bias shows
@@ -973,7 +998,7 @@ end
 
     @testset "Gibbs(sd => HMC, z => CSMC) recovers the exact posterior" begin
         prior = LogNormal(log(0.7), 0.4)
-        sds = range(0.2, 2.5; length=400)
+        sds = range(0.05, 5.0; length=1_000)
         w = ExactSSM.grid_posterior(
             prior, sds, s -> last(ExactSSM.hmm_forward_backward(π0, P, obs_loglik(y, s)))
         )
