@@ -286,11 +286,20 @@ end
 # `LogPrior` is DynamicPPL's ordinary accumulator; a `loglikelihood` field needs none, since
 # `ProduceLogLikelihoodAccumulator` produces as it accumulates. A two-field `@addlogprob!` therefore
 # produces twice: the same weight, and one more point at which the sweep may resample.
+#
+# The `hasacc` guard is repeated rather than delegated so that a produced weight cannot outlive the
+# increment it stands for. Keeping the produce in this method also keeps it in a function Libtask
+# instruments: a keyword argument on `acclogp_and_mirror!!` would route the call through
+# `Core.kwcall`, which `@might_produce` does not name.
 function DynamicPPL.acclogprior!!(
     vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
 )
+    acc_name = Val(:LogPrior)
+    if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
+        return vi
+    end
     is_particle_varinfo(vi) && Libtask.produce(logp)
-    return acclogp_and_mirror!!(vi, Val(:LogPrior), logp, ignore_missing_accumulator)
+    return acclogp_and_mirror!!(vi, acc_name, logp, false)
 end
 
 function DynamicPPL.store_coloneq_value!!(
