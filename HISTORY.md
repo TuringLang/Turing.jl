@@ -26,6 +26,10 @@ The rewrite also brings:
   - A degeneracy diagnostic. `SMC` chains carry `ess_per_step`, the effective sample size after each filtering step; one entry per likelihood term, so an `@addlogprob!` adds one alongside the observations. MCMCChains exposes the entries as `ess_per_step[1]`, `ess_per_step[2]`, and so on.
   - For `SMC`, `exp(log_normalizing_constant)` is an unbiased estimator of the marginal likelihood `p(y)` under the usual particle-filter assumptions. For `PG` / `CSMC` it is biased and must not be used for model comparison (see the `PG` docstring).
 
+## Other changes
+
+`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.6.
+
 # 0.46.1
 
 Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whether sampled on their own or as a Gibbs component.

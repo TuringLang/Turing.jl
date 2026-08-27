@@ -1,7 +1,7 @@
 module Turing
 
 using Reexport, ForwardDiff
-using Bijectors, StatsFuns, SpecialFunctions
+using Bijectors, StatsFuns
 using Statistics, LinearAlgebra
 using Libtask
 @reexport using Distributions
@@ -40,7 +40,6 @@ function setprogress!(progress::Bool)
 end
 
 # Random probability measures.
-include("stdlib/distributions.jl")
 include("stdlib/RandomMeasures.jl")
 include("common.jl")
 include("mcmc/Inference.jl")  # inference algorithms
@@ -82,6 +81,11 @@ using DynamicPPL:
     setthreadsafe,
     filldist,
     arraydist,
+    Flat,
+    FlatPos,
+    BinomialLogit,
+    OrderedLogistic,
+    LogPoisson,
     set_logprob_type!
 
 using StatsBase: predict
@@ -143,7 +147,7 @@ export
     AutoEnzyme,
     # Debugging - Turing
     setprogress!,
-    # Distributions
+    # Distributions - defined in DynamicPPL
     Flat,
     FlatPos,
     BinomialLogit,
