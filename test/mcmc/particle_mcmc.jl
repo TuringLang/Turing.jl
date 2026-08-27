@@ -122,6 +122,9 @@ end
                 normal(), SMC(), nparticles
             )
         end
+        for threshold in (-0.1, 1.5)
+            @test_throws "ESS threshold must lie in [0, 1]" SMC(threshold)
+        end
     end
 
     @testset "resampling schemes" begin
@@ -312,6 +315,9 @@ end
         pg_log_normalizing_constant = mean(chains_pg[:log_normalizing_constant])
         @test pg_log_normalizing_constant ≈ -2 * log(2) atol = 0.01
         # Every particle scores the same here -- `x ~ Bernoulli(1)` pins `x = 1`, so both observes
+        for threshold in (-0.1, 1.5)
+            @test_throws "ESS threshold must lie in [0, 1]" PG(10, threshold)
+        end
         # contribute exactly `log(1/2)` regardless of the trajectory. Zero weight variance is why
         # the estimate is exact for PG too, and why all iterations agree. It is *not* evidence that
         # PG's estimator is unbiased in general; the testset below covers that.

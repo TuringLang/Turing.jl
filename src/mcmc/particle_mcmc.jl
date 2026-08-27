@@ -433,9 +433,15 @@ Resample with `scheme`, but only when the effective sample size drops below
 struct ESSThresholdResampler{T<:Real,R<:AbstractResampler} <: AbstractResampler
     threshold::T
     scheme::R
-end
-function ESSThresholdResampler(threshold::Real)
-    return ESSThresholdResampler(threshold, StratifiedResampler())
+    function ESSThresholdResampler(
+        threshold::T, scheme::R=StratifiedResampler()
+    ) where {T<:Real,R<:AbstractResampler}
+        # The effective sample size lies in `[1, nparticles]`, so anything outside `[0, 1]` is
+        # silently "never resample" or "always resample".
+        0 <= threshold <= 1 ||
+            throw(ArgumentError("ESS threshold must lie in [0, 1]; got $threshold"))
+        return new{T,R}(threshold, scheme)
+    end
 end
 
 function should_resample(resampler::ESSThresholdResampler, weights)
@@ -743,7 +749,7 @@ struct PG{R<:AbstractResampler} <: ParticleInference
     "reweight the particles across threads within each sweep"
     multithreaded::Bool
     function PG(
-        nparticles::Int, resampler::R; multithreaded::Bool=false
+        nparticles::Integer, resampler::R; multithreaded::Bool=false
     ) where {R<:AbstractResampler}
         require_positive_particle_count(nparticles)
         return new{R}(nparticles, resampler, multithreaded)
@@ -777,9 +783,11 @@ and composes with this one.
     required. Its likelihood-scale estimate `exp(log_normalizing_constant)` is unbiased under the
     usual particle-filter assumptions.
 """
-PG(n::Int; kwargs...) = PG(n, ESSThresholdResampler(0.5); kwargs...)
-PG(n::Int, threshold::Real; kwargs...) = PG(n, ESSThresholdResampler(threshold); kwargs...)
-function PG(n::Int, scheme::AbstractResampler, threshold::Real; kwargs...)
+PG(n::Integer; kwargs...) = PG(n, ESSThresholdResampler(0.5); kwargs...)
+function PG(n::Integer, threshold::Real; kwargs...)
+    return PG(n, ESSThresholdResampler(threshold); kwargs...)
+end
+function PG(n::Integer, scheme::AbstractResampler, threshold::Real; kwargs...)
     return PG(n, ESSThresholdResampler(threshold, scheme); kwargs...)
 end
 
