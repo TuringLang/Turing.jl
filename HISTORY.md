@@ -28,7 +28,7 @@ The rewrite also brings:
 
 ## Other changes
 
-`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.6.
+`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.7.
 
 # 0.46.1
 
