@@ -21,7 +21,7 @@ Return a boolean indicating whether `spl` is a valid component for a Gibbs sampl
 
 Defaults to `true` if no method has been defined for a particular sampler.
 """
-is_gibbs_component(::AbstractSampler) = true
+is_gibbs_component(spl::AbstractSampler) = isgibbscomponent(spl)
 is_gibbs_component(spl::RepeatSampler) = is_gibbs_component(spl.sampler)
 is_gibbs_component(spl::ExternalSampler) = is_gibbs_component(spl.sampler)
 is_gibbs_component(::Prior) = false
@@ -29,6 +29,16 @@ is_gibbs_component(::Emcee) = false
 is_gibbs_component(::SGLD) = false
 is_gibbs_component(::SGHMC) = false
 is_gibbs_component(::SMC) = false
+
+"""
+    isgibbscomponent(spl::AbstractSampler)
+
+Deprecated name for [`is_gibbs_component`](@ref).
+
+The default `is_gibbs_component` delegates here, so a sampler that opted out by defining
+`isgibbscomponent` is still honoured; define `is_gibbs_component` instead.
+"""
+isgibbscomponent(::AbstractSampler) = true
 
 """
     Turing.Inference.gibbs_get_raw_values(state)
