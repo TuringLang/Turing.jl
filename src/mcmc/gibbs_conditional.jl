@@ -100,15 +100,18 @@ is_gibbs_component(::GibbsConditional) = true
     build_values_vnt(model::DynamicPPL.Model)
 
 Build a `VarNamedTuple` of the values of every variable this component conditions on: those
-Gibbs conditioned on the other components' current values, those the user conditioned or
-fixed, and those supplied as model arguments.
+supplied as model arguments, and those Gibbs, the user, or `fix` conditioned.
+
+`merge` is right-biased, and conditioned values have to win: a latent declared as a model
+argument bound to `missing` is conditioned by Gibbs on the other components' current draw,
+and taking the argument instead would hand the conditional `missing`.
 """
 function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
     return merge(
+        DynamicPPL.VarNamedTuple(model.args),
         DynamicPPL.conditioned(context),
         DynamicPPL.fixed(context),
-        DynamicPPL.VarNamedTuple(model.args),
     )
 end
 
