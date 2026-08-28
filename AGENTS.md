@@ -90,9 +90,9 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 
 `allow_discrete_variables(sampler)` defaults to `true`. Gradient-based samplers (all `Hamiltonian` subtypes) override this to `false`. `_check_model` uses this to validate the model before sampling. If adding a new sampler that requires continuous variables, override `allow_discrete_variables` to return `false`.
 
-### GibbsContext is not ConditionContext
+### Conditioned variables are observations
 
-`GibbsContext` is distinct from `condition`/`ConditionContext`. For non-target variables, `GibbsContext.tilde_assume!!` calls `tilde_observe!!` — this means particle samplers (PG/CSMC) will correctly resample on conditioned variables. The key difference from `condition` is that `GibbsContext` obtains the conditioned values from the global `VarNamedTuple` rather than from the model's conditioning, and it handles the bookkeeping needed for Gibbs (e.g. updating the global VNT when new variables appear).
+Gibbs conditions a component on every variable it does not sample, so those variables reach `tilde_observe!!` and particle samplers (PG/CSMC) reweight on them. That is what makes the component's target correct: a conditioned variable the target depends on must reweight the sweep, while one it does not contributes the same increment to every particle, which ESS-gated resampling ignores. Do not try to route them through `tilde_assume!!` to avoid resampling.
 
 ## Contributing
 
