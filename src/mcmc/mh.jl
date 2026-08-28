@@ -259,6 +259,18 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     return MH(init_strategy_constructor, link_strategy, all_vns)
 end
 
+"""
+    MHState(vi, stat)
+
+The MH sampler state: the varinfo of the current draw, plus the statistics of the step that
+produced it. The statistics are kept on the state because Gibbs drops component transitions,
+which is where they would otherwise live (see `gibbs_get_stats`).
+"""
+struct MHState{V<:DynamicPPL.AbstractVarInfo,S<:NamedTuple}
+    vi::V
+    stat::S
+end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -319,19 +331,20 @@ function AbstractMCMC.step(
         DynamicPPL.init!!(rng, model, oavi, verbose_init_strategy, DynamicPPL.UnlinkAll())
     end
 
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
-    return transition, vi
+    stat = (; accepted=true)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, stat)
+    return transition, MHState(vi, stat)
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::MH,
-    old_vi::DynamicPPL.OnlyAccsVarInfo;
+    old_state::MHState;
     discard_sample=false,
     kwargs...,
 )
+    old_vi = old_state.vi
     old_lp = DynamicPPL.getlogjoint_internal(old_vi)
     # The initialisation strategy that we use to generate a proposal depends on the
     # state from the previous step. We need to extract the raw values and linked values
@@ -380,9 +393,9 @@ function AbstractMCMC.step(
     else
         false, old_vi
     end
-    transition =
-        discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=accepted))
-    return transition, vi
+    stat = (; accepted=accepted)
+    transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, stat)
+    return transition, MHState(vi, stat)
 end
 
 """
@@ -491,11 +504,11 @@ end
 #### Gibbs interface
 ####
 
+gibbs_get_raw_values(state::MHState) = DynamicPPL.get_raw_values(state.vi)
+gibbs_get_stats(state::MHState) = state.stat
+
 function gibbs_update_state!!(
-    spl::MH,
-    state::AbstractVarInfo,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
+    spl::MH, state::MHState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
     # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
     # the accumulator part of the state. We do need to reevaluate the model though
@@ -509,5 +522,6 @@ function gibbs_update_state!!(
     # TODO(penelopeysm): Is the `nothing` fallback OK, or do we need InitFromPrior as
     # a fallback? In the latter case, how do we control `rng`?
     init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
-    return last(DynamicPPL.init!!(model, state, init_strat, spl.transform_strategy))
+    vi = last(DynamicPPL.init!!(model, state.vi, init_strat, spl.transform_strategy))
+    return MHState(vi, state.stat)
 end
