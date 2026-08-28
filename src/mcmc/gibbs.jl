@@ -431,14 +431,22 @@ function gibbs_initialstep_recursive(
     # Construct the conditioned model.
     conditioned_model = DynamicPPL.condition(model, conditioned_values(vnt, varnames))
 
-    # Take initial step with the current sampler.
+    # Take initial step with the current sampler. Everything it does not sample is
+    # conditioned, so it only initialises its own targets and can use its own strategy
+    # directly -- `GibbsInitStrategy` picks an owner per variable, which is ambiguous when
+    # components overlap. A user-supplied `initial_params` is passed through untouched.
+    component_init = if initial_params isa GibbsInitStrategy
+        init_strategy(sampler)
+    else
+        initial_params
+    end
     _, new_state = step_function(
         rng,
         conditioned_model,
         sampler;
         # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
         # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
-        initial_params=initial_params,
+        initial_params=component_init,
         kwargs...,
         discard_sample=true,
     )
