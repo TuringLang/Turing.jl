@@ -22,7 +22,9 @@ using Test: @inferred, @test, @test_broken, @test_throws, @testset
 using Turing
 using Turing: Inference
 using Turing.Inference: AdvancedHMC, AdvancedMH
-using Turing.RandomMeasures: ChineseRestaurantProcess, DirichletProcess
+
+const TuringDistributionsExt = Base.get_extension(Turing, :TuringDistributionsExt)
+using .TuringDistributionsExt: ChineseRestaurantProcess, DirichletProcess
 
 function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
     for vn in keys(transition.params)
