@@ -1,3 +1,7 @@
+# 0.47.2
+
+`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.7.
+
 # 0.47.1
 
 `setprogress!` is now a re-export of `AbstractMCMC.setprogress!`, so `Turing.setprogress!(false)` keeps working and there is a single progress logging switch instead of two. The internal `Turing.PROGRESS` flag is gone, its state lives in `AbstractMCMC.PROGRESS`.
@@ -29,10 +33,6 @@ The rewrite also brings:
   - Equal-weight draws. `SMC` resamples once at the end of the sweep, so `mean(chain[...])` and other summaries need no weighting.
   - A degeneracy diagnostic. `SMC` chains carry `ess_per_step`, the effective sample size after each filtering step; one entry per likelihood term, so an `@addlogprob!` adds one alongside the observations. MCMCChains exposes the entries as `ess_per_step[1]`, `ess_per_step[2]`, and so on.
   - For `SMC`, `exp(log_normalizing_constant)` is an unbiased estimator of the marginal likelihood `p(y)` under the usual particle-filter assumptions. For `PG` / `CSMC` it is biased and must not be used for model comparison (see the `PG` docstring).
-
-## Other changes
-
-`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.7.
 
 # 0.46.1
 
