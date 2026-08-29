@@ -1,3 +1,7 @@
+# 0.47.2
+
+`Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.7.
+
 # 0.47.1
 
 `setprogress!` is now a re-export of `AbstractMCMC.setprogress!`, so `Turing.setprogress!(false)` keeps working and there is a single progress logging switch instead of two. The internal `Turing.PROGRESS` flag is gone, its state lives in `AbstractMCMC.PROGRESS`.

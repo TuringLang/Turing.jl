@@ -150,15 +150,15 @@ See the [AD guide](https://turinglang.org/docs/tutorials/docs-10-using-turing-au
 
 ### Distributions
 
-These distributions are defined in Turing.jl, but not in Distributions.jl.
+These distributions are defined in DynamicPPL and re-exported.
 
-```@docs
-Flat
-FlatPos
-BinomialLogit
-OrderedLogistic
-LogPoisson
-```
+| Exported symbol   | Documentation                           |
+|:----------------- |:--------------------------------------- |
+| `Flat`            | [`DynamicPPL.Flat`](@extref)            |
+| `FlatPos`         | [`DynamicPPL.FlatPos`](@extref)         |
+| `BinomialLogit`   | [`DynamicPPL.BinomialLogit`](@extref)   |
+| `OrderedLogistic` | [`DynamicPPL.OrderedLogistic`](@extref) |
+| `LogPoisson`      | [`DynamicPPL.LogPoisson`](@extref)      |
 
 ### Tools to work with distributions
 
