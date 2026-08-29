@@ -1,3 +1,8 @@
+# 0.47.3
+
+Random-measure distributions moved to the `TuringDistributionsExt` package extension. Replace
+`Turing.RandomMeasures` with `Base.get_extension(Turing, :TuringDistributionsExt)`.
+
 # 0.47.2
 
 `Flat`, `FlatPos`, `BinomialLogit`, `OrderedLogistic`, and `LogPoisson` moved to DynamicPPL and are re-exported, so `Turing.Flat` and the rest keep working. Requires DynamicPPL 0.42.7.

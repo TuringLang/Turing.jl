@@ -25,8 +25,6 @@ using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzy
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
 
-# Random probability measures.
-include("stdlib/RandomMeasures.jl")
 include("common.jl")
 include("mcmc/Inference.jl")  # inference algorithms
 using .Inference
