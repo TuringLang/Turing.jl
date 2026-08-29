@@ -14,6 +14,7 @@ using LogDensityProblems: LogDensityProblems
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
 using AbstractMCMC
+using AbstractMCMC: setprogress!
 using FlexiChains
 
 using Printf: Printf
@@ -23,21 +24,6 @@ using LinearAlgebra: I
 using ADTypes: ADTypes, AutoForwardDiff, AutoReverseDiff, AutoMooncake, AutoEnzyme
 
 const DEFAULT_ADTYPE = ADTypes.AutoForwardDiff()
-
-const PROGRESS = Ref(true)
-
-# TODO: remove `PROGRESS` and this function in favour of `AbstractMCMC.PROGRESS`
-"""
-    setprogress!(progress::Bool)
-
-Enable progress logging in Turing if `progress` is `true`, and disable it otherwise.
-"""
-function setprogress!(progress::Bool)
-    @info "[Turing]: progress logging is $(progress ? "enabled" : "disabled") globally"
-    PROGRESS[] = progress
-    AbstractMCMC.setprogress!(progress; silent=true)
-    return progress
-end
 
 # Random probability measures.
 include("stdlib/RandomMeasures.jl")
@@ -145,7 +131,7 @@ export
     AutoReverseDiff,
     AutoMooncake,
     AutoEnzyme,
-    # Debugging - Turing
+    # Progress logging - re-exported from AbstractMCMC
     setprogress!,
     # Distributions - defined in DynamicPPL
     Flat,
