@@ -24,6 +24,10 @@ using .TuringDistributionsExt:
         probabilities = exp.([logpdf(chinese_restaurant, k) for k in Int32(1):Int32(3)])
         @test probabilities ≈ [2, 1, 0.5] ./ 3.5
 
+        chinese_restaurant = ChineseRestaurantProcess(dirichlet_process, Int32[2, 0, 1])
+        probabilities = exp.([logpdf(chinese_restaurant, k) for k in Int32(1):Int32(3)])
+        @test probabilities ≈ [2, 0.5, 1] ./ 3.5
+
         integer_process = DirichletProcess(1)
         @test logpdf(ChineseRestaurantProcess(integer_process, [1]), 1) ≈ -log(2)
 
@@ -32,11 +36,16 @@ using .TuringDistributionsExt:
         probabilities = exp.([logpdf(chinese_restaurant, k) for k in 1:3])
         @test probabilities ≈ [1.75, 0.75, 1.0] ./ 3.5
 
+        chinese_restaurant = ChineseRestaurantProcess(pitman_yor_process, [2, 0, 1])
+        probabilities = exp.([logpdf(chinese_restaurant, k) for k in 1:3])
+        @test probabilities ≈ [1.75, 1.0, 0.75] ./ 3.5
+
         @test minimum(StickBreakingProcess(dirichlet_process)) == 0
         @test maximum(StickBreakingProcess(dirichlet_process)) == 1
         @test minimum(SizeBiasedSamplingProcess(dirichlet_process, 2.0)) == 0
         @test maximum(SizeBiasedSamplingProcess(dirichlet_process, 2.0)) == 2
         @test TuringDistributionsExt.stickbreak([0.2, 0.5]) ≈ [0.2, 0.4, 0.4]
+        @test TuringDistributionsExt.stickbreak(Float32[]) == Float32[1]
     end
 
     @testset "infinite mixture model" begin

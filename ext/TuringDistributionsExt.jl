@@ -134,8 +134,8 @@ function _logpdf_table(d::DirichletProcess, m::AbstractVector{<:Integer})
         return table
     end
 
-    @inbounds for i in 1:(ntables - 1)
-        table[i] = log(m[i])
+    @inbounds for i in eachindex(m)
+        !iszero(m[i]) && (table[i] = log(m[i]))
     end
 
     new_cluster = first_zero === nothing ? ntables : first_zero
@@ -198,7 +198,7 @@ function _logpdf_table(d::PitmanYorProcess, m::AbstractVector{<:Integer})
         return table
     end
 
-    @inbounds for i in 1:(ntables - 1)
+    @inbounds for i in eachindex(m)
         !iszero(m[i]) && (table[i] = log(m[i] - d.d))
     end
 
@@ -217,6 +217,8 @@ end
 Convert `K - 1` breaking proportions in `v` into `K` simplex weights.
 """
 function stickbreak(v)
+    isempty(v) && return [one(eltype(v))]
+
     K = length(v) + 1
     remaining = cumprod(1 .- v)
     return [
