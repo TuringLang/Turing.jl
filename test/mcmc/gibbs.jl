@@ -157,8 +157,8 @@ end
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
-    Turing.Inference.is_gibbs_component(wrap::AlgWrapper) =
-        Turing.Inference.is_gibbs_component(wrap.inner)
+    Turing.Inference.isgibbscomponent(wrap::AlgWrapper) =
+        Turing.Inference.isgibbscomponent(wrap.inner)
     function Turing.Inference.gibbs_update_state!!(
         sampler::AlgWrapper,
         state,
@@ -288,7 +288,7 @@ end
         WarmupCounter() = new(0, 0, 0, 0)
     end
 
-    Turing.Inference.is_gibbs_component(::WarmupCounter) = true
+    Turing.Inference.isgibbscomponent(::WarmupCounter) = true
 
     # we need some state type to implement the Gibbs interface (we can't just use `nothing`)
     struct TrivialState end

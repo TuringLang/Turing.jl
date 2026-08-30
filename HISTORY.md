@@ -36,8 +36,6 @@ Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whethe
 
 Gibbs now conditions component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is removed along with `Turing.Inference.make_conditional`.
 
-`Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.is_gibbs_component`.
-
 Gibbs now initialises each variable with the init strategy of the component sampler that samples it, so e.g. an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
 
 Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `HMC` and its variants do.
