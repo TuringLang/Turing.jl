@@ -37,6 +37,9 @@ Deprecated name for [`is_gibbs_component`](@ref).
 
 The default `is_gibbs_component` delegates here, so a sampler that opted out by defining
 `isgibbscomponent` is still honoured; define `is_gibbs_component` instead.
+
+TODO: remove in the next breaking release. Until then a sampler can opt out under either
+name, and defining both leaves the new one silently winning.
 """
 isgibbscomponent(::AbstractSampler) = true
 
@@ -218,9 +221,9 @@ behaviour of Gibbs when there are unhandled variables is undefined: depending on
 of Turing, it may either crash, or it may sample once from the prior and not update values
 after that. See https://github.com/TuringLang/Turing.jl/issues/2810 for more information.
 
-There is currently no way to specify a different initialisation strategy for each component
-sampler individually. When sampling with Gibbs, `initial_params` applies to the model as a
-whole.
+Each component sampler initialises the variables it samples with its own default strategy, so
+e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
+overrides that and applies to the model as a whole; it cannot yet be set per component.
 
 # Fields
 $(TYPEDFIELDS)
