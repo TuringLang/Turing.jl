@@ -153,8 +153,11 @@ end
     # If a variable has no component sampler it is never updated.
     @test_throws ArgumentError sample(model, Gibbs(:m => MH()), 10)
 
-    # We should be able to skip the check if we want to.
-    @test sample(model, Gibbs(:m => MH()), 10; check_model=false, progress=false) isa Any
+    # `check_model=false` turns off the model diagnostics, not this: a variable no component
+    # samples is conditioned on one draw for the whole run, never what was meant.
+    @test_throws ArgumentError sample(
+        model, Gibbs(:m => MH()), 10; check_model=false, progress=false
+    )
 end
 
 # Test that the samplers are being called in the correct order, on the correct target
@@ -773,6 +776,16 @@ end
         # conditioned on for the rest of the run.
         @test_throws ArgumentError sample(
             Xoshiro(470),
+            f(),
+            Gibbs(@varname(x) => MH(), @varname(y) => MH()),
+            100;
+            check_model=false,
+            progress=false,
+        )
+        # Seed 4's initial draw already takes the branch, so `z` reaches the snapshot before
+        # any component steps. Nothing then sees it appear, and it stayed frozen for the run.
+        @test_throws ArgumentError sample(
+            Xoshiro(4),
             f(),
             Gibbs(@varname(x) => MH(), @varname(y) => MH()),
             100;

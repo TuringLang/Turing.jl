@@ -395,7 +395,7 @@ function component_stats(spl::Gibbs, states)
 end
 
 """
-    adopt_new_variables(spl, sampler, targets, adopted, old_vnt, new_vnt)
+    adopt_new_variables(spl, sampler, adopted, old_vnt, new_vnt)
 
 Settle what happens to variables that appeared during one component's step, returning the
 variables this component has adopted.
@@ -406,15 +406,12 @@ of variables that changes between sweeps. If none was, the component that found 
 on the same condition, so that it keeps sampling the variable instead of conditioning on a
 single draw for the rest of the run. Otherwise this throws.
 
-Only sweeps after the first are considered. The values Gibbs initialises with exclude `:=`
-quantities while a component's own values include them, so at the first sweep every `:=` name
-would look new; [`check_all_variables_handled`](@ref) covers the variables the model starts
-with.
+The variables the model starts with are [`check_all_variables_handled`](@ref)'s business;
+this covers only what a step adds to the snapshot.
 """
 function adopt_new_variables(
     spl::Gibbs,
     sampler,
-    targets,
     adopted,
     old_vnt::DynamicPPL.VarNamedTuple,
     new_vnt::DynamicPPL.VarNamedTuple,
@@ -423,7 +420,6 @@ function adopt_new_variables(
     # an element, and an `x[5]` appearing inside a branch is as unhandled as a new `z`.
     for vn in keys(new_vnt), leaf in AbstractPPL.varname_leaves(vn, new_vnt[vn])
         DynamicPPL.hasvalue(old_vnt, leaf) && continue
-        any(hv -> AbstractPPL.subsumes(hv, leaf), targets) && continue
         owner = findfirst(
             vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames
         )
@@ -456,17 +452,40 @@ function check_all_variables_handled(vns, spl::Gibbs)
     ]
     if !isempty(missing_vars)
         msg =
-            "The Gibbs sampler does not have a component sampler for: $(join(missing_vars, ", ")). " *
-            "Please assign a component sampler to each variable in the model."
+            "The Gibbs sampler has no component for $(join(missing_vars, ", ")). Assign " *
+            "every variable the model reaches to a component; one left out is never " *
+            "sampled, and every component conditions on a single draw of it for the whole " *
+            "run. A variable the model reaches only inside a branch, so that it is there on " *
+            "some sweeps and not others, has to go to a component that can sample a varying " *
+            "set of variables, such as `PG`."
         throw(ArgumentError(msg))
     end
 end
 
+"""
+    gibbs_initial_values(rng, model, spl, initial_params)
+
+Return the values the sweep starts from: one draw of the model, its `:=` quantities included.
+
+`:=` quantities are not variables, so [`check_all_variables_handled`](@ref) runs before they
+are added. Components report them among their own values, and having them here keeps the sweep
+from taking them for variables that appeared while sampling.
+"""
+function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
+    vnt = DynamicPPL.get_raw_values(accs)
+    check_all_variables_handled(keys(vnt), spl)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(true))
+    _, accs = DynamicPPL.init!!(
+        rng, model, accs, DynamicPPL.InitFromParams(vnt), DynamicPPL.UnlinkAll()
+    )
+    return DynamicPPL.get_raw_values(accs)
+end
+
 function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)
     # TODO(penelopeysm): Could be smarter: subsamplers may not allow discrete variables.
-    Turing._check_model(model, !Turing.allow_discrete_variables(spl))
-    varnames = keys(rand(model))
-    return check_all_variables_handled(varnames, spl)
+    return Turing._check_model(model, !Turing.allow_discrete_variables(spl))
 end
 
 function AbstractMCMC.step(
@@ -479,14 +498,13 @@ function AbstractMCMC.step(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
-    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
-    vnt = DynamicPPL.get_raw_values(accs)
+    vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states = gibbs_initialstep_recursive(
+    vnt, states, adopted = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step,
+        spl,
         varnames,
         samplers,
         vnt;
@@ -500,7 +518,7 @@ function AbstractMCMC.step(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, map(_ -> VarName[], spl.varnames))
+    return transition, GibbsState(vnt, states, adopted)
 end
 
 function AbstractMCMC.step_warmup(
@@ -513,15 +531,13 @@ function AbstractMCMC.step_warmup(
 )
     varnames = spl.varnames
     samplers = spl.samplers
-    # Sample a set of initial values
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
-    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
-    vnt = DynamicPPL.get_raw_values(accs)
+    vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states = gibbs_initialstep_recursive(
+    vnt, states, adopted = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
+        spl,
         varnames,
         samplers,
         vnt;
@@ -535,13 +551,13 @@ function AbstractMCMC.step_warmup(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, map(_ -> VarName[], spl.varnames))
+    return transition, GibbsState(vnt, states, adopted)
 end
 
 """
 Take the first step of MCMC for the first component sampler, and call the same function
 recursively on the remaining samplers, until no samplers remain. Return the global VNT
-and a tuple of initial states for all component samplers.
+and a tuple of initial states for all component samplers, plus what each has adopted.
 
 The `step_function` argument should always be either AbstractMCMC.step or
 AbstractMCMC.step_warmup.
@@ -550,16 +566,18 @@ function gibbs_initialstep_recursive(
     rng,
     model,
     step_function::Function,
+    spl::Gibbs,
     varname_vecs,
     samplers,
     vnt,
-    states=();
+    states=(),
+    adopted_vecs=();
     initial_params,
     kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
-        return vnt, states
+        return vnt, states, adopted_vecs
     end
 
     varnames, varname_vecs_tail... = varname_vecs
@@ -589,17 +607,21 @@ function gibbs_initialstep_recursive(
     )
     # New values for the variables this sampler is responsible for, plus any variable it
     # encountered that no component owns yet: both arrive in its own raw values.
-    vnt = merge(vnt, gibbs_get_raw_values(new_state))
+    new_vnt = merge(vnt, gibbs_get_raw_values(new_state))
+    adopted = adopt_new_variables(spl, sampler, VarName[], vnt, new_vnt)
 
     states = (states..., new_state)
+    adopted_vecs = (adopted_vecs..., adopted)
     return gibbs_initialstep_recursive(
         rng,
         model,
         step_function,
+        spl,
         varname_vecs_tail,
         samplers_tail,
-        vnt,
-        states;
+        new_vnt,
+        states,
+        adopted_vecs;
         initial_params=initial_params,
         kwargs...,
     )
@@ -725,9 +747,7 @@ function gibbs_step_recursive(
 
     # The current sampler will return some raw values, which we update the global VNT with.
     new_global_vnt = merge(global_vnt, gibbs_get_raw_values(new_state))
-    adopted = adopt_new_variables(
-        spl, sampler, targets, adopted, global_vnt, new_global_vnt
-    )
+    adopted = adopt_new_variables(spl, sampler, adopted, global_vnt, new_global_vnt)
 
     new_states = (new_states..., new_state)
     new_adopted = (new_adopted..., adopted)
