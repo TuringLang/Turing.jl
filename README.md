@@ -13,101 +13,114 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
+`Turing.jl` is a Julia probabilistic programming package for Bayesian and
+likelihood-based inference. A Turing model specifies a joint probability distribution
+as executable Julia code. The same model can then be used for Markov chain Monte Carlo,
+variational inference, maximum likelihood estimation, or maximum a posteriori
+estimation.
 
-> [!IMPORTANT]
-> `Turing.jl` is maintained primarily by academic researchers at grant-funded institutions, with correspondingly limited capacity for triage and review.
->
-> `Turing.jl`'s preferred automatic differentiation backends are `ForwardDiff.jl` and `Mooncake.jl`, which are supported natively through their public APIs; further backends are available via `DifferentiationInterface.jl`.
->
-> If you would like to contribute, we ask that proposals for new features be submitted first, so that the TuringLang team can indicate whether they are a good fit before implementation begins; bug fixes and small changes are very welcome as pull requests directly. Reviewer privileges are reserved for those with a sustained record of substantive contributions to TuringLang, or for individuals explicitly invited by a team member.
+Turing is the user-facing entry point to the TuringLang ecosystem.
+[DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl) represents and evaluates
+models, while Turing connects them to inference algorithms. Markov chain Monte Carlo
+uses [AbstractMCMC.jl](https://github.com/TuringLang/AbstractMCMC.jl) and samplers such as
+[AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl) and
+[AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl). Variational inference
+uses [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl), and mode estimation
+uses [Optimization.jl](https://github.com/SciML/Optimization.jl).
+
+Gradient-based algorithms require derivatives of the model's log density. Turing's
+preferred automatic differentiation backends are `ForwardDiff.jl` and `Mooncake.jl`,
+which are integrated through their public APIs. Further backends are available through
+`DifferentiationInterface.jl`.
 
 ## Get started
 
-Install Julia (see [the official Julia website](https://julialang.org/install/); you will need at least Julia 1.10.8 for the latest version of Turing.jl).
-Then, launch a Julia REPL and run:
+Install Julia 1.10.8 or later from the [official Julia
+website](https://julialang.org/install/). Then open a Julia REPL and run:
 
 ```julia
 julia> using Pkg; Pkg.add("Turing")
 ```
 
-You can define models using the `@model` macro, and then perform Markov chain Monte Carlo sampling using the `sample` function:
+The following example places priors on an intercept, slope, and residual scale, then
+samples their posterior distribution:
 
 ```julia
-julia> using Turing
+julia> using Random, Turing
+
+julia> rng = Xoshiro(1)
 
 julia> @model function linear_regression(x)
            # Priors
            α ~ Normal(0, 1)
            β ~ Normal(0, 1)
-           σ² ~ truncated(Cauchy(0, 3); lower=0)
+           σ ~ truncated(Cauchy(0, 3); lower=0)
 
            # Likelihood
            μ = α .+ β .* x
-           y ~ MvNormal(μ, σ² * I)
+           y ~ MvNormal(μ, σ^2 * I)
        end
 
-julia> x, y = rand(10), rand(10)
+julia> x = range(-1, 1; length=20)
+
+julia> y = 1 .+ 2 .* x .+ 0.2 .* randn(rng, length(x))
 
 julia> posterior = linear_regression(x) | (; y = y)
 
-julia> chain = sample(posterior, NUTS(), 1000)
+julia> chain = sample(rng, posterior, NUTS(), 1000)
 ```
 
-You can find the main TuringLang documentation at [**https://turinglang.org**](https://turinglang.org), which contains general information about Turing.jl's features, as well as a variety of tutorials with examples of Turing.jl models.
+The example first generates synthetic observations with intercept 1, slope 2, and noise
+standard deviation 0.2. The `| (; y = y)` expression then conditions the model on those
+observations. `NUTS()` selects the No-U-Turn sampler, and `chain` contains 1,000
+posterior draws of `α`, `β`, and `σ`.
 
-API documentation for Turing.jl is specifically available at [**https://turinglang.org/Turing.jl/stable**](https://turinglang.org/Turing.jl/stable/).
+## Documentation and discussion
+
+The [TuringLang documentation](https://turinglang.org/) provides tutorials, while the
+[Turing.jl documentation](https://turinglang.org/Turing.jl/stable) is the API reference.
+The [TuringLang newsletter](https://turinglang.org/news/) reports work across the
+ecosystem. Changes to Turing.jl are recorded in
+[`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md) and the
+[GitHub releases](https://github.com/TuringLang/Turing.jl/releases).
+
+Technical discussion takes place in the [`#turing` channel of Julia
+Slack](https://julialang.slack.com/archives/CCYDC34A0) and under the [`turing` tag on Julia
+Discourse](https://discourse.julialang.org/tag/turing). The Julia website provides
+[Slack invitations](https://julialang.org/slack/).
+
+## Project scope
+
+Turing is maintained as grant-funded research software. It prioritises correctness and
+stability over broad feature coverage.
+
+Reproducible cases of incorrect results or unexpected failures within the documented
+scope guide further work. Capacity for maintenance and review is necessarily limited.
 
 ## Contributing
 
-### Issues
+Discuss proposed features in an [issue](https://github.com/TuringLang/Turing.jl/issues)
+before implementation so that their fit can be assessed. Focused bug fixes and small
+changes may be submitted directly as pull requests. Bug reports need not identify the
+correct TuringLang repository in advance; maintainers can transfer issues when
+necessary.
 
-If you find any bugs or unintuitive behaviour when using Turing.jl, please do [open an issue](https://github.com/TuringLang/Turing.jl/issues)!
-Please don't worry about finding the correct repository for the issue; we can migrate the issue to the appropriate repository if we need to.
-
-### Pull requests
-
-We are of course also very happy to receive pull requests.
-If you are unsure about whether a particular feature would be welcome, you can open an issue for discussion first.
-
-When opening a PR, non-breaking releases (patch versions) should target the `main` branch.
-Breaking releases (minor version) should target the `breaking` branch.
-
-If you have not received any feedback on an issue or PR for a while, please feel free to ping `@TuringLang/maintainers` in a comment.
-
-## Other channels
-
-The Turing.jl userbase tends to be most active on the [`#turing` channel of Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
-If you do not have an invitation to Julia's Slack, you can get one from [the official Julia website](https://julialang.org/slack/).
-
-There are also often threads on [Julia Discourse](https://discourse.julialang.org) (you can search using, e.g., [the `turing` tag](https://discourse.julialang.org/tag/turing)).
-
-## What's changed recently?
-
-We publish a fortnightly newsletter summarising recent updates in the TuringLang ecosystem, which you can view on [our website](https://turinglang.org/news/), [GitHub](https://github.com/TuringLang/Turing.jl/issues/2498), or [Julia Slack](https://julialang.slack.com/archives/CCYDC34A0).
-
-For Turing.jl specifically, you can see a full changelog in [`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md) or [our GitHub releases](https://github.com/TuringLang/Turing.jl/releases).
-
-## Where does Turing.jl sit in the TuringLang ecosystem?
-
-Turing.jl is the main entry point for users, and seeks to provide a unified, convenient interface to all of the functionality in the TuringLang (and broader Julia) ecosystem.
-
-In particular, it takes the ability to specify probabilistic models with [DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl), and combines it with a number of inference algorithms, such as:
-
-  - Markov Chain Monte Carlo (both an abstract interface: [AbstractMCMC.jl](https://github.com/TuringLang/AbstractMCMC.jl), and individual samplers, such as [AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl), [AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl), and more).
-  - Variational inference using [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl).
-  - Maximum likelihood and maximum a posteriori estimation, which rely on SciML's [Optimization.jl interface](https://github.com/SciML/Optimization.jl).
+Pull requests for non-breaking changes target `main`; breaking changes target
+`breaking`. Reviewer privileges are reserved for sustained, substantive contributors
+and people invited by a team member. If an issue or pull request has received no
+response, ping `@TuringLang/maintainers`.
 
 ## Citing Turing.jl
 
-If you have used Turing.jl in your work, we would be very grateful if you could cite the following:
+If you use Turing.jl in published work, please cite:
 
-[**Turing.jl: a general-purpose probabilistic programming language**](https://doi.org/10.1145/3711897)  
-Tor Erlend Fjelde, Kai Xu, David Widmann, Mohamed Tarek, Cameron Pfiffer, Martin Trapp, Seth D. Axen, Xianda Sun, Markus Hauru, Penelope Yong, Will Tebbutt, Zoubin Ghahramani, Hong Ge  
-ACM Transactions on Probabilistic Machine Learning, 2025 (_Just Accepted_)  
+[**Turing.jl: A General-Purpose Probabilistic Programming Language**](https://doi.org/10.1145/3711897)<br>
+Tor Erlend Fjelde, Kai Xu, David Widmann, Mohamed Tarek, Cameron Pfiffer, Martin Trapp, Seth D. Axen, Xianda Sun, Markus Hauru, Penelope Yong, Will Tebbutt, Zoubin Ghahramani, Hong Ge<br>
+ACM Transactions on Probabilistic Machine Learning, 1(3):1–48, 2025.
 
-[**Turing: A Language for Flexible Probabilistic Inference**](https://proceedings.mlr.press/v84/ge18b.html)  
-Hong Ge, Kai Xu, Zoubin Ghahramani  
-Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics, PMLR 84:1682-1690, 2018.
+[**Turing: A Language for Flexible Probabilistic Inference**](https://proceedings.mlr.press/v84/ge18b.html)<br>
+Hong Ge, Kai Xu, Zoubin Ghahramani<br>
+Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics, PMLR 84:1682–1690, 2018.
 
 <details>
 
@@ -115,31 +128,33 @@ Proceedings of the Twenty-First International Conference on Artificial Intellige
 
 ```bibtex
 @article{10.1145/3711897,
-author = {Fjelde, Tor Erlend and Xu, Kai and Widmann, David and Tarek, Mohamed and Pfiffer, Cameron and Trapp, Martin and Axen, Seth D. and Sun, Xianda and Hauru, Markus and Yong, Penelope and Tebbutt, Will and Ghahramani, Zoubin and Ge, Hong},
-title = {Turing.jl: a general-purpose probabilistic programming language},
-year = {2025},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/3711897},
-doi = {10.1145/3711897},
-note = {Just Accepted},
-journal = {ACM Trans. Probab. Mach. Learn.},
-month = feb,
+  author = {Fjelde, Tor Erlend and Xu, Kai and Widmann, David and Tarek, Mohamed and Pfiffer, Cameron and Trapp, Martin and Axen, Seth D. and Sun, Xianda and Hauru, Markus and Yong, Penelope and Tebbutt, Will and Ghahramani, Zoubin and Ge, Hong},
+  title = {Turing.jl: A General-Purpose Probabilistic Programming Language},
+  journal = {ACM Trans. Probab. Mach. Learn.},
+  year = {2025},
+  volume = {1},
+  number = {3},
+  pages = {1--48},
+  month = aug,
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  doi = {10.1145/3711897},
+  url = {https://doi.org/10.1145/3711897},
 }
 
-@InProceedings{pmlr-v84-ge18b,
-  title = 	 {Turing: A Language for Flexible Probabilistic Inference},
-  author = 	 {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
-  booktitle = 	 {Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics},
-  pages = 	 {1682--1690},
-  year = 	 {2018},
-  editor = 	 {Storkey, Amos and Perez-Cruz, Fernando},
-  volume = 	 {84},
-  series = 	 {Proceedings of Machine Learning Research},
-  month = 	 {09--11 Apr},
-  publisher =    {PMLR},
-  pdf = 	 {http://proceedings.mlr.press/v84/ge18b/ge18b.pdf},
-  url = 	 {https://proceedings.mlr.press/v84/ge18b.html},
+@inproceedings{pmlr-v84-ge18b,
+  author = {Ge, Hong and Xu, Kai and Ghahramani, Zoubin},
+  title = {Turing: A Language for Flexible Probabilistic Inference},
+  booktitle = {Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics},
+  editor = {Storkey, Amos and Perez-Cruz, Fernando},
+  series = {Proceedings of Machine Learning Research},
+  volume = {84},
+  pages = {1682--1690},
+  year = {2018},
+  month = {09--11 Apr},
+  publisher = {PMLR},
+  pdf = {http://proceedings.mlr.press/v84/ge18b/ge18b.pdf},
+  url = {https://proceedings.mlr.press/v84/ge18b.html},
 }
 ```
 
