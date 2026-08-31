@@ -53,7 +53,7 @@ Gibbs now initialises each variable with the init strategy of the component samp
 
 `Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.supports_gibbs`. An overload of the old name is still honoured, with a deprecation warning.
 
-Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `HMC` and its variants do.
+Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `MH` and `HMC` and its variants do.
 
 # 0.46.0
 
