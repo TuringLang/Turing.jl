@@ -90,6 +90,7 @@ so they can.
 """
 allow_varying_dimension(::AbstractSampler) = false
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
+allow_varying_dimension(spl::ExternalSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
 
 """
