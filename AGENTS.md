@@ -54,7 +54,7 @@ To plug a sampler into Gibbs, implement:
 
   - `gibbs_get_raw_values(state)` — return a `VarNamedTuple` of raw values for the variables this sampler is responsible for.
   - `gibbs_update_state!!(sampler, state, model, global_vals)` — update the sampler's state to reflect new conditioned values. For samplers that use `LogDensityFunction`, the helper `gibbs_recompute_ldf_and_params` handles the common case.
-  - Optionally, `isgibbscomponent(sampler)` — return `false` to disallow use in Gibbs (the default is `true`).
+  - Optionally, `supports_gibbs(sampler)` — return `false` to disallow use in Gibbs (the default is `true`). The old name `isgibbscomponent` still works, with a deprecation warning.
 
 ### Extension
 

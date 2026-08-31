@@ -37,20 +37,44 @@
 #
 
 """
-    isgibbscomponent(spl::AbstractSampler)
+    supports_gibbs(spl::AbstractSampler)
 
 Return a boolean indicating whether `spl` is a valid component for a Gibbs sampler.
 
 Defaults to `true` if no method has been defined for a particular sampler.
 """
+function supports_gibbs(spl::AbstractSampler)
+    if which(isgibbscomponent, Tuple{typeof(spl)}) !== _ISGIBBSCOMPONENT_DEFAULT
+        Base.depwarn(
+            "`Turing.Inference.isgibbscomponent` is deprecated, define " *
+            "`Turing.Inference.supports_gibbs` instead.",
+            :supports_gibbs,
+        )
+        return isgibbscomponent(spl)
+    end
+    return true
+end
+supports_gibbs(spl::RepeatSampler) = supports_gibbs(spl.sampler)
+supports_gibbs(spl::ExternalSampler) = supports_gibbs(spl.sampler)
+supports_gibbs(::Prior) = false
+supports_gibbs(::Emcee) = false
+supports_gibbs(::SGLD) = false
+supports_gibbs(::SGHMC) = false
+supports_gibbs(::SMC) = false
+
+"""
+    isgibbscomponent(spl::AbstractSampler)
+
+Deprecated name for [`supports_gibbs`](@ref), still honoured so that a sampler written
+against it keeps working.
+"""
 isgibbscomponent(::AbstractSampler) = true
-isgibbscomponent(spl::RepeatSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(spl::ExternalSampler) = isgibbscomponent(spl.sampler)
-isgibbscomponent(::Prior) = false
-isgibbscomponent(::Emcee) = false
-isgibbscomponent(::SGLD) = false
-isgibbscomponent(::SGHMC) = false
-isgibbscomponent(::SMC) = false
+
+# An `isgibbscomponent` overload is any method more specific than the one above, which is what
+# `supports_gibbs`'s fallback looks for. `Base.depwarn` is silent unless asked for
+# (`--depwarn=yes`, as package test suites use), which is right here: the sampler's author has
+# to act on it, not whoever runs it.
+const _ISGIBBSCOMPONENT_DEFAULT = which(isgibbscomponent, Tuple{AbstractSampler})
 
 """
     Turing.Inference.allow_varying_dimension(spl::AbstractSampler)
@@ -289,7 +313,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: Abstr
         end
 
         for spl in samplers
-            if !isgibbscomponent(spl)
+            if !supports_gibbs(spl)
                 msg = "All samplers must be valid Gibbs components, $(spl) is not."
                 throw(ArgumentError(msg))
             end

@@ -109,6 +109,16 @@ end
     @test_throws MethodError Gibbs("x" => NUTS())
 end
 
+@testset "the deprecated `isgibbscomponent` is still honoured" begin
+    struct OldStyleSampler <: AbstractMCMC.AbstractSampler end
+    Turing.Inference.isgibbscomponent(::OldStyleSampler) = false
+    @test !Turing.Inference.supports_gibbs(OldStyleSampler())
+    @test_throws ArgumentError Gibbs(@varname(s) => OldStyleSampler())
+
+    struct NewStyleSampler <: AbstractMCMC.AbstractSampler end
+    @test Turing.Inference.supports_gibbs(NewStyleSampler())
+end
+
 @testset "latent declared as a missing model argument" begin
     # Conditioning has to reach a variable that is also a model argument: Gibbs conditions
     # every non-target variable, and here the non-target `x` is an argument bound to
@@ -159,8 +169,8 @@ end
 
     # Methods we need to define to be able to use AlgWrapper instead of an actual algorithm.
     # They all just propagate the call to the inner algorithm.
-    Turing.Inference.isgibbscomponent(wrap::AlgWrapper) =
-        Turing.Inference.isgibbscomponent(wrap.inner)
+    Turing.Inference.supports_gibbs(wrap::AlgWrapper) =
+        Turing.Inference.supports_gibbs(wrap.inner)
     function Turing.Inference.gibbs_update_state!!(
         sampler::AlgWrapper,
         state,
@@ -290,7 +300,7 @@ end
         WarmupCounter() = new(0, 0, 0, 0)
     end
 
-    Turing.Inference.isgibbscomponent(::WarmupCounter) = true
+    Turing.Inference.supports_gibbs(::WarmupCounter) = true
 
     # we need some state type to implement the Gibbs interface (we can't just use `nothing`)
     struct TrivialState end
