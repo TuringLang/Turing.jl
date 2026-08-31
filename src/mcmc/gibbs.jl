@@ -9,6 +9,23 @@
 # Those values are threaded explicitly as an immutable `VarNamedTuple` -- each component's
 # step returns the values it owns, which are merged to form the next component's conditioning
 # set. Nothing is written in place, so everything in a sweep reads one frozen snapshot.
+#
+# Reading what to condition off that snapshot's keys is equivalent to deciding it per tilde
+# statement, where the model's own `VarName` is available, while two invariants hold:
+#
+#   - The partition is exact: no component's variable strictly contains another's. Under
+#     `Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))` the second component writes
+#     `x` back as a unit, so freeing it for the first component to sample `x[1]` would free
+#     `x[2]` as well. `conditioned_values` throws rather than hand a component a larger block
+#     than it owns.
+#   - The structure is static: a variable first reached mid-sweep is sampled by whichever
+#     component gets there, which is the right block only when no component owns it. Given
+#     `x ~ Normal(); y ~ Normal(); if x > 0; z ~ Normal(); end` and a component per variable,
+#     the block sampling `x` draws `z` the first time `x` turns positive, and `z` then stays
+#     in the snapshot even in sweeps where the model never reaches it.
+#
+# The second has no fix at this level: a block's shape is discovered while stepping it, and
+# knowing it beforehand needs the model's trace type separated from its values.
 
 #
 # Interface for other samplers to work with Gibbs
