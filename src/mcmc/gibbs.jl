@@ -315,7 +315,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: Abstr
 
         for spl in samplers
             if !supports_gibbs(spl)
-                msg = "All samplers must be valid Gibbs components, $(spl) is not."
+                msg = "All samplers must be valid Gibbs components, $(nameof(typeof(spl))) is not."
                 throw(ArgumentError(msg))
             end
         end
@@ -425,18 +425,14 @@ function adopt_new_variables(
         )
         owning_sampler = owner === nothing ? sampler : spl.samplers[owner]
         if !allow_varying_dimension(owning_sampler)
-            what = if owner === nothing
-                "no component sampler was declared for it, so the component that found it, " *
-                "$(sampler), would have to take it on"
-            else
-                "its component sampler $(owning_sampler) fixes the variables it samples when " *
-                "it first steps"
-            end
+            name = nameof(typeof(owning_sampler))
+            role = owner === nothing ? "that found it" : "declared for it"
             throw(
                 ArgumentError(
-                    "The variable $(leaf) appeared while sampling, but $(what). Assign it to " *
-                    "a component that can sample a block whose set of variables changes " *
-                    "between sweeps, such as `PG`.",
+                    "The variable $(leaf) appeared during sampling, and would be sampled " *
+                    "by $(name), the component $(role). $(name) fixes the set of variables " *
+                    "it samples at its first step, so assign $(leaf) to a component that " *
+                    "can sample a varying set of variables, such as `PG`.",
                 ),
             )
         end
