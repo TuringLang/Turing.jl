@@ -65,6 +65,23 @@ with Turing.jl:
 - `Turing.Inference.supports_gibbs(::MySampler)`: If you want to disallow your sampler
   from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
   that the default is `true`, so you should only need to implement this in special cases.
+
+- `Turing.Inference.allow_varying_dimension(::MySampler)`: Return `true` if your sampler can
+  sample a target whose set of variables changes from one iteration to the next. The default
+  is `false`. Gibbs reads it to decide which component may take on a variable the model only
+  reaches on some sweeps.
+
+- `Turing.allow_discrete_variables(::MySampler)`: Return `false` if your sampler needs every
+  variable to be continuous, as the gradient-based ones do. `sample` checks the model against
+  this before it starts.
+
+`supports_gibbs`, `allow_varying_dimension`, and `allow_discrete_variables` are the whole of
+Turing's own interface for running a sampler on a model. One that implements
+`AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
+not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
+`step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
+`Turing.Inference.gibbs_get_raw_values` and `Turing.Inference.gibbs_update_state!!`, which the
+wrapper implements for you.
 """
 struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
        AbstractSampler
