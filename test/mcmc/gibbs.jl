@@ -483,10 +483,9 @@ end
         sample(model, alg, 100; callback=callback)
     end
 
-    @testset "dynamic model with analytical posterior" begin
-        # A dynamic model where b ~ Bernoulli determines the dimensionality
-        # When b=0: single parameter θ₁
-        # When b=1: two parameters θ₁, θ₂ where we observe their sum
+    @testset "dynamic model needs a sampler built for varying dimension" begin
+        # `b` decides whether `θ[2]` exists, so the dimension of the target changes between
+        # sweeps. Only a sampler that redraws whatever the model reaches can sample that block.
         @model function dynamic_bernoulli_normal(y_obs=2.0)
             b ~ Bernoulli(0.3)
 
@@ -500,34 +499,40 @@ end
                 y_obs ~ Normal(θ[1] + θ[2], 0.5)
             end
         end
-
-        # Run the sampler - focus on testing that it works rather than exact convergence
         model = dynamic_bernoulli_normal(2.0)
-        chn = sample(
-            StableRNG(42), model, Gibbs(:b => MH(), :θ => MH()), 1000; discard_initial=500
+
+        # A Metropolis-Hastings ratio between states of different dimension is not the one the
+        # algorithm assumes, and a `LogDensityFunction` fixes its layout at the first step, so
+        # both are rejected rather than left to sample a different target than the model's.
+        @test_throws ArgumentError sample(
+            StableRNG(42), model, Gibbs(:b => MH(), :θ => MH()), 200; progress=false
+        )
+        @test_throws ArgumentError sample(
+            StableRNG(42), model, Gibbs(:b => MH(), :θ => HMC(0.1, 5)), 200; progress=false
         )
 
-        # Test that sampling completes without error
-        @test size(chn, 1) == 1000
+        # `PG` rebuilds its trace each sweep, so it can own the block whose shape varies.
+        chn = sample(
+            StableRNG(42),
+            model,
+            Gibbs(:b => MH(), :θ => PG(50)),
+            2000;
+            discard_initial=1000,
+            progress=false,
+        )
+        @test size(chn, 1) == 2000
 
-        # Test that both states are explored (basic functionality test)
-        b_samples = chn[@varname(b)]
-        unique_b_values = unique(skipmissing(b_samples))
-        @test length(unique_b_values) >= 1  # At least one value should be sampled
+        # Both states of `b` are visited, so the chain is not stuck in one dimension.
+        @test length(unique(skipmissing(chn[@varname(b)]))) == 2
 
-        # Test that θ[1] values are reasonable when they exist
         theta1_samples = collect(skipmissing(chn[@varname(θ[1])]))
-        @test all(isfinite, theta1_samples)  # All samples should be finite
-        @test std(theta1_samples) > 0.1     # Should show some variation
+        @test all(isfinite, theta1_samples)
+        @test std(theta1_samples) > 0.1
 
-        # Test that when b=0, only θ[1] exists, and when b=1, both θ[1] and θ[2] exist
+        # `θ[2]` exists only while `b == 1`, so the chain holds both missing and present values.
         theta2_samples = chn[@varname(θ[2])]
-        # θ[2] should have some missing values (when b=0) and some non-missing (when b=1)
-        n_missing_theta2 = sum(ismissing.(theta2_samples))
-        n_present_theta2 = sum(.!ismissing.(theta2_samples))
-        # At least some θ[2] values should be missing (corresponding to b=0 states)
-        # This is a basic structural test - we're not testing exact analytical results
-        @test n_missing_theta2 > 0 || n_present_theta2 > 0  # One of these should be true
+        @test any(ismissing, theta2_samples)
+        @test any(!ismissing, theta2_samples)
     end
 
     @testset "Demo model" begin
@@ -738,6 +743,67 @@ end
         # `m` is sampled by MH, which initialises from the prior, so it is not restricted to
         # the range HMC would use.
         @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
+    end
+
+    @testset "a variable appearing mid-run needs a suitable component sampler (#2810)" begin
+        # The example from #2810: `z` exists only while `x > 0`, so it appears part-way through
+        # a run. Whichever block owns it has to be able to sample a set of variables that
+        # changes between sweeps.
+        @model function f()
+            x ~ Normal()
+            y ~ Normal()
+            if x > 0
+                z ~ Normal()
+            end
+        end
+        # Unassigned, `z` would be drawn once by whichever block reached it and then
+        # conditioned on for the rest of the run.
+        @test_throws ArgumentError sample(
+            Xoshiro(470),
+            f(),
+            Gibbs(@varname(x) => MH(), @varname(y) => MH()),
+            100;
+            check_model=false,
+            progress=false,
+        )
+        # Assigned to MH, whose acceptance ratio is not valid across a change of dimension.
+        @test_throws ArgumentError sample(
+            Xoshiro(470),
+            f(),
+            Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => MH()),
+            100;
+            check_model=false,
+            progress=false,
+        )
+        # `PG` redraws whatever the model reaches, so it can own `z` and the model samples.
+        chn = sample(
+            Xoshiro(470),
+            f(),
+            Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => PG(20)),
+            300;
+            check_model=false,
+            progress=false,
+        )
+        @test size(chn, 1) == 300
+        @test any(!ismissing, chn[@varname(z)])
+
+        # A new element counts too, not just a new name.
+        @model function growing()
+            n ~ Bernoulli(0.5)
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal()
+            if n == 1
+                x[2] ~ Normal()
+            end
+        end
+        @test_throws ArgumentError sample(
+            Xoshiro(4),
+            growing(),
+            Gibbs(@varname(n) => MH(), @varname(x[1]) => MH()),
+            40;
+            check_model=false,
+            progress=false,
+        )
     end
 
     @testset "a component may not own part of a stored variable" begin

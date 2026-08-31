@@ -45,6 +45,10 @@ Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whethe
 
 Gibbs now conditions component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is removed along with `Turing.Inference.make_conditional`.
 
+Gibbs now rejects a partition it cannot express: a component owning part of a variable another component owns whole (`Gibbs(@varname(x[1]) => ..., @varname(x) => ...)`) throws, rather than silently sampling a larger block.
+
+A variable the model only reaches on some sweeps -- a `z` inside `if x > 0`, or an `x[5]` inside a branch -- is taken on by the component declared for it, or by the component that first reached it if none was declared, which then keeps sampling it. That component must be able to sample a set of variables that changes between sweeps, which of Turing's samplers means `PG` / `CSMC`; Gibbs throws otherwise instead of drawing the variable once and conditioning on it thereafter. Implement `Turing.Inference.allow_varying_dimension` to opt a sampler in. This fixes [#2810](https://github.com/TuringLang/Turing.jl/issues/2810).
+
 Gibbs now initialises each variable with the init strategy of the component sampler that samples it, so e.g. an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
 
 Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `HMC` and its variants do.
