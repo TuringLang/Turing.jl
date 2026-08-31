@@ -4,7 +4,6 @@ using Distributions
 using LinearAlgebra: I
 using Random: Random
 using StableRNGs: StableRNG
-using StatsFuns: logistic
 using Test: @testset, @test
 using Turing
 
@@ -36,45 +35,6 @@ function check_dist_numerical(
 end
 
 @testset "distributions.jl" begin
-    @testset "distributions functions" begin
-        ns = 10
-        logitp = randn()
-        d1 = BinomialLogit(ns, logitp)
-        d2 = Binomial(ns, logistic(logitp))
-        k = 3
-        @test logpdf(d1, k) ≈ logpdf(d2, k)
-    end
-
-    @testset "distributions functions" begin
-        d = OrderedLogistic(-2, [-1, 1])
-
-        n = 1_000_000
-        y = rand(d, n)
-        K = length(d.cutpoints) + 1
-        p = [mean(==(k), y) for k in 1:K]          # empirical probs
-        pmf = [exp(logpdf(d, k)) for k in 1:K]
-
-        @test all(((x, y),) -> abs(x - y) < 0.001, zip(p, pmf))
-    end
-
-    @testset "distribution functions" begin
-        d = OrderedLogistic(0, [1, 2, 3])
-
-        K = length(d.cutpoints) + 1
-        @test support(d) == 1:K
-
-        # Adding up probabilities sums to 1
-        s = sum(pdf.(d, support(d)))
-        @test s ≈ 1.0 atol = 0.0001
-    end
-
-    @testset "distributions functions" begin
-        λ = 0.01:0.01:5
-        LLp = @. logpdf(Poisson(λ), 1)
-        LLlp = @. logpdf(LogPoisson(log(λ)), 1)
-        @test LLp ≈ LLlp atol = 0.0001
-    end
-
     @testset "single distribution correctness" begin
         n_samples = 10_000
         mean_atol = 0.1

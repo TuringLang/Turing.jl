@@ -29,7 +29,7 @@ makedocs(;
             "Inference" => "api/Inference.md",
             "Optimisation" => "api/Optimisation.md",
             "Variational " => "api/Variational.md",
-            "RandomMeasures " => "api/RandomMeasures.md",
+            "Random measures" => "api/RandomMeasures.md",
         ],
     ],
     checkdocs=:exports,

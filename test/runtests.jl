@@ -58,6 +58,7 @@ end
             @timeit_include("mcmc/external_sampler.jl")
             @timeit_include("mcmc/mh.jl")
             @timeit_include("ext/dynamichmc.jl")
+            @timeit_include("ext/random_measures.jl")
             @timeit_include("mcmc/repeat_sampler.jl")
         end
 
@@ -72,7 +73,6 @@ end
 
     @testset "stdlib" verbose = true begin
         @timeit_include("stdlib/distributions.jl")
-        @timeit_include("stdlib/RandomMeasures.jl")
     end
 
     @testset "utilities" begin
