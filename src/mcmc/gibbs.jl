@@ -167,14 +167,29 @@ every particle, which ESS-gated resampling ignores.
 function conditioned_values(
     global_vnt::DynamicPPL.VarNamedTuple, target_variables::AbstractVector{<:VarName}
 )
-    # Overlap is tested in both directions because a key can be finer than a target (`x`
-    # covers `x[1]`) or coarser than one (a component owning `x[1]` writes back the whole
-    # `x`); conditioning a target on its own stale value would leave nothing to sample.
-    overlaps(a, b) = AbstractPPL.subsumes(a, b) || AbstractPPL.subsumes(b, a)
-    conditioned = Tuple(
-        vn for vn in keys(global_vnt) if !any(t -> overlaps(t, vn), target_variables)
-    )
-    return DynamicPPL.subset(global_vnt, conditioned)
+    is_target(vn) = any(t -> AbstractPPL.subsumes(t, vn), target_variables)
+    conditioned = VarName[]
+    for vn in keys(global_vnt)
+        if is_target(vn)
+            # Wholly owned by this component, so it must be left free to sample.
+        elseif any(t -> AbstractPPL.subsumes(vn, t), target_variables)
+            # The values store `vn` as a unit but the component owns only part of it, so
+            # leaving it free also frees the rest. That is only safe if the component owns
+            # every leaf; otherwise it would silently sample a larger block than it was given.
+            for leaf in AbstractPPL.varname_leaves(vn, global_vnt[vn])
+                is_target(leaf) || throw(
+                    ArgumentError(
+                        "Gibbs cannot condition on part of $(vn): the values store it as a" *
+                        " unit, but this component does not sample $(leaf). Give the" *
+                        " component all of $(vn), or split the variable in the model.",
+                    ),
+                )
+            end
+        else
+            push!(conditioned, vn)
+        end
+    end
+    return DynamicPPL.subset(global_vnt, Tuple(conditioned))
 end
 
 to_varname(x::VarName) = x

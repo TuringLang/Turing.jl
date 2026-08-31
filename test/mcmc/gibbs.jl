@@ -740,6 +740,21 @@ end
         @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
     end
 
+    @testset "a component may not own part of a stored variable" begin
+        @model function pair()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal()
+            x[2] ~ Normal()
+            return 0.0 ~ Normal(x[1] + x[2], 0.1)
+        end
+        # One component owns `x[1]` while another owns all of `x`, so conditioning the first
+        # would have to cover part of `x` and leave the rest free. The values cannot express
+        # that, and dropping `x` wholesale would silently let the first component sample
+        # `x[2]` as well, so this must fail rather than sample the wrong block.
+        spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))
+        @test_throws ArgumentError sample(StableRNG(468), pair(), spl, 5; progress=false)
+    end
+
     @testset "non-identity varnames" begin
         struct Wrap{T}
             a::T
