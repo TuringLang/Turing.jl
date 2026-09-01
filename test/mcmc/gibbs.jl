@@ -1066,6 +1066,11 @@ end
         @test occursin("claim parts of x separately", err.msg)
         # Element-wise tildes give a key each, so the same partition is expressible.
         @test sample(StableRNG(468), pair(), spl, 5; progress=false) isa Any
+
+        # One component owning every leaf is not a split at all: it can be handed the whole
+        # value, so this must sample even though no declared varname subsumes the `x` key.
+        spl = Gibbs((@varname(x[1]), @varname(x[2])) => MH())
+        @test sample(StableRNG(468), joint(), spl, 5; progress=false) isa Any
     end
 
     @testset "non-identity varnames" begin

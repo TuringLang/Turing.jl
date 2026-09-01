@@ -155,8 +155,9 @@ a component that keeps inactive values never trips that check and owns the corre
 doing so. Gibbs infers nothing further from presence or absence.
 """
 function gibbs_get_parameter_values(state)
-    # No default answer exists for an arbitrary state, so the deprecated name is honoured by
-    # looking for a method more specific than its forwarder below.
+    # This has to be the only entry point, not one method among several: a method specialised
+    # on the state type would win dispatch and the deprecated name would never be consulted.
+    # An `isgibbscomponent`-era overload is any method more specific than the forwarder below.
     if which(gibbs_get_raw_values, Tuple{typeof(state)}) !== _GIBBS_GET_RAW_VALUES_FORWARDER
         Base.depwarn(
             "`Turing.Inference.gibbs_get_raw_values` is deprecated, define " *
@@ -165,19 +166,19 @@ function gibbs_get_parameter_values(state)
         )
         return gibbs_get_raw_values(state)
     end
-    return throw(MethodError(gibbs_get_parameter_values, (state,)))
+    return _default_parameter_values(state)
 end
 
 """
-    Turing.Inference.gibbs_get_parameter_values(state::AbstractVarInfo)
+    Turing.Inference._default_parameter_values(state)
 
-If your sampler state is an `AbstractVarInfo`, there is a default method available for this,
-which reads the `~` values stored in its `RawValueAccumulator`. (This means that the `VarInfo`
-used for evaluation in the component sampler *must* contain a `RawValueAccumulator`.)
+The answer for a state with no `gibbs_get_parameter_values` method of its own.
+
+An `AbstractVarInfo` carries its `~` values in a `RawValueAccumulator`, so there is one; any
+other state has to say for itself.
 """
-function gibbs_get_parameter_values(state::AbstractVarInfo)
-    return DynamicPPL.get_parameter_values(state)
-end
+_default_parameter_values(state) = throw(MethodError(gibbs_get_parameter_values, (state,)))
+_default_parameter_values(state::AbstractVarInfo) = DynamicPPL.get_parameter_values(state)
 
 """
     Turing.Inference.gibbs_get_raw_values(state)
@@ -459,6 +460,17 @@ function component_stats(spl::Gibbs, states)
         isempty(component) && continue
         name = count(==(prefix), prefixes) > 1 ? string(prefix, "_", i) : prefix
         names = map(k -> Symbol(name, "_", k), keys(component))
+        clashes = filter(in(keys(stats)), names)
+        isempty(clashes) || throw(
+            ArgumentError(
+                "Gibbs cannot name the statistics of these components apart: " *
+                "$(join(clashes, ", ")) would stand for two different diagnostics, because " *
+                "joining a component's variables and a statistic's name with `_` does not " *
+                "distinguish `$(prefix)` from another component whose name and statistic " *
+                "concatenate to the same thing. Rename the model's variables, or the " *
+                "sampler's statistics, so the two differ.",
+            ),
+        )
         stats = merge(stats, NamedTuple{names}(values(component)))
     end
     return stats
