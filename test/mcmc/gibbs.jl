@@ -26,6 +26,12 @@ using Turing.Inference: AdvancedHMC, AdvancedMH
 const TuringDistributionsExt = Base.get_extension(Turing, :TuringDistributionsExt)
 using .TuringDistributionsExt: ChineseRestaurantProcess, DirichletProcess
 
+# Used by the models in two testsets below, which each used to define their own and so
+# overwrote the type on load.
+struct Wrapper{T<:Real}
+    a::T
+end
+
 function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, parent_varnames)
     for vn in keys(transition.params)
         @test any(Base.Fix2(DynamicPPL.subsumes, vn), parent_varnames)
@@ -34,10 +40,6 @@ end
 
 @testset verbose = true "Gibbs conditioning" begin
     @testset "type stability" begin
-        struct Wrapper{T<:Real}
-            a::T
-        end
-
         # A test model that has multiple features in one package:
         # Floats, Ints, arguments, observations, loops, dot_tildes.
         @model function test_model(obs1, obs2, num_vars, mean)
@@ -248,10 +250,6 @@ end
             (keys(DynamicPPL.conditioned(model.context)), sampler.inner),
         )
         return AbstractMCMC.step(rng, model, sampler.inner, args...; kwargs...)
-    end
-
-    struct Wrapper{T<:Real}
-        a::T
     end
 
     # A test model that includes several different kinds of tilde syntax.
