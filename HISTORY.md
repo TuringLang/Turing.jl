@@ -1,3 +1,19 @@
+# Unreleased
+
+Gibbs conditions its component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is gone along with `Turing.Inference.make_conditional`.
+
+Gibbs now rejects two partitions it used to accept and sample incorrectly. Splitting a value stored as one unit -- one component owning `x[1]` while another owns `x`, where the model writes `x` in a single tilde or the other component vectorises it -- throws instead of handing the first component a larger block. And a component whose step changes which variables the model reaches has to be able to sample a varying set of them, which of Turing's samplers means `PG` / `CSMC`: put the variable and whatever decides whether it exists in one block. Previously the deciding variable could sit in another component, and the chain came back biased.
+
+Every variable must be declared for a component, and `check_model=false` no longer skips that check.
+
+Component samplers report only `~` values to Gibbs, so a `:=` quantity inside a branch is no longer taken for a variable that appeared mid-run. Requires DynamicPPL 0.42.8.
+
+Each component initialises its own variables with its own init strategy, so an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
+
+Gibbs chains carry component statistics, prefixed with the symbols that component samples: an `HMC` component on `h` contributes `h_acceptance_rate` and the rest. Samplers opt in with `Turing.Inference.gibbs_get_stats(state)`.
+
+`Turing.Inference.isgibbscomponent` is now `supports_gibbs`, and `gibbs_get_raw_values` is now `gibbs_get_parameter_values`. An overload of either old name still works, with a deprecation warning.
+
 # 0.47.3
 
 Random-measure distributions moved to the `TuringDistributionsExt` package extension. Replace
@@ -42,18 +58,6 @@ The rewrite also brings:
 # 0.46.1
 
 Fixed a bug, present since v0.41.0, that biased `PG` / `CSMC` posteriors, whether sampled on their own or as a Gibbs component.
-
-Gibbs now conditions component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is removed along with `Turing.Inference.make_conditional`.
-
-Gibbs now rejects a partition it cannot express: where one component owns `x[1]` and another owns `x`, and the values store `x` as a single unit, it throws rather than silently sampling a larger block. Whether `x` is stored as a unit depends on the model and on the other component's sampler -- element-wise tildes sampled by MH give a key per element and partition fine, while `x ~ MvNormal(...)`, or HMC vectorising its parameters, gives one key and throws.
-
-A variable the model only reaches on some sweeps -- a `z` inside `if x > 0`, or an `x[5]` inside a branch -- is taken on by the component declared for it, or by the component that first reached it if none was declared, which then keeps sampling it. That component must be able to sample a set of variables that changes between sweeps, which of Turing's samplers means `PG` / `CSMC`; Gibbs throws otherwise instead of drawing the variable once and conditioning on it thereafter. A variable already present in the draw Gibbs initialises with has to be declared, since no component discovers it, and `check_model=false` no longer skips that check: leaving a variable out means conditioning on a single draw of it for the whole run, which no chain reports as a problem. Implement `Turing.Inference.allow_varying_dimension` to opt a sampler in. A `:=` quantity is never mistaken for such a variable, and an array whose length is itself sampled works when its block also holds the variable giving the length; both need DynamicPPL 0.42.8. Owning the variable is necessary but not sufficient: the variables that decide whether it exists have to be in the same block, or the component that samples them conditions on a variable absent from the state it is proposing and the chain comes back biased. This fixes [#2810](https://github.com/TuringLang/Turing.jl/issues/2810).
-
-Gibbs now initialises each variable with the init strategy of the component sampler that samples it, so e.g. an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
-
-`Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.supports_gibbs`, and `Turing.Inference.gibbs_get_raw_values` to `Turing.Inference.gibbs_get_parameter_values`, which is what it now returns. An overload of either old name is still honoured, with a deprecation warning.
-
-Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `MH` and `HMC` and its variants do.
 
 # 0.46.0
 
