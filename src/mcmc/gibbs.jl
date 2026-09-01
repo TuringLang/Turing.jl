@@ -472,6 +472,8 @@ function adopt_new_variables(
                 ),
             )
         end
+        # Appended once: an adopted variable stays in the snapshot even in sweeps the model
+        # never reaches it, so `hasvalue(old_vnt, leaf)` above skips it from then on.
         owner === nothing && (adopted = vcat(adopted, leaf))
     end
     return adopted
