@@ -77,8 +77,12 @@ supports_gibbs(::SMC) = false
 
 Deprecated name for [`supports_gibbs`](@ref), still honoured so that a sampler written
 against it keeps working.
+
+Defined in terms of `supports_gibbs` rather than as a constant `true`, so that a wrapper
+delegating through this name -- `isgibbscomponent(w::MyWrapper) = isgibbscomponent(w.inner)` --
+still gets the right answer for a sampler Turing declares unusable.
 """
-isgibbscomponent(::AbstractSampler) = true
+isgibbscomponent(spl::AbstractSampler) = supports_gibbs(spl)
 
 # An `isgibbscomponent` overload is any method more specific than the one above, which is what
 # `supports_gibbs`'s fallback looks for. `Base.depwarn` is silent unless asked for

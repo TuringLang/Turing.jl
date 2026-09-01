@@ -117,6 +117,16 @@ end
 
     struct NewStyleSampler <: AbstractMCMC.AbstractSampler end
     @test Turing.Inference.supports_gibbs(NewStyleSampler())
+
+    # A wrapper written against the old name delegates through it, so the old name has to
+    # keep answering for Turing's own samplers rather than being a constant `true`.
+    struct OldStyleWrapper{S} <: AbstractMCMC.AbstractSampler
+        inner::S
+    end
+    Turing.Inference.isgibbscomponent(w::OldStyleWrapper) =
+        Turing.Inference.isgibbscomponent(w.inner)
+    @test !Turing.Inference.supports_gibbs(OldStyleWrapper(Prior()))
+    @test Turing.Inference.supports_gibbs(OldStyleWrapper(MH()))
 end
 
 @testset "latent declared as a missing model argument" begin
