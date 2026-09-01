@@ -58,6 +58,7 @@ export Hamiltonian,
     RepeatSampler,
     Prior,
     externalsampler,
+    allow_discrete_variables,
     init_strategy,
     loadstate
 

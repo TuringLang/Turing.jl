@@ -27,7 +27,6 @@ function _convert_initial_params(@nospecialize(_::Any))
     throw(ArgumentError(errmsg))
 end
 
-allow_discrete_variables(sampler::AbstractMCMC.AbstractSampler) = true
 function _check_model(model::DynamicPPL.Model, fail_if_discrete::Bool)
     result = DynamicPPL.check_model(
         model; error_on_failure=false, fail_if_discrete=fail_if_discrete
@@ -39,10 +38,6 @@ function _check_model(model::DynamicPPL.Model, fail_if_discrete::Bool)
             ),
         )
     end
-end
-function _check_model(model::DynamicPPL.Model, sampler::AbstractMCMC.AbstractSampler)
-    # This is hit by MCMC
-    return _check_model(model, !allow_discrete_variables(sampler))
 end
 function _check_model(model::DynamicPPL.Model)
     # Optimisation hits this. TODO: We allow discrete variables now, but that does depend on

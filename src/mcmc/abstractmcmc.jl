@@ -8,6 +8,20 @@ parameters for sampling are chosen if not specified by the user. By default, thi
 init_strategy(::AbstractSampler) = DynamicPPL.InitFromPrior()
 
 """
+    Turing.Inference.allow_discrete_variables(spl::AbstractSampler)
+
+Whether `spl` can sample a model with discrete variables.
+
+Defaults to `true`. Gradient-based samplers override it to `false`, and `sample` checks the
+model against it before starting.
+"""
+allow_discrete_variables(::AbstractSampler) = true
+
+function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
+    return Turing._check_model(model, !allow_discrete_variables(sampler))
+end
+
+"""
     _convert_initial_params(initial_params)
 
 Convert `initial_params` to a `DynamicPPl.AbstractInitStrategy` if it is not already one, or

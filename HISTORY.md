@@ -14,6 +14,8 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `Turing.Inference.isgibbscomponent` is now `supports_gibbs`, and `gibbs_get_raw_values` is now `gibbs_get_parameter_values`. An overload of either old name still works, with a deprecation warning.
 
+`allow_discrete_variables` now lives in `Turing.Inference`, alongside the other sampler traits, rather than at `Turing`. It is exported from there, so `Turing.allow_discrete_variables` still names the same function and an existing overload keeps working.
+
 # 0.47.3
 
 Random-measure distributions moved to the `TuringDistributionsExt` package extension. Replace
