@@ -1047,6 +1047,22 @@ end
             check_numerical(chain, [:m1, :m2], [-0.2, 0.6]; atol=0.1)
             check_logp_correct(sampler_inner)
         end
+
+        # Gibbs drops component transitions, so a component's statistics have to be read off
+        # its state. An external sampler's were dropped silently, since `TuringState` had no
+        # `gibbs_get_stats` and fell through to the empty default.
+        spl = externalsampler(AdvancedHMC.HMC(1e-1, 32); adtype=AutoForwardDiff())
+        chain = sample(
+            StableRNG(42),
+            model,
+            Gibbs(@varname(m1) => spl, @varname(m2) => spl),
+            20;
+            n_adapts=0,
+            progress=false,
+        )
+        for name in ("m1_acceptance_rate", "m2_acceptance_rate")
+            @test !isempty(collect(skipmissing(vec(chain[Symbol(name)]))))
+        end
     end
 
     # Test a model that where the sampler needs to link a variable, which consequently

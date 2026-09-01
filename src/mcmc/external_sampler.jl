@@ -235,6 +235,8 @@ function gibbs_get_raw_values(state::TuringState)
     return pws.params
 end
 
+gibbs_get_stats(state::TuringState) = AbstractMCMC.getstats(state.state)
+
 function gibbs_update_state!!(
     ::ExternalSampler,
     state::TuringState,
