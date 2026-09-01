@@ -885,6 +885,26 @@ end
             check_model=false,
             progress=false,
         )
+        # Naming the components by sampler type made this message useless whenever two
+        # components share one, which is the common case: it read "during a step of MH, which
+        # does not sample it: MH does".
+        err = try
+            sample(
+                Xoshiro(470),
+                f(),
+                Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => MH()),
+                200;
+                check_model=false,
+                progress=false,
+            )
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("component sampling x", err.msg)
+        @test occursin("component sampling z", err.msg)
+
         # Seed 4's initial draw already takes the branch, so `z` reaches the snapshot before
         # any component steps. Nothing saw it appear, and it stayed frozen for the run; now
         # the sweep where it goes away is caught instead.

@@ -537,14 +537,17 @@ function check_variable_set(
                         "component would condition on a single draw of it for the rest of " *
                         "the run. Assign it to a component."
                     else
-                        "The variable $(leaf) appeared during a step of " *
-                        "$(nameof(typeof(sampler))), which does not sample it: " *
-                        "$(_component_name(spl.samplers[owner])) does. The component whose " *
-                        "step decides whether $(leaf) exists has to be the one that samples " *
-                        "it, or that other component conditions on a variable the state " *
-                        "being proposed does not have, and the chain comes back biased. Put " *
-                        "$(leaf) and the variables that decide whether it exists in one " *
-                        "block."
+                        # Name the components by what they sample, not by their sampler
+                        # type: two components of the same type would otherwise give
+                        # "during a step of MH, which does not sample it: MH does".
+                        "The variable $(leaf) appeared during a step of the component " *
+                        "sampling $(join(varnames, ", ")), which does not sample it. The " *
+                        "component sampling $(join(spl.varnames[owner], ", ")) does. " *
+                        "Whichever component's step decides whether $(leaf) exists has to " *
+                        "be the one that samples it, or that other component conditions on " *
+                        "a variable the state being proposed does not have, and the chain " *
+                        "comes back biased. Put $(leaf) and the variables that decide " *
+                        "whether it exists in one block."
                     end,
                 ),
             )
