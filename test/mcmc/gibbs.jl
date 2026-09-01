@@ -295,13 +295,24 @@ end
         expected_targets_and_algs_per_iteration, expected_targets_and_algs_per_iteration
     )
     @test length(conditioned_and_algs) == length(expected)
+    # Every random variable of the model, so that conditioning can be checked for
+    # completeness and not just for soundness.
+    model_vns = [
+        @varname(s), @varname(m), @varname(xs), @varname(ys), @varname(q.a), @varname(r[1])
+    ]
     # Each component runs the expected sampler, and is conditioned on every variable except
     # the ones it samples.
     for ((targets, alg), (conditioned, actual_alg)) in zip(expected, conditioned_and_algs)
         @test actual_alg === alg
         overlaps(a, b) = DynamicPPL.subsumes(a, b) || DynamicPPL.subsumes(b, a)
+        # Sound: nothing the component samples is conditioned, or it could not move.
         @test !any(t -> any(k -> overlaps(t, k), conditioned), targets)
-        @test !isempty(conditioned)
+        # Complete: everything it does not sample is conditioned, or it would be left free
+        # to resample a variable another component owns.
+        for vn in model_vns
+            any(t -> overlaps(vn, t), targets) && continue
+            @test any(k -> overlaps(vn, k), conditioned)
+        end
     end
 end
 
