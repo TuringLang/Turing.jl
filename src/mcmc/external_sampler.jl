@@ -79,7 +79,7 @@ are the whole of Turing's own interface for running a sampler on a model. One th
 `AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
 not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
-`Turing.Inference.gibbs_get_raw_values` and `Turing.Inference.gibbs_update_state!!`, which the
+`Turing.Inference.gibbs_get_parameter_values` and `Turing.Inference.gibbs_update_state!!`, which the
 wrapper implements for you -- and which are also why `allow_varying_dimension` is not on the
 list above. The wrapper's `gibbs_update_state!!` rebuilds the `LogDensityFunction` from the
 parameter layout it had at the first step, so a wrapped sampler cannot own a Gibbs block whose
@@ -232,7 +232,7 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::TuringState)
+function gibbs_get_parameter_values(state::TuringState)
     pws = DynamicPPL.ParamsWithStats(
         state.params, state.ldf; include_log_probs=false, include_colon_eq=false
     )

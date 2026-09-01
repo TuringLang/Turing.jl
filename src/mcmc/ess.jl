@@ -185,7 +185,7 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::TuringESSState)
+function gibbs_get_parameter_values(state::TuringESSState)
     pws = DynamicPPL.ParamsWithStats(
         state.params, state.ldf; include_log_probs=false, include_colon_eq=false
     )

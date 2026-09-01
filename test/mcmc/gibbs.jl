@@ -129,6 +129,28 @@ end
     @test Turing.Inference.supports_gibbs(OldStyleWrapper(MH()))
 end
 
+@testset "the deprecated `gibbs_get_raw_values` is still honoured" begin
+    struct OldStyleState end
+    Turing.Inference.gibbs_get_raw_values(::OldStyleState) =
+        DynamicPPL.VarNamedTuple((; a=1.0))
+    struct NewStyleState end
+    Turing.Inference.gibbs_get_parameter_values(::NewStyleState) =
+        DynamicPPL.VarNamedTuple((; b=2.0))
+    struct NeitherState end
+
+    # Gibbs asks by the new name, and a state written against the old one still answers.
+    @test DynamicPPL.getvalue(
+        Turing.Inference.gibbs_get_parameter_values(OldStyleState()), @varname(a)
+    ) == 1.0
+    # The old name also reaches a state that defines only the new one.
+    @test DynamicPPL.getvalue(
+        Turing.Inference.gibbs_get_raw_values(NewStyleState()), @varname(b)
+    ) == 2.0
+    # With neither defined, either name is a `MethodError` rather than a recursion.
+    @test_throws MethodError Turing.Inference.gibbs_get_parameter_values(NeitherState())
+    @test_throws MethodError Turing.Inference.gibbs_get_raw_values(NeitherState())
+end
+
 @testset "an unsupported component is named through its wrapper" begin
     for spl in (externalsampler(Prior()), Turing.Inference.RepeatSampler(SMC(), 2))
         err = try
@@ -342,7 +364,7 @@ end
 
     # we need some state type to implement the Gibbs interface (we can't just use `nothing`)
     struct TrivialState end
-    Turing.Inference.gibbs_get_raw_values(::TrivialState) = VarNamedTuple()
+    Turing.Inference.gibbs_get_parameter_values(::TrivialState) = VarNamedTuple()
     function Turing.Inference.gibbs_update_state!!(
         ::WarmupCounter, s::TrivialState, ::DynamicPPL.Model, ::DynamicPPL.VarNamedTuple
     )

@@ -51,7 +51,7 @@ A variable the model only reaches on some sweeps -- a `z` inside `if x > 0`, or 
 
 Gibbs now initialises each variable with the init strategy of the component sampler that samples it, so e.g. an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
 
-`Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.supports_gibbs`. An overload of the old name is still honoured, with a deprecation warning.
+`Turing.Inference.isgibbscomponent` is renamed to `Turing.Inference.supports_gibbs`, and `Turing.Inference.gibbs_get_raw_values` to `Turing.Inference.gibbs_get_parameter_values`, which is what it now returns. An overload of either old name is still honoured, with a deprecation warning.
 
 Gibbs chains now carry their component samplers' statistics, prefixed with the symbols of the variables that component samples: an `HMC` component on `h` contributes `h_acceptance_rate`, `h_n_steps`, and so on. Samplers opt in by implementing `Turing.Inference.gibbs_get_stats(state)`; so far `MH` and `HMC` and its variants do.
 

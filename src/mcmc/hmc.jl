@@ -493,7 +493,7 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::HMCState)
+function gibbs_get_parameter_values(state::HMCState)
     # In general this needs reevaluation (unless the LDF has all fixed transforms --
     # DynamicPPL handles this.)
     pws = DynamicPPL.ParamsWithStats(

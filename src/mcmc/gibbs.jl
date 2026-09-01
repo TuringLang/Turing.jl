@@ -120,9 +120,10 @@ _component_name(spl::AbstractSampler) = nameof(typeof(spl))
 _component_name(spl::Union{RepeatSampler,ExternalSampler}) = _component_name(spl.sampler)
 
 """
-    Turing.Inference.gibbs_get_raw_values(state)
+    Turing.Inference.gibbs_get_parameter_values(state)
 
-Return a `VarNamedTuple` containing the raw values of all variables in the sampler state.
+Return a `VarNamedTuple` containing the parameter values of all variables in the sampler
+state.
 
 Turing's Gibbs sampler maintains, at all points during the sampling process, a single global
 `VarNamedTuple` that contains the **raw** values for all variables in the model. During the
@@ -137,18 +138,43 @@ out `:=` quantities: they are not variables, so Gibbs would take one appearing i
 for a variable that appeared mid-run. `DynamicPPL.get_parameter_values` returns exactly the
 `~` values of a state whose accumulator holds both.
 """
-function gibbs_get_raw_values end
+function gibbs_get_parameter_values(state)
+    # No default answer exists for an arbitrary state, so the deprecated name is honoured by
+    # looking for a method more specific than its forwarder below.
+    if which(gibbs_get_raw_values, Tuple{typeof(state)}) !== _GIBBS_GET_RAW_VALUES_FORWARDER
+        Base.depwarn(
+            "`Turing.Inference.gibbs_get_raw_values` is deprecated, define " *
+            "`Turing.Inference.gibbs_get_parameter_values` instead.",
+            :gibbs_get_parameter_values,
+        )
+        return gibbs_get_raw_values(state)
+    end
+    return throw(MethodError(gibbs_get_parameter_values, (state,)))
+end
 
 """
-    Turing.Inference.gibbs_get_raw_values(state::AbstractVarInfo)
+    Turing.Inference.gibbs_get_parameter_values(state::AbstractVarInfo)
 
 If your sampler state is an `AbstractVarInfo`, there is a default method available for this,
 which reads the `~` values stored in its `RawValueAccumulator`. (This means that the `VarInfo`
 used for evaluation in the component sampler *must* contain a `RawValueAccumulator`.)
 """
-function gibbs_get_raw_values(state::AbstractVarInfo)
+function gibbs_get_parameter_values(state::AbstractVarInfo)
     return DynamicPPL.get_parameter_values(state)
 end
+
+"""
+    Turing.Inference.gibbs_get_raw_values(state)
+
+Deprecated name for [`gibbs_get_parameter_values`](@ref), still honoured so that a sampler
+written against it keeps working. Calls through to the new name, so a state that defines only
+the new one can still be asked by the old.
+"""
+gibbs_get_raw_values(state) = gibbs_get_parameter_values(state)
+
+# The forwarder above is what `gibbs_get_parameter_values` compares against: any method more
+# specific than it is a sampler's own, written against the old name.
+const _GIBBS_GET_RAW_VALUES_FORWARDER = which(gibbs_get_raw_values, Tuple{Any})
 
 """
     Turing.Inference.gibbs_get_stats(state)
@@ -662,7 +688,7 @@ function gibbs_initialstep_recursive(
     )
     # New values for the variables this sampler is responsible for, plus any variable it
     # encountered that no component owns yet: both arrive in its own raw values.
-    new_vnt = merge(vnt, gibbs_get_raw_values(new_state))
+    new_vnt = merge(vnt, gibbs_get_parameter_values(new_state))
     adopted = adopt_new_variables(spl, sampler, VarName[], vnt, new_vnt)
 
     states = (states..., new_state)
@@ -801,7 +827,7 @@ function gibbs_step_recursive(
     )
 
     # The current sampler will return some raw values, which we update the global VNT with.
-    new_global_vnt = merge(global_vnt, gibbs_get_raw_values(new_state))
+    new_global_vnt = merge(global_vnt, gibbs_get_parameter_values(new_state))
     adopted = adopt_new_variables(spl, sampler, adopted, global_vnt, new_global_vnt)
 
     new_states = (new_states..., new_state)

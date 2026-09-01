@@ -882,7 +882,7 @@ end
 # Gibbs interface
 #
 
-gibbs_get_raw_values(state::PGState) = state.trajectory
+gibbs_get_parameter_values(state::PGState) = state.trajectory
 
 function gibbs_update_state!!(
     ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
