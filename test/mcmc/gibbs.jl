@@ -360,9 +360,23 @@ end
 
     Turing.Inference.supports_gibbs(::WarmupCounter) = true
 
+    # A component has to report the variables it samples; reporting nothing would tell Gibbs
+    # the model stopped reaching them. This counter only measures how often it is called, so
+    # one draw is made and then reused rather than re-evaluating the model every step.
+    function _counter_values(rng, model, state)
+        state === nothing || return state.values
+        accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+        _, accs = DynamicPPL.init!!(
+            rng, model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
+        )
+        return DynamicPPL.get_parameter_values(accs)
+    end
+
     # we need some state type to implement the Gibbs interface (we can't just use `nothing`)
-    struct TrivialState end
-    Turing.Inference.gibbs_get_parameter_values(::TrivialState) = VarNamedTuple()
+    struct TrivialState{V<:DynamicPPL.VarNamedTuple}
+        values::V
+    end
+    Turing.Inference.gibbs_get_parameter_values(s::TrivialState) = s.values
     function Turing.Inference.gibbs_update_state!!(
         ::WarmupCounter, s::TrivialState, ::DynamicPPL.Model, ::DynamicPPL.VarNamedTuple
     )
@@ -382,11 +396,11 @@ end
             spl.non_warmup_count += 1
         end
         # no need a transition since we never check the actual outputs
-        return nothing, TrivialState()
+        return nothing, TrivialState(_counter_values(rng, model, state))
     end
 
     function AbstractMCMC.step_warmup(
-        ::Random.AbstractRNG,
+        rng::Random.AbstractRNG,
         model::DynamicPPL.Model,
         spl::WarmupCounter,
         state::Union{Nothing,TrivialState}=nothing;
@@ -397,7 +411,7 @@ end
         else
             spl.warmup_count += 1
         end
-        return nothing, TrivialState()
+        return nothing, TrivialState(_counter_values(rng, model, state))
     end
 
     @model f() = x ~ Normal()
@@ -579,16 +593,41 @@ end
             StableRNG(42), model, Gibbs(:b => MH(), :θ => HMC(0.1, 5)), 200; progress=false
         )
 
-        # `PG` rebuilds its trace each sweep, so it can own the block whose shape varies.
+        # Splitting `b` off is rejected too: `b`'s step is what makes `θ[2]` come and go, so
+        # `MH`'s acceptance ratio would span the two supports. Sampling it gave P(b=1) = 0.11
+        # against an exact 0.39.
+        @test_throws ArgumentError sample(
+            StableRNG(42), model, Gibbs(:b => MH(), :θ => PG(50)), 200; progress=false
+        )
+
+        # Rejected even when both components can handle a varying set of variables: `θ[2]`
+        # comes and goes under the `b` component's proposal while the `θ` component is the one
+        # that samples it, so that component conditions on a variable the proposed state does
+        # not have. Being capable is not enough; the two have to share a block.
+        @test_throws ArgumentError sample(
+            StableRNG(42), model, Gibbs(:b => PG(20), :θ => PG(20)), 200; progress=false
+        )
+
+        # `b` and `θ` in one block, sampled by `PG`, which rebuilds its trace each sweep.
+        # P(b=1 | y=2) = 0.3 * N(2; 0, sqrt(2.25)) normalised against 0.7 * N(2; 0, sqrt(1.25)).
         chn = sample(
             StableRNG(42),
             model,
-            Gibbs(:b => MH(), :θ => PG(50)),
+            Gibbs((@varname(b), @varname(θ)) => PG(50)),
             2000;
             discard_initial=1000,
             progress=false,
         )
         @test size(chn, 1) == 2000
+        bs = vec(chn[@varname(b)])
+        @test count(==(1), bs) / length(bs) ≈ 0.394 atol = 0.05
+
+        # The posterior above is only evidence about disappearance and reappearance if the
+        # chain actually did both, so check that it moved each way rather than sitting in one
+        # dimension and happening to land near 0.394.
+        transitions = collect(zip(bs[1:(end - 1)], bs[2:end]))
+        @test (1, 0) in transitions
+        @test (0, 1) in transitions
 
         # Both states of `b` are visited, so the chain is not stuck in one dimension.
         @test length(unique(skipmissing(chn[@varname(b)]))) == 2
@@ -838,7 +877,8 @@ end
             progress=false,
         )
         # Seed 4's initial draw already takes the branch, so `z` reaches the snapshot before
-        # any component steps. Nothing then sees it appear, and it stayed frozen for the run.
+        # any component steps. Nothing saw it appear, and it stayed frozen for the run; now
+        # the sweep where it goes away is caught instead.
         @test_throws ArgumentError sample(
             Xoshiro(4),
             f(),
@@ -874,22 +914,18 @@ end
         xs = vec(chn[@varname(x)])
         @test count(>(0), xs) / length(xs) ≈ 0.5 atol = 0.06
 
-        # Undeclared, `z` is taken on by the component that reaches it, which then keeps
-        # sampling it instead of conditioning on one draw. `x` decides whether `z` exists and
-        # is in that same block, so the sweep is valid: P(x > 0) = 1/2 on this prior-only
-        # model.
-        chn = sample(
-            Xoshiro(3),
-            f(),
-            Gibbs(@varname(x) => PG(20), @varname(y) => MH()),
-            2000;
-            check_model=false,
-            progress=false,
-        )
-        zs = collect(skipmissing(vec(chn[@varname(z)])))
-        @test length(unique(zs)) > 1
-        xs = vec(chn[@varname(x)])
-        @test count(>(0), xs) / length(xs) ≈ 0.5 atol = 0.06
+        # Every variable has to be declared, so leaving `z` out is rejected whether it turns
+        # up mid-run or is already there in the initialising draw.
+        for seed in (3, 4)
+            @test_throws ArgumentError sample(
+                Xoshiro(seed),
+                f(),
+                Gibbs(@varname(x) => PG(20), @varname(y) => MH()),
+                200;
+                check_model=false,
+                progress=false,
+            )
+        end
 
         # A new element counts too, not just a new name.
         @model function growing()
@@ -967,9 +1003,10 @@ end
         )
         @test length(unique(vec(chn[@varname(n)]))) == 3
 
-        # Split off, the conditioned `x[i]` become observations whose number depends on `n`,
-        # and `PG` says so rather than sampling something wrong.
-        @test_throws ErrorException sample(
+        # Split off, `x[2]` comes and goes under the `n` component's step while the `x`
+        # component is the one that samples it, so the partition is rejected before `PG`'s own
+        # "the number of observations must not be random" guard is reached.
+        @test_throws ArgumentError sample(
             Xoshiro(100),
             varying_length(),
             Gibbs(@varname(n) => PG(10), @varname(x) => PG(10)),

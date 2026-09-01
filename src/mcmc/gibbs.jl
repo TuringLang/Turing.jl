@@ -23,20 +23,21 @@
 #     it. A variable the model reaches only on some sweeps -- a new name, `z` in
 #     `x ~ Normal(); y ~ Normal(); if x > 0; z ~ Normal(); end`, or a new element, `x[5]`
 #     inside a branch -- turns up in whichever component's step gets there first.
-#     `adopt_new_variables` hands it to the component declared for it, or, if none was, to the
-#     component that found it, and throws unless that component can sample a set of variables
-#     that changes between sweeps. Either way the variable stays in the snapshot even in
-#     sweeps where the model never reaches it.
+#     Every variable of the model has to be declared for a component, and a change in the set
+#     of variables the model reaches is allowed only when both of these hold: the component
+#     taking the step declares `allow_varying_dimension`, and the variable that came or went is
+#     one that same component samples. The first holds because during its step everything it
+#     does not sample is conditioned, so only its own proposal can have moved; the second
+#     because otherwise the component that does sample the variable conditions on one the
+#     proposed state lacks. Together: the variable and whatever decides its existence belong in
+#     one block. `check_variable_set` checks appearance and disappearance alike, which is why
+#     the result does not depend on whether the initialising draw happened to reach it.
 #
-#     Owning such a variable is necessary but not sufficient: the variables that decide
-#     whether it exists have to be in the same block. Under
-#     `Gibbs(@varname(x) => MH(), @varname(z) => PG(20))` on
-#     `x ~ Normal(); if x > 0; z ~ Normal(); end`, the `x` component conditions on `z` while
-#     proposing an `x` for which `z` does not exist, so its acceptance ratio compares two
-#     different supports; the chain samples but is biased, measurably (P(x > 0) drops from
-#     1/2 to about 1/20). `Gibbs((@varname(x), @varname(z)) => PG(20))` is the correct
-#     partition. Gibbs cannot detect the difference, because which variables a branch
-#     depends on is not something it can see.
+#     That rejects the partitions where the deciding variable sits in another block. Under
+#     `Gibbs(@varname(b) => MH(), @varname(θ) => PG(20))` on a model where `b` decides whether
+#     `θ[2]` exists, `MH`'s step is what makes `θ[2]` come and go, so `MH` is asked and refuses;
+#     asking only `θ`'s declared `PG` let the chain come back biased (P(b=1) = 0.11 against an
+#     exact 0.39). `Gibbs((@varname(b), @varname(θ)) => PG(20))` is the correct partition.
 #
 # That last part has no fix at this level: a block's shape is discovered while stepping it, so
 # Gibbs cannot tell in advance which variables a sweep will reach. Knowing that beforehand
@@ -102,6 +103,13 @@ Metropolis-Hastings ratio between states of different dimension is not the one t
 assumes. `PG` and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches,
 so they can.
 
+Returning `true` is a claim about the algorithm, and it carries an obligation: the component
+must have coherent semantics for a variable it samples going away and later coming back. `PG`
+and `CSMC` do. The reference particle replays the retained trajectory's *values*, so it
+reproduces that execution exactly and cannot reach an address the trajectory lacks, which it
+would otherwise refuse; the remaining particles draw from the prior and are free to reach a
+different set of addresses, which is what lets the block move between supports at all.
+
 Returning `true` is not by itself enough. For an array whose length varies
 (`for i in 1:n; x[i] ~ ...; end` under a random `n`), the block has to hold `n` as well: with
 `n` in another component, the conditioned `x[i]` become observations whose number depends on
@@ -137,6 +145,14 @@ sampling, and should not contain any values for other variables. In particular i
 out `:=` quantities: they are not variables, so Gibbs would take one appearing inside a branch
 for a variable that appeared mid-run. `DynamicPPL.get_parameter_values` returns exactly the
 `~` values of a state whose accumulator holds both.
+
+A step need not reach every variable the component samples: a target inside a branch the model
+did not take has no value that sweep. Both answers are allowed -- leave it out, or keep the
+value the component last held, if the algorithm accounts for variables it is not currently
+sampling -- but the choice is what Gibbs sees. It reads any change in the reported set as a
+change of support and asks [`allow_varying_dimension`](@ref) of the component that made it, so
+a component that keeps inactive values never trips that check and owns the correctness of
+doing so. Gibbs infers nothing further from presence or absence.
 """
 function gibbs_get_parameter_values(state)
     # No default answer exists for an arbitrary state, so the deprecated name is honoured by
@@ -390,15 +406,9 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
 
-struct GibbsState{V<:DynamicPPL.VarNamedTuple,S,A}
+struct GibbsState{V<:DynamicPPL.VarNamedTuple,S}
     vnt::V
     states::S
-    """
-    per component, the variables it picked up mid-run because no component was declared for
-    them; kept so the component that discovered one keeps sampling it (see
-    [`adopt_new_variables`](@ref)).
-    """
-    adopted::A
 end
 
 """
@@ -455,83 +465,121 @@ function component_stats(spl::Gibbs, states)
 end
 
 """
-    adopt_new_variables(spl, sampler, adopted, old_vnt, new_vnt)
+    check_variable_set(spl, sampler, varnames, old_vnt, component_vnt)
 
-Settle what happens to variables that appeared during one component's step, returning the
-variables this component has adopted.
+Check that a change in the set of variables is one the component that made it may make.
 
-A variable the model reaches only on some sweeps shows up in whichever component's step gets
-there first. If a component was declared for it, that component must be able to sample a set
-of variables that changes between sweeps. If none was, the component that found it adopts it,
-on the same condition, so that it keeps sampling the variable instead of conditioning on a
-single draw for the rest of the run. Otherwise this throws.
+Two conditions have to hold together, and anything else throws:
 
-Each sweep a component samples `targets`, its declared varnames plus whatever it has adopted,
-so [`conditioned_values`](@ref) leaves adopted variables free instead of conditioning them.
-The walk here goes over the new snapshot's leaves rather than its keys -- a grown `x[5]` counts
-like a new `z` -- and skips anything already in `old_vnt`. What each component adopted is
-carried on `GibbsState` into the next sweep.
+  - the component taking the step declares [`allow_varying_dimension`](@ref); and
+  - the variable that came or went is one that same component samples.
 
-The variables the model starts with are [`check_all_variables_handled`](@ref)'s business;
-this covers only what a step adds to the snapshot.
+The first is needed because during a component's step every variable it does not sample is
+conditioned, and so cannot move: if the set of variables the model reaches changed, it was that
+component's own proposal that moved between two different supports. The second is needed
+because a variable coming and going under one component's proposal while another component
+samples it means that other component conditions on a variable absent from the state being
+proposed -- the two blocks disagree about the support, and the chain comes back biased even
+though both samplers can handle varying dimension on their own.
 
-Passing this check is necessary but not sufficient for a correct sweep. The variables that
-decide whether the new one exists have to be in the same block as it: a component that
-conditions on it while proposing a state where it does not exist compares two different
-supports, and the chain samples but comes back biased. Which variables a branch depends on is
-not visible here, so nothing rejects that partition -- see the invariants at the top of this
-file for the measurement.
+Together they say: the variable and whatever decides whether it exists belong in one block,
+sampled by a component built for it.
+
+Both directions are checked. A leaf the component reports that was not in the snapshot has
+appeared; a leaf of `varnames` that was in the snapshot and the component no longer reports has
+gone. Checking both is what makes the result independent of the draw Gibbs initialises with,
+which may or may not happen to reach a variable the model only sometimes reaches. Disappearance
+is only visible for a component's own variables -- another component's absence from this
+report means nothing -- but the sweep that brings the variable back is caught by the
+appearance branch, so no partition escapes indefinitely.
 """
-function adopt_new_variables(
+function _require_varying_dimension(sampler, leaf, what::String)
+    allow_varying_dimension(sampler) && return nothing
+    name = nameof(typeof(sampler))
+    return throw(
+        ArgumentError(
+            "The variable $(leaf) $(what) during a step of $(name), so that step is " *
+            "proposing between states with different sets of variables. $(name) fixes the " *
+            "set of variables it samples at its first step, and its acceptance ratio " *
+            "between two different supports is not the one the algorithm assumes. Put " *
+            "$(leaf) and the variables that decide whether it exists in one block, sampled " *
+            "by a component that can handle a varying set of variables, such as `PG`.",
+        ),
+    )
+end
+
+function check_variable_set(
     spl::Gibbs,
     sampler,
-    adopted,
+    varnames,
     old_vnt::DynamicPPL.VarNamedTuple,
-    new_vnt::DynamicPPL.VarNamedTuple,
+    component_vnt::DynamicPPL.VarNamedTuple,
 )
     # Walk to the leaves rather than compare keys: an array stored under a single key can grow
-    # an element, and an `x[5]` appearing inside a branch is as unhandled as a new `z`.
-    for vn in keys(new_vnt), leaf in AbstractPPL.varname_leaves(vn, new_vnt[vn])
+    # or lose an element, and an `x[5]` inside a branch matters as much as a whole `z`.
+    for vn in keys(component_vnt), leaf in AbstractPPL.varname_leaves(vn, component_vnt[vn])
         DynamicPPL.hasvalue(old_vnt, leaf) && continue
-        owner = findfirst(
-            vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames
-        )
-        owning_sampler = owner === nothing ? sampler : spl.samplers[owner]
-        if !allow_varying_dimension(owning_sampler)
-            name = nameof(typeof(owning_sampler))
-            role = owner === nothing ? "that found it" : "declared for it"
+        if !any(hv -> AbstractPPL.subsumes(hv, leaf), varnames)
+            owner = findfirst(
+                vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames
+            )
             throw(
                 ArgumentError(
-                    "The variable $(leaf) appeared during sampling, and would be sampled " *
-                    "by $(name), the component $(role). $(name) fixes the set of variables " *
-                    "it samples at its first step. Give $(leaf) to a component that can " *
-                    "sample a varying set of variables, such as `PG`, and put the variables " *
-                    "that decide whether $(leaf) exists in that same block: a component " *
-                    "that conditions on $(leaf) while proposing a state where $(leaf) does " *
-                    "not exist is comparing two different supports, which biases the chain.",
+                    if owner === nothing
+                        "The variable $(leaf) appeared during a step of " *
+                        "$(nameof(typeof(sampler))) and no component samples it, so every " *
+                        "component would condition on a single draw of it for the rest of " *
+                        "the run. Assign it to a component."
+                    else
+                        "The variable $(leaf) appeared during a step of " *
+                        "$(nameof(typeof(sampler))), which does not sample it: " *
+                        "$(_component_name(spl.samplers[owner])) does. The component whose " *
+                        "step decides whether $(leaf) exists has to be the one that samples " *
+                        "it, or that other component conditions on a variable the state " *
+                        "being proposed does not have, and the chain comes back biased. Put " *
+                        "$(leaf) and the variables that decide whether it exists in one " *
+                        "block."
+                    end,
                 ),
             )
         end
-        # Appended once: an adopted variable stays in the snapshot even in sweeps the model
-        # never reaches it, so `hasvalue(old_vnt, leaf)` above skips it from then on.
-        owner === nothing && (adopted = vcat(adopted, leaf))
+        _require_varying_dimension(sampler, leaf, "appeared")
     end
-    return adopted
+    for vn in keys(old_vnt), leaf in AbstractPPL.varname_leaves(vn, old_vnt[vn])
+        any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) || continue
+        DynamicPPL.hasvalue(component_vnt, leaf) && continue
+        _require_varying_dimension(sampler, leaf, "stopped existing")
+    end
+    return nothing
 end
 
-function check_all_variables_handled(vns, spl::Gibbs)
-    handled_vars = Iterators.flatten(spl.varnames)
-    missing_vars = [
-        vn for vn in vns if !any(hv -> AbstractPPL.subsumes(hv, vn), handled_vars)
-    ]
-    if !isempty(missing_vars)
-        # A variable whose parts are each claimed, but which is stored as one value, is a
-        # partition Gibbs cannot express rather than one the user forgot to write.
-        split_vars = [
-            vn for
-            vn in missing_vars if any(hv -> AbstractPPL.subsumes(vn, hv), handled_vars)
-        ]
-        if !isempty(split_vars)
+"""
+    check_all_variables_handled(vnt, spl::Gibbs)
+
+Check that every variable in `vnt` belongs to a component.
+
+A key of `vnt` no declared varname subsumes is examined leaf by leaf, because ownership of a
+value stored as one key is a property of its leaves. One component owning every leaf can be
+handed the whole value, so that partition is fine; several owning parts of it is one Gibbs
+cannot express, since freeing one part of a single stored value is exactly what
+[`conditioned_values`](@ref) cannot do; and a leaf no component owns is one the user left out.
+"""
+function check_all_variables_handled(vnt::DynamicPPL.VarNamedTuple, spl::Gibbs)
+    missing_vars = VarName[]
+    split_vars = VarName[]
+    for vn in keys(vnt)
+        any(hv -> AbstractPPL.subsumes(hv, vn), Iterators.flatten(spl.varnames)) && continue
+        owners = Set{Int}()
+        for leaf in AbstractPPL.varname_leaves(vn, vnt[vn])
+            owner = findfirst(
+                vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames
+            )
+            owner === nothing ? push!(missing_vars, leaf) : push!(owners, owner)
+        end
+        length(owners) > 1 && push!(split_vars, vn)
+    end
+    if !isempty(missing_vars) || !isempty(split_vars)
+        if isempty(missing_vars)
             throw(
                 ArgumentError(
                     "Components claim parts of $(join(split_vars, ", ")) separately, but " *
@@ -560,7 +608,7 @@ function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
     accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
     vnt = DynamicPPL.get_raw_values(accs)
-    check_all_variables_handled(keys(vnt), spl)
+    check_all_variables_handled(vnt, spl)
     return vnt
 end
 
@@ -581,7 +629,7 @@ function AbstractMCMC.step(
     samplers = spl.samplers
     vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states, adopted = gibbs_initialstep_recursive(
+    vnt, states = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step,
@@ -599,7 +647,7 @@ function AbstractMCMC.step(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, adopted)
+    return transition, GibbsState(vnt, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -614,7 +662,7 @@ function AbstractMCMC.step_warmup(
     samplers = spl.samplers
     vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states, adopted = gibbs_initialstep_recursive(
+    vnt, states = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
@@ -632,13 +680,13 @@ function AbstractMCMC.step_warmup(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, adopted)
+    return transition, GibbsState(vnt, states)
 end
 
 """
 Take the first step of MCMC for the first component sampler, and call the same function
 recursively on the remaining samplers, until no samplers remain. Return the global VNT
-and a tuple of initial states for all component samplers, plus what each has adopted.
+and a tuple of initial states for all component samplers.
 
 The `step_function` argument should always be either AbstractMCMC.step or
 AbstractMCMC.step_warmup.
@@ -651,14 +699,13 @@ function gibbs_initialstep_recursive(
     varname_vecs,
     samplers,
     vnt,
-    states=(),
-    adopted_vecs=();
+    states=();
     initial_params,
     kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
-        return vnt, states, adopted_vecs
+        return vnt, states
     end
 
     varnames, varname_vecs_tail... = varname_vecs
@@ -688,11 +735,11 @@ function gibbs_initialstep_recursive(
     )
     # New values for the variables this sampler is responsible for, plus any variable it
     # encountered that no component owns yet: both arrive in its own raw values.
-    new_vnt = merge(vnt, gibbs_get_parameter_values(new_state))
-    adopted = adopt_new_variables(spl, sampler, VarName[], vnt, new_vnt)
+    component_vnt = gibbs_get_parameter_values(new_state)
+    check_variable_set(spl, sampler, varnames, vnt, component_vnt)
+    new_vnt = merge(vnt, component_vnt)
 
     states = (states..., new_state)
-    adopted_vecs = (adopted_vecs..., adopted)
     return gibbs_initialstep_recursive(
         rng,
         model,
@@ -701,8 +748,7 @@ function gibbs_initialstep_recursive(
         varname_vecs_tail,
         samplers_tail,
         new_vnt,
-        states,
-        adopted_vecs;
+        states;
         initial_params=initial_params,
         kwargs...,
     )
@@ -721,17 +767,8 @@ function AbstractMCMC.step(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vnt, states, adopted = gibbs_step_recursive(
-        rng,
-        model,
-        AbstractMCMC.step,
-        spl,
-        varnames,
-        samplers,
-        states,
-        state.adopted,
-        state.vnt;
-        kwargs...,
+    vnt, states = gibbs_step_recursive(
+        rng, model, AbstractMCMC.step, spl, varnames, samplers, states, state.vnt; kwargs...
     )
 
     transition = if discard_sample
@@ -741,7 +778,7 @@ function AbstractMCMC.step(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, adopted)
+    return transition, GibbsState(vnt, states)
 end
 
 function AbstractMCMC.step_warmup(
@@ -757,7 +794,7 @@ function AbstractMCMC.step_warmup(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vnt, states, adopted = gibbs_step_recursive(
+    vnt, states = gibbs_step_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
@@ -765,7 +802,6 @@ function AbstractMCMC.step_warmup(
         varnames,
         samplers,
         states,
-        state.adopted,
         state.vnt;
         kwargs...,
     )
@@ -776,7 +812,7 @@ function AbstractMCMC.step_warmup(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states, adopted)
+    return transition, GibbsState(vnt, states)
 end
 
 """
@@ -794,26 +830,22 @@ function gibbs_step_recursive(
     varname_vecs,
     samplers,
     states,
-    adopted_vecs,
     global_vnt,
-    new_states=(),
-    new_adopted=();
+    new_states=();
     kwargs...,
 )
     # End recursion.
     if isempty(varname_vecs) && isempty(samplers) && isempty(states)
-        return global_vnt, new_states, new_adopted
+        return global_vnt, new_states
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
     state, states_tail... = states
-    adopted, adopted_tail... = adopted_vecs
-
-    # A component samples what it was declared for plus anything it has adopted.
-    targets = isempty(adopted) ? varnames : vcat(varnames, adopted)
     # Construct the conditional model that this sampler should use.
-    conditioned_model = DynamicPPL.condition(model, conditioned_values(global_vnt, targets))
+    conditioned_model = DynamicPPL.condition(
+        model, conditioned_values(global_vnt, varnames)
+    )
     # Update the sampler's state based on global values that were provided by other
     # samplers.
     state = gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
@@ -827,11 +859,11 @@ function gibbs_step_recursive(
     )
 
     # The current sampler will return some raw values, which we update the global VNT with.
-    new_global_vnt = merge(global_vnt, gibbs_get_parameter_values(new_state))
-    adopted = adopt_new_variables(spl, sampler, adopted, global_vnt, new_global_vnt)
+    component_vnt = gibbs_get_parameter_values(new_state)
+    check_variable_set(spl, sampler, varnames, global_vnt, component_vnt)
+    new_global_vnt = merge(global_vnt, component_vnt)
 
     new_states = (new_states..., new_state)
-    new_adopted = (new_adopted..., adopted)
     return gibbs_step_recursive(
         rng,
         model,
@@ -840,10 +872,8 @@ function gibbs_step_recursive(
         varname_vecs_tail,
         samplers_tail,
         states_tail,
-        adopted_tail,
         new_global_vnt,
-        new_states,
-        new_adopted;
+        new_states;
         kwargs...,
     )
 end
