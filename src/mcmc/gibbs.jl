@@ -348,12 +348,39 @@ parameters, such as HMC, `x` is a single key: Gibbs cannot free part of it and t
 same pair of declared varnames may sample or throw depending on the model and on the other
 component's sampler.
 
-Variables the model only reaches on some sweeps -- a `z` inside `if x > 0`, or an `x[5]`
-inside a branch -- need care. Every variable must be declared for a component, as always, and
-one whose existence varies has to share a block with whatever decides it, sampled by a
-component that can handle a varying set of variables, such as `PG`. Gibbs throws otherwise:
-splitting the two leaves the component that samples the deciding variable conditioning on one
-the state it proposes does not have, and the chain comes back biased.
+Variables the model only reaches on some sweeps need care:
+
+```julia
+@model function f()
+    x ~ Normal()
+    y ~ Normal()
+    if x > 0
+        z ~ Normal()
+    end
+end
+
+# `x` decides whether `z` exists, so they share a block, sampled by `PG`, which can handle a
+# set of variables that changes between sweeps.
+sample(f(), Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => PG(20)), 1000)
+```
+
+Three partitions of that model are rejected, each naming the variable and the components:
+
+  - `Gibbs(@varname(x) => MH(), @varname(y) => MH())` -- nothing samples `z`. Every variable the
+    model reaches must belong to a component, whether or not it is always reached.
+  - `Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => PG(20))` -- `z` is split from
+    `x`, which decides whether it exists. The `x` component's step is what makes `z` come and go,
+    so that step proposes between states with different sets of variables while a *different*
+    component samples `z`, leaving that one conditioning on a `z` the proposed state does not
+    have. The chain still runs but comes back biased, which is why this is refused rather than
+    warned about. Giving `z` to `PG` does not help: it is never asked, because it is not the
+    component whose step changed anything.
+  - `Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH())` -- the block is right, but
+    `MH` fixes the set of variables it samples at its first step, and its acceptance ratio
+    between two different supports is not the one the algorithm assumes.
+
+The same applies to a new element rather than a new name: an `x[5]` first reached inside a
+branch is treated exactly like `z` above.
 
 Each component sampler initialises the variables it samples with its own default strategy, so
 e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
@@ -623,7 +650,7 @@ end
 
 function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)
     # TODO(penelopeysm): Could be smarter: subsamplers may not allow discrete variables.
-    return Turing._check_model(model, !Turing.allow_discrete_variables(spl))
+    return Turing._check_model(model, !allow_discrete_variables(spl))
 end
 
 function AbstractMCMC.step(

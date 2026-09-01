@@ -66,7 +66,7 @@ with Turing.jl:
   from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
   that the default is `true`, so you should only need to implement this in special cases.
 
-- `Turing.allow_discrete_variables(::MySampler)`: Return `false` if your sampler needs every
+- `Turing.Inference.allow_discrete_variables(::MySampler)`: Return `false` if your sampler needs every
   variable to be continuous, as the gradient-based ones do. `sample` checks the model against
   this before it starts.
 
@@ -146,8 +146,8 @@ function externalsampler(
     return ExternalSampler(sampler, adtype, Val(unconstrained))
 end
 
-function Turing.allow_discrete_variables(spl::ExternalSampler)
-    return Turing.allow_discrete_variables(spl.sampler)
+function allow_discrete_variables(spl::ExternalSampler)
+    return allow_discrete_variables(spl.sampler)
 end
 
 struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
