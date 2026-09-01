@@ -382,6 +382,14 @@ Three partitions of that model are rejected, each naming the variable and the co
 The same applies to a new element rather than a new name: an `x[5]` first reached inside a
 branch is treated exactly like `z` above.
 
+When each is caught varies, and cannot be made uniform. A component that cannot serve in Gibbs
+at all is refused when the `Gibbs` sampler is constructed, and anything already visible in the
+first draw is refused at the first step. The rest can only surface while sampling, because
+whether `z` exists depends on `x`, which is drawn during the run: the same partition may be
+refused at the first sweep or fifty sweeps in, depending on the draws. Sampling stops with an
+error at that point rather than carrying on, since the chain from an invalid partition is
+biased rather than merely noisy.
+
 Each component sampler initialises the variables it samples with its own default strategy, so
 e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
 overrides that and applies to the model as a whole; it cannot yet be set per component.
