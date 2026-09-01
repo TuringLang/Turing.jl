@@ -439,8 +439,21 @@ of variables that changes between sweeps. If none was, the component that found 
 on the same condition, so that it keeps sampling the variable instead of conditioning on a
 single draw for the rest of the run. Otherwise this throws.
 
+Each sweep a component samples `targets`, its declared varnames plus whatever it has adopted,
+so [`conditioned_values`](@ref) leaves adopted variables free instead of conditioning them.
+The walk here goes over the new snapshot's leaves rather than its keys -- a grown `x[5]` counts
+like a new `z` -- and skips anything already in `old_vnt`. What each component adopted is
+carried on `GibbsState` into the next sweep.
+
 The variables the model starts with are [`check_all_variables_handled`](@ref)'s business;
 this covers only what a step adds to the snapshot.
+
+Passing this check is necessary but not sufficient for a correct sweep. The variables that
+decide whether the new one exists have to be in the same block as it: a component that
+conditions on it while proposing a state where it does not exist compares two different
+supports, and the chain samples but comes back biased. Which variables a branch depends on is
+not visible here, so nothing rejects that partition -- see the invariants at the top of this
+file for the measurement.
 """
 function adopt_new_variables(
     spl::Gibbs,
