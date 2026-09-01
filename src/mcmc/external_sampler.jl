@@ -35,6 +35,10 @@ This section describes the latter.
   documented in AbstractMCMC.jl). This function must return a tuple of two elements, a
   'transition' and a 'state'.
 
+- `AbstractMCMC.step_warmup` (optional; documented in AbstractMCMC.jl). If your sampler
+  adapts, implement this and Turing.jl will route the `num_warmup` iterations through it.
+  Samplers that do not implement it fall back to `AbstractMCMC.step`, as before.
+
 - `AbstractMCMC.getparams(external_state)`: How to extract the parameters from the **state**
   returned by your sampler (i.e., the **second** return value of `step`). For your sampler
   to work with Turing.jl, this function should return a Vector of parameter values. Note that
@@ -128,6 +132,47 @@ struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
 end
 
 function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::ExternalSampler; kwargs...
+)
+    return _external_first_step(AbstractMCMC.step, rng, model, sampler; kwargs...)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::ExternalSampler; kwargs...
+)
+    return _external_first_step(AbstractMCMC.step_warmup, rng, model, sampler; kwargs...)
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::ExternalSampler,
+    state::TuringState;
+    kwargs...,
+)
+    return _external_subsequent_step(
+        AbstractMCMC.step, rng, model, sampler, state; kwargs...
+    )
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::ExternalSampler,
+    state::TuringState;
+    kwargs...,
+)
+    return _external_subsequent_step(
+        AbstractMCMC.step_warmup, rng, model, sampler, state; kwargs...
+    )
+end
+
+# `step` and `step_warmup` differ only in which function is called on the wrapped
+# sampler, so the four methods above delegate to these two helpers. The
+# `step_function` argument should always be either `AbstractMCMC.step` or
+# `AbstractMCMC.step_warmup`.
+function _external_first_step(
+    step_function::F,
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler_wrapper::ExternalSampler{unconstrained};
@@ -136,7 +181,7 @@ function AbstractMCMC.step(
     discard_sample=false,
     fix_transforms::Bool=false,
     kwargs...,
-) where {unconstrained}
+) where {F,unconstrained}
     sampler = sampler_wrapper.sampler
 
     # Construct LogDensityFunction
@@ -150,14 +195,14 @@ function AbstractMCMC.step(
     )
     x = find_initial_params_ldf(rng, f, initial_params)
 
-    # Then just call `AbstractMCMC.step` with the right arguments.
+    # Then just call the inner step function with the right arguments.
     _, state_inner = if initial_state === nothing
-        AbstractMCMC.step(
+        step_function(
             rng, AbstractMCMC.LogDensityModel(f), sampler; initial_params=x, kwargs...
         )
 
     else
-        AbstractMCMC.step(
+        step_function(
             rng,
             AbstractMCMC.LogDensityModel(f),
             sampler,
@@ -178,19 +223,20 @@ function AbstractMCMC.step(
     return (new_transition, TuringState(state_inner, new_parameters, f))
 end
 
-function AbstractMCMC.step(
+function _external_subsequent_step(
+    step_function::F,
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler_wrapper::ExternalSampler,
     state::TuringState;
     discard_sample=false,
     kwargs...,
-)
+) where {F}
     sampler = sampler_wrapper.sampler
     f = state.ldf
 
-    # Then just call `AdvancedMCMC.step` with the right arguments.
-    _, state_inner = AbstractMCMC.step(
+    # Then just call the inner step function with the right arguments.
+    _, state_inner = step_function(
         rng, AbstractMCMC.LogDensityModel(f), sampler, state.state; kwargs...
     )
 

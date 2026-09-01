@@ -1,3 +1,10 @@
+# 0.47.4
+
+`externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
+external sampler that adapts during warmup, such as
+`AdvancedMH.RobustAdaptiveMetropolis`, adapts instead of sampling with its initial
+proposal.
+
 # 0.47.3
 
 Random-measure distributions moved to the `TuringDistributionsExt` package extension. Replace
