@@ -483,15 +483,25 @@ proposed -- the two blocks disagree about the support, and the chain comes back 
 though both samplers can handle varying dimension on their own.
 
 Together they say: the variable and whatever decides whether it exists belong in one block,
-sampled by a component built for it.
+sampled by a component built for it. The cost of getting this wrong is not a crash but a wrong
+answer: on the `dynamic_bernoulli_normal` model in the tests, where `b` decides whether `θ[2]`
+exists, `Gibbs(@varname(b) => MH(), @varname(θ) => PG(20))` used to sample and return
+P(b=1) between 0.0 and 0.18 against an exact 0.394, while
+`Gibbs((@varname(b), @varname(θ)) => PG(20))` gives 0.38.
 
 Both directions are checked. A leaf the component reports that was not in the snapshot has
 appeared; a leaf of `varnames` that was in the snapshot and the component no longer reports has
-gone. Checking both is what makes the result independent of the draw Gibbs initialises with,
-which may or may not happen to reach a variable the model only sometimes reaches. Disappearance
-is only visible for a component's own variables -- another component's absence from this
-report means nothing -- but the sweep that brings the variable back is caught by the
-appearance branch, so no partition escapes indefinitely.
+gone.
+
+The verdict does not depend on the draw Gibbs initialises with, and that rests on the snapshot
+being rebuilt after each step rather than merged into (see the note above
+[`gibbs_step_recursive`](@ref)). A leaf a component stops reporting leaves the snapshot, so
+when the model reaches it again it is *assumed* during the step of whichever component decides
+its existence, and shows up in that component's own report -- where the appearance branch sees
+it and names the right component. Were the snapshot merged into instead, the leaf would linger
+at a stale value, be conditioned into that component's step forever, and the appearance branch
+would be dead for it: a split partition would then be rejected only for those seeds whose
+initialising draw happened to miss the variable.
 """
 function _require_varying_dimension(sampler, leaf, what::String)
     allow_varying_dimension(sampler) && return nothing
@@ -712,7 +722,8 @@ function gibbs_initialstep_recursive(
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    conditioned_model = DynamicPPL.condition(model, conditioned_values(vnt, varnames))
+    conditioned = conditioned_values(vnt, varnames)
+    conditioned_model = DynamicPPL.condition(model, conditioned)
 
     # Take initial step with the current sampler. Everything it does not sample is
     # conditioned, so it only initialises its own targets and can use its own strategy
@@ -737,7 +748,7 @@ function gibbs_initialstep_recursive(
     # encountered that no component owns yet: both arrive in its own raw values.
     component_vnt = gibbs_get_parameter_values(new_state)
     check_variable_set(spl, sampler, varnames, vnt, component_vnt)
-    new_vnt = merge(vnt, component_vnt)
+    new_vnt = merge(conditioned, component_vnt)
 
     states = (states..., new_state)
     return gibbs_initialstep_recursive(
@@ -822,6 +833,15 @@ function on the tail, until there are no more samplers left.
 The `step_function` argument should always be either AbstractMCMC.step or
 AbstractMCMC.step_warmup.
 """
+# ──────────────────────────────────────────────────────────────────────────────
+# The snapshot after a component's step is what it conditioned on plus what it reported --
+# rebuilt, not merged into. `merge` only ever overwrites a key, so a variable the component
+# stopped reaching would keep a stale value: it would then be conditioned into the step of
+# whichever component decides its existence, so that step would never assume it again and
+# `check_variable_set` could never see it reappear. Rebuilding lets it leave the snapshot, so
+# the sweep that brings it back is an appearance in the deciding component's own report.
+# ──────────────────────────────────────────────────────────────────────────────
+
 function gibbs_step_recursive(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -843,9 +863,8 @@ function gibbs_step_recursive(
     sampler, samplers_tail... = samplers
     state, states_tail... = states
     # Construct the conditional model that this sampler should use.
-    conditioned_model = DynamicPPL.condition(
-        model, conditioned_values(global_vnt, varnames)
-    )
+    conditioned = conditioned_values(global_vnt, varnames)
+    conditioned_model = DynamicPPL.condition(model, conditioned)
     # Update the sampler's state based on global values that were provided by other
     # samplers.
     state = gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
@@ -861,7 +880,7 @@ function gibbs_step_recursive(
     # The current sampler will return some raw values, which we update the global VNT with.
     component_vnt = gibbs_get_parameter_values(new_state)
     check_variable_set(spl, sampler, varnames, global_vnt, component_vnt)
-    new_global_vnt = merge(global_vnt, component_vnt)
+    new_global_vnt = merge(conditioned, component_vnt)
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(

@@ -600,6 +600,15 @@ end
             StableRNG(42), model, Gibbs(:b => MH(), :θ => PG(50)), 200; progress=false
         )
 
+        # `Xoshiro(1)`'s initialising draw already reaches `θ[2]`, which is the case that used
+        # to escape: the leaf stayed in the snapshot at a stale value, was conditioned into
+        # `b`'s step from then on, and so was never seen to reappear. It is load-bearing that
+        # this seed starts with `b == 1`; `StableRNG(42)` above starts with `b == 0` and
+        # exercises the other path.
+        @test_throws ArgumentError sample(
+            Xoshiro(1), model, Gibbs(:b => MH(), :θ => PG(50)), 200; progress=false
+        )
+
         # Rejected even when both components can handle a varying set of variables: `θ[2]`
         # comes and goes under the `b` component's proposal while the `θ` component is the one
         # that samples it, so that component conditions on a variable the proposed state does
