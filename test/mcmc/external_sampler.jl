@@ -7,11 +7,14 @@ using AdvancedMH: AdvancedMH
 using Distributions: sample
 using Distributions.FillArrays: Zeros
 using DynamicPPL: DynamicPPL
+using FlexiChains: FlexiChains
 using ForwardDiff: ForwardDiff
+using LinearAlgebra: LinearAlgebra
 using LogDensityProblems: LogDensityProblems
 using Random: Random
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
+using Statistics: mean
 using Test: @test, @test_throws, @testset
 using Turing
 using Turing.Inference: AdvancedHMC
@@ -73,6 +76,57 @@ using Turing.Inference: AdvancedHMC
         return nothing, MyState(params)
     end
 
+    # Counts which of `step` / `step_warmup` the sampler is reached through, at the
+    # first step and at later ones.
+    mutable struct WarmupCounter <: AbstractMCMC.AbstractSampler
+        warmup_init::Int
+        warmup_later::Int
+        step_init::Int
+        step_later::Int
+    end
+    WarmupCounter() = WarmupCounter(0, 0, 0, 0)
+
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        ::AbstractMCMC.LogDensityModel,
+        spl::WarmupCounter;
+        initial_params::AbstractVector,
+        kwargs...,
+    )
+        spl.step_init += 1
+        return nothing, MyState(initial_params)
+    end
+    function AbstractMCMC.step(
+        ::Random.AbstractRNG,
+        ::AbstractMCMC.LogDensityModel,
+        spl::WarmupCounter,
+        state::MyState;
+        kwargs...,
+    )
+        spl.step_later += 1
+        return nothing, state
+    end
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        ::AbstractMCMC.LogDensityModel,
+        spl::WarmupCounter;
+        initial_params::AbstractVector,
+        kwargs...,
+    )
+        spl.warmup_init += 1
+        return nothing, MyState(initial_params)
+    end
+    function AbstractMCMC.step_warmup(
+        ::Random.AbstractRNG,
+        ::AbstractMCMC.LogDensityModel,
+        spl::WarmupCounter,
+        state::MyState;
+        kwargs...,
+    )
+        spl.warmup_later += 1
+        return nothing, state
+    end
+
     @model function test_external_sampler()
         a ~ Beta(2, 2)
         return b ~ Normal(a)
@@ -92,6 +146,24 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
     @test all(chn[:param_length] .== 2)
+
+    @testset "warmup steps reach the external sampler" begin
+        spl = WarmupCounter()
+        sample(
+            model,
+            externalsampler(spl),
+            5;
+            num_warmup=3,
+            initial_params=InitFromParams((a=a, b=b)),
+            progress=false,
+        )
+        # Without forwarding, AbstractMCMC's fallback sends every one of these to
+        # `step` instead, so the warmup counts would be zero.
+        @test spl.warmup_init == 1
+        @test spl.warmup_later == 3
+        @test spl.step_init == 0
+        @test spl.step_later == 4
+    end
 end
 
 function initialize_nuts(model::DynamicPPL.Model)
@@ -262,6 +334,23 @@ end
                         sampler_name="AdvancedMH",
                     )
                 end
+            end
+
+            @testset "adaptive samplers adapt during warmup" begin
+                # RAM adapts only in `step_warmup`, so from a badly scaled proposal
+                # it cannot move at all unless warmup steps reach it.
+                @model demo_ram() = x ~ MvNormal(zeros(2), [1.0 0.99; 0.99 1.0])
+                S0 = LinearAlgebra.LowerTriangular(Matrix(50.0 * LinearAlgebra.I, 2, 2))
+                sampler = AdvancedMH.RobustAdaptiveMetropolis(; S=S0)
+                chn = sample(
+                    StableRNG(468),
+                    demo_ram(),
+                    externalsampler(sampler),
+                    2_000;
+                    num_warmup=2_000,
+                    progress=false,
+                )
+                @test mean(chn[FlexiChains.Extra(:accepted)]) > 0.01
             end
 
             @testset "logp is set correctly" begin

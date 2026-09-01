@@ -18,6 +18,13 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `allow_discrete_variables` now lives in `Turing.Inference`, alongside the other sampler traits, rather than at `Turing`. It is exported from there, so `Turing.allow_discrete_variables` still names the same function and an existing overload keeps working.
 
+# 0.47.4
+
+`externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
+external sampler that adapts during warmup, such as
+`AdvancedMH.RobustAdaptiveMetropolis`, adapts instead of sampling with its initial
+proposal.
+
 # 0.47.3
 
 Random-measure distributions moved to the `TuringDistributionsExt` package extension. Replace
