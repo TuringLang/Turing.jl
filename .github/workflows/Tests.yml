@@ -82,6 +82,17 @@ jobs:
 
       - uses: julia-actions/cache@v3
 
+      # `[sources]` needs Pkg 1.11, so on the minimum supported Julia the DynamicPPL entry in
+      # Project.toml is silently ignored, the resolver takes the registered version, and the
+      # tests fail on an API this branch needs. Add it explicitly there.
+      # TEMPORARY: remove with the `[sources]` entries once DynamicPPL 0.42.8 is released.
+      - name: Pin DynamicPPL where `[sources]` is not supported
+        if: matrix.runner.version == 'min'
+        run: >-
+          julia --project -e 'using Pkg;
+          Pkg.add(PackageSpec(url="https://github.com/TuringLang/DynamicPPL.jl.git",
+          rev="condition-missing"))'
+
       - uses: julia-actions/julia-buildpkg@v1
 
       - uses: julia-actions/julia-runtest@v1
