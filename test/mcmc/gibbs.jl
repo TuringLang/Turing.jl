@@ -926,6 +926,39 @@ end
         )
     end
 
+    @testset "an array whose length is itself sampled" begin
+        @model function varying_length()
+            n ~ Categorical([1 / 3, 1 / 3, 1 / 3])
+            x = Vector{Float64}(undef, n)
+            for i in 1:n
+                x[i] ~ Normal()
+            end
+            return 1.0 ~ Normal(sum(x), 1.0)
+        end
+        # `n` decides how many `x[i]` exist, so it has to share their block. The snapshot then
+        # merges an `x` of one length with an `x` of another, which needs DynamicPPL 0.42.8.
+        chn = sample(
+            Xoshiro(100),
+            varying_length(),
+            Gibbs((@varname(n), @varname(x)) => PG(10)),
+            200;
+            check_model=false,
+            progress=false,
+        )
+        @test length(unique(vec(chn[@varname(n)]))) == 3
+
+        # Split off, the conditioned `x[i]` become observations whose number depends on `n`,
+        # and `PG` says so rather than sampling something wrong.
+        @test_throws ErrorException sample(
+            Xoshiro(100),
+            varying_length(),
+            Gibbs(@varname(n) => PG(10), @varname(x) => PG(10)),
+            50;
+            check_model=false,
+            progress=false,
+        )
+    end
+
     @testset "a component may not own part of a stored variable" begin
         @model function pair()
             x = Vector{Float64}(undef, 2)
