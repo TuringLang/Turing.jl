@@ -851,6 +851,20 @@ end
         # `x[2]` as well, so this must fail rather than sample the wrong block.
         spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))
         @test_throws ArgumentError sample(StableRNG(468), pair(), spl, 5; progress=false)
+
+        # Whether the values store `x` as a unit is what decides this, not the declared
+        # varnames. The same partition with MH on the containing block is expressible, because
+        # MH reports a key per element and the first component can be given `x[2]` alone.
+        spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => MH())
+        @test sample(StableRNG(468), pair(), spl, 5; progress=false) isa Any
+
+        # A single tilde over the whole vector cannot be split, whatever samples it.
+        @model function joint()
+            x ~ MvNormal(zeros(2), [1.0 0.0; 0.0 1.0])
+            return 0.0 ~ Normal(x[1] + x[2], 0.1)
+        end
+        spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => MH())
+        @test_throws ArgumentError sample(StableRNG(468), joint(), spl, 5; progress=false)
     end
 
     @testset "non-identity varnames" begin

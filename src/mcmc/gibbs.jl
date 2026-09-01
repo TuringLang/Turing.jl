@@ -294,9 +294,14 @@ Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
 
 Every variable in the model must be handled by at least one component sampler, and several
-components may sample the same variable. What they may not do is split one between them: if
-two components declare variables where one contains the other, such as `x` and `x[1]`, Gibbs
-throws, because it cannot condition on part of a value that is stored as a unit.
+components may sample the same variable. What they may not do is split a value that is stored
+as a unit: if one component declares `x` and another `x[1]`, whether Gibbs can express that
+depends on how the values arrive. Written element by element -- `x[1] ~ Normal(); x[2] ~
+Normal()`, sampled by MH -- each element is a key of its own and the partition works. Written
+as one draw, `x ~ MvNormal(...)`, or handed back as a unit by a component that vectorises its
+parameters, such as HMC, `x` is a single key: Gibbs cannot free part of it and throws. So the
+same pair of declared varnames may sample or throw depending on the model and on the other
+component's sampler.
 
 Variables the model only reaches on some sweeps -- a `z` inside `if x > 0`, or an `x[5]`
 inside a branch -- are handled a little differently. One that appears part-way through a run
