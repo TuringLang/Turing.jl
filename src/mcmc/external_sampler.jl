@@ -70,6 +70,11 @@ with Turing.jl:
   variable to be continuous, as the gradient-based ones do. `sample` checks the model against
   this before it starts.
 
+- `Turing.Inference.gibbs_get_stats(::MyState)`: The statistics of the step that produced this
+  state, as a `NamedTuple`, for a Gibbs chain to carry. Gibbs drops component transitions, so
+  they cannot come from there. The wrapper implements this for you from
+  `AbstractMCMC.getstats`.
+
 - `Turing.Inference.init_strategy(::MySampler)`: The `DynamicPPL.AbstractInitStrategy` your
   sampler starts from when the caller gives no `initial_params`. The default is
   `InitFromPrior()`; Gibbs asks each component for its own.

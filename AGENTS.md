@@ -55,7 +55,7 @@ To plug a sampler into Gibbs, implement:
   - `gibbs_get_parameter_values(state)` — return a `VarNamedTuple` of the values of the variables this sampler is responsible for, leaving out `:=` quantities. The old name `gibbs_get_raw_values` still works, with a deprecation warning.
   - `gibbs_update_state!!(sampler, state, model, global_vals)` — update the sampler's state to reflect new conditioned values. For samplers that use `LogDensityFunction`, the helper `gibbs_recompute_ldf_and_params` handles the common case.
   - Optionally, `supports_gibbs(sampler)` — return `false` to disallow use in Gibbs (the default is `true`). The old name `isgibbscomponent` still works, with a deprecation warning.
-  - Optionally, `allow_varying_dimension(sampler)` — return `true` if the sampler can sample a block whose set of variables changes between sweeps (the default is `false`). Gibbs reads it to decide which component may take on a variable the model only reaches on some sweeps.
+  - Optionally, `allow_varying_dimension(sampler)` — return `true` if the sampler can sample a block whose set of variables changes between sweeps (the default is `false`). See its docstring for what declaring it obliges the sampler to handle.
   - Optionally, `gibbs_get_stats(state)` — return a `NamedTuple` of the component's statistics for the chain (the default is empty). Gibbs drops component transitions, so statistics have to come off the state.
 
 ### Extension

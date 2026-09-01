@@ -6,42 +6,21 @@
 # the blocks in turn: to step a block, the model is `condition`ed on the current values of
 # every variable outside it, so the component samples that block's full conditional.
 #
-# Those values are threaded explicitly as an immutable `VarNamedTuple` -- each component's
-# step returns the values it owns, which are merged to form the next component's conditioning
-# set. Nothing is written in place, so everything in a sweep reads one frozen snapshot.
+# Those values are threaded explicitly as an immutable `VarNamedTuple`. Nothing is written in
+# place: the snapshot after a component's step is rebuilt as what it conditioned on plus what
+# it reported, so a variable it stopped reaching leaves the snapshot instead of lingering at a
+# stale value.
 #
-# Reading what to condition off that snapshot's keys is equivalent to deciding it per tilde
-# statement, where the model's own `VarName` is available, while two invariants hold:
+# Two invariants make reading what to condition off that snapshot's keys equivalent to deciding
+# it per tilde statement, where the model's own `VarName` is available: no component's variable
+# strictly contains another's, and a change in the set of variables the model reaches belongs to
+# the component that made it. The contract a user meets is in the `Gibbs` and
+# `allow_varying_dimension` docstrings; why each invariant holds is beside the code that
+# enforces it, in `conditioned_values` and `check_variable_set`.
 #
-#   - The partition is exact: no component's variable strictly contains another's. Under
-#     `Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))` the second component writes
-#     `x` back as a unit, so freeing it for the first component to sample `x[1]` would free
-#     `x[2]` as well. `conditioned_values` throws rather than hand a component a larger block
-#     than it owns. Sampling such a partition means writing a sampler against the AbstractMCMC
-#     interface directly, since this one cannot express conditioning on part of a value.
-#   - A block whose variables change between sweeps is sampled only by a component built for
-#     it. A variable the model reaches only on some sweeps -- a new name, `z` in
-#     `x ~ Normal(); y ~ Normal(); if x > 0; z ~ Normal(); end`, or a new element, `x[5]`
-#     inside a branch -- turns up in whichever component's step gets there first.
-#     Every variable of the model has to be declared for a component, and a change in the set
-#     of variables the model reaches is allowed only when both of these hold: the component
-#     taking the step declares `allow_varying_dimension`, and the variable that came or went is
-#     one that same component samples. The first holds because during its step everything it
-#     does not sample is conditioned, so only its own proposal can have moved; the second
-#     because otherwise the component that does sample the variable conditions on one the
-#     proposed state lacks. Together: the variable and whatever decides its existence belong in
-#     one block. `check_variable_set` checks appearance and disappearance alike, which is why
-#     the result does not depend on whether the initialising draw happened to reach it.
-#
-#     That rejects the partitions where the deciding variable sits in another block. Under
-#     `Gibbs(@varname(b) => MH(), @varname(θ) => PG(20))` on a model where `b` decides whether
-#     `θ[2]` exists, `MH`'s step is what makes `θ[2]` come and go, so `MH` is asked and refuses;
-#     asking only `θ`'s declared `PG` let the chain come back biased (P(b=1) = 0.11 against an
-#     exact 0.39). `Gibbs((@varname(b), @varname(θ)) => PG(20))` is the correct partition.
-#
-# That last part has no fix at this level: a block's shape is discovered while stepping it, so
-# Gibbs cannot tell in advance which variables a sweep will reach. Knowing that beforehand
-# needs the model's trace type separated from its values.
+# Neither is decidable in advance: a block's shape is discovered while stepping it, so Gibbs
+# cannot tell beforehand which variables a sweep will reach. Knowing that would need the
+# model's trace type separated from its values.
 
 #
 # Interface for other samplers to work with Gibbs
@@ -294,6 +273,12 @@ end
 Return the values in `global_vnt` for every variable *not* sampled by this Gibbs component,
 i.e. the ones it conditions on.
 
+A component may own part of a value the model stores as a unit, which cannot be expressed:
+under `Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))` the second component writes
+`x` back whole, so freeing it for the first to sample `x[1]` would free `x[2]` too. This throws
+rather than hand a component a larger block than it owns. Sampling such a partition means
+writing a sampler against the AbstractMCMC interface directly.
+
 Conditioned variables reach `tilde_observe!!`, so particle samplers reweight on them. That is
 what makes the component's target distribution correct: a conditioned variable the target
 depends on must reweight the sweep, and one it does not contributes the same increment to
@@ -364,12 +349,11 @@ same pair of declared varnames may sample or throw depending on the model and on
 component's sampler.
 
 Variables the model only reaches on some sweeps -- a `z` inside `if x > 0`, or an `x[5]`
-inside a branch -- are handled a little differently. One that appears part-way through a run
-is taken on by the component declared for it, or, if you declared none, by the component that
-first reached it, which then keeps sampling it. Either way that component has to be able to
-sample a set of variables that changes between sweeps, such as `PG`; Gibbs throws if it
-cannot, since the variable would otherwise be drawn once and then conditioned on for the rest
-of the run.
+inside a branch -- need care. Every variable must be declared for a component, as always, and
+one whose existence varies has to share a block with whatever decides it, sampled by a
+component that can handle a varying set of variables, such as `PG`. Gibbs throws otherwise:
+splitting the two leaves the component that samples the deciding variable conditioning on one
+the state it proposes does not have, and the chain comes back biased.
 
 Each component sampler initialises the variables it samples with its own default strategy, so
 e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
@@ -756,8 +740,6 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
-    # New values for the variables this sampler is responsible for, plus any variable it
-    # encountered that no component owns yet: both arrive in its own raw values.
     component_vnt = gibbs_get_parameter_values(new_state)
     check_variable_set(spl, sampler, varnames, vnt, component_vnt)
     new_vnt = merge(conditioned, component_vnt)
@@ -889,7 +871,6 @@ function gibbs_step_recursive(
         rng, conditioned_model, sampler, state; kwargs..., discard_sample=true
     )
 
-    # The current sampler will return some raw values, which we update the global VNT with.
     component_vnt = gibbs_get_parameter_values(new_state)
     check_variable_set(spl, sampler, varnames, global_vnt, component_vnt)
     new_global_vnt = merge(conditioned, component_vnt)
