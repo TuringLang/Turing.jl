@@ -1,12 +1,37 @@
 module GibbsConditionalTests
 
+using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
-using Random: Random
+using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
+    @testset "observed elements of a partly-missing array argument" begin
+        @model function partly(x)
+            mu ~ Normal()
+            for i in eachindex(x)
+                x[i] ~ Normal(mu, 1)
+            end
+        end
+
+        # `x[1]` is data from the argument, `x[2]` is latent and conditioned by Gibbs on the
+        # other component's draw. The conditional has to see both: a key-level merge keeps one
+        # and drops the other.
+        seen = Ref{Any}(nothing)
+        function cond_mu(vnt)
+            seen[] = vnt
+            return Normal(0, 1)
+        end
+        spl = Gibbs(@varname(mu) => GibbsConditional(cond_mu), @varname(x[2]) => MH())
+        sample(
+            Xoshiro(1), partly([1.5, missing]), spl, 3; check_model=false, progress=false
+        )
+        @test DynamicPPL.getvalue(seen[], @varname(x[1])) == 1.5
+        @test DynamicPPL.hasvalue(seen[], @varname(x[2]))
+    end
+
     @testset "Gamma model tests" begin
         @model function inverse_gdemo(x)
             precision ~ Gamma(2, inv(3))

@@ -102,17 +102,23 @@ supports_gibbs(::GibbsConditional) = true
 Build a `VarNamedTuple` of the values of every variable this component conditions on: those
 supplied as model arguments, and those Gibbs, the user, or `fix` conditioned.
 
-`merge` is right-biased, and conditioned values have to win: a latent declared as a model
-argument bound to `missing` is conditioned by Gibbs on the other components' current draw,
-and taking the argument instead would hand the conditional `missing`.
+`merge` is right-biased and replaces a whole key, so an array argument with a `missing`
+element -- whose other elements are observations and whose `missing` one Gibbs conditions on
+the current draw -- loses its observations to the partially-set conditioned value. Those
+elements are put back afterwards, rather than merging leaf by leaf throughout, so that a value
+stored under one key stays under one key: `get_cond_dists` sees these keys.
 """
 function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
-    return merge(
-        DynamicPPL.VarNamedTuple(model.args),
-        DynamicPPL.conditioned(context),
-        DynamicPPL.fixed(context),
-    )
+    args = DynamicPPL.VarNamedTuple(model.args)
+    vals = merge(args, DynamicPPL.conditioned(context), DynamicPPL.fixed(context))
+    for vn in keys(args), leaf in AbstractPPL.varname_leaves(vn, args[vn])
+        DynamicPPL.hasvalue(vals, leaf) && continue
+        arg_value = DynamicPPL.getvalue(args, leaf)
+        arg_value === missing && continue
+        vals = DynamicPPL.setindex!!(vals, arg_value, leaf)
+    end
+    return vals
 end
 
 @inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarNamedTuple) =
