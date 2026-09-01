@@ -104,6 +104,10 @@ end
 # Need some extra leg work to make RepeatSampler work seamlessly with DynamicPPL models +
 # samplers, instead of generic AbstractMCMC samplers.
 
+function post_sample_hook(chain, spl::RepeatSampler; kwargs...)
+    return post_sample_hook(chain, spl.sampler; kwargs...)
+end
+
 function allow_discrete_variables(spl::RepeatSampler)
     return allow_discrete_variables(spl.sampler)
 end

@@ -75,12 +75,15 @@ with Turing.jl:
   they cannot come from there. The wrapper implements this for you from
   `AbstractMCMC.getstats`.
 
+- `Turing.Inference.post_sample_hook(chain, ::MySampler)`: Anything to report once sampling has
+  finished, such as a warning about numerical errors. Returns `nothing` by default.
+
 - `Turing.Inference.init_strategy(::MySampler)`: The `DynamicPPL.AbstractInitStrategy` your
   sampler starts from when the caller gives no `initial_params`. The default is
   `InitFromPrior()`; Gibbs asks each component for its own.
 
-`supports_gibbs`, `allow_varying_dimension`, `allow_discrete_variables` and `init_strategy`
-are the whole of Turing's own interface for running a sampler on a model. One that implements
+`supports_gibbs`, `allow_varying_dimension`, `allow_discrete_variables`, `init_strategy` and
+`post_sample_hook` are the whole of Turing's own interface for running a sampler on a model. One that implements
 `AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
 not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
@@ -148,6 +151,18 @@ end
 
 function allow_discrete_variables(spl::ExternalSampler)
     return allow_discrete_variables(spl.sampler)
+end
+
+# Where the sampler wants to start is its own business: wrapping does not constrain it, since
+# `find_initial_params_ldf` turns whatever strategy it names into the vector the sampler sees.
+# Contrast `allow_varying_dimension`, which the wrapper keeps at `false` whatever it wraps
+# because there its own `gibbs_update_state!!` is the constraint.
+init_strategy(spl::ExternalSampler) = init_strategy(spl.sampler)
+
+# Same reasoning: whatever the sampler wants to report once sampling ends does not change for
+# being wrapped.
+function post_sample_hook(chain, spl::ExternalSampler; kwargs...)
+    return post_sample_hook(chain, spl.sampler; kwargs...)
 end
 
 struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}

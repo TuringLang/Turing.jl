@@ -302,6 +302,7 @@ end
     struct TraitSampler <: AbstractMCMC.AbstractSampler end
     Turing.allow_discrete_variables(::TraitSampler) = false
     Turing.Inference.allow_varying_dimension(::TraitSampler) = true
+    Turing.Inference.init_strategy(::TraitSampler) = DynamicPPL.InitFromUniform()
 
     wrapped = externalsampler(TraitSampler())
     repeated = Turing.Inference.RepeatSampler(TraitSampler(), 2)
@@ -315,6 +316,11 @@ end
     @test !Turing.Inference.allow_varying_dimension(wrapped)
     # `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so it forwards.
     @test Turing.Inference.allow_varying_dimension(repeated)
+
+    # Where the sampler starts is its own business, so both wrappers forward it. Without this
+    # a declared strategy was silently replaced by the `InitFromPrior()` fallback.
+    @test Turing.Inference.init_strategy(wrapped) isa DynamicPPL.InitFromUniform
+    @test Turing.Inference.init_strategy(repeated) isa DynamicPPL.InitFromUniform
 end
 
 end
