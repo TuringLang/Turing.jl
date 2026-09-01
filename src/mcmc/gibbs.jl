@@ -116,6 +116,11 @@ allow_varying_dimension(::AbstractSampler) = false
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
 
+# For an error about an unsupported component, the wrapper's own name says nothing: both
+# wrappers forward `supports_gibbs`, so the sampler that answered is the one inside.
+_component_name(spl::AbstractSampler) = nameof(typeof(spl))
+_component_name(spl::Union{RepeatSampler,ExternalSampler}) = _component_name(spl.sampler)
+
 """
     Turing.Inference.gibbs_get_raw_values(state)
 
@@ -343,7 +348,7 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: Abstr
 
         for spl in samplers
             if !supports_gibbs(spl)
-                msg = "All samplers must be valid Gibbs components, $(nameof(typeof(spl))) is not."
+                msg = "All samplers must be valid Gibbs components, $(_component_name(spl)) is not."
                 throw(ArgumentError(msg))
             end
         end
@@ -478,6 +483,21 @@ function check_all_variables_handled(vns, spl::Gibbs)
         vn for vn in vns if !any(hv -> AbstractPPL.subsumes(hv, vn), handled_vars)
     ]
     if !isempty(missing_vars)
+        # A variable whose parts are each claimed, but which is stored as one value, is a
+        # partition Gibbs cannot express rather than one the user forgot to write.
+        split_vars = [
+            vn for
+            vn in missing_vars if any(hv -> AbstractPPL.subsumes(vn, hv), handled_vars)
+        ]
+        if !isempty(split_vars)
+            throw(
+                ArgumentError(
+                    "Components claim parts of $(join(split_vars, ", ")) separately, but " *
+                    "the model stores each as one value, so Gibbs cannot free one part and " *
+                    "condition on the rest. Give the whole variable to a single component.",
+                ),
+            )
+        end
         msg =
             "The Gibbs sampler has no component for $(join(missing_vars, ", ")). Assign " *
             "every variable the model reaches to a component; one left out is never " *

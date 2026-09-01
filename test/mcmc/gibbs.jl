@@ -129,6 +129,20 @@ end
     @test Turing.Inference.supports_gibbs(OldStyleWrapper(MH()))
 end
 
+@testset "an unsupported component is named through its wrapper" begin
+    for spl in (externalsampler(Prior()), Turing.Inference.RepeatSampler(SMC(), 2))
+        err = try
+            Gibbs(@varname(s) => spl)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        # The wrapper forwards `supports_gibbs`, so the sampler that answered is the inner one.
+        @test occursin("Prior is not", err.msg) || occursin("SMC is not", err.msg)
+    end
+end
+
 @testset "latent declared as a missing model argument" begin
     # Conditioning has to reach a variable that is also a model argument: Gibbs conditions
     # every non-target variable, and here the non-target `x` is an argument bound to
@@ -875,6 +889,20 @@ end
         end
         spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => MH())
         @test_throws ArgumentError sample(StableRNG(468), joint(), spl, 5; progress=false)
+
+        # Claiming every part separately is still unsplittable, and says so rather than
+        # reporting `x` as a variable nobody claimed.
+        spl = Gibbs(@varname(x[1]) => MH(), @varname(x[2]) => MH())
+        err = try
+            sample(StableRNG(468), joint(), spl, 5; progress=false)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("claim parts of x separately", err.msg)
+        # Element-wise tildes give a key each, so the same partition is expressible.
+        @test sample(StableRNG(468), pair(), spl, 5; progress=false) isa Any
     end
 
     @testset "non-identity varnames" begin
