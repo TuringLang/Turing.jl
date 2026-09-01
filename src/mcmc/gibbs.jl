@@ -97,6 +97,13 @@ built for it. A sampler reusing a `LogDensityFunction` through
 Metropolis-Hastings ratio between states of different dimension is not the one the algorithm
 assumes. `PG` and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches,
 so they can.
+
+Returning `true` is not by itself enough for an array whose length varies and whose elements
+are drawn one at a time (`for i in 1:n; x[i] ~ ...; end` under a random `n`). Those are stored
+as a `PartialArray` backed by a plain `Vector`, and merging two of different lengths throws
+`ArgumentError: Cannot merge PartialArrays with different axes` from DynamicPPL, in either
+direction, before this trait is consulted. A single draw of the whole vector,
+`x ~ MvNormal(zeros(n), I)`, is replaced key and all and does work.
 """
 allow_varying_dimension(::AbstractSampler) = false
 # `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so the inner answer is
