@@ -28,6 +28,16 @@
 #     that changes between sweeps. Either way the variable stays in the snapshot even in
 #     sweeps where the model never reaches it.
 #
+#     Owning such a variable is necessary but not sufficient: the variables that decide
+#     whether it exists have to be in the same block. Under
+#     `Gibbs(@varname(x) => MH(), @varname(z) => PG(20))` on
+#     `x ~ Normal(); if x > 0; z ~ Normal(); end`, the `x` component conditions on `z` while
+#     proposing an `x` for which `z` does not exist, so its acceptance ratio compares two
+#     different supports; the chain samples but is biased, measurably (P(x > 0) drops from
+#     1/2 to about 1/20). `Gibbs((@varname(x), @varname(z)) => PG(20))` is the correct
+#     partition. Gibbs cannot detect the difference, because which variables a branch
+#     depends on is not something it can see.
+#
 # That last part has no fix at this level: a block's shape is discovered while stepping it, so
 # Gibbs cannot tell in advance which variables a sweep will reach. Knowing that beforehand
 # needs the model's trace type separated from its values.
@@ -433,8 +443,11 @@ function adopt_new_variables(
                 ArgumentError(
                     "The variable $(leaf) appeared during sampling, and would be sampled " *
                     "by $(name), the component $(role). $(name) fixes the set of variables " *
-                    "it samples at its first step, so assign $(leaf) to a component that " *
-                    "can sample a varying set of variables, such as `PG`.",
+                    "it samples at its first step. Give $(leaf) to a component that can " *
+                    "sample a varying set of variables, such as `PG`, and put the variables " *
+                    "that decide whether $(leaf) exists in that same block: a component " *
+                    "that conditions on $(leaf) while proposing a state where $(leaf) does " *
+                    "not exist is comparing two different supports, which biases the chain.",
                 ),
             )
         end

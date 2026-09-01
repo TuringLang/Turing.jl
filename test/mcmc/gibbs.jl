@@ -801,17 +801,23 @@ end
             check_model=false,
             progress=false,
         )
-        # `PG` redraws whatever the model reaches, so it can own `z` and the model samples.
+        # `PG` redraws whatever the model reaches, so it can own `z`. `x` decides whether `z`
+        # exists, so it has to be in the same block: with `x` in a block of its own, that
+        # component conditions on `z` while proposing an `x` for which `z` does not exist, and
+        # the chain samples but comes back biased. The model is prior-only, so P(x > 0) = 1/2
+        # measures whether the sweep is valid -- the split partition gives about 1/20.
         chn = sample(
             Xoshiro(470),
             f(),
-            Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => PG(20)),
-            300;
+            Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => PG(20)),
+            2000;
             check_model=false,
             progress=false,
         )
-        @test size(chn, 1) == 300
+        @test size(chn, 1) == 2000
         @test any(!ismissing, chn[@varname(z)])
+        xs = vec(chn[@varname(x)])
+        @test count(>(0), xs) / length(xs) ≈ 0.5 atol = 0.06
 
         # A new element counts too, not just a new name.
         @model function growing()
