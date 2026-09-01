@@ -89,8 +89,10 @@ assumes. `PG` and `CSMC` rebuild their trace each sweep, drawing whatever the mo
 so they can.
 """
 allow_varying_dimension(::AbstractSampler) = false
+# `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so the inner answer is
+# the right one. `ExternalSampler` does not: its own `gibbs_update_state!!` goes through
+# `gibbs_recompute_ldf_and_params`, so it keeps the `false` default whatever it wraps.
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
-allow_varying_dimension(spl::ExternalSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
 
 """

@@ -66,11 +66,6 @@ with Turing.jl:
   from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
   that the default is `true`, so you should only need to implement this in special cases.
 
-- `Turing.Inference.allow_varying_dimension(::MySampler)`: Return `true` if your sampler can
-  sample a target whose set of variables changes from one iteration to the next. The default
-  is `false`. Gibbs reads it to decide which component may take on a variable the model only
-  reaches on some sweeps.
-
 - `Turing.allow_discrete_variables(::MySampler)`: Return `false` if your sampler needs every
   variable to be continuous, as the gradient-based ones do. `sample` checks the model against
   this before it starts.
@@ -81,7 +76,11 @@ Turing's own interface for running a sampler on a model. One that implements
 not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
 `Turing.Inference.gibbs_get_raw_values` and `Turing.Inference.gibbs_update_state!!`, which the
-wrapper implements for you.
+wrapper implements for you -- and which are also why `allow_varying_dimension` is not on the
+list above. The wrapper's `gibbs_update_state!!` rebuilds the `LogDensityFunction` from the
+parameter layout it had at the first step, so a wrapped sampler cannot own a Gibbs block whose
+set of variables changes between sweeps, whatever it declares. A sampler that needs one has to
+take option 1.
 """
 struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
        AbstractSampler
@@ -136,6 +135,10 @@ function externalsampler(
     unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler),
 )
     return ExternalSampler(sampler, adtype, Val(unconstrained))
+end
+
+function Turing.allow_discrete_variables(spl::ExternalSampler)
+    return Turing.allow_discrete_variables(spl.sampler)
 end
 
 struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}

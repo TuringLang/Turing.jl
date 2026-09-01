@@ -104,6 +104,10 @@ end
 # Need some extra leg work to make RepeatSampler work seamlessly with DynamicPPL models +
 # samplers, instead of generic AbstractMCMC samplers.
 
+function Turing.allow_discrete_variables(spl::RepeatSampler)
+    return Turing.allow_discrete_variables(spl.sampler)
+end
+
 function Turing.Inference.init_strategy(spl::RepeatSampler)
     return Turing.Inference.init_strategy(spl.sampler)
 end

@@ -298,4 +298,23 @@ end
     end
 end
 
+@testset "traits a wrapped sampler declares" begin
+    struct TraitSampler <: AbstractMCMC.AbstractSampler end
+    Turing.allow_discrete_variables(::TraitSampler) = false
+    Turing.Inference.allow_varying_dimension(::TraitSampler) = true
+
+    wrapped = externalsampler(TraitSampler())
+    repeated = Turing.Inference.RepeatSampler(TraitSampler(), 2)
+
+    # Wrapping does not change whether the sampler needs every variable continuous.
+    @test !Turing.allow_discrete_variables(wrapped)
+    @test !Turing.allow_discrete_variables(repeated)
+
+    # A varying set of variables is the wrapper's constraint, not the inner sampler's:
+    # `gibbs_update_state!!` reuses the parameter layout the LDF had at the first step.
+    @test !Turing.Inference.allow_varying_dimension(wrapped)
+    # `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so it forwards.
+    @test Turing.Inference.allow_varying_dimension(repeated)
+end
+
 end
