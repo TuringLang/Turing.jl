@@ -613,9 +613,16 @@ end
         # comes and goes under the `b` component's proposal while the `θ` component is the one
         # that samples it, so that component conditions on a variable the proposed state does
         # not have. Being capable is not enough; the two have to share a block.
-        @test_throws ArgumentError sample(
-            StableRNG(42), model, Gibbs(:b => PG(20), :θ => PG(20)), 200; progress=false
-        )
+        err = try
+            sample(StableRNG(42), model, Gibbs(:b => PG(20), :θ => PG(20)), 200; progress=false)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        # The ownership condition, not the capability one: both components declare they can
+        # sample a varying set, so a message about that would mean the wrong guard fired.
+        @test occursin("which does not sample it", err.msg)
 
         # `b` and `θ` in one block, sampled by `PG`, which rebuilds its trace each sweep.
         # P(b=1 | y=2) = 0.3 * N(2; 0, sqrt(2.25)) normalised against 0.7 * N(2; 0, sqrt(1.25)).
@@ -778,6 +785,33 @@ end
         end
     end
 
+    @testset "statistic names that would collide are refused" begin
+        struct FakeStatState{S}
+            stats::S
+        end
+        Turing.Inference.gibbs_get_stats(s::FakeStatState) = s.stats
+
+        # Joining a component's variables and a statistic's name with `_` is not injective:
+        # prefix `x` with statistic `y_z`, and prefix `x_y` with statistic `z`, both give
+        # `x_y_z`, and the merge used to keep only the second.
+        spl = Gibbs(@varname(x) => MH(), @varname(x_y) => MH())
+        states = (FakeStatState((; y_z=1)), FakeStatState((; z=2)))
+        err = try
+            Turing.Inference.component_stats(spl, states)
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("x_y_z", err.msg)
+
+        # Names that do not collide are still merged.
+        ok = Turing.Inference.component_stats(
+            spl, (FakeStatState((; a=1)), FakeStatState((; b=2)))
+        )
+        @test ok == (x_a=1, x_y_b=2)
+    end
+
     @testset "component sampler stats reach the chain" begin
         @model function two_normals()
             h ~ Normal()
@@ -905,17 +939,63 @@ end
         @test occursin("component sampling x", err.msg)
         @test occursin("component sampling z", err.msg)
 
-        # Seed 4's initial draw already takes the branch, so `z` reaches the snapshot before
-        # any component steps. Nothing saw it appear, and it stayed frozen for the run; now
-        # the sweep where it goes away is caught instead.
-        @test_throws ArgumentError sample(
-            Xoshiro(4),
-            f(),
-            Gibbs(@varname(x) => MH(), @varname(y) => MH()),
-            100;
-            check_model=false,
-            progress=false,
-        )
+        # Seed 4's initial draw already takes the branch, so `z` is in the first snapshot and
+        # the every-variable-has-a-component check refuses it at the initial step, before any
+        # component has stepped -- a different guard from the seeds above, where `z` turns up
+        # mid-run. Pinning the message keeps the two apart.
+        err = try
+            sample(
+                Xoshiro(4),
+                f(),
+                Gibbs(@varname(x) => MH(), @varname(y) => MH()),
+                100;
+                check_model=false,
+                progress=false,
+            )
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("has no component for z", err.msg)
+
+        # `x` and `z` share a block here, so ownership is satisfied and the capability gate is
+        # what refuses it: `MH` does not declare it can sample a varying set. Seeds 1 and 4 take
+        # different branches of the check, so both are worth pinning.
+        err = try
+            sample(
+                Xoshiro(1),
+                f(),
+                Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH()),
+                100;
+                check_model=false,
+                progress=false,
+            )
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("does not declare it can sample", err.msg)
+
+        # A variable going away is the other direction of the same check, and reaching it needs
+        # both a seed whose initial draw has `z` and a component that owns `z` but cannot sample
+        # a varying set: `z` then drops out of that component's own report.
+        err = try
+            sample(
+                Xoshiro(4),
+                f(),
+                Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH()),
+                100;
+                check_model=false,
+                progress=false,
+            )
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("stopped existing", err.msg)
         # Assigned to MH, whose acceptance ratio is not valid across a change of dimension.
         @test_throws ArgumentError sample(
             Xoshiro(470),

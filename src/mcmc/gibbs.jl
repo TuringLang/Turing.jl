@@ -11,12 +11,15 @@
 # it reported, so a variable it stopped reaching leaves the snapshot instead of lingering at a
 # stale value.
 #
-# Two invariants make reading what to condition off that snapshot's keys equivalent to deciding
-# it per tilde statement, where the model's own `VarName` is available: no component's variable
-# strictly contains another's, and a change in the set of variables the model reaches belongs to
-# the component that made it. The contract a user meets is in the `Gibbs` and
-# `allow_varying_dimension` docstrings; why each invariant holds is beside the code that
-# enforces it, in `conditioned_values` and `check_variable_set`.
+# Reading what to condition off that snapshot's keys is equivalent to deciding it per tilde
+# statement, where the model's own `VarName` is available, so long as two things hold: no
+# component is given part of a value the snapshot stores as a unit, and a change in the set of
+# variables the model reaches belongs to the component that made it. Neither is a blanket rule
+# about the declared varnames -- one component may own `x[1]` while another owns `x` and still
+# partition cleanly, when the values keep an element per key -- so what is enforced is the
+# expressibility of each particular case. The contract a user meets is in the `Gibbs` and
+# `allow_varying_dimension` docstrings; why each holds is beside the code that enforces it, in
+# `conditioned_values` and `check_variable_set`.
 #
 # Neither is decidable in advance: a block's shape is discovered while stepping it, so Gibbs
 # cannot tell beforehand which variables a sweep will reach. Knowing that would need the
@@ -421,6 +424,12 @@ struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: Abstr
         return new{length(samplers),typeof(varnames),typeof(samplers)}(varnames, samplers)
     end
 end
+# A `Gibbs` component would need `gibbs_get_parameter_values` and `gibbs_update_state!!` for
+# `GibbsState`, which do not exist; without this, nesting fails with a `MethodError` several
+# steps in rather than at construction.
+supports_gibbs(::Gibbs) = false
+# TODO(penelopeysm): `allow_discrete_variables(::Gibbs)` could be smarter, since a component
+# may not allow discrete variables even though Gibbs itself does.
 
 function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
@@ -495,6 +504,24 @@ function component_stats(spl::Gibbs, states)
     return stats
 end
 
+function _require_varying_dimension(sampler, leaf, what::String)
+    allow_varying_dimension(sampler) && return nothing
+    # `_component_name` unwraps: naming the wrapper tells the reader nothing, since it is the
+    # sampler inside that declared the trait. The reason a given sampler cannot do this is
+    # per-sampler -- an acceptance ratio spanning two supports, a fixed `LogDensityFunction`
+    # layout -- so it lives in `allow_varying_dimension`'s docstring rather than here.
+    name = _component_name(sampler)
+    return throw(
+        ArgumentError(
+            "The variable $(leaf) $(what) during a step of $(name), so that step is " *
+            "proposing between states with different sets of variables, which $(name) does " *
+            "not declare it can sample (see `allow_varying_dimension`). Put $(leaf) and the " *
+            "variables that decide whether it exists in one block, sampled by a component " *
+            "that can, such as `PG`.",
+        ),
+    )
+end
+
 """
     check_variable_set(spl, sampler, varnames, old_vnt, component_vnt)
 
@@ -534,21 +561,6 @@ at a stale value, be conditioned into that component's step forever, and the app
 would be dead for it: a split partition would then be rejected only for those seeds whose
 initialising draw happened to miss the variable.
 """
-function _require_varying_dimension(sampler, leaf, what::String)
-    allow_varying_dimension(sampler) && return nothing
-    name = nameof(typeof(sampler))
-    return throw(
-        ArgumentError(
-            "The variable $(leaf) $(what) during a step of $(name), so that step is " *
-            "proposing between states with different sets of variables. $(name) fixes the " *
-            "set of variables it samples at its first step, and its acceptance ratio " *
-            "between two different supports is not the one the algorithm assumes. Put " *
-            "$(leaf) and the variables that decide whether it exists in one block, sampled " *
-            "by a component that can handle a varying set of variables, such as `PG`.",
-        ),
-    )
-end
-
 function check_variable_set(
     spl::Gibbs,
     sampler,
@@ -654,11 +666,6 @@ function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
     vnt = DynamicPPL.get_raw_values(accs)
     check_all_variables_handled(vnt, spl)
     return vnt
-end
-
-function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)
-    # TODO(penelopeysm): Could be smarter: subsamplers may not allow discrete variables.
-    return Turing._check_model(model, !allow_discrete_variables(spl))
 end
 
 function AbstractMCMC.step(
