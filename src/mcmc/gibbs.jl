@@ -134,7 +134,10 @@ sampling process, it calls each component sampler in turn and updates the global
 This function is used to pass that information *from* a component sampler *to* the Gibbs
 sampler. Note that this means that the `VarNamedTuple` returned by this function should
 **only** contain raw values for the variables that the component sampler is responsible for
-sampling, and should not contain any values for other variables.
+sampling, and should not contain any values for other variables. In particular it must leave
+out `:=` quantities: they are not variables, so Gibbs would take one appearing inside a branch
+for a variable that appeared mid-run. `DynamicPPL.get_parameter_values` returns exactly the
+`~` values of a state whose accumulator holds both.
 """
 function gibbs_get_raw_values end
 
@@ -142,11 +145,11 @@ function gibbs_get_raw_values end
     Turing.Inference.gibbs_get_raw_values(state::AbstractVarInfo)
 
 If your sampler state is an `AbstractVarInfo`, there is a default method available for this,
-which reads the values stored in its `RawValueAccumulator`. (This means that the `VarInfo`
+which reads the `~` values stored in its `RawValueAccumulator`. (This means that the `VarInfo`
 used for evaluation in the component sampler *must* contain a `RawValueAccumulator`.)
 """
 function gibbs_get_raw_values(state::AbstractVarInfo)
-    return DynamicPPL.get_raw_values(state)
+    return DynamicPPL.get_parameter_values(state)
 end
 
 """
@@ -527,22 +530,14 @@ end
 """
     gibbs_initial_values(rng, model, spl, initial_params)
 
-Return the values the sweep starts from: one draw of the model, its `:=` quantities included.
-
-`:=` quantities are not variables, so [`check_all_variables_handled`](@ref) runs before they
-are added. Components report them among their own values, and having them here keeps the sweep
-from taking them for variables that appeared while sampling.
+Return the values the sweep starts from, and check that every one of them has a component.
 """
 function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
     accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
     vnt = DynamicPPL.get_raw_values(accs)
     check_all_variables_handled(keys(vnt), spl)
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(true))
-    _, accs = DynamicPPL.init!!(
-        rng, model, accs, DynamicPPL.InitFromParams(vnt), DynamicPPL.UnlinkAll()
-    )
-    return DynamicPPL.get_raw_values(accs)
+    return vnt
 end
 
 function Turing._check_model(model::DynamicPPL.Model, spl::Gibbs)

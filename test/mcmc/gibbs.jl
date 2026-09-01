@@ -890,6 +890,42 @@ end
         )
     end
 
+    @testset "a `:=` quantity is not a variable that appeared" begin
+        # `y` is not sampled, so it must never be taken for a variable that turned up mid-run
+        # and needs a component. Which seeds reach the branch on the initial draw decides
+        # whether the mistake fires, so check several.
+        @model function colon_eq_branch()
+            x ~ Normal()
+            if x > 0
+                y := x^2
+            end
+            return 1.0 ~ Normal(x, 1.0)
+        end
+        for seed in 1:5
+            @test sample(
+                Xoshiro(seed),
+                colon_eq_branch(),
+                Gibbs(@varname(x) => MH()),
+                60;
+                check_model=false,
+                progress=false,
+            ) isa Any
+        end
+
+        # Excluded from what components report to Gibbs, but still rebuilt for the chain.
+        @model function colon_eq_plain()
+            m ~ Normal()
+            n := m + 100
+            return 0.0 ~ Normal(m)
+        end
+        chn = sample(
+            Xoshiro(1), colon_eq_plain(), Gibbs(@varname(m) => MH()), 10; progress=false
+        )
+        @test all(
+            ≈(100), collect(skipmissing(vec(chn[@varname(n)]))) .- vec(chn[@varname(m)])
+        )
+    end
+
     @testset "a component may not own part of a stored variable" begin
         @model function pair()
             x = Vector{Float64}(undef, 2)

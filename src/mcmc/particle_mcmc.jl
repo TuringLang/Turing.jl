@@ -156,7 +156,7 @@ function advance!(particle::Particle)
     reference = particle.reference
     if score === nothing && reference !== nothing
         dropped = setdiff(
-            keys(reference), keys(DynamicPPL.get_raw_values(particle.varinfo))
+            keys(reference), keys(DynamicPPL.get_parameter_values(particle.varinfo))
         )
         isempty(dropped) || error(
             "the reference execution trace changed while replaying retained values " *
@@ -875,7 +875,7 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
             deepcopy(retained.varinfo), (; log_normalizing_constant=logZ)
         )
     end
-    return transition, PGState(DynamicPPL.get_raw_values(retained.varinfo))
+    return transition, PGState(DynamicPPL.get_parameter_values(retained.varinfo))
 end
 
 #
@@ -893,5 +893,5 @@ function gibbs_update_state!!(
     # component owns into the global values before we get here.
     init = DynamicPPL.InitFromParams(global_vals, nothing)
     vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
-    return PGState(DynamicPPL.get_raw_values(vi))
+    return PGState(DynamicPPL.get_parameter_values(vi))
 end

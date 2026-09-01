@@ -504,7 +504,7 @@ end
 #### Gibbs interface
 ####
 
-gibbs_get_raw_values(state::MHState) = DynamicPPL.get_raw_values(state.vi)
+gibbs_get_raw_values(state::MHState) = DynamicPPL.get_parameter_values(state.vi)
 gibbs_get_stats(state::MHState) = state.stat
 
 function gibbs_update_state!!(
