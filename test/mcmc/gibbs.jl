@@ -843,6 +843,23 @@ end
         xs = vec(chn[@varname(x)])
         @test count(>(0), xs) / length(xs) ≈ 0.5 atol = 0.06
 
+        # Undeclared, `z` is taken on by the component that reaches it, which then keeps
+        # sampling it instead of conditioning on one draw. `x` decides whether `z` exists and
+        # is in that same block, so the sweep is valid: P(x > 0) = 1/2 on this prior-only
+        # model.
+        chn = sample(
+            Xoshiro(3),
+            f(),
+            Gibbs(@varname(x) => PG(20), @varname(y) => MH()),
+            2000;
+            check_model=false,
+            progress=false,
+        )
+        zs = collect(skipmissing(vec(chn[@varname(z)])))
+        @test length(unique(zs)) > 1
+        xs = vec(chn[@varname(x)])
+        @test count(>(0), xs) / length(xs) ≈ 0.5 atol = 0.06
+
         # A new element counts too, not just a new name.
         @model function growing()
             n ~ Bernoulli(0.5)

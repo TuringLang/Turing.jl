@@ -70,8 +70,12 @@ with Turing.jl:
   variable to be continuous, as the gradient-based ones do. `sample` checks the model against
   this before it starts.
 
-`supports_gibbs`, `allow_varying_dimension`, and `allow_discrete_variables` are the whole of
-Turing's own interface for running a sampler on a model. One that implements
+- `Turing.Inference.init_strategy(::MySampler)`: The `DynamicPPL.AbstractInitStrategy` your
+  sampler starts from when the caller gives no `initial_params`. The default is
+  `InitFromPrior()`; Gibbs asks each component for its own.
+
+`supports_gibbs`, `allow_varying_dimension`, `allow_discrete_variables` and `init_strategy`
+are the whole of Turing's own interface for running a sampler on a model. One that implements
 `AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
 not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
