@@ -38,6 +38,57 @@ function check_transition_varnames(transition::DynamicPPL.ParamsWithStats, paren
     end
 end
 
+# A component differing from the sampler it wraps in exactly one way: it keeps the values of
+# variables it is not currently sampling and reports them again, which a component may
+# legitimately want to do to reuse them if the branch comes back. Gibbs must take the set of
+# variables from the model rather than from this report, or such a component would keep a stale
+# leaf in the snapshot and hide a change of support from `check_variable_set`.
+struct KeepsValues{S} <: AbstractMCMC.AbstractSampler
+    inner::S
+end
+struct KeepsValuesState{S,V}
+    inner::S
+    report::V
+end
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::KeepsValues; kwargs...
+)
+    transition, state = AbstractMCMC.step(rng, model, spl.inner; kwargs...)
+    return transition, KeepsValuesState(state, Inference.gibbs_get_parameter_values(state))
+end
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::KeepsValues,
+    state::KeepsValuesState;
+    kwargs...,
+)
+    transition, inner = AbstractMCMC.step(rng, model, spl.inner, state.inner; kwargs...)
+    report = merge(state.report, Inference.gibbs_get_parameter_values(inner))
+    return transition, KeepsValuesState(inner, report)
+end
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::KeepsValues, state...; kwargs...
+)
+    return AbstractMCMC.step(rng, model, spl, state...; kwargs...)
+end
+Inference.gibbs_get_parameter_values(state::KeepsValuesState) = state.report
+function Inference.gibbs_update_state!!(
+    spl::KeepsValues, state::KeepsValuesState, model, gv
+)
+    return KeepsValuesState(
+        Inference.gibbs_update_state!!(spl.inner, state.inner, model, gv), state.report
+    )
+end
+Inference.gibbs_get_stats(state::KeepsValuesState) = Inference.gibbs_get_stats(state.inner)
+function Inference.allow_varying_dimension(spl::KeepsValues)
+    return Inference.allow_varying_dimension(spl.inner)
+end
+function Inference.allow_discrete_variables(spl::KeepsValues)
+    return Inference.allow_discrete_variables(spl.inner)
+end
+Inference.init_strategy(spl::KeepsValues) = Inference.init_strategy(spl.inner)
+
 @testset verbose = true "Gibbs conditioning" begin
     @testset "type stability" begin
         # A test model that has multiple features in one package:
@@ -583,31 +634,67 @@ end
         end
         model = dynamic_bernoulli_normal(2.0)
 
-        # A Metropolis-Hastings ratio between states of different dimension is not the one the
-        # algorithm assumes, and a `LogDensityFunction` fixes its layout at the first step, so
-        # both are rejected rather than left to sample a different target than the model's.
-        @test_throws ArgumentError sample(
-            StableRNG(42), model, Gibbs(:b => MH(), :θ => MH()), 200; progress=false
-        )
-        @test_throws ArgumentError sample(
-            StableRNG(42), model, Gibbs(:b => MH(), :θ => HMC(0.1, 5)), 200; progress=false
-        )
+        # Splitting `b` off is rejected whatever samples `θ`, and for the same reason each
+        # time: `b`'s step is what makes `θ[2]` come and go, while the `θ` component is the one
+        # that samples it. The ownership condition decides this before the component's own
+        # capability is consulted, so the message is the same for `MH`, `HMC` and `PG`, and
+        # asserting it is what distinguishes the guard from an internal error raised further
+        # down. Sampling this partition gave P(b=1) = 0.11 against an exact 0.394.
+        for component in (MH(), HMC(0.1, 5), PG(50))
+            @test_throws "which does not sample it" sample(
+                StableRNG(42),
+                model,
+                Gibbs(:b => MH(), :θ => component),
+                200;
+                progress=false,
+            )
+        end
 
-        # Splitting `b` off is rejected too: `b`'s step is what makes `θ[2]` come and go, so
-        # `MH`'s acceptance ratio would span the two supports. Sampling it gave P(b=1) = 0.11
-        # against an exact 0.39.
-        @test_throws ArgumentError sample(
-            StableRNG(42), model, Gibbs(:b => MH(), :θ => PG(50)), 200; progress=false
-        )
-
-        # `Xoshiro(1)`'s initialising draw already reaches `θ[2]`, which is the case that used
-        # to escape: the leaf stayed in the snapshot at a stale value, was conditioned into
-        # `b`'s step from then on, and so was never seen to reappear. It is load-bearing that
-        # this seed starts with `b == 1`; `StableRNG(42)` above starts with `b == 0` and
-        # exercises the other path.
-        @test_throws ArgumentError sample(
+        # `Xoshiro(1)`'s initialising draw already reaches `θ[2]`, so `b`'s step makes it
+        # *stop* existing rather than appear. It is load-bearing that this seed starts with
+        # `b == 1`; `StableRNG(42)` above starts with `b == 0` and exercises the other
+        # direction. Both are the ownership condition, so both name the deciding component.
+        @test_throws "stopped existing during a step of the component sampling b" sample(
             Xoshiro(1), model, Gibbs(:b => MH(), :θ => PG(50)), 200; progress=false
         )
+
+        # A component that keeps and reports the values it is not currently sampling must not
+        # escape either check. Gibbs reads the set of variables off the model, so the verdict
+        # is the same as for the bare sampler and does not depend on the initialising draw.
+        # Reporting the stale leaf instead once let this partition sample, returning P(b=1)
+        # between 0.08 and 0.18, but only for the seeds whose first draw reached `θ[2]`.
+        for rng in (StableRNG(42), Xoshiro(1))
+            @test_throws "which does not sample it" sample(
+                rng,
+                model,
+                Gibbs(:b => MH(), :θ => KeepsValues(PG(20))),
+                200;
+                progress=false,
+            )
+        end
+
+        # A block whose shape changes from one sweep to the next is a different question from
+        # `allow_varying_dimension`: here `PG` moves between the two supports and `θ`'s
+        # component only ever sees a block already at one shape or the other. `MH` samples that
+        # and stays unbiased; a component reusing a `LogDensityFunction` cannot, because the
+        # layout and the adapted state it caches are sized for the old shape.
+        @test_throws "between Gibbs sweeps" sample(
+            StableRNG(42),
+            model,
+            Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => HMC(0.1, 5)),
+            200;
+            progress=false,
+        )
+        chn = sample(
+            StableRNG(42),
+            model,
+            Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => MH()),
+            2000;
+            discard_initial=1000,
+            progress=false,
+        )
+        bs = vec(chn[@varname(b)])
+        @test count(==(1), bs) / length(bs) ≈ 0.394 atol = 0.05
 
         # Rejected even when both components can handle a varying set of variables: `θ[2]`
         # comes and goes under the `b` component's proposal while the `θ` component is the one
@@ -1132,18 +1219,14 @@ end
             x[2] ~ Normal()
             return 0.0 ~ Normal(x[1] + x[2], 0.1)
         end
-        # One component owns `x[1]` while another owns all of `x`, so conditioning the first
-        # would have to cover part of `x` and leave the rest free. The values cannot express
-        # that, and dropping `x` wholesale would silently let the first component sample
-        # `x[2]` as well, so this must fail rather than sample the wrong block.
-        spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))
-        @test_throws ArgumentError sample(StableRNG(468), pair(), spl, 5; progress=false)
-
-        # Whether the values store `x` as a unit is what decides this, not the declared
-        # varnames. The same partition with MH on the containing block is expressible, because
-        # MH reports a key per element and the first component can be given `x[2]` alone.
-        spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => MH())
-        @test sample(StableRNG(468), pair(), spl, 5; progress=false) isa Any
+        # Whether the values store `x` as a unit is what decides this, and that is a property
+        # of the model's tilde statements rather than of the samplers: the snapshot comes from
+        # a model evaluation, so `x[1] ~` and `x[2] ~` give a key each and the first component
+        # can be handed `x[2]` alone whatever holds the containing block.
+        for component in (MH(), HMC(0.05, 3))
+            spl = Gibbs(@varname(x[1]) => MH(), @varname(x) => component)
+            @test sample(StableRNG(468), pair(), spl, 5; progress=false) isa Any
+        end
 
         # A single tilde over the whole vector cannot be split, whatever samples it.
         @model function joint()

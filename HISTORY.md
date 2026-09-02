@@ -2,7 +2,9 @@
 
 Gibbs conditions its component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is gone along with `Turing.Inference.make_conditional`.
 
-Gibbs now rejects two partitions it used to accept and sample incorrectly. Splitting a value stored as one unit -- one component owning `x[1]` while another owns `x`, where the model writes `x` in a single tilde or the other component vectorises it -- throws instead of handing the first component a larger block. And a component whose step changes which variables the model reaches has to be able to sample a varying set of them, which of Turing's samplers means `PG` / `CSMC`: put the variable and whatever decides whether it exists in one block. Previously the deciding variable could sit in another component, and the chain came back biased.
+Gibbs now rejects two partitions it used to accept and sample incorrectly. Splitting a value the model stores as one unit -- one component owning `x[1]` while another owns `x`, where the model writes `x` in a single tilde -- throws instead of handing the first component a larger block. Whether a value is stored as a unit depends only on the model's tilde statements, not on which sampler holds the containing block, so element-wise `x[1] ~` and `x[2] ~` split cleanly under any component. And a component whose step changes which variables the model reaches has to be able to sample a varying set of them, which of Turing's samplers means `PG` / `CSMC`: put the variable and whatever decides whether it exists in one block. Previously the deciding variable could sit in another component, and the chain came back biased.
+
+A component that reuses a `LogDensityFunction` -- `HMC`, `NUTS`, `ESS`, `externalsampler` -- now says so clearly when another component's step changes the shape of its block between sweeps, instead of failing inside the layout with a `BoundsError`. `Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => MH())` is the way to sample such a scheme; `MH` caches no layout.
 
 Every variable must be declared for a component, and `check_model=false` no longer skips that check.
 

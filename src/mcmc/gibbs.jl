@@ -7,9 +7,9 @@
 # every variable outside it, so the component samples that block's full conditional.
 #
 # Those values are threaded explicitly as an immutable `VarNamedTuple`. Nothing is written in
-# place: the snapshot after a component's step is rebuilt as what it conditioned on plus what
-# it reported, so a variable it stopped reaching leaves the snapshot instead of lingering at a
-# stale value.
+# place, and nothing accumulates: after each component's step the snapshot is the set of
+# variables a model evaluation reaches at the proposed values, so a variable the model stopped
+# reaching leaves the snapshot instead of lingering at a stale value.
 #
 # Reading what to condition off that snapshot's keys is equivalent to deciding it per tilde
 # statement, where the model's own `VarName` is available, so long as two things hold: no
@@ -76,14 +76,21 @@ const _ISGIBBSCOMPONENT_DEFAULT = which(isgibbscomponent, Tuple{AbstractSampler}
 """
     Turing.Inference.allow_varying_dimension(spl::AbstractSampler)
 
-Whether `spl` can sample a block whose set of variables changes between Gibbs sweeps.
+Whether `spl` can move between supports *within* one of its own steps, that is, sample a block
+whose set of variables its own proposal changes.
 
-Defaults to `false`, because sampling a target whose dimension changes takes a construction
-built for it. A sampler reusing a `LogDensityFunction` through
-[`gibbs_recompute_ldf_and_params`](@ref) has no slot for a variable that appears later, and a
-Metropolis-Hastings ratio between states of different dimension is not the one the algorithm
-assumes. `PG` and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches,
-so they can.
+Defaults to `false`, because proposing between two supports takes a construction built for it.
+A Metropolis-Hastings ratio between states of different dimension is not the one the algorithm
+assumes, and a `LogDensityFunction`'s layout is fixed for the whole of a step, so it has no
+slot for a variable the proposal reaches part-way through: a leapfrog step that crosses into
+another branch raises `KeyError` from DynamicPPL rather than reaching this check at all. `PG`
+and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches, so they can.
+
+This is a different question from whether a component can be handed a block at a new shape from
+one sweep to the next, which no trait settles: it depends on whether the component caches a
+layout, so it is checked where such a layout is reused, in
+[`_require_same_block_shape`](@ref). `MH` answers `false` here and yet samples a block whose
+shape changes between sweeps perfectly well.
 
 Returning `true` is a claim about the algorithm, and it carries an obligation: the component
 must have coherent semantics for a variable it samples going away and later coming back. `PG`
@@ -109,6 +116,13 @@ allow_varying_dimension(::PG) = true
 _component_name(spl::AbstractSampler) = nameof(typeof(spl))
 _component_name(spl::Union{RepeatSampler,ExternalSampler}) = _component_name(spl.sampler)
 
+# Whichever sampler answered `allow_varying_dimension`, which `ExternalSampler` does not
+# forward. Unwrapping there would name a sampler that may well declare the trait it is being
+# said to lack.
+_trait_owner_name(spl::AbstractSampler) = nameof(typeof(spl))
+_trait_owner_name(spl::RepeatSampler) = _trait_owner_name(spl.sampler)
+_trait_owner_name(spl::ExternalSampler) = "externalsampler($(nameof(typeof(spl.sampler))))"
+
 """
     Turing.Inference.gibbs_get_parameter_values(state)
 
@@ -117,8 +131,8 @@ state.
 
 Turing's Gibbs sampler maintains, at all points during the sampling process, a single global
 `VarNamedTuple` that contains the **raw** values for all variables in the model. During the
-sampling process, it calls each component sampler in turn and updates the global
-`VarNamedTuple` with the new raw values returned by each sampler.
+sampling process, it calls each component sampler in turn and rebuilds that `VarNamedTuple`
+around the new raw values returned by each sampler.
 
 This function is used to pass that information *from* a component sampler *to* the Gibbs
 sampler. Note that this means that the `VarNamedTuple` returned by this function should
@@ -129,12 +143,13 @@ for a variable that appeared mid-run. `DynamicPPL.get_parameter_values` returns 
 `~` values of a state whose accumulator holds both.
 
 A step need not reach every variable the component samples: a target inside a branch the model
-did not take has no value that sweep. Both answers are allowed -- leave it out, or keep the
-value the component last held, if the algorithm accounts for variables it is not currently
-sampling -- but the choice is what Gibbs sees. It reads any change in the reported set as a
-change of support and asks [`allow_varying_dimension`](@ref) of the component that made it, so
-a component that keeps inactive values never trips that check and owns the correctness of
-doing so. Gibbs infers nothing further from presence or absence.
+did not take has no value that sweep, and leaving it out is the right answer. A component that
+wants to remember such a value -- to reuse it if the branch comes back -- should keep it in its
+own state and not report it. Gibbs does not read the report to decide which variables exist:
+it evaluates the model (see [`reached_values`](@ref)), because existence is a property of the
+model at the current values and not of a component's bookkeeping. Reporting a value for a
+variable the model no longer reaches has no effect on the snapshot, and reporting one for a
+variable the component does not sample is an error.
 """
 function gibbs_get_parameter_values(state)
     # This has to be the only entry point, not one method among several: a method specialised
@@ -237,10 +252,12 @@ them later.
 Returns `(new_ldf, new_params, accs)` where `accs` is the set of accumulators after
 evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
 
-!!! warning
-    This assumes that `old_ldf.model` (i.e., the model conditioned on the previous values)
-    and `model` (i.e., the model conditioned on the new values) have the same structure, i.e.,
-    all other components of the LogDensityFunction can be reused.
+This requires that `old_ldf.model` (i.e., the model conditioned on the previous values) and
+`model` (i.e., the model conditioned on the new values) reach the same variables, so that the
+flat layout can be reused. [`_require_same_block_shape`](@ref) checks that rather than assuming
+it, and throws with an explanation if another component's step has changed the block's shape.
+The layout is reused rather than rebuilt because its ordering is what the component's own
+state, such as a Hamiltonian metric, is indexed by.
 """
 function gibbs_recompute_ldf_and_params(
     old_ldf::DynamicPPL.LogDensityFunction,
@@ -248,12 +265,18 @@ function gibbs_recompute_ldf_and_params(
     global_vals::DynamicPPL.VarNamedTuple,
     extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
+    layout = DynamicPPL.get_all_ranges_and_transforms(old_ldf)
+    _require_same_block_shape(layout, model, global_vals)
+    # Built without `adtype` first, so that nothing is prepared at the previous step's point:
+    # `layout` guarantees the same variables, not the same position, and a taped backend
+    # records its tape wherever it is prepared. The second construction prepares at the
+    # current point and is the only one that prepares at all.
     new_ldf = DynamicPPL.LogDensityFunction(
         model,
         DynamicPPL.get_logdensity_callable(old_ldf),
-        DynamicPPL.get_all_ranges_and_transforms(old_ldf),
+        layout,
         DynamicPPL.get_sample_input_vector(old_ldf);
-        adtype=old_ldf.adtype,
+        adtype=nothing,
     )
     accs = DynamicPPL.OnlyAccsVarInfo(
         DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...
@@ -263,12 +286,103 @@ function gibbs_recompute_ldf_and_params(
         new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
     )
     new_params = DynamicPPL.get_vector_params(accs)
+    if old_ldf.adtype !== nothing
+        new_ldf = DynamicPPL.LogDensityFunction(
+            model,
+            DynamicPPL.get_logdensity_callable(old_ldf),
+            layout,
+            new_params;
+            adtype=old_ldf.adtype,
+        )
+    end
     return new_ldf, new_params, accs
+end
+
+"""
+    _require_same_block_shape(layout, model, global_vals)
+
+Throw unless the block `layout` describes still holds exactly the variables the component
+samples.
+
+A component reusing a `LogDensityFunction` keeps the flat layout its first step established,
+and its adapted state -- a Hamiltonian metric, a step size -- is sized for that layout. So it
+cannot be re-targeted at a block of a different shape, which is what another component's step
+does when it decides whether one of this block's variables exists. Rebuilding the layout is not
+enough on its own: `AdvancedHMC` then meets a position vector of one length and a metric of
+another.
+
+This is a different question from [`allow_varying_dimension`](@ref), which asks whether a
+component may move between supports *within* its own step. A component can be unable to do
+either, able to do both, or, like `MH`, unable to move between supports within a step yet
+perfectly able to sample a block it is handed at a new shape each sweep -- `MH` caches no
+layout, so it never reaches here.
+"""
+function _require_same_block_shape(
+    layout::DynamicPPL.VarNamedTuple,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+)
+    conditioned = DynamicPPL.conditioned(model)
+    function fail(leaf, what)
+        return throw(
+            ArgumentError(
+                "The variable $(leaf) $(what) the block this component samples between Gibbs " *
+                "sweeps. A component that reuses a `LogDensityFunction` fixes the block's " *
+                "layout at its first step and sizes its adapted state to it, so it cannot " *
+                "sample a block whose shape changes. Put $(leaf) and the variables that " *
+                "decide whether it exists in one block sampled by a component that rebuilds " *
+                "its trace each sweep, such as `PG`, or sample this block with `MH`, which " *
+                "caches no layout.",
+            ),
+        )
+    end
+    for vn in keys(layout)
+        DynamicPPL.hasvalue(global_vals, vn) || fail(vn, "left")
+    end
+    # A layout holds one range per tilde statement, so its key can be a whole vector where the
+    # values keep an element per leaf. Ask which key covers the leaf rather than looking the
+    # leaf up, or a vector-valued `m ~` would look like `m[1]` having no slot.
+    for vn in keys(global_vals), leaf in AbstractPPL.varname_leaves(vn, global_vals[vn])
+        DynamicPPL.hasvalue(conditioned, leaf) && continue
+        any(k -> AbstractPPL.subsumes(k, leaf), keys(layout)) && continue
+        fail(leaf, "joined")
+    end
+    return nothing
 end
 
 #
 # Gibbs implementation itself
 #
+
+"""
+    reached_values(rng, model, proposed)
+
+Return the values of the variables `model` reaches when evaluated at `proposed`.
+
+This is how the snapshot after a component's step is built, rather than from the values the
+component reports. Which variables exist is a property of the model at the current values, so
+only an evaluation settles it, and a component's report cannot be trusted for it: a component
+is free to keep a value for a variable it is not currently sampling, which is useful to it and
+none of Gibbs's business, but were that value to enter the snapshot it would be conditioned
+into the step of whichever component decides the variable's existence, and
+[`check_variable_set`](@ref) would never see the variable come back.
+
+The evaluation costs one model evaluation per component step, and draws from the prior only for
+a variable `proposed` has no value for. That happens when a component under-reports a variable
+it samples, or when a variable appeared during this step, and `check_variable_set` throws in
+both cases -- so nothing that returns normally has consumed `rng`.
+"""
+function reached_values(rng, model, proposed::DynamicPPL.VarNamedTuple)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    _, accs = DynamicPPL.init!!(
+        rng,
+        model,
+        accs,
+        DynamicPPL.InitFromParams(proposed, DynamicPPL.InitFromPrior()),
+        DynamicPPL.UnlinkAll(),
+    )
+    return DynamicPPL.get_raw_values(accs)
+end
 
 """
     conditioned_values(global_vnt, target_variables)
@@ -277,10 +391,13 @@ Return the values in `global_vnt` for every variable *not* sampled by this Gibbs
 i.e. the ones it conditions on.
 
 A component may own part of a value the model stores as a unit, which cannot be expressed:
-under `Gibbs(@varname(x[1]) => MH(), @varname(x) => HMC(0.05, 3))` the second component writes
-`x` back whole, so freeing it for the first to sample `x[1]` would free `x[2]` too. This throws
-rather than hand a component a larger block than it owns. Sampling such a partition means
-writing a sampler against the AbstractMCMC interface directly.
+under `x ~ MvNormal(zeros(2), I)` the values hold `x` as one key, so freeing it for a component
+that samples `x[1]` would free `x[2]` too. This throws rather than hand a component a larger
+block than it owns. Whether a partition is expressible is a property of the model's tilde
+statements and not of the samplers -- element-wise `x[1] ~` and `x[2] ~` give a key each and
+split cleanly, because the snapshot comes from a model evaluation rather than from what a
+component reports. Sampling a genuinely unsplittable block means writing a sampler against the
+AbstractMCMC interface directly.
 
 Conditioned variables reach `tilde_observe!!`, so particle samplers reweight on them. That is
 what makes the component's target distribution correct: a conditioned variable the target
@@ -506,24 +623,34 @@ end
 
 function _require_varying_dimension(sampler, leaf, what::String)
     allow_varying_dimension(sampler) && return nothing
-    # `_component_name` unwraps: naming the wrapper tells the reader nothing, since it is the
-    # sampler inside that declared the trait. The reason a given sampler cannot do this is
-    # per-sampler -- an acceptance ratio spanning two supports, a fixed `LogDensityFunction`
-    # layout -- so it lives in `allow_varying_dimension`'s docstring rather than here.
-    name = _component_name(sampler)
+    # The name has to be whichever sampler answered the trait, which is not always the one
+    # inside: `RepeatSampler` forwards `allow_varying_dimension` but `ExternalSampler` does
+    # not, so naming the wrapped sampler there would state the opposite of what it declares.
+    # The reason a given sampler cannot do this is per-sampler, so it lives in
+    # `allow_varying_dimension`'s docstring rather than here.
+    name = _trait_owner_name(sampler)
+    remedy = if sampler isa ExternalSampler
+        # Suggesting a component that declares the trait would be useless: the wrapper
+        # overrides whatever it wraps.
+        "`externalsampler` fixes the parameter layout whatever it wraps, so sampling this " *
+        "block takes a sampler used through the `AbstractMCMC` interface directly rather " *
+        "than wrapped."
+    else
+        "Put $(leaf) and the variables that decide whether it exists in one block, sampled " *
+        "by a component that can, such as `PG`."
+    end
     return throw(
         ArgumentError(
             "The variable $(leaf) $(what) during a step of $(name), so that step is " *
             "proposing between states with different sets of variables, which $(name) does " *
-            "not declare it can sample (see `allow_varying_dimension`). Put $(leaf) and the " *
-            "variables that decide whether it exists in one block, sampled by a component " *
-            "that can, such as `PG`.",
+            "not declare it can sample (see `allow_varying_dimension`). " *
+            remedy,
         ),
     )
 end
 
 """
-    check_variable_set(spl, sampler, varnames, old_vnt, component_vnt)
+    check_variable_set(spl, sampler, varnames, old_vnt, new_vnt, proposed)
 
 Check that a change in the set of variables is one the component that made it may make.
 
@@ -547,66 +674,89 @@ exists, `Gibbs(@varname(b) => MH(), @varname(θ) => PG(20))` used to sample and 
 P(b=1) between 0.0 and 0.18 against an exact 0.394, while
 `Gibbs((@varname(b), @varname(θ)) => PG(20))` gives 0.38.
 
-Both directions are checked. A leaf the component reports that was not in the snapshot has
-appeared; a leaf of `varnames` that was in the snapshot and the component no longer reports has
-gone.
+Both directions are checked, and symmetrically: `old_vnt` and `new_vnt` are both the set of
+variables a model evaluation reached (see [`reached_values`](@ref)), so a leaf in one and not
+the other came or went during this step, and nothing else can have caused it -- every variable
+outside the component's block was conditioned.
 
-The verdict does not depend on the draw Gibbs initialises with, and that rests on the snapshot
-being rebuilt after each step rather than merged into (see the note above
-[`gibbs_step_recursive`](@ref)). A leaf a component stops reporting leaves the snapshot, so
-when the model reaches it again it is *assumed* during the step of whichever component decides
-its existence, and shows up in that component's own report -- where the appearance branch sees
-it and names the right component. Were the snapshot merged into instead, the leaf would linger
-at a stale value, be conditioned into that component's step forever, and the appearance branch
-would be dead for it: a split partition would then be rejected only for those seeds whose
-initialising draw happened to miss the variable.
+Taking both sets from the model, rather than from what the component reported, is what makes
+the verdict independent of the draw Gibbs initialises with and of the component's own
+bookkeeping. A component is free to keep a value for a variable it is not currently sampling;
+were that value taken into the snapshot it would be conditioned into the step of whichever
+component decides the variable's existence, that step would never assume it again, and the
+appearance branch would be dead for it -- so a split partition would be rejected only for
+those seeds whose initialising draw happened to miss the variable.
 """
 function check_variable_set(
     spl::Gibbs,
     sampler,
     varnames,
     old_vnt::DynamicPPL.VarNamedTuple,
-    component_vnt::DynamicPPL.VarNamedTuple,
+    new_vnt::DynamicPPL.VarNamedTuple,
+    proposed::DynamicPPL.VarNamedTuple,
 )
     # Walk to the leaves rather than compare keys: an array stored under a single key can grow
     # or lose an element, and an `x[5]` inside a branch matters as much as a whole `z`.
-    for vn in keys(component_vnt), leaf in AbstractPPL.varname_leaves(vn, component_vnt[vn])
-        DynamicPPL.hasvalue(old_vnt, leaf) && continue
-        if !any(hv -> AbstractPPL.subsumes(hv, leaf), varnames)
-            owner = findfirst(
-                vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames
-            )
-            throw(
-                ArgumentError(
-                    if owner === nothing
-                        "The variable $(leaf) appeared during a step of " *
-                        "$(nameof(typeof(sampler))) and no component samples it, so every " *
-                        "component would condition on a single draw of it for the rest of " *
-                        "the run. Assign it to a component."
-                    else
-                        # Name the components by what they sample, not by their sampler
-                        # type: two components of the same type would otherwise give
-                        # "during a step of MH, which does not sample it: MH does".
-                        "The variable $(leaf) appeared during a step of the component " *
-                        "sampling $(join(varnames, ", ")), which does not sample it. The " *
-                        "component sampling $(join(spl.varnames[owner], ", ")) does. " *
-                        "Whichever component's step decides whether $(leaf) exists has to " *
-                        "be the one that samples it, or that other component conditions on " *
-                        "a variable the state being proposed does not have, and the chain " *
-                        "comes back biased. Put $(leaf) and the variables that decide " *
-                        "whether it exists in one block."
-                    end,
-                ),
-            )
+    for (from, to, what) in
+        ((new_vnt, old_vnt, "appeared"), (old_vnt, new_vnt, "stopped existing"))
+        for vn in keys(from), leaf in AbstractPPL.varname_leaves(vn, from[vn])
+            DynamicPPL.hasvalue(to, leaf) && continue
+            _require_owned(spl, sampler, varnames, leaf, what)
+            _require_varying_dimension(sampler, leaf, what)
         end
-        _require_varying_dimension(sampler, leaf, "appeared")
     end
-    for vn in keys(old_vnt), leaf in AbstractPPL.varname_leaves(vn, old_vnt[vn])
-        any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) || continue
-        DynamicPPL.hasvalue(component_vnt, leaf) && continue
-        _require_varying_dimension(sampler, leaf, "stopped existing")
+    # Anything the model reaches that the component did not report was drawn from the prior by
+    # `reached_values`, just to let the evaluation finish. The loops above have already ruled
+    # on whether the variable may come or go, so what is left is a component that sampled a
+    # variable and failed to return it, and its value would silently be a prior draw.
+    for vn in keys(new_vnt), leaf in AbstractPPL.varname_leaves(vn, new_vnt[vn])
+        DynamicPPL.hasvalue(proposed, leaf) && continue
+        throw(
+            ArgumentError(
+                "The component sampling $(join(varnames, ", ")) did not report a value for " *
+                "$(leaf), which it samples and which the model reaches, so the value would " *
+                "be a draw from the prior. `gibbs_get_parameter_values` has to return every " *
+                "variable the component sampled this step.",
+            ),
+        )
     end
     return nothing
+end
+
+"""
+    _require_owned(spl, sampler, varnames, leaf, what)
+
+Throw unless `leaf`, whose existence just changed, is sampled by the component that changed it.
+
+A variable coming or going under one component's proposal while another samples it means that
+other component conditions on a variable absent from the state being proposed: the two blocks
+disagree about the support, and the chain comes back biased even though both samplers can
+handle varying dimension on their own.
+"""
+function _require_owned(spl::Gibbs, sampler, varnames, leaf, what::String)
+    any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) && return nothing
+    owner = findfirst(vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames)
+    return throw(
+        ArgumentError(
+            if owner === nothing
+                "The variable $(leaf) $(what) during a step of " *
+                "$(_component_name(sampler)) and no component samples it, so every " *
+                "component would condition on a single draw of it for the rest of the run. " *
+                "Assign it to a component."
+            else
+                # Name the components by what they sample, not by their sampler type: two
+                # components of the same type would otherwise give "during a step of MH,
+                # which does not sample it: MH does".
+                "The variable $(leaf) $(what) during a step of the component sampling " *
+                "$(join(varnames, ", ")), which does not sample it. The component sampling " *
+                "$(join(spl.varnames[owner], ", ")) does. Whichever component's step " *
+                "decides whether $(leaf) exists has to be the one that samples it, or that " *
+                "other component conditions on a variable the state being proposed does " *
+                "not have, and the chain comes back biased. Put $(leaf) and the variables " *
+                "that decide whether it exists in one block."
+            end,
+        ),
+    )
 end
 
 """
@@ -785,9 +935,9 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
-    component_vnt = gibbs_get_parameter_values(new_state)
-    check_variable_set(spl, sampler, varnames, vnt, component_vnt)
-    new_vnt = merge(conditioned, component_vnt)
+    proposed = merge(conditioned, gibbs_get_parameter_values(new_state))
+    new_vnt = reached_values(rng, model, proposed)
+    check_variable_set(spl, sampler, varnames, vnt, new_vnt, proposed)
 
     states = (states..., new_state)
     return gibbs_initialstep_recursive(
@@ -873,12 +1023,12 @@ The `step_function` argument should always be either AbstractMCMC.step or
 AbstractMCMC.step_warmup.
 """
 # ──────────────────────────────────────────────────────────────────────────────
-# The snapshot after a component's step is what it conditioned on plus what it reported --
-# rebuilt, not merged into. `merge` only ever overwrites a key, so a variable the component
-# stopped reaching would keep a stale value: it would then be conditioned into the step of
-# whichever component decides its existence, so that step would never assume it again and
-# `check_variable_set` could never see it reappear. Rebuilding lets it leave the snapshot, so
-# the sweep that brings it back is an appearance in the deciding component's own report.
+# The snapshot after a component's step is the set of variables the model reaches at the
+# proposed values, not the component's report merged into the old snapshot. Only an evaluation
+# settles which variables exist, and a report cannot be trusted for it: a component may keep a
+# value for a variable it is not currently sampling, and `merge` would leave that stale value
+# in the snapshot, conditioned into the step of whichever component decides its existence, so
+# that step would never assume it again and `check_variable_set` could never see it reappear.
 # ──────────────────────────────────────────────────────────────────────────────
 
 function gibbs_step_recursive(
@@ -916,9 +1066,9 @@ function gibbs_step_recursive(
         rng, conditioned_model, sampler, state; kwargs..., discard_sample=true
     )
 
-    component_vnt = gibbs_get_parameter_values(new_state)
-    check_variable_set(spl, sampler, varnames, global_vnt, component_vnt)
-    new_global_vnt = merge(conditioned, component_vnt)
+    proposed = merge(conditioned, gibbs_get_parameter_values(new_state))
+    new_global_vnt = reached_values(rng, model, proposed)
+    check_variable_set(spl, sampler, varnames, global_vnt, new_global_vnt, proposed)
 
     new_states = (new_states..., new_state)
     return gibbs_step_recursive(
