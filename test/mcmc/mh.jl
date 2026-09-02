@@ -107,6 +107,26 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
             @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
         end
+
+        @testset "ignored aggregate proposal" begin
+            @model function f()
+                x = zeros(2)
+                x[1] ~ Exponential(0.5)
+                return x[2] ~ Exponential(0.5)
+            end
+
+            expected = sample(StableRNG(2876), f(), MH(), 20; progress=false)
+            actual = sample(
+                StableRNG(2876),
+                f(),
+                MH(@varname(x) => filldist(Exponential(1.0), 2)),
+                20;
+                progress=false,
+                verbose=false,
+            )
+            @test actual[@varname(x[1])] == expected[@varname(x[1])]
+            @test actual[@varname(x[2])] == expected[@varname(x[2])]
+        end
     end
 
     @testset "chain includes := statements" begin

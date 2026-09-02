@@ -226,7 +226,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
             # Convert all keys to VarNames.
             vn, proposal = pair
             vn = _to_varname(vn)
-            if !haskey(raw_vals, vn)
+            if vn ∉ keys(raw_vals)
                 continue
             end
             proposal_dist = if proposal isa Distribution

@@ -1,3 +1,7 @@
+# Unreleased
+
+`MH` no longer includes ignored aggregate proposals in its acceptance ratio.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
