@@ -1,3 +1,7 @@
+# Unreleased
+
+`NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
