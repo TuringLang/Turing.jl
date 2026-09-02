@@ -285,6 +285,7 @@ function AbstractMCMC.step(
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
+    vi = DynamicPPL.setacc!!(vi, MHUsedProposalsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
 
     # Since our initial parameters are sampled with `initial_params`, which could be
@@ -365,9 +366,8 @@ without the support having changed. Membership in `vns_with_proposal` is tested 
 really proposes from the prior.
 """
 function _require_same_variables(
-    spl::MH, old_vi::DynamicPPL.AbstractVarInfo, new_vi::DynamicPPL.AbstractVarInfo
+    ::MH, old_vi::DynamicPPL.AbstractVarInfo, new_vi::DynamicPPL.AbstractVarInfo
 )
-    isempty(spl.vns_with_proposal) && return nothing
     function leaves(vnt)
         return Set(
             leaf for vn in keys(vnt) for leaf in AbstractPPL.varname_leaves(vn, vnt[vn])
@@ -376,8 +376,13 @@ function _require_same_variables(
     before = leaves(DynamicPPL.get_parameter_values(old_vi))
     after = leaves(DynamicPPL.get_parameter_values(new_vi))
     isequal(before, after) && return nothing
+    # Which variables actually had a proposal, as the two evaluations recorded it -- not
+    # `spl.vns_with_proposal`, whose keys may match no tilde statement and so be declared
+    # without ever being used. A variable drawn from its prior cancels against `p` in the
+    # ratio whatever its dimension, so only one that was proposed from breaks the crossing.
+    used = union(leaves(used_proposals(old_vi)), leaves(used_proposals(new_vi)))
     changed = union(setdiff(before, after), setdiff(after, before))
-    custom = filter(in(spl.vns_with_proposal), changed)
+    custom = intersect(changed, used)
     isempty(custom) && return nothing
     leaf = first(custom)
     what = leaf in before ? "is absent from" : "appears in"
@@ -422,6 +427,7 @@ function AbstractMCMC.step(
     new_vi = DynamicPPL.setacc!!(
         new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
     )
+    new_vi = DynamicPPL.setacc!!(new_vi, MHUsedProposalsAccumulator(spl.vns_with_proposal))
     _, new_vi = DynamicPPL.init!!(
         rng, model, new_vi, init_strategy_given_old, spl.transform_strategy
     )
@@ -498,6 +504,14 @@ function log_proposal_density(
     # prior was.
     vals = DynamicPPL.get_raw_values(vi)
     g = 0.0
+    # TODO(TuringLang/Turing.jl#2876): this iterates the DECLARED proposal keys, while `init`
+    # decides what to draw from by asking `haskey(proposals, vn)` at the model's tilde
+    # `VarName`. A key declared at any other granularity is therefore never proposed from and
+    # still charged here, leaving a spurious `1/q` so that the chain targets `p * L / q`.
+    # Measured on `x ~ MvNormal(zeros(2), I); 1.0 ~ Normal(x[1], 1.0)` with
+    # `MH(@varname(x[1]) => Normal(0, 1))`: E[x1] = 1.00 against an exact 0.5. `used_proposals`
+    # below records what was actually drawn from and is the fix, but it is being made in #2876
+    # rather than here, since it is not a Gibbs matter.
     for (vn, (is_linkedrw, proposal)) in pairs(strategy.proposals)
         if is_linkedrw
             # LinkedRW proposals end up here, but they are symmetric proposals, so we can
@@ -552,6 +566,39 @@ function MHUnspecifiedPriorsAccumulator(vns_with_proposal)
         StoreUnspecifiedPriors(vns_with_proposal)
     )
 end
+
+# The complement of the above: the variables whose proposal was actually USED. `init` decides
+# that by asking `haskey(proposals, vn)` at the model's tilde `VarName`, so a key declared at
+# any other granularity matches nothing and the variable is drawn from its prior. Recording the
+# decision here makes it one computed fact, rather than something each reader re-derives from
+# the declared keys -- which is what let `log_proposal_density` charge the ratio for a proposal
+# that was never drawn from, and the chain target `p * L / q_declared`.
+const MH_USED_ACC_NAME = :MHUsedProposals
+struct StoreUsedProposals
+    vns_with_proposal::Set{VarName}
+end
+function Base.copy(s::StoreUsedProposals)
+    return StoreUsedProposals(Base.copy(s.vns_with_proposal))
+end
+function (s::StoreUsedProposals)(val, tval, logjac, vn, dist::Distribution)
+    return if vn in s.vns_with_proposal
+        dist
+    else
+        DynamicPPL.DoNotAccumulate()
+    end
+end
+function MHUsedProposalsAccumulator(vns_with_proposal)
+    return DynamicPPL.VNTAccumulator{MH_USED_ACC_NAME}(
+        StoreUsedProposals(vns_with_proposal)
+    )
+end
+
+"""
+    used_proposals(vi)
+
+The variables of `vi` whose declared proposal `init` actually drew from.
+"""
+used_proposals(vi) = DynamicPPL.getacc(vi, Val(MH_USED_ACC_NAME)).values
 
 # RWMH can be delegated to AdvancedMH. The type bound is intentionally lax because we just
 # let the MvNormal constructor handle it.

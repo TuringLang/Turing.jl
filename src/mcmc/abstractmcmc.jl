@@ -22,10 +22,19 @@ function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
 end
 
 """
-    ReshapedBlock(variable::VarName, joined::Bool)
+    ReshapedBlock(variable::VarName, change::Symbol)
 
-Says that `variable` has joined (`joined`) or left the block a Gibbs component samples since
-that component last stepped, because another component's step decides whether it exists.
+Says that the parameter layout of the block a Gibbs component samples is no longer the one that
+component last saw, because of `variable`. `change` says how:
+
+  - `:joined`, the variable is in the block now and was not before;
+  - `:left`, the reverse;
+  - `:respecified`, it is in both, but its tilde statement now draws from a distribution with a
+    different linking transform, so the block's linked dimension may have moved although its
+    leaves have not.
+
+All three mean the same thing to a sampler -- rebuild whatever you sized for the block -- and
+`change` only shapes the error message when one cannot.
 
 Defined here rather than beside the rest of the Gibbs interface because the samplers that
 dispatch on it are loaded first. See the five-argument
@@ -33,7 +42,7 @@ dispatch on it are loaded first. See the five-argument
 """
 struct ReshapedBlock{V<:VarName}
     variable::V
-    joined::Bool
+    change::Symbol
 end
 
 """

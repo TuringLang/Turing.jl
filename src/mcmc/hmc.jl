@@ -565,3 +565,17 @@ function gibbs_update_state!!(
 )
     return gibbs_update_state!!(spl, state, model, global_vals)
 end
+
+# The property is really "nothing this state carries is sized for the block", which also holds
+# for an `AdaptiveHamiltonian` asked not to adapt: `NoAdaptation` has no mass matrix to be
+# stale, and `gen_metric` builds one at the current dimension for it. Declaring the capability
+# on `StaticHamiltonian` alone refused `NUTS(0, δ)` and `HMCDA(0, δ, λ)` a block they can take.
+function gibbs_update_state!!(
+    spl::AdaptiveHamiltonian,
+    state::HMCState{TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+) where {TKernel,THam,PhType}
+    return gibbs_update_state!!(spl, state, model, global_vals)
+end

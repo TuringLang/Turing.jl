@@ -56,7 +56,7 @@ To plug a sampler into Gibbs, implement:
   - `gibbs_update_state!!(sampler, state, model, global_vals)` — update the sampler's state to reflect new conditioned values. For samplers that use `LogDensityFunction`, the helper `gibbs_recompute_ldf_and_params` handles the common case.
   - Optionally, `supports_gibbs(sampler)` — return `false` to disallow use in Gibbs (the default is `true`). The old name `isgibbscomponent` still works, with a deprecation warning.
   - Optionally, `allow_varying_dimension(sampler)` — return `true` if the sampler's own proposal can move between supports *within* a step (the default is `false`). See its docstring for what declaring it obliges the sampler to handle.
-  - Optionally, `gibbs_update_state!!(sampler, state, model, global_vals, ::ReshapedBlock)` — the five-argument form, called instead of the four-argument one when another component's step has changed which variables the block holds since this sampler last stepped. It defaults to throwing, so implementing it is how a sampler declares that it copes; there is no separate trait that could fall out of step with the implementation, and a sampler written before it existed keeps the safe answer. `MH` and `PG`/`CSMC` delegate to the four-argument form; the static `HMC` rebuilds its parameter layout and phasepoint; `NUTS`, `HMCDA`, `ESS` and `externalsampler` do not implement it, each carrying something sized for the block.
+  - Optionally, `gibbs_update_state!!(sampler, state, model, global_vals, ::ReshapedBlock)` — the five-argument form, called instead of the four-argument one when another component's step has changed the block's parameter layout since this sampler last stepped, either by changing which variables it holds or by moving one to a distribution with a different linking transform. The gate compares the transform's *type*, not the transform: a change of type can move the linked dimension, a change within one cannot, so a `truncated(Normal(); lower=a)` whose bound moves every sweep is not a reshape. It defaults to throwing, so implementing it is how a sampler declares that it copes; there is no separate trait that could fall out of step with the implementation, and a sampler written before it existed keeps the safe answer. `MH`, `PG`/`CSMC` and `GibbsConditional` delegate to the four-argument form; a `Hamiltonian` that is not adapting rebuilds its parameter layout and phasepoint, which covers `HMC` and also `NUTS(0, δ)` and `HMCDA(0, δ, λ)`, whose states carry `NoAdaptation`. An adapting `NUTS` or `HMCDA`, `ESS` and `externalsampler` do not implement it, each carrying something sized for the block.
   - Optionally, `gibbs_get_stats(state)` — return a `NamedTuple` of the component's statistics for the chain (the default is empty). Gibbs drops component transitions, so statistics have to come off the state.
 
 ### Extension
@@ -92,6 +92,36 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 ### Discrete variables
 
 `Turing.Inference.allow_discrete_variables(sampler)` defaults to `true`. Gradient-based samplers (all `Hamiltonian` subtypes) override this to `false`. `_check_model` uses this to validate the model before sampling. If adding a new sampler that requires continuous variables, override `allow_discrete_variables` to return `false`.
+
+### One component may not reshape another's variables
+
+A component may never change the dimension or the distributional form of a variable belonging
+to another component, unless the two share that variable. Sharing is the only remedy: put the deciding
+variable and what it decides in one block, or write a component that samples both. Both halves
+are enforced in `check_variable_set` by the same ownership test:
+
+  - whether a tilde statement executes at all — the variable appears or leaves;
+  - which distribution it draws from — its family or its support moves, the variable persists.
+
+The second is compared through a *support signature*, `(nameof(typeof(d)), Bijectors.bijector(d))`,
+recorded per tilde statement during the snapshot evaluation: the type name for the family, the
+bijector for the support, both required to be unchanged. So the form is compared and not merely
+the support — `Normal(0, 1)` becoming `TDist(3)` is refused — but never the parameters, since
+`x ~ Normal(m, 1)` with `m` in another block has a different distribution every sweep and the
+same signature, and refusing that would refuse every hierarchical model.
+
+A distribution that implements only the vector linking interface has no `bijector`, and its
+signature falls back to the family alone. That still catches a change of family, and misses only
+a same-family change of support, which needs bounds to express and so is not expressible for
+such a distribution either.
+
+This is an assumption of this implementation, not a property of Gibbs sampling. Each
+component's target is its full conditional wherever the decider sits; what breaks is the
+bookkeeping — a snapshot of raw values cannot see a support change, and a component holding a
+flat parameter layout cannot be re-pointed at another one. It is also conservative: what
+actually separates a fatal support change from a harmless one is irreducibility, which no
+single evaluation decides, so some correct partitions are refused. Do not tighten or loosen it
+without reading the note in the `Gibbs` docstring, which records the measured counter-example.
 
 ### Conditioned variables are observations
 

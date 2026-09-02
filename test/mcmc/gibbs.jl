@@ -15,6 +15,7 @@ using Distributions: sample
 using DynamicPPL: DynamicPPL
 using FlexiChains: FlexiChains
 using ForwardDiff: ForwardDiff
+using LinearAlgebra: LinearAlgebra
 using Random: Random, Xoshiro
 using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
@@ -680,7 +681,10 @@ end
         # settled by whether it implements `gibbs_update_state!!` for a `ReshapedBlock`, which
         # turns on what it carries between steps rather than on the algorithm.
         pg_block = (@varname(b), @varname(θ)) => PG(20)
-        for component in (MH(), HMC(0.1, 5))
+        # `NUTS(0, δ)` and `HMCDA(0, δ, λ)` carry `NoAdaptation`, so they have nothing sized
+        # for the block and take a reshaped one through the same method as `HMC`. Declaring it
+        # on `StaticHamiltonian` alone refused them a block they can sample.
+        for component in (MH(), HMC(0.1, 5), NUTS(0, 0.65), HMCDA(0, 0.65, 1.0))
             chn = sample(
                 StableRNG(42),
                 model,
@@ -706,6 +710,51 @@ end
                 progress=false,
             )
         end
+
+        # A block can change shape with its leaf set unchanged, when a component that shares
+        # the variable moves it to a distribution that links differently: `x` has three leaves
+        # either way, but a simplex occupies two numbers and a free vector three. The gate
+        # compares the transform's type, so this reaches the capability check rather than
+        # dying inside `AdvancedHMC` with a bare `DimensionMismatch`.
+        @model function relinked(y)
+            b ~ Bernoulli(0.5)
+            if b == 1
+                x ~ Dirichlet(3, 1.0)
+            else
+                x ~ MvNormal(zeros(3), LinearAlgebra.I)
+            end
+            return y ~ Normal(sum(x), 1.0)
+        end
+        shared_block = (@varname(b), @varname(x)) => MH()
+        @test_throws "does not implement" sample(
+            StableRNG(42),
+            relinked(1.0),
+            Gibbs(shared_block, @varname(x) => NUTS()),
+            200;
+            progress=false,
+        )
+        # A component that does implement it rebuilds and samples.
+        @test sample(
+            StableRNG(42),
+            relinked(1.0),
+            Gibbs(shared_block, @varname(x) => HMC(0.05, 5)),
+            200;
+            progress=false,
+        ) isa Any
+        # A bound that moves within one transform type is not a shape change, and must not be
+        # gated: the linked dimension never moves, so an adapting `NUTS` copes.
+        @model function movingbound()
+            a ~ Uniform(-1.0, 0.0)
+            x ~ truncated(Normal(0, 1); lower=a)
+            return 0.3 ~ Normal(x, 0.5)
+        end
+        @test sample(
+            StableRNG(42),
+            movingbound(),
+            Gibbs((@varname(a), @varname(x)) => MH(), @varname(x) => NUTS()),
+            200;
+            progress=false,
+        ) isa Any
 
         # A block that empties, rather than merely shrinking, is refused for every sampler.
         # `MH` would in fact sample it correctly, but a `LogDensityFunction` over no variables
@@ -1040,6 +1089,82 @@ end
         @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
     end
 
+    @testset "a component may not move another block's support" begin
+        # The rule: a component may move the dimension or support of a variable only if it also
+        # samples it. Both models below have a decider in one block and the affected variable
+        # in another, so both are refused -- including the second, which would in fact have
+        # sampled correctly, because whether a support change is fatal is a question about
+        # irreducibility that no single evaluation can answer.
+        @model function absorb()
+            b ~ Bernoulli(0.5)
+            if b == 1
+                x ~ Dirichlet(3, 1.0)
+            else
+                x ~ MvNormal(zeros(3), LinearAlgebra.I)
+            end
+            return 0.5 ~ Normal(sum(x), 1.0)
+        end
+        @model function bounded()
+            a ~ Uniform(-1.0, 0.0)
+            x ~ truncated(Normal(0, 1); lower=a)
+            return 0.3 ~ Normal(x, 0.5)
+        end
+        # A discrete variable is never linked, so its bijector is `identity` whatever its
+        # support and the bounds are the only thing separating these two branches. Without
+        # them the partition was accepted and absorbed, returning P(b=1) of 0.0 or 1.0 by
+        # seed against an exact 0.5.
+        @model function discrete_support()
+            b ~ Bernoulli(0.5)
+            if b == 1
+                k ~ DiscreteUniform(1, 2)
+            else
+                k ~ DiscreteUniform(3, 4)
+            end
+            return 0.2 ~ Normal(k, 1.0)
+        end
+        for (model, decider, affected) in (
+            (absorb(), @varname(b), @varname(x)),
+            (bounded(), @varname(a), @varname(x)),
+            (discrete_support(), @varname(b), @varname(k)),
+        )
+            @test_throws "changed distributional form or dimension" sample(
+                Xoshiro(2),
+                model,
+                Gibbs(decider => MH(), affected => MH()),
+                200;
+                check_model=false,
+                progress=false,
+            )
+            # Sharing the block satisfies the rule, so the same model samples.
+            @test sample(
+                Xoshiro(2),
+                model,
+                Gibbs((decider, affected) => MH()),
+                200;
+                check_model=false,
+                progress=false,
+            ) isa Any
+        end
+
+        # A distribution whose PARAMETERS depend on another block is the ordinary hierarchical
+        # case and must not be refused: `x`'s support is the whole line every sweep.
+        @model function meanshift()
+            m ~ Normal(0, 1)
+            x ~ Normal(m, 1)
+            return 0.4 ~ Normal(x, 0.5)
+        end
+        for second in (MH(), NUTS())
+            @test sample(
+                Xoshiro(2),
+                meanshift(),
+                Gibbs(@varname(m) => second, @varname(x) => MH()),
+                200;
+                check_model=false,
+                progress=false,
+            ) isa Any
+        end
+    end
+
     @testset "an adaptive sampler with adaptation switched off works as a component" begin
         # `n_adapts = 0` asks `NUTS`/`HMCDA` not to adapt, which `AHMCAdaptor` honours with
         # `NoAdaptation`. Gibbs then has no preconditioner to renew a metric from, and every
@@ -1154,12 +1279,17 @@ end
         @test mean(ps) ≈ 0.5 atol = 0.02
 
         # Give a variable its own proposal and the cancellation is gone, so the same block is
-        # refused. `MH` also checks this itself, at the proposal rather than afterwards,
-        # because Gibbs only ever sees the state `MH` returns: on rejection that is the state
-        # it proposed *from*, so a rejected crossing would otherwise leave no trace while
-        # having been scored with an invalid ratio.
-        @test !Turing.Inference.allow_varying_dimension(MH(@varname(z) => Normal(0, 0.5)))
+        # refused -- but by `MH` itself, per variable, not by the trait. Whether a crossing is
+        # valid depends on which variable moved and whether that one was proposed from, which
+        # is a fact about one evaluation; a trait asked once cannot supply it, and reading the
+        # declared proposal keys instead is wrong in both directions, since a key may match no
+        # tilde statement and so never be used. So the trait is `true` for every `MH`, and the
+        # refusal happens where the evaluations have recorded what was actually proposed from.
+        # It has to happen there for a second reason: Gibbs only ever sees the state `MH`
+        # returns, which on rejection is the state it proposed *from*, so a rejected crossing
+        # would otherwise leave no trace while having been scored with an invalid ratio.
         @test Turing.Inference.allow_varying_dimension(MH())
+        @test Turing.Inference.allow_varying_dimension(MH(@varname(z) => Normal(0, 0.5)))
         @test_throws ArgumentError sample(
             Xoshiro(1),
             f(),
@@ -1525,10 +1655,15 @@ end
     end
 
     @testset "dynamic transformations with linked samplers" begin
-        # See https://github.com/TuringLang/Turing.jl/issues/2801.
-        # The issue there was that the linked value for `y` was never updated when `x`
-        # changed, even though it should (the transform for `y` depends on `x`), leading to
-        # incorrect results.
+        # Turing.jl#2801. `y`'s transform depends on `x`, and the linked value for `y` was
+        # once not updated when `x` changed, which gave wrong answers; that was fixed, and
+        # this testset asserted the split partition against a NUTS ground truth.
+        #
+        # It is now refused instead. `x` sits in one block and moves the support of a `y` in
+        # another, which is the arrangement Gibbs no longer accepts -- deliberately, and at
+        # the cost of a partition that did sample correctly. The remedy the error gives is
+        # tested below rather than merely stated: one block over both recovers the same
+        # answer.
         @model function dyn()
             x ~ Uniform(-5, 5)
             return y ~ truncated(Normal(); lower=x)
@@ -1539,13 +1674,22 @@ end
             Gibbs(:x => MH(), :y => HMC(0.1, 20)),
             Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
         )
-            chn = sample(
-                StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
+            @test_throws "changed distributional form or dimension" sample(
+                StableRNG(468), model, spl, 100; progress=false
             )
-            # ground truth obtained from NUTS
-            @test mean(chn[:x]) ≈ 0.0 atol = 0.1
-            @test mean(chn[:y]) ≈ 1.5 atol = 0.1
         end
+
+        # Ground truth from NUTS, as before: mean(x) = 0.0, mean(y) = 1.5.
+        chn = sample(
+            StableRNG(468),
+            model,
+            Gibbs((@varname(x), @varname(y)) => MH()),
+            20_000;
+            discard_initial=5_000,
+            progress=false,
+        )
+        @test mean(chn[:x]) ≈ 0.0 atol = 0.1
+        @test mean(chn[:y]) ≈ 1.5 atol = 0.1
     end
 end
 

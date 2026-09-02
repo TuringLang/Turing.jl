@@ -134,14 +134,14 @@ end
     DynamicPPL.VarNamedTuple(dists)
 @inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarNamedTuple) =
     dists
-function _to_varnamedtuple(
-    dists::AbstractDict{<:VarName}, raw_values::DynamicPPL.VarNamedTuple
-)
+function _to_varnamedtuple(dists::AbstractDict{<:VarName}, ::DynamicPPL.VarNamedTuple)
     vnt = DynamicPPL.VarNamedTuple()
     for (vn, dist) in dists
-        top_sym = AbstractPPL.getsym(vn)
-        template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
-        vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, template)
+        # No template: the container is a shape hint only, and the one to hand describes the
+        # values from the previous step, not the block being sampled now. Another component can
+        # have changed the block's dimension in between, and templating a two-element `dists`
+        # onto a one-element hint throws a `BoundsError` from inside the setindex.
+        vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, DynamicPPL.NoTemplate())
     end
     return vnt
 end
@@ -238,7 +238,19 @@ function gibbs_update_state!!(
     ::DynamicPPL.Model,
     ::DynamicPPL.VarNamedTuple,
 )
-    # Nothing in the state is used in the next iteration (we overwrite it immediately with
-    # init!! anyway), so we can just return the state as is.
+    # `step` rebuilds the conditional distributions from the model's conditioned values and
+    # then overwrites the state with `init!!`, so nothing carried in it needs updating.
     return state
+end
+
+# The state carries no layout for the block, so a shape another component changed needs nothing
+# special, for the same reason the four-argument form is a no-op.
+function gibbs_update_state!!(
+    spl::GibbsConditional,
+    state::DynamicPPL.OnlyAccsVarInfo,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
 end

@@ -84,16 +84,21 @@ Whether `spl` can move between supports *within* one of its own steps, that is, 
 whose set of variables its own proposal changes.
 
 Defaults to `false`, because proposing between two supports takes a construction built for it.
-A Metropolis-Hastings ratio between states of different dimension is not the one the algorithm
-assumes, and a `LogDensityFunction`'s layout is fixed for the whole of a step, so it has no
-slot for a variable the proposal reaches part-way through: a leapfrog step that crosses into
-another branch raises `KeyError` from DynamicPPL rather than reaching this check at all. `PG`
-and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches, so they can.
+A `LogDensityFunction`'s layout is fixed for the whole of a step, so it has no slot for a
+variable the proposal reaches part-way through: a leapfrog step that crosses into another
+branch raises `KeyError` from DynamicPPL rather than reaching this check at all. `PG` and
+`CSMC` rebuild their trace each sweep, drawing whatever the model reaches, so they can.
+
+`MH` answers `true`, but not because every crossing is safe for it. Whether one is depends on
+the variable that moved: drawn from its prior, the proposal density cancels against the prior
+and the ratio collapses to a likelihood ratio, which is defined across dimensions; proposed
+from, it does not cancel. That is a fact about one variable in one evaluation, which a trait
+asked once cannot supply, so `MH` answers `true` here and refuses the invalid crossings itself.
+A component whose answer really is uniform should give it here.
 
 This is a different question from being *handed* a block at a new shape between one's own
 steps, which another component's step can do and which a component answers by implementing
-[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref). The two are independent: `MH`
-answers `false` here and implements that method.
+[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref).
 
 Returning `true` is a claim about the algorithm, and it carries an obligation: the component
 must have coherent semantics for a variable it samples going away and later coming back. `PG`
@@ -113,12 +118,14 @@ allow_varying_dimension(::AbstractSampler) = false
 # a claim made about the sampler inside says nothing about what survives the wrapper.
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
-# A default `MH()` proposes from the prior, so the proposal density cancels against it and the
-# acceptance ratio collapses to a likelihood ratio, which is defined across supports of
-# different dimension. Give any variable its own proposal and that cancellation is gone, so the
-# answer is `false` as soon as one is specified. `_require_same_variables` makes the same
-# distinction per variable, for the case where only some have proposals.
-allow_varying_dimension(spl::MH) = isempty(spl.vns_with_proposal)
+# Whether a crossing is valid for `MH` is decided per variable and per evaluation: a variable
+# drawn from its prior cancels against `p` in the acceptance ratio whatever its dimension, one
+# proposed from does not. A trait asked once, before any evaluation, cannot know which applies,
+# and reading the declared proposal keys instead is wrong in both directions, since a key may
+# match no tilde statement and so be declared without ever being used. So `MH` answers `true`
+# and polices each crossing itself in `_require_same_variables`, where the evaluations have
+# recorded which proposals were used.
+allow_varying_dimension(::MH) = true
 
 # For an error about an unsupported component, the wrapper's own name says nothing: both
 # wrappers forward `supports_gibbs`, so the sampler that answered is the one inside.
@@ -288,20 +295,24 @@ decision for the user rather than a detail of conditioning. Nor does `ESS`, whos
 are gathered for the block it was built on, nor `externalsampler`, whose wrapped state is
 opaque.
 """
+function _reshape_description(r::ReshapedBlock)
+    r.change === :joined && return "$(r.variable) joined it"
+    r.change === :left && return "$(r.variable) left it"
+    return "$(r.variable) is now drawn from a distribution that links differently"
+end
+
 function gibbs_update_state!!(
     sampler, state, model::DynamicPPL.Model, global_vals, reshaped::ReshapedBlock
 )
     name = _trait_owner_name(sampler)
     return throw(
         ArgumentError(
-            "The variable $(reshaped.variable) " *
-            (reshaped.joined ? "joined" : "left") *
-            " the block sampled by $(name) between its steps, because another component's " *
-            "step decides whether it exists. $(name) does not implement " *
+            "The block sampled by $(name) changed shape between its steps: " *
+            _reshape_description(reshaped) *
+            ", because another component's step decides that. $(name) does not implement " *
             "`gibbs_update_state!!` for a reshaped block, so state it carries would still " *
             "be sized for the old one. Sample this block with `MH`, `HMC` or `PG`, which " *
-            "do, or put $(reshaped.variable) and the variables that decide whether it " *
-            "exists in one block.",
+            "do, or put $(reshaped.variable) and whatever decides its shape in one block.",
         ),
     )
 end
@@ -386,6 +397,22 @@ end
 #
 
 """
+    Snapshot(values, supports)
+
+The values Gibbs threads through a sweep, with the support signature of each tilde statement
+that produced them.
+
+Both halves come from one model evaluation and [`reached_values`](@ref) is the only thing that
+builds one, which is what lets [`check_variable_set`](@ref) compare the supports either side of
+a step without evaluating the model again: it needs the supports from before the step as well
+as after, and the evaluation that produced the previous snapshot had already computed them.
+"""
+struct Snapshot{V<:DynamicPPL.VarNamedTuple,S<:DynamicPPL.VarNamedTuple}
+    values::V
+    supports::S
+end
+
+"""
     reached_values(rng, model, proposed)
 
 Return the values of the variables `model` reaches when evaluated at `proposed`.
@@ -404,15 +431,102 @@ it samples, or when a variable appeared during this step, and `check_variable_se
 both cases -- so nothing that returns normally has consumed `rng`.
 """
 function reached_values(rng, model, proposed::DynamicPPL.VarNamedTuple)
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(
         rng,
         model,
-        accs,
+        _snapshot_accs(),
         DynamicPPL.InitFromParams(proposed, DynamicPPL.InitFromPrior()),
         DynamicPPL.UnlinkAll(),
     )
-    return DynamicPPL.get_raw_values(accs)
+    return _snapshot(accs)
+end
+
+# Raw values, plus the support signature of each tilde statement that produced them.
+function _snapshot_accs()
+    return DynamicPPL.OnlyAccsVarInfo(
+        DynamicPPL.RawValueAccumulator(false), SupportSignatureAccumulator()
+    )
+end
+
+function _snapshot(accs)
+    return Snapshot(
+        DynamicPPL.get_raw_values(accs),
+        DynamicPPL.getacc(accs, Val(SUPPORT_ACC_NAME)).values,
+    )
+end
+
+"""
+    _support_signature(dist)
+
+A value that differs whenever a distribution's support or its form does.
+
+The snapshot Gibbs threads holds raw values, which say nothing about the set a variable is
+drawn from, so this has to come from the tilde's own distribution during the evaluation. Two
+parts, because the rule asks for both to be unchanged:
+
+  - the type name, for the distributional form. `Normal(0, 1)` and `TDist(3)` share the support
+    of the whole line and are still a change.
+  - `Bijectors.bijector`, for the support of a continuous variable. It is the
+    constrained-to-unconstrained map, so it carries the support and nothing else: every
+    `Normal(m, sigma)` gives the same `identity`, which an ordinary hierarchical
+    `x ~ Normal(m, 1)` depends on, while `truncated(Normal(); lower=x)` gives a
+    `TruncatedBijector` carrying `x` and so registers when `x` moves.
+  - the bounds, for the support of a discrete one. See [`_support_bounds`](@ref).
+
+The bijector is what makes the continuous case uniform across shapes, which bounds alone could
+not be: bounds exist only for univariate distributions, so a signature built from them silently
+ignored the support of everything else -- a
+`product_distribution([truncated(Normal(); lower=a), ...])` whose bound came from another block
+passed unnoticed while its univariate sibling was refused. The bounds supplement it rather than
+replacing it.
+
+Neither half sees a support carried entirely by a distribution's parameters, and one of those
+is reducible: `Categorical([0.5, 0.5, 0, 0])` and `Categorical([0, 0, 0.5, 0.5])` are both
+supported on `1:4` as far as `Distributions` is concerned, so a component moving between them
+passes. That is the conservatism note in the `Gibbs` docstring seen from the other side -- this
+signature is what the rule can enforce, not the whole of what the rule says.
+"""
+function _support_signature(d::Distributions.Distribution)
+    # `bijector` is not part of what a model has to provide. A distribution implementing only
+    # the vector linking interface, `Bijectors.VectorBijectors.to_linked_vec`, samples correctly
+    # under every sampler, while Bijectors' generic univariate `bijector` reaches for
+    # `minimum`/`maximum`, which such a distribution need not define. Asking for it anyway made
+    # Gibbs the one sampler that could not take the model. Deriving the transform instead is no
+    # good either: it is the expensive step `fix_transforms` exists to avoid, and doing it once
+    # per tilde per sweep would defeat that.
+    try
+        return (nameof(typeof(d)), Bijectors.bijector(d), _support_bounds(d))
+    catch e
+        e isa MethodError || rethrow()
+        # The form alone still catches a change of distribution, and misses only a same-type
+        # change of support, which needs the bounds to express in the first place.
+        return (nameof(typeof(d)),)
+    end
+end
+_support_signature(d) = (nameof(typeof(d)),)
+
+"""
+    _support_bounds(dist)
+
+The bounds of `dist`'s support if it is univariate, and `()` otherwise.
+
+This is what carries the support of a *discrete* variable. A discrete variable is never linked,
+so `Bijectors.bijector` is `identity` for the whole family and says nothing about which values
+it can take: `DiscreteUniform(1, 2)` and `DiscreteUniform(3, 4)` are disjoint and would
+otherwise share a signature. With `b` in one block choosing between them and `k` in another, the
+chain is absorbed into whichever branch it started in -- P(b=1) came back 0.0 or 1.0 by seed
+against an exact 0.5, while the two in one block give 0.5.
+
+Univariate continuous distributions are included too, where the bijector already carries the
+support and these only agree with it.
+"""
+_support_bounds(d::Distributions.UnivariateDistribution) = (minimum(d), maximum(d))
+_support_bounds(::Distributions.Distribution) = ()
+
+const SUPPORT_ACC_NAME = :GibbsSupportSignatures
+_store_support(val, tval, logjac, vn, dist) = _support_signature(dist)
+function SupportSignatureAccumulator()
+    return DynamicPPL.VNTAccumulator{SUPPORT_ACC_NAME}(_store_support)
 end
 
 """
@@ -525,9 +639,11 @@ Three partitions of that model are rejected, each naming the variable and the co
     have. The chain still runs but comes back biased, which is why this is refused rather than
     warned about. Giving `z` to `PG` does not help: it is never asked, because it is not the
     component whose step changed anything.
-  - `Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH())` -- the block is right, but
-    `MH` fixes the set of variables it samples at its first step, and its acceptance ratio
-    between two different supports is not the one the algorithm assumes.
+  - `Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH(@varname(z) => Normal()))` --
+    the block is right, but `z` is given a proposal of its own, so its proposal density no
+    longer cancels against its prior and the acceptance ratio between the two supports is not
+    the one the algorithm assumes. The same partition with a plain `MH()` samples correctly,
+    because proposing from the prior is what makes the cancellation hold.
 
 The same applies to a new element rather than a new name: an `x[5]` first reached inside a
 branch is treated exactly like `z` above.
@@ -539,6 +655,55 @@ whether `z` exists depends on `x`, which is drawn during the run: the same parti
 refused at the first sweep or fifty sweeps in, depending on the draws. Sampling stops with an
 error at that point rather than carrying on, since the chain from an invalid partition is
 biased rather than merely noisy.
+
+A component's step can reach into another block in two ways, because a variable in one block
+may decide something about a variable in another without ever sampling it. Both are refused by
+one rule:
+
+> A component may never change the dimension or the distributional form of a variable
+> belonging to another component, unless the two share that variable.
+
+Sharing is the remedy in either direction: put the deciding variable and what it decides in one
+block, or write a component that samples both.
+
+| What another component's step changes | Effect on this block             | Treatment  |
+|---------------------------------------|----------------------------------|------------|
+| whether a tilde statement executes    | variable appears or leaves       | refused    |
+| which distribution a tilde draws from | its family or its support moves  | refused    |
+| a distribution's parameters only      | neither; the form is unchanged   | allowed    |
+
+"Distributional form" is the family together with the support, and never the parameters. Both
+halves of it are compared, so `x ~ Normal(0, 1)` becoming `x ~ TDist(3)` is refused even though
+the support is the whole line either way.
+
+Excluding the parameters is what makes the third row work, and it is the common case: under
+`m ~ Normal(0, 1)` in one block and `x ~ Normal(m, 1)` in another, `x`'s distribution differs
+every sweep while its family and its support do not, and refusing that would refuse every
+hierarchical model.
+
+The second row is the one worth knowing about, because it was previously silent. With `b` in
+one block and `x ~ Dirichlet(3)` under `b == 1` but `x ~ MvNormal(zeros(3), I)` otherwise, `x`'s
+leaf set and its three raw values are the same either way. Each component's conditional is
+individually correct, but a draw from the second branch almost never lies on the simplex, so
+once the chain leaves `b == 1` it cannot return: it is reducible rather than biased, and used to
+return P(b=1) near 0 or near 1 against an exact 0.6456.
+
+!!! note
+    That the decider and what it decides must share a block is an assumption of *this* Gibbs
+    implementation, not a property of Gibbs sampling. A component's target is its full
+    conditional whichever block the decider sits in; what breaks is this implementation's
+    bookkeeping -- a snapshot of raw values cannot see a support change, and a component
+    holding a flat parameter layout cannot be re-pointed at a different one.
+
+    The rule is also deliberately conservative. Whether a particular support change is fatal
+    is a question about irreducibility, which no single model evaluation can decide, so
+    partitions that would have sampled correctly are refused with the rest: with `a` in one
+    block and `x ~ truncated(Normal(); lower=a)` in another, the region stays connected and
+    the split agreed with a single-block reference to 0.0015 before this rule refused it.
+    Turing.jl#2801 is the same shape and had a regression test asserting it against a NUTS
+    ground truth. Put such variables in one block -- which recovers that answer -- or write a
+    sampler for them. A Gibbs built to track supports, or to reason about reachability, could
+    relax this.
 
 Each component sampler initialises the variables it samples with its own default strategy, so
 e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
@@ -582,8 +747,8 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
 
-struct GibbsState{V<:DynamicPPL.VarNamedTuple,S,B}
-    vnt::V
+struct GibbsState{Sn<:Snapshot,S,B}
+    snapshot::Sn
     states::S
     # The leaves each component's block held when that component last stepped, so that a block
     # reshaped by another component's step can be spotted without asking the component. Taken
@@ -625,13 +790,58 @@ function check_block_nonempty(varnames, block)
     )
 end
 
-# `nothing` if the block still holds the same variables, otherwise one that moved. Which one is
-# reported only shapes the error message, so any of them will do.
+"""
+    block_fingerprint(snapshot, varnames)
+
+The shape of a component's block: the leaves it holds, and the linking transform of each tilde
+statement that produced them.
+
+Leaves alone are not enough. A tilde statement that changes which distribution it draws from can
+keep its leaf count and still move the block's *linked* dimension -- `x ~ Dirichlet(3)` occupies
+two numbers and `x ~ MvNormal(zeros(3), I)` three, both with three leaves -- and a component
+holding a parameter layout has to be told.
+
+What is compared is the transform's *type*, not the transform. A change of type is what can move
+the linked dimension; a change within a type cannot. That distinction is the whole of the
+difference between this and [`check_variable_set`](@ref)'s support test, which compares the
+transform itself: with `a` and `x` in one block and `x ~ truncated(Normal(); lower=a)` in
+another that shares `x`, the bound moves every sweep and the support test is right to see it,
+while the layout never changes and a gate that fired here would refuse a partition that samples
+perfectly well.
+"""
+function block_fingerprint(snapshot::Snapshot, varnames)
+    # Pairs rather than a `VarNamedTuple`: this is an internal fingerprint, compared and never
+    # indexed into, and a tilde `VarName` carrying a `Colon` can only be written into a
+    # `VarNamedTuple` with a template giving the array's shape, which there is nothing here to
+    # supply. The order is the evaluation's, so it is stable between sweeps.
+    layout = Pair{VarName,Any}[]
+    for vn in keys(snapshot.supports)
+        any(hv -> AbstractPPL.subsumes(hv, vn), varnames) || continue
+        push!(layout, vn => _layout_key(snapshot.supports[vn]))
+    end
+    return (leaves=block_leaves(snapshot.values, varnames), layout=layout)
+end
+
+# The part of a support signature that can move the linked dimension: the distributional form,
+# and the transform's type rather than the transform. See `block_fingerprint`.
+_layout_key(sig::Tuple{Any}) = sig
+_layout_key(sig::Tuple) = (sig[1], typeof(sig[2]))
+
+# `nothing` if the block has the shape the component last saw, otherwise the variable that
+# changed it. Which one is reported only shapes the error message, so any of them will do.
 function block_reshaped(before, now)
-    isequal(before, now) && return nothing
-    joined = setdiff(now, before)
-    isempty(joined) || return ReshapedBlock(first(joined), true)
-    return ReshapedBlock(first(setdiff(before, now)), false)
+    if !isequal(before.leaves, now.leaves)
+        joined = setdiff(now.leaves, before.leaves)
+        isempty(joined) || return ReshapedBlock(first(joined), :joined)
+        return ReshapedBlock(first(setdiff(before.leaves, now.leaves)), :left)
+    end
+    for (vn, key) in now.layout
+        i = findfirst(p -> p.first == vn, before.layout)
+        i === nothing && continue
+        isequal(before.layout[i].second, key) && continue
+        return ReshapedBlock(vn, :respecified)
+    end
+    return nothing
 end
 
 """
@@ -767,7 +977,7 @@ function check_reported_variables(
 end
 
 """
-    check_variable_set(spl, sampler, varnames, old_vnt, new_vnt, proposed)
+    check_variable_set(spl, sampler, varnames, old, new, proposed)
 
 Check that a change in the set of variables is one the component that made it may make.
 
@@ -791,10 +1001,14 @@ exists, `Gibbs(@varname(b) => MH(), @varname(θ) => PG(20))` used to sample and 
 P(b=1) between 0.0 and 0.18 against an exact 0.394, while
 `Gibbs((@varname(b), @varname(θ)) => PG(20))` gives 0.38.
 
-Both directions are checked, and symmetrically: `old_vnt` and `new_vnt` are both the set of
-variables a model evaluation reached (see [`reached_values`](@ref)), so a leaf in one and not
-the other came or went during this step, and nothing else can have caused it -- every variable
-outside the component's block was conditioned.
+Both directions are checked, and symmetrically: `old` and `new` are both the set of variables a
+model evaluation reached (see [`reached_values`](@ref)), so a leaf in one and not the other came
+or went during this step, and nothing else can have caused it -- every variable outside the
+component's block was conditioned.
+
+A variable can also change while coming and going neither way, if another component's step
+decided which distribution its tilde statement draws from. That is checked from the support
+signatures the two snapshots carry, and against ownership alone: see the comment at the loop.
 
 Taking both sets from the model, rather than from what the component reported, is what makes
 the verdict independent of the draw Gibbs initialises with and of the component's own
@@ -808,19 +1022,51 @@ function check_variable_set(
     spl::Gibbs,
     sampler,
     varnames,
-    old_vnt::DynamicPPL.VarNamedTuple,
-    new_vnt::DynamicPPL.VarNamedTuple,
+    old::Snapshot,
+    new::Snapshot,
     proposed::DynamicPPL.VarNamedTuple,
 )
+    old_vnt, new_vnt = old.values, new.values
     # Walk to the leaves rather than compare keys: an array stored under a single key can grow
     # or lose an element, and an `x[5]` inside a branch matters as much as a whole `z`.
     for (from, to, what) in
         ((new_vnt, old_vnt, "appeared"), (old_vnt, new_vnt, "stopped existing"))
         for vn in keys(from), leaf in AbstractPPL.varname_leaves(vn, from[vn])
             DynamicPPL.hasvalue(to, leaf) && continue
-            _require_owned(spl, sampler, varnames, leaf, what)
+            _require_owned(
+                spl,
+                sampler,
+                varnames,
+                leaf,
+                what,
+                "the other component conditions on a variable the state being proposed does " *
+                "not have, and the chain comes back biased",
+            )
             _require_varying_dimension(sampler, leaf, what)
         end
+    end
+    # A variable can also change without coming or going, if another component's step decided
+    # which distribution its tilde statement draws from. The rule is the same as above and the
+    # test is the same: a component may move the dimension or the distributional form of a
+    # variable only if it samples that variable. The form is the family together with the
+    # support and never the parameters, so a hierarchical `x ~ Normal(m, 1)` is untouched.
+    # Compared per tilde statement, which is the granularity a distribution belongs to.
+    for vn in keys(old.supports)
+        DynamicPPL.hasvalue(new.supports, vn) || continue
+        isequal(old.supports[vn], DynamicPPL.getvalue(new.supports, vn)) && continue
+        # Ownership is the whole rule here. `allow_varying_dimension` is a different
+        # question -- whether a proposal may move between two sets of variables -- and the set
+        # has not changed, so asking it would refuse a component that samples both the decider
+        # and what it decides, which is exactly the arrangement this check asks for.
+        _require_owned(
+            spl,
+            sampler,
+            varnames,
+            vn,
+            "changed distributional form or dimension",
+            "the two components disagree about the set it is drawn from, and the chain can " *
+            "be left unable to return to part of the space",
+        )
     end
     # Anything the model reaches that the component did not report was drawn from the prior by
     # `reached_values`, just to let the evaluation finish. The loops above have already ruled
@@ -850,7 +1096,9 @@ other component conditions on a variable absent from the state being proposed: t
 disagree about the support, and the chain comes back biased even though both samplers can
 handle varying dimension on their own.
 """
-function _require_owned(spl::Gibbs, sampler, varnames, leaf, what::String)
+function _require_owned(
+    spl::Gibbs, sampler, varnames, leaf, what::String, consequence::String
+)
     any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) && return nothing
     owner = findfirst(vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames)
     return throw(
@@ -867,10 +1115,8 @@ function _require_owned(spl::Gibbs, sampler, varnames, leaf, what::String)
                 "The variable $(leaf) $(what) during a step of the component sampling " *
                 "$(join(varnames, ", ")), which does not sample it. The component sampling " *
                 "$(join(spl.varnames[owner], ", ")) does. Whichever component's step " *
-                "decides whether $(leaf) exists has to be the one that samples it, or that " *
-                "other component conditions on a variable the state being proposed does " *
-                "not have, and the chain comes back biased. Put $(leaf) and the variables " *
-                "that decide whether it exists in one block."
+                "decides this has to be the one that samples $(leaf), or $(consequence). " *
+                "Put $(leaf) and whatever decides this in one block."
             end,
         ),
     )
@@ -928,77 +1174,58 @@ end
 Return the values the sweep starts from, and check that every one of them has a component.
 """
 function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
-    _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
-    vnt = DynamicPPL.get_raw_values(accs)
-    check_all_variables_handled(vnt, spl)
-    return vnt
+    _, accs = DynamicPPL.init!!(
+        rng, model, _snapshot_accs(), initial_params, DynamicPPL.UnlinkAll()
+    )
+    snapshot = _snapshot(accs)
+    check_all_variables_handled(snapshot.values, spl)
+    return snapshot
+end
+
+# `step` and `step_warmup` differ only in which of the two the components are stepped with, so
+# both pairs of methods forward to one body with `step_function` bound accordingly.
+function _gibbs_initialstep(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::Gibbs,
+    step_function::Function;
+    initial_params=Turing.Inference.init_strategy(spl),
+    discard_sample=false,
+    kwargs...,
+)
+    snapshot = gibbs_initial_values(rng, model, spl, initial_params)
+    snapshot, states, blocks = gibbs_initialstep_recursive(
+        rng,
+        model,
+        step_function,
+        spl,
+        spl.varnames,
+        spl.samplers,
+        snapshot;
+        initial_params=initial_params,
+        kwargs...,
+    )
+    return _gibbs_transition(model, spl, snapshot, states, discard_sample),
+    GibbsState(snapshot, states, blocks)
+end
+
+function _gibbs_transition(model, spl::Gibbs, snapshot::Snapshot, states, discard_sample)
+    discard_sample && return nothing
+    return DynamicPPL.ParamsWithStats(
+        DynamicPPL.InitFromParams(snapshot.values), model, component_stats(spl, states)
+    )
 end
 
 function AbstractMCMC.step(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Gibbs;
-    initial_params=Turing.Inference.init_strategy(spl),
-    discard_sample=false,
-    kwargs...,
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; kwargs...
 )
-    varnames = spl.varnames
-    samplers = spl.samplers
-    vnt = gibbs_initial_values(rng, model, spl, initial_params)
-
-    vnt, states, blocks = gibbs_initialstep_recursive(
-        rng,
-        model,
-        AbstractMCMC.step,
-        spl,
-        varnames,
-        samplers,
-        vnt;
-        initial_params=initial_params,
-        kwargs...,
-    )
-    transition = if discard_sample
-        nothing
-    else
-        DynamicPPL.ParamsWithStats(
-            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
-        )
-    end
-    return transition, GibbsState(vnt, states, blocks)
+    return _gibbs_initialstep(rng, model, spl, AbstractMCMC.step; kwargs...)
 end
 
 function AbstractMCMC.step_warmup(
-    rng::Random.AbstractRNG,
-    model::DynamicPPL.Model,
-    spl::Gibbs;
-    initial_params=Turing.Inference.init_strategy(spl),
-    discard_sample=false,
-    kwargs...,
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, spl::Gibbs; kwargs...
 )
-    varnames = spl.varnames
-    samplers = spl.samplers
-    vnt = gibbs_initial_values(rng, model, spl, initial_params)
-
-    vnt, states, blocks = gibbs_initialstep_recursive(
-        rng,
-        model,
-        AbstractMCMC.step_warmup,
-        spl,
-        varnames,
-        samplers,
-        vnt;
-        initial_params=initial_params,
-        kwargs...,
-    )
-    transition = if discard_sample
-        nothing
-    else
-        DynamicPPL.ParamsWithStats(
-            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
-        )
-    end
-    return transition, GibbsState(vnt, states, blocks)
+    return _gibbs_initialstep(rng, model, spl, AbstractMCMC.step_warmup; kwargs...)
 end
 
 """
@@ -1016,7 +1243,7 @@ function gibbs_initialstep_recursive(
     spl::Gibbs,
     varname_vecs,
     samplers,
-    vnt,
+    snapshot::Snapshot,
     states=(),
     blocks=();
     initial_params,
@@ -1024,15 +1251,15 @@ function gibbs_initialstep_recursive(
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
-        return vnt, states, blocks
+        return snapshot, states, blocks
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    check_block_nonempty(varnames, block_leaves(vnt, varnames))
-    conditioned = conditioned_values(vnt, varnames)
+    check_block_nonempty(varnames, block_leaves(snapshot.values, varnames))
+    conditioned = conditioned_values(snapshot.values, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
 
     # Take initial step with the current sampler. Everything it does not sample is
@@ -1057,11 +1284,11 @@ function gibbs_initialstep_recursive(
     report = gibbs_get_parameter_values(new_state)
     check_reported_variables(varnames, conditioned, report)
     proposed = merge(conditioned, report)
-    new_vnt = reached_values(rng, model, proposed)
-    check_variable_set(spl, sampler, varnames, vnt, new_vnt, proposed)
+    new_snapshot = reached_values(rng, model, proposed)
+    check_variable_set(spl, sampler, varnames, snapshot, new_snapshot, proposed)
 
     states = (states..., new_state)
-    blocks = (blocks..., block_leaves(new_vnt, varnames))
+    blocks = (blocks..., block_fingerprint(new_snapshot, varnames))
     return gibbs_initialstep_recursive(
         rng,
         model,
@@ -1069,7 +1296,7 @@ function gibbs_initialstep_recursive(
         spl,
         varname_vecs_tail,
         samplers_tail,
-        new_vnt,
+        new_snapshot,
         states,
         blocks;
         initial_params=initial_params,
@@ -1077,40 +1304,40 @@ function gibbs_initialstep_recursive(
     )
 end
 
+function _gibbs_step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    spl::Gibbs,
+    state::GibbsState,
+    step_function::Function;
+    discard_sample=false,
+    kwargs...,
+)
+    @assert length(spl.samplers) == length(state.states)
+    snapshot, states, blocks = gibbs_step_recursive(
+        rng,
+        model,
+        step_function,
+        spl,
+        spl.varnames,
+        spl.samplers,
+        state.states,
+        state.blocks,
+        state.snapshot;
+        kwargs...,
+    )
+    return _gibbs_transition(model, spl, snapshot, states, discard_sample),
+    GibbsState(snapshot, states, blocks)
+end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     spl::Gibbs,
     state::GibbsState;
-    discard_sample=false,
     kwargs...,
 )
-    varnames = spl.varnames
-    samplers = spl.samplers
-    states = state.states
-    @assert length(samplers) == length(state.states)
-
-    vnt, states, blocks = gibbs_step_recursive(
-        rng,
-        model,
-        AbstractMCMC.step,
-        spl,
-        varnames,
-        samplers,
-        states,
-        state.blocks,
-        state.vnt;
-        kwargs...,
-    )
-
-    transition = if discard_sample
-        nothing
-    else
-        DynamicPPL.ParamsWithStats(
-            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
-        )
-    end
-    return transition, GibbsState(vnt, states, blocks)
+    return _gibbs_step(rng, model, spl, state, AbstractMCMC.step; kwargs...)
 end
 
 function AbstractMCMC.step_warmup(
@@ -1118,34 +1345,9 @@ function AbstractMCMC.step_warmup(
     model::DynamicPPL.Model,
     spl::Gibbs,
     state::GibbsState;
-    discard_sample=false,
     kwargs...,
 )
-    varnames = spl.varnames
-    samplers = spl.samplers
-    states = state.states
-    @assert length(samplers) == length(state.states)
-
-    vnt, states, blocks = gibbs_step_recursive(
-        rng,
-        model,
-        AbstractMCMC.step_warmup,
-        spl,
-        varnames,
-        samplers,
-        states,
-        state.blocks,
-        state.vnt;
-        kwargs...,
-    )
-    transition = if discard_sample
-        nothing
-    else
-        DynamicPPL.ParamsWithStats(
-            DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
-        )
-    end
-    return transition, GibbsState(vnt, states, blocks)
+    return _gibbs_step(rng, model, spl, state, AbstractMCMC.step_warmup; kwargs...)
 end
 
 """
@@ -1155,15 +1357,6 @@ function on the tail, until there are no more samplers left.
 The `step_function` argument should always be either AbstractMCMC.step or
 AbstractMCMC.step_warmup.
 """
-# ──────────────────────────────────────────────────────────────────────────────
-# The snapshot after a component's step is the set of variables the model reaches at the
-# proposed values, not the component's report merged into the old snapshot. Only an evaluation
-# settles which variables exist, and a report cannot be trusted for it: a component may keep a
-# value for a variable it is not currently sampling, and `merge` would leave that stale value
-# in the snapshot, conditioned into the step of whichever component decides its existence, so
-# that step would never assume it again and `check_variable_set` could never see it reappear.
-# ──────────────────────────────────────────────────────────────────────────────
-
 function gibbs_step_recursive(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -1173,14 +1366,14 @@ function gibbs_step_recursive(
     samplers,
     states,
     blocks,
-    global_vnt,
+    snapshot::Snapshot,
     new_states=(),
     new_blocks=();
     kwargs...,
 )
     # End recursion.
     if isempty(varname_vecs) && isempty(samplers) && isempty(states)
-        return global_vnt, new_states, new_blocks
+        return snapshot, new_states, new_blocks
     end
 
     varnames, varname_vecs_tail... = varname_vecs
@@ -1188,18 +1381,18 @@ function gibbs_step_recursive(
     state, states_tail... = states
     block, blocks_tail... = blocks
     # Construct the conditional model that this sampler should use.
-    conditioned = conditioned_values(global_vnt, varnames)
+    conditioned = conditioned_values(snapshot.values, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
     # Update the sampler's state based on global values that were provided by other
     # samplers. A block another component's step has reshaped since this one last stepped
     # goes to the `ReshapedBlock` method, which throws unless the sampler implements it.
-    current_block = block_leaves(global_vnt, varnames)
-    check_block_nonempty(varnames, current_block)
+    current_block = block_fingerprint(snapshot, varnames)
+    check_block_nonempty(varnames, current_block.leaves)
     reshaped = block_reshaped(block, current_block)
     state = if reshaped === nothing
-        gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
+        gibbs_update_state!!(sampler, state, conditioned_model, snapshot.values)
     else
-        gibbs_update_state!!(sampler, state, conditioned_model, global_vnt, reshaped)
+        gibbs_update_state!!(sampler, state, conditioned_model, snapshot.values, reshaped)
     end
 
     # Take a step with the local sampler. We don't need the actual sample, only the state.
@@ -1213,11 +1406,11 @@ function gibbs_step_recursive(
     report = gibbs_get_parameter_values(new_state)
     check_reported_variables(varnames, conditioned, report)
     proposed = merge(conditioned, report)
-    new_global_vnt = reached_values(rng, model, proposed)
-    check_variable_set(spl, sampler, varnames, global_vnt, new_global_vnt, proposed)
+    new_snapshot = reached_values(rng, model, proposed)
+    check_variable_set(spl, sampler, varnames, snapshot, new_snapshot, proposed)
 
     new_states = (new_states..., new_state)
-    new_blocks = (new_blocks..., block_leaves(new_global_vnt, varnames))
+    new_blocks = (new_blocks..., block_fingerprint(new_snapshot, varnames))
     return gibbs_step_recursive(
         rng,
         model,
@@ -1227,7 +1420,7 @@ function gibbs_step_recursive(
         samplers_tail,
         states_tail,
         blocks_tail,
-        new_global_vnt,
+        new_snapshot,
         new_states,
         new_blocks;
         kwargs...,

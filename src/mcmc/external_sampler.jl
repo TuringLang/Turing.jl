@@ -86,8 +86,10 @@ with Turing.jl:
   sampler starts from when the caller gives no `initial_params`. The default is
   `InitFromPrior()`; Gibbs asks each component for its own.
 
-`supports_gibbs`, `allow_varying_dimension`, `allow_discrete_variables`, `init_strategy` and
-`post_sample_hook` are the whole of Turing's own interface for running a sampler on a model. One that implements
+`supports_gibbs`, `allow_discrete_variables`, `init_strategy` and `post_sample_hook` are the
+whole of Turing's own interface for running a sampler on a model, together with
+`allow_varying_dimension`, which is on the list for a sampler you write yourself but is not
+forwarded through this wrapper, for the reason below. One that implements
 `AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
 not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,

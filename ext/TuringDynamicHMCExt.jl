@@ -27,6 +27,12 @@ DynamicNUTS() = DynamicNUTS(DynamicHMC.NUTS())
 DynamicNUTS(spl) = DynamicNUTS(spl, Turing.DEFAULT_ADTYPE)
 Turing.externalsampler(spl::DynamicHMC.NUTS) = DynamicNUTS(spl)
 
+# `DynamicNUTS` implements none of the Gibbs component interface, and cannot inherit the
+# `Hamiltonian` methods because its state is a `DynamicNUTSState` rather than an `HMCState`.
+# `supports_gibbs` defaults to `true`, so without this a partition naming it failed with a
+# `MethodError` from inside the sweep instead of being refused when `Gibbs` was constructed.
+Turing.Inference.supports_gibbs(::DynamicNUTS) = false
+
 """
     DynamicNUTSState
 

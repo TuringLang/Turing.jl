@@ -319,6 +319,31 @@ using Turing
         @test mean(chain[@varname(b[3])]) ≈ 20.0 atol = 0.05
     end
 
+    @testset "block reshaped by another component" begin
+        # `b` decides how many elements of `theta` the model reaches, so the
+        # `GibbsConditional` block arrives at a new dimension between its own steps. The
+        # conditional distributions describe the block as it is now; the state's values
+        # describe it as it was, so they cannot be used to shape the result.
+        @model function dyn()
+            b ~ Bernoulli(0.5)
+            n = b ? 2 : 1
+            theta = Vector{Float64}(undef, n)
+            for i in 1:n
+                theta[i] ~ Normal(0, 1)
+            end
+            return 1.0 ~ Normal(sum(theta), 1.0)
+        end
+        function cond(vnt)
+            n = vnt[@varname(b)] ? 2 : 1
+            return Dict(@varname(theta[i]) => Normal(0, 1) for i in 1:n)
+        end
+        sampler = Gibbs(
+            (@varname(b), @varname(theta)) => PG(20),
+            @varname(theta) => GibbsConditional(cond),
+        )
+        @test sample(StableRNG(468), dyn(), sampler, 20) isa Any
+    end
+
     @testset "Helpful error outside Gibbs" begin
         @model f() = x ~ Normal()
         m = f()
