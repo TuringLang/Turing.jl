@@ -61,6 +61,25 @@ using Turing
         )
         @test chain isa MCMCChains.Chains
     end
+
+    @testset "model whose dimension depends on its own draws" begin
+        # Walkers initialised from the prior land in different branches, so they have
+        # different numbers of parameters and the stretch move has no line to move along.
+        @model function branchy()
+            b ~ Bernoulli(0.5)
+            x ~ Normal(0, 1)
+            if b
+                y ~ Normal(0, 1)
+                1.0 ~ Normal(x + y, 1)
+            else
+                1.0 ~ Normal(x, 1)
+            end
+        end
+        @test_throws(
+            "walkers have different numbers of parameters",
+            sample(StableRNG(5), branchy(), Emcee(10), 5),
+        )
+    end
 end
 
 end

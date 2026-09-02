@@ -80,16 +80,46 @@ function AbstractMCMC.step(
         ]
     end
 
-    linked_vi = DynamicPPL.link!!(vis[1], model)
+    linked_vis = map(vi -> DynamicPPL.link!!(vi, model), vis)
+    check_walkers_same_dimension(linked_vis)
     state = EmceeState(
-        DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vi),
-        map(vis) do vi
-            vi = DynamicPPL.link!!(vi, model)
+        DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vis[1]),
+        map(linked_vis) do vi
             AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
     return transition, state
+end
+
+"""
+    check_walkers_same_dimension(linked_vis)
+
+Throw unless every walker has the same number of parameters.
+
+The stretch move interpolates between two walkers' position vectors, so the ensemble needs one
+parameter space shared by all of them. On a model whose set of variables depends on its own
+draws, walkers initialised from the prior can land in different branches and so have different
+lengths, and the mismatch otherwise surfaces as a `DimensionMismatch` from inside the proposal's
+broadcast.
+
+The check is necessary rather than sufficient: it rules out walkers that start in different
+branches, not a model whose dimension varies at all. A proposal can still reach a vector whose
+trace visits other variables, and the single `LogDensityFunction` built here would decode it
+against the layout of the first walker. `Emcee` has no way to express that, so a dynamic model
+is best avoided with it entirely.
+"""
+function check_walkers_same_dimension(linked_vis)
+    dims = map(vi -> length(vi[:]), linked_vis)
+    allequal(dims) && return nothing
+    throw(
+        ArgumentError(
+            "`Emcee`'s walkers have different numbers of parameters ($(join(sort(unique(dims)), ", "))). " *
+            "The stretch move moves along the line between two walkers, so they all have to " *
+            "live in one parameter space. This model's set of variables depends on its own " *
+            "draws, which `Emcee` cannot sample.",
+        ),
+    )
 end
 
 function AbstractMCMC.step(
