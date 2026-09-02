@@ -666,9 +666,9 @@ end
 
 # Neither sampler has anywhere to put a user-supplied starting point: both draw their particles from
 # the prior. `InitFromPrior` is what the ensemble wrapper injects per chain, not a user request.
-function warn_initial_params_ignored(name, initial_params)
+function warn_initial_params_ignored(name, why, initial_params)
     if initial_params !== nothing && !(initial_params isa DynamicPPL.InitFromPrior)
-        @warn "$name draws its particles from the prior; `initial_params` is ignored."
+        @warn "$name $why, so `initial_params` has no effect and is ignored."
     end
     return nothing
 end
@@ -713,7 +713,7 @@ function AbstractMCMC.sample(
     if save_state || initial_state !== nothing
         @warn "SMC runs one sweep and keeps no sampler state; `save_state` and `initial_state` are ignored."
     end
-    warn_initial_params_ignored("SMC", initial_params)
+    warn_initial_params_ignored("SMC", "draws its particles from the prior", initial_params)
     # Accepted only so it can be reported as ignored: AbstractMCMC's contract is one callback
     # per step, and SMC is a single sweep, so there is no iteration to call back from.
     if callback !== nothing
@@ -833,7 +833,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     error_if_threadsafe_eval(model)
-    warn_initial_params_ignored("PG", initial_params)
+    warn_initial_params_ignored("PG", "draws its particles from the prior", initial_params)
     particles = [Particle(model, particle_rng(rng)) for _ in 1:(sampler.nparticles)]
     logZ, _ = sweep!(rng, particles, sampler.resampler, sampler.multithreaded)
     return pg_transition_and_state(rng, particles, logZ, discard_sample)
