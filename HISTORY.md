@@ -1,4 +1,4 @@
-# Unreleased
+# 0.47.5
 
 `MH` no longer includes ignored aggregate proposals in its acceptance ratio.
 
