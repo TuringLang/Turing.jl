@@ -28,6 +28,8 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
 
+`sample` with `Emcee` and `chain_type=MCMCChains.Chains` now returns a `Chains` instead of the raw transitions.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an

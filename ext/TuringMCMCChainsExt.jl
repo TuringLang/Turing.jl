@@ -31,7 +31,7 @@ function AbstractMCMC.bundle_samples(
     model::DynamicPPL.Model,
     spl::Emcee,
     state::EmceeState,
-    ::Type{MCMCChains.Chains},
+    ::Type{MCMCChains.Chains};
     kwargs...,
 )
     n_walkers = _get_n_walkers(spl)

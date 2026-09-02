@@ -7,6 +7,7 @@ using DynamicPPL: DynamicPPL
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using FlexiChains: FlexiChains
+using MCMCChains: MCMCChains
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -49,6 +50,16 @@ using Turing
         chain = sample(gdemo_default, spl, 1; initial_params=fill(initial_nt, nwalkers))
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
+    end
+
+    @testset "chain_type" begin
+        # `bundle_samples` declared `::Type{MCMCChains.Chains}` positionally where the caller
+        # passes it as a keyword, so this silently fell through to the generic method and
+        # returned the raw transitions.
+        chain = sample(
+            StableRNG(7), gdemo_default, Emcee(4), 5; chain_type=MCMCChains.Chains
+        )
+        @test chain isa MCMCChains.Chains
     end
 end
 
