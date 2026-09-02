@@ -74,6 +74,8 @@ Note: "linked" and "unconstrained" are synonymous in this codebase. Linking tran
 
 Interfaces that accept or return named parameter collections should use `VarNamedTuple`, not `NamedTuple` or `Dict{VarName}`. `NamedTuple` and `Dict{VarName}` are accepted as user-facing input but should be converted to `VarNamedTuple` at the boundary (see `_to_varnamedtuple` in `src/common.jl`). Don't propagate them through internal code.
 
+With executed sites `x[1]` and `x[2]`, key `x` is not an exact match, although `haskey(values, @varname(x))` succeeds and `DynamicPPL.LinkSome` matches both descendants. In MH this can ignore the proposal for `x` yet link its descendants, which are then proposed from their constrained priors but scored under a Jacobian-adjusted linked target, giving the wrong acceptance probability.
+
 ### `getlogjoint_internal` vs `getlogjoint`
 
 Samplers operating in unconstrained space should use `getlogjoint_internal`, which includes the Jacobian correction from the linking transform. This is the default and what you almost always want. The exceptions are ESS (which needs the likelihood in constrained space, per the algorithm) and optimisation (where the Jacobian term should not influence the objective).
