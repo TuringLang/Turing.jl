@@ -32,6 +32,8 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `Prior()` now warns that `initial_params` has no effect rather than discarding it silently: every draw comes from the prior independently, so there is no starting point for one to set.
 
+`estimate_mode` now throws on a bound it cannot apply, instead of ignoring it and returning the unconstrained mode. That covers a key naming no variable of the model, a scalar bound on a variable the model writes element by element, and a bound on part of a variable the model writes whole; the last previously failed with a bare `DimensionMismatch`. Give one bound per element, shaped as the model writes the variable.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an

@@ -155,6 +155,52 @@ end
         )
     end
 
+    @testset "bound naming no variable" begin
+        # Bounds are applied by asking for each variable the model reaches, so a key matching
+        # none of them used to be dropped and the unconstrained mode returned.
+        @model function normal_m()
+            x ~ Normal(0, 1)
+            return 1.0 ~ Normal(x, 1)
+        end
+        @test_throws(
+            "no variable of the model can use",
+            maximum_a_posteriori(normal_m(); lb=(nope=0.0,), ub=(nope=1.0,)),
+        )
+        # A bound that does name one still binds.
+        @test maximum_a_posteriori(normal_m(); lb=(x=0.7,), ub=(x=10.0,)).params[@varname(
+            x
+        )] ≈ 0.7 atol = 1e-4
+
+        # A key can name a variable the model has and still not be usable. A scalar bound on
+        # an element-wise `x[i] ~` was silently dropped, and a bound on one element of a
+        # variable the model writes whole reached the assembly a bound short and raised a
+        # bare `DimensionMismatch`.
+        @model function elementwise()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(0, 1)
+            x[2] ~ Normal(0, 1)
+            return 1.0 ~ Normal(x[1] + x[2], 1)
+        end
+        @model function whole()
+            x ~ MvNormal(zeros(2), I)
+            return 1.0 ~ Normal(x[1] + x[2], 1)
+        end
+        @test_throws(
+            "no variable of the model can use",
+            maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,)),
+        )
+        @test_throws(
+            "which the model writes as one value",
+            maximum_a_posteriori(
+                whole(); lb=Dict(@varname(x[1]) => 0.9), ub=Dict(@varname(x[1]) => 9.0)
+            ),
+        )
+        # Bounding every element works for both shapes.
+        for m in (elementwise(), whole())
+            @test maximum_a_posteriori(m; lb=(x=[0.9, 0.9],), ub=(x=[9.0, 9.0],)) isa Any
+        end
+    end
+
     @testset "generation of vector constraints" begin
         @testset "$dist" for (lb, ub, dist) in (
             ((x=0.1,), (x=0.5,), Normal()),
