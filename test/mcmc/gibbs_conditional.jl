@@ -253,7 +253,7 @@ using Turing
 
             # As above, but reverse the order of condition and fix.
             model_fix_condition = fix(condition(base_model; x2=x2_obs); x1=x1_obs)
-            chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
+            chain = sample(StableRNG(23), model_fix_condition, sampler, 10_000)
             @test mean(chain[@varname(mean1)]) ≈ 0.0 atol = 0.1
             @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
         end
