@@ -326,23 +326,84 @@ function make_optim_bounds_and_init(
     # TODO(penelopeysm) This should really be exported
     et = eltype(DynamicPPL.get_input_vector_type(ldf))
     inits = fill(et(NaN), nelems)
-    lb = fill(et(-Inf), nelems)
-    ub = fill(et(Inf), nelems)
+    lb_vec = fill(et(-Inf), nelems)
+    ub_vec = fill(et(Inf), nelems)
     for (vn, init_val) in constraint_acc.init_vecs
         range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
-            lb[range] = constraint_acc.lb_vecs[vn]
+            lb_vec[range] = check_bound_length(constraint_acc.lb_vecs[vn], "lb", vn, range)
         end
         if haskey(constraint_acc.ub_vecs, vn)
-            ub[range] = constraint_acc.ub_vecs[vn]
+            ub_vec[range] = check_bound_length(constraint_acc.ub_vecs[vn], "ub", vn, range)
         end
     end
+    # The loop above visits the model's variables, so a bound whose key names none of them is
+    # never consulted and the mode comes back unconstrained. Name it instead.
+    check_constraints_reached(lb, "lb", keys(constraint_acc.init_vecs))
+    check_constraints_reached(ub, "ub", keys(constraint_acc.init_vecs))
     # Make sure we have filled in all values. This should never happen, but we should just
     # check.
     if any(isnan, inits)
         error("Could not generate vector of initial values as some values are missing.")
     end
     # Concretise before returning.
-    return [x for x in lb], [x for x in ub], [x for x in inits]
+    return [x for x in lb_vec], [x for x in ub_vec], [x for x in inits]
+end
+
+"""
+    check_bound_length(bound, name, vn, range)
+
+Return `bound`, having checked it has one entry per element of `vn`.
+
+A bound naming part of a variable the model writes whole -- `lb = Dict(@varname(x[1]) => 0.0)`
+against `x ~ MvNormal(zeros(2), I)` -- answers `haskey` and so reaches this assembly, but with
+fewer entries than the variable occupies. Assigning it raised a bare `DimensionMismatch` naming
+neither the variable nor the keyword.
+"""
+function check_bound_length(bound, name, vn, range)
+    length(bound) == length(range) && return bound
+    throw(
+        ArgumentError(
+            "`$(name)` gives $(length(bound)) bound(s) for $(vn), which the model writes as " *
+            "one value of $(length(range)) element(s). Bound every element of $(vn) or none " *
+            "of it.",
+        ),
+    )
+end
+
+"""
+    check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
+
+Throw unless every key of `constraints` is one [`get_constraints`](@ref) will actually reach.
+
+Bounds are applied by asking `get_constraints(constraints, vn)` for each variable the model
+reaches, which is a `haskey` on the whole collection, so a key it does not answer for is
+ignored and `estimate_mode` returns the unconstrained mode with no complaint.
+
+The test here is that same `haskey`, and it has to be: a key can name a variable the model
+does have and still not be reached. `lb = (x = 0.0,)` against an element-wise `x[1] ~`,
+`x[2] ~` is the case -- a scalar bound is not a value for `x[1]`, so the bound is dropped --
+and `lb = Dict(@varname(x[1]) => 0.0)` against a whole `x ~ MvNormal(...)` is the other, which
+reaches the vectorised assembly a bound short and fails with a bare `DimensionMismatch`.
+Asking about subsumption instead of about `haskey` accepted both, which is worse than not
+checking: it reads as an assurance the bound was applied. Give a bound per element of the
+variable as it is written (`lb = (x = [0.0, 0.0],)` for either model above).
+"""
+function check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
+    for key in keys(constraints)
+        # Asked of this key alone: with the whole collection, one usable key would excuse
+        # every unusable one beside it.
+        only_key = DynamicPPL.subset(constraints, (key,))
+        any(vn -> get_constraints(only_key, vn) !== nothing, model_vns) && continue
+        throw(
+            ArgumentError(
+                "`$(name)` has a bound for $(key) that no variable of the model can " *
+                "use, so it would be ignored and the mode returned as if unconstrained. " *
+                "The model's variables are $(join(model_vns, ", ")); give a bound per " *
+                "element of each, shaped as the model writes it.",
+            ),
+        )
+    end
+    return nothing
 end
