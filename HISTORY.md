@@ -26,6 +26,8 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `allow_discrete_variables` now lives in `Turing.Inference`, alongside the other sampler traits, rather than at `Turing`. It is exported from there, so `Turing.allow_discrete_variables` still names the same function and an existing overload keeps working.
 
+`NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
