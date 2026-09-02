@@ -507,6 +507,18 @@ end
 gibbs_get_parameter_values(state::MHState) = DynamicPPL.get_parameter_values(state.vi)
 gibbs_get_stats(state::MHState) = state.stat
 
+# `MH` reproposes from the values it is handed and caches no layout, so a block whose shape
+# another component changed needs nothing special.
+function gibbs_update_state!!(
+    spl::MH,
+    state::MHState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
+end
+
 function gibbs_update_state!!(
     spl::MH, state::MHState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )

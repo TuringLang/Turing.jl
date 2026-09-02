@@ -22,6 +22,21 @@ function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
 end
 
 """
+    ReshapedBlock(variable::VarName, joined::Bool)
+
+Says that `variable` has joined (`joined`) or left the block a Gibbs component samples since
+that component last stepped, because another component's step decides whether it exists.
+
+Defined here rather than beside the rest of the Gibbs interface because the samplers that
+dispatch on it are loaded first. See the five-argument
+[`gibbs_update_state!!`](@ref) for what it is for.
+"""
+struct ReshapedBlock{V<:VarName}
+    variable::V
+    joined::Bool
+end
+
+"""
     _convert_initial_params(initial_params)
 
 Convert `initial_params` to a `DynamicPPl.AbstractInitStrategy` if it is not already one, or

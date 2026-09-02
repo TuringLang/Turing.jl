@@ -510,21 +510,55 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
+    return _hmc_gibbs_update_state(spl, state, model, global_vals; rebuild_layout=false)
+end
+
+# A `StaticHamiltonian` can take its block at a new shape: `gen_metric` builds its metric at
+# the current dimension, so the only things sized for the old block are the parameter layout
+# and the phasepoint, and both are rebuilt below. An `AdaptiveHamiltonian` deliberately has no
+# such method -- `gen_metric` renews its metric from `state.adaptor`, whose mass matrix is
+# sized for the shape it adapted to, and resetting the adaptation mid-chain is the user's call.
+function gibbs_update_state!!(
+    spl::StaticHamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return _hmc_gibbs_update_state(spl, state, model, global_vals; rebuild_layout=true)
+end
+
+function _hmc_gibbs_update_state(
+    spl::Hamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple;
+    rebuild_layout::Bool,
+)
     # Construct a new LDF with the newly conditioned `model` (not `state.ldf.model`, which
     # contains stale conditioned values) and recompute the vectorised params.
-    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(
+        state.ldf, model, global_vals; rebuild_layout=rebuild_layout
+    )
     # Update the Hamiltonian (because that depends on the LDF).
     metric = gen_metric(LogDensityProblems.dimension(new_ldf), spl, state)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
     new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-    # We also need to update the position variables in the PhasePoint. Its cached `ℓπ` and
-    # gradient are left at the previous conditioning's values, which is safe only because
-    # `AHMC.transition` rebuilds the phasepoint from `new_hamiltonian` before using it, under
-    # `FullMomentumRefreshment`. A kernel that trusted the incoming `z.ℓπ` would start from a
-    # log-density computed under the old conditioning.
-    new_z = deepcopy(state.z)
-    new_z.θ .= new_params
+    # We also need to update the position variables in the PhasePoint. Writing into a copy
+    # keeps the cached `ℓπ` and gradient at the previous conditioning's values, which is safe
+    # only because `AHMC.transition` rebuilds the phasepoint from `new_hamiltonian` before
+    # using it, under `FullMomentumRefreshment`; a kernel that trusted the incoming `z.ℓπ`
+    # would start from a log-density computed under the old conditioning. It also cannot
+    # absorb a change of length, so a reshaped block gets one built from scratch instead,
+    # correct by construction at the cost of one gradient.
+    new_z = if length(new_params) == length(state.z.θ)
+        z = deepcopy(state.z)
+        z.θ .= new_params
+        z
+    else
+        AHMC.phasepoint(new_hamiltonian, new_params, zero(new_params))
+    end
     return HMCState(
         state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf, state.stat
     )

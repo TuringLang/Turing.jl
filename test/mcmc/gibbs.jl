@@ -673,28 +673,83 @@ end
             )
         end
 
-        # A block whose shape changes from one sweep to the next is a different question from
+        # Being handed a block at a new shape is a different question from
         # `allow_varying_dimension`: here `PG` moves between the two supports and `θ`'s
-        # component only ever sees a block already at one shape or the other. `MH` samples that
-        # and stays unbiased; a component reusing a `LogDensityFunction` cannot, because the
-        # layout and the adapted state it caches are sized for the old shape.
-        @test_throws "between Gibbs sweeps" sample(
-            StableRNG(42),
-            model,
-            Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => HMC(0.1, 5)),
-            200;
-            progress=false,
-        )
+        # component only ever sees a block already at one shape or the other, so each kernel
+        # is applied at one fixed shape and the scheme is valid. Whether a component may is
+        # settled by whether it implements `gibbs_update_state!!` for a `ReshapedBlock`, which
+        # turns on what it carries between steps rather than on the algorithm.
+        pg_block = (@varname(b), @varname(θ)) => PG(20)
+        for component in (MH(), HMC(0.1, 5))
+            chn = sample(
+                StableRNG(42),
+                model,
+                Gibbs(pg_block, @varname(θ) => component),
+                2000;
+                discard_initial=1000,
+                progress=false,
+            )
+            bs = vec(chn[@varname(b)])
+            @test count(==(1), bs) / length(bs) ≈ 0.394 atol = 0.05
+        end
+
+        # `NUTS` and `HMCDA` implement no such method: `gen_metric` renews their metric from
+        # the adaptor, whose mass matrix is sized for the shape it adapted to, and
+        # `AdvancedHMC` then reports an `AxesMismatch`. Nor does `ESS`, its prior means being
+        # gathered for the block it was built on. Both are refused before being asked to step.
+        for component in (NUTS(), ESS())
+            @test_throws "does not implement" sample(
+                StableRNG(42),
+                model,
+                Gibbs(pg_block, @varname(θ) => component),
+                200;
+                progress=false,
+            )
+        end
+
+        # A block that empties, rather than merely shrinking, is refused for every sampler.
+        # `MH` would in fact sample it correctly, but a `LogDensityFunction` over no variables
+        # is ill-formed and fails deep inside, so this is refused uniformly and loudly until
+        # skipping such a component is implemented properly. Both directions are covered:
+        # `Xoshiro(4)`'s draw starts with the block empty, caught before the first step, and
+        # `Xoshiro(1)`'s starts non-empty, caught in a later sweep.
+        @model function can_empty()
+            b ~ Bernoulli(0.5)
+            if b == 1
+                w ~ Normal()
+                1.0 ~ Normal(w, 0.5)
+            else
+                1.0 ~ Normal(0.0, 0.5)
+            end
+        end
+        for rng in (Xoshiro(4), Xoshiro(1)), component in (MH(), HMC(0.1, 5))
+            @test_throws "has nothing to sample" sample(
+                rng,
+                can_empty(),
+                Gibbs((@varname(b), @varname(w)) => PG(20), @varname(w) => component),
+                300;
+                progress=false,
+            )
+        end
+
+        # The capability is the wrapped sampler's, so `RepeatSampler` delegates to it.
         chn = sample(
             StableRNG(42),
             model,
-            Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => MH()),
+            Gibbs(pg_block, @varname(θ) => RepeatSampler(HMC(0.1, 5), 2)),
             2000;
             discard_initial=1000,
             progress=false,
         )
         bs = vec(chn[@varname(b)])
         @test count(==(1), bs) / length(bs) ≈ 0.394 atol = 0.05
+        @test_throws "does not implement" sample(
+            StableRNG(42),
+            model,
+            Gibbs(pg_block, @varname(θ) => RepeatSampler(NUTS(), 2)),
+            200;
+            progress=false,
+        )
 
         # Rejected even when both components can handle a varying set of variables: `θ[2]`
         # comes and goes under the `b` component's proposal while the `θ` component is the one

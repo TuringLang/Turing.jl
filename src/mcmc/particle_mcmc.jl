@@ -884,6 +884,18 @@ end
 
 gibbs_get_parameter_values(state::PGState) = state.trajectory
 
+# The retained trajectory is re-derived from the values every sweep and keeps only the
+# addresses the model still visits, so a reshaped block is the ordinary path.
+function gibbs_update_state!!(
+    spl::PG,
+    state::PGState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
+end
+
 function gibbs_update_state!!(
     ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )

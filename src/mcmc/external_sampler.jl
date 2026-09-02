@@ -93,10 +93,11 @@ not match its defaults needs no wrapping at all; `externalsampler` exists only t
 `step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
 `Turing.Inference.gibbs_get_parameter_values` and `Turing.Inference.gibbs_update_state!!`, which the
 wrapper implements for you -- and which are also why `allow_varying_dimension` is not on the
-list above. The wrapper's `gibbs_update_state!!` rebuilds the `LogDensityFunction` from the
-parameter layout it had at the first step, so a wrapped sampler cannot own a Gibbs block whose
-set of variables changes between sweeps, whatever it declares. A sampler that needs one has to
-take option 1.
+list above. `allow_varying_dimension` is not forwarded, and the wrapper implements no
+`gibbs_update_state!!` for a `ReshapedBlock`: the wrapped state is opaque, so there is no way to
+tell what within it is shaped like the block. A wrapped sampler therefore cannot own a Gibbs
+block whose set of variables changes, whatever it declares; one that needs to has to take
+option 1.
 
 One method the wrapper cannot implement for you:
 

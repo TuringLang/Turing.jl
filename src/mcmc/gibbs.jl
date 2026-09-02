@@ -86,11 +86,10 @@ slot for a variable the proposal reaches part-way through: a leapfrog step that 
 another branch raises `KeyError` from DynamicPPL rather than reaching this check at all. `PG`
 and `CSMC` rebuild their trace each sweep, drawing whatever the model reaches, so they can.
 
-This is a different question from whether a component can be handed a block at a new shape from
-one sweep to the next, which no trait settles: it depends on whether the component caches a
-layout, so it is checked where such a layout is reused, in
-[`_require_same_block_shape`](@ref). `MH` answers `false` here and yet samples a block whose
-shape changes between sweeps perfectly well.
+This is a different question from being *handed* a block at a new shape between one's own
+steps, which another component's step can do and which a component answers by implementing
+[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref). The two are independent: `MH`
+answers `false` here and implements that method.
 
 Returning `true` is a claim about the algorithm, and it carries an obligation: the component
 must have coherent semantics for a variable it samples going away and later coming back. `PG`
@@ -105,9 +104,9 @@ Returning `true` is not by itself enough. For an array whose length varies
 it, and `PG` refuses with "the number of observations must not be random".
 """
 allow_varying_dimension(::AbstractSampler) = false
-# `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so the inner answer is
-# the right one. `ExternalSampler` does not: its own `gibbs_update_state!!` goes through
-# `gibbs_recompute_ldf_and_params`, so it keeps the `false` default whatever it wraps.
+# `RepeatSampler` hands the step to the sampler it wraps, so the inner answer is the right one.
+# `ExternalSampler` keeps the `false` default whatever it wraps: the wrapped state is opaque, so
+# a claim made about the sampler inside says nothing about what survives the wrapper.
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
 
@@ -116,9 +115,9 @@ allow_varying_dimension(::PG) = true
 _component_name(spl::AbstractSampler) = nameof(typeof(spl))
 _component_name(spl::Union{RepeatSampler,ExternalSampler}) = _component_name(spl.sampler)
 
-# Whichever sampler answered `allow_varying_dimension`, which `ExternalSampler` does not
-# forward. Unwrapping there would name a sampler that may well declare the trait it is being
-# said to lack.
+# Whichever sampler is the constraint, which for `ExternalSampler` is the wrapper itself: it
+# forwards neither `allow_varying_dimension` nor `gibbs_update_state!!` for a `ReshapedBlock`,
+# so unwrapping would name a sampler that may well be capable of what it is said to lack.
 _trait_owner_name(spl::AbstractSampler) = nameof(typeof(spl))
 _trait_owner_name(spl::RepeatSampler) = _trait_owner_name(spl.sampler)
 _trait_owner_name(spl::ExternalSampler) = "externalsampler($(nameof(typeof(spl.sampler))))"
@@ -227,8 +226,80 @@ For examples of this, please see the implementations of this function for the sa
 Turing.jl. In particular, the `HMC` and `ExternalSampler` implementations work with
 `LogDensityFunction` and demonstrate how information such as that can be updated based on
 the new model.
+
+See also the five-argument form, [`gibbs_update_state!!(sampler, state, model, global_vals,
+reshaped::ReshapedBlock)`](@ref), which Gibbs calls in place of this one when the block has a
+different set of variables from the one the sampler last stepped.
 """
 function gibbs_update_state!! end
+
+"""
+    Turing.Inference.gibbs_update_state!!(
+        sampler::AbstractSampler, state, model::Model, global_vals::VarNamedTuple,
+        reshaped::ReshapedBlock
+    )
+
+Update the state of a Gibbs component sampler whose block now holds a different set of
+variables from the one it last stepped.
+
+That happens when another component samples the variable deciding whether one of this block's
+variables exists:
+
+```julia
+@model function f(y)
+    b ~ Bernoulli(0.3)
+    θ = zeros(2)
+    θ[1] ~ Normal()
+    b == 1 && (θ[2] ~ Normal())
+    return y ~ Normal(sum(θ), 0.5)
+end
+
+Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => HMC(0.1, 5))
+```
+
+`PG` samples `b` and `θ` together, then `HMC` samples `θ` again. When `PG`'s step flips `b`,
+`θ[2]` appears or vanishes, so by the time `HMC` next steps its block has a different shape
+from the one it last saw. Each step still sees one fixed shape, so the scheme is valid; `HMC`
+only has to rebuild the parameter layout and phasepoint it cached for the old shape. Without a
+flip, `θ` never changes shape and the case never arises.
+
+Defaults to throwing, because most components carry something so sized: an adapted mass
+matrix, a flat parameter layout, a set of prior means. Implementing this method is how a
+sampler says that it copes -- the implementation is the declaration, so there is no separate
+trait that could fall out of step with what the sampler actually does, and a sampler written
+before this method existed keeps the safe answer.
+
+Turing's own answers: `MH` and `PG` delegate to the four-argument form, caching nothing shaped
+like the block. `HMC` and the other [`StaticHamiltonian`](@ref)s rebuild both the parameter
+layout and the phasepoint. `NUTS` and `HMCDA` do not implement it, since `gen_metric` renews an
+[`AdaptiveHamiltonian`](@ref)'s metric from `state.adaptor`, whose mass matrix is sized for the
+shape it adapted to; resetting the adaptation instead would discard it mid-chain, which is a
+decision for the user rather than a detail of conditioning. Nor does `ESS`, whose prior means
+are gathered for the block it was built on, nor `externalsampler`, whose wrapped state is
+opaque.
+"""
+function gibbs_update_state!!(
+    sampler, state, model::DynamicPPL.Model, global_vals, reshaped::ReshapedBlock
+)
+    name = _trait_owner_name(sampler)
+    return throw(
+        ArgumentError(
+            "The variable $(reshaped.variable) " *
+            (reshaped.joined ? "joined" : "left") *
+            " the block sampled by $(name) between its steps, because another component's " *
+            "step decides whether it exists. $(name) does not implement " *
+            "`gibbs_update_state!!` for a reshaped block, so state it carries would still " *
+            "be sized for the old one. Sample this block with `MH`, `HMC` or `PG`, which " *
+            "do, or put $(reshaped.variable) and the variables that decide whether it " *
+            "exists in one block.",
+        ),
+    )
+end
+function gibbs_update_state!!(
+    sampler::RepeatSampler, state, model::DynamicPPL.Model, global_vals, r::ReshapedBlock
+)
+    return gibbs_update_state!!(sampler.sampler, state, model, global_vals, r)
+end
 
 """
     gibbs_recompute_ldf_and_params(
@@ -252,32 +323,44 @@ them later.
 Returns `(new_ldf, new_params, accs)` where `accs` is the set of accumulators after
 evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
 
-This requires that `old_ldf.model` (i.e., the model conditioned on the previous values) and
-`model` (i.e., the model conditioned on the new values) reach the same variables, so that the
-flat layout can be reused. [`_require_same_block_shape`](@ref) checks that rather than assuming
-it, and throws with an explanation if another component's step has changed the block's shape.
-The layout is reused rather than rebuilt because its ordering is what the component's own
-state, such as a Hamiltonian metric, is indexed by.
+The flat layout of `old_ldf` is reused by default, because its ordering is what the component's
+own state, such as a Hamiltonian metric, is indexed by; moving it under the component would
+silently permute that state. Pass `rebuild_layout=true` when the block has been reshaped and
+that ordering therefore describes a different set of variables; only a component implementing
+[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref) has reason to.
 """
 function gibbs_recompute_ldf_and_params(
     old_ldf::DynamicPPL.LogDensityFunction,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
-    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
+    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=();
+    rebuild_layout::Bool=false,
 ) where {N}
     layout = DynamicPPL.get_all_ranges_and_transforms(old_ldf)
-    _require_same_block_shape(layout, model, global_vals)
     # Built without `adtype` first, so that nothing is prepared at the previous step's point:
-    # `layout` guarantees the same variables, not the same position, and a taped backend
+    # the layout guarantees the same variables, not the same position, and a taped backend
     # records its tape wherever it is prepared. The second construction prepares at the
     # current point and is the only one that prepares at all.
-    new_ldf = DynamicPPL.LogDensityFunction(
-        model,
-        DynamicPPL.get_logdensity_callable(old_ldf),
-        layout,
-        DynamicPPL.get_sample_input_vector(old_ldf);
-        adtype=nothing,
-    )
+    new_ldf = if !rebuild_layout
+        # Reuse the layout, so the flat ordering the component's own state is indexed by does
+        # not move under it.
+        DynamicPPL.LogDensityFunction(
+            model,
+            DynamicPPL.get_logdensity_callable(old_ldf),
+            layout,
+            DynamicPPL.get_sample_input_vector(old_ldf);
+            adtype=nothing,
+        )
+    else
+        # The block has been reshaped, so the old ordering describes different variables and
+        # there is nothing to preserve.
+        DynamicPPL.LogDensityFunction(
+            model,
+            DynamicPPL.get_logdensity_callable(old_ldf),
+            old_ldf.transform_strategy;
+            adtype=nothing,
+        )
+    end
     accs = DynamicPPL.OnlyAccsVarInfo(
         DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...
     )
@@ -287,67 +370,16 @@ function gibbs_recompute_ldf_and_params(
     )
     new_params = DynamicPPL.get_vector_params(accs)
     if old_ldf.adtype !== nothing
+        # `new_ldf`'s own layout, not `layout`: they differ when the block was reshaped.
         new_ldf = DynamicPPL.LogDensityFunction(
             model,
             DynamicPPL.get_logdensity_callable(old_ldf),
-            layout,
+            DynamicPPL.get_all_ranges_and_transforms(new_ldf),
             new_params;
             adtype=old_ldf.adtype,
         )
     end
     return new_ldf, new_params, accs
-end
-
-"""
-    _require_same_block_shape(layout, model, global_vals)
-
-Throw unless the block `layout` describes still holds exactly the variables the component
-samples.
-
-A component reusing a `LogDensityFunction` keeps the flat layout its first step established,
-and its adapted state -- a Hamiltonian metric, a step size -- is sized for that layout. So it
-cannot be re-targeted at a block of a different shape, which is what another component's step
-does when it decides whether one of this block's variables exists. Rebuilding the layout is not
-enough on its own: `AdvancedHMC` then meets a position vector of one length and a metric of
-another.
-
-This is a different question from [`allow_varying_dimension`](@ref), which asks whether a
-component may move between supports *within* its own step. A component can be unable to do
-either, able to do both, or, like `MH`, unable to move between supports within a step yet
-perfectly able to sample a block it is handed at a new shape each sweep -- `MH` caches no
-layout, so it never reaches here.
-"""
-function _require_same_block_shape(
-    layout::DynamicPPL.VarNamedTuple,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-)
-    conditioned = DynamicPPL.conditioned(model)
-    function fail(leaf, what)
-        return throw(
-            ArgumentError(
-                "The variable $(leaf) $(what) the block this component samples between Gibbs " *
-                "sweeps. A component that reuses a `LogDensityFunction` fixes the block's " *
-                "layout at its first step and sizes its adapted state to it, so it cannot " *
-                "sample a block whose shape changes. Put $(leaf) and the variables that " *
-                "decide whether it exists in one block sampled by a component that rebuilds " *
-                "its trace each sweep, such as `PG`, or sample this block with `MH`, which " *
-                "caches no layout.",
-            ),
-        )
-    end
-    for vn in keys(layout)
-        DynamicPPL.hasvalue(global_vals, vn) || fail(vn, "left")
-    end
-    # A layout holds one range per tilde statement, so its key can be a whole vector where the
-    # values keep an element per leaf. Ask which key covers the leaf rather than looking the
-    # leaf up, or a vector-valued `m ~` would look like `m[1]` having no slot.
-    for vn in keys(global_vals), leaf in AbstractPPL.varname_leaves(vn, global_vals[vn])
-        DynamicPPL.hasvalue(conditioned, leaf) && continue
-        any(k -> AbstractPPL.subsumes(k, leaf), keys(layout)) && continue
-        fail(leaf, "joined")
-    end
-    return nothing
 end
 
 #
@@ -552,9 +584,56 @@ function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
 end
 
-struct GibbsState{V<:DynamicPPL.VarNamedTuple,S}
+struct GibbsState{V<:DynamicPPL.VarNamedTuple,S,B}
     vnt::V
     states::S
+    # The leaves each component's block held when that component last stepped, so that a block
+    # reshaped by another component's step can be spotted without asking the component. Taken
+    # right after each step rather than at the end of the sweep: a later component can reshape
+    # an earlier one's block, so there is no single snapshot that answers for all of them.
+    blocks::B
+end
+
+# The leaves of `vnt` that `varnames` claims, i.e. the shape of that component's block.
+function block_leaves(vnt::DynamicPPL.VarNamedTuple, varnames)
+    owned(leaf) = any(hv -> AbstractPPL.subsumes(hv, leaf), varnames)
+    return Set(
+        leaf for vn in keys(vnt) for
+        leaf in AbstractPPL.varname_leaves(vn, vnt[vn]) if owned(leaf)
+    )
+end
+
+"""
+    check_block_nonempty(sampler, varnames, block)
+
+Throw if the model currently reaches none of the variables `sampler` samples.
+
+A component with nothing to sample is refused rather than skipped. `MH` would in fact sample
+such a partition correctly, and skipping the component for that sweep is the sensible
+semantics, but a `LogDensityFunction` over no variables is ill-formed and fails deep inside
+with `VectorEvaluator requires a vector of floating-point values`. Refusing uniformly is loud
+and easy to revisit; letting it through for some samplers and not others is neither.
+"""
+function check_block_nonempty(sampler, varnames, block)
+    isempty(block) || return nothing
+    return throw(
+        ArgumentError(
+            "The component sampling $(join(varnames, ", ")) has nothing to sample: the " *
+            "model currently reaches none of those variables. That means another " *
+            "component's step decides whether they exist at all, which Gibbs does not " *
+            "support -- put them and the variables that decide their existence in one " *
+            "block, sampled by a component that can handle a varying set, such as `PG`.",
+        ),
+    )
+end
+
+# `nothing` if the block still holds the same variables, otherwise one that moved. Which one is
+# reported only shapes the error message, so any of them will do.
+function block_reshaped(before, now)
+    isequal(before, now) && return nothing
+    joined = setdiff(now, before)
+    isempty(joined) || return ReshapedBlock(first(joined), true)
+    return ReshapedBlock(first(setdiff(before, now)), false)
 end
 
 """
@@ -830,7 +909,7 @@ function AbstractMCMC.step(
     samplers = spl.samplers
     vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states = gibbs_initialstep_recursive(
+    vnt, states, blocks = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step,
@@ -848,7 +927,7 @@ function AbstractMCMC.step(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states)
+    return transition, GibbsState(vnt, states, blocks)
 end
 
 function AbstractMCMC.step_warmup(
@@ -863,7 +942,7 @@ function AbstractMCMC.step_warmup(
     samplers = spl.samplers
     vnt = gibbs_initial_values(rng, model, spl, initial_params)
 
-    vnt, states = gibbs_initialstep_recursive(
+    vnt, states, blocks = gibbs_initialstep_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
@@ -881,7 +960,7 @@ function AbstractMCMC.step_warmup(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states)
+    return transition, GibbsState(vnt, states, blocks)
 end
 
 """
@@ -900,19 +979,21 @@ function gibbs_initialstep_recursive(
     varname_vecs,
     samplers,
     vnt,
-    states=();
+    states=(),
+    blocks=();
     initial_params,
     kwargs...,
 )
     # End recursion
     if isempty(varname_vecs) && isempty(samplers)
-        return vnt, states
+        return vnt, states, blocks
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
+    check_block_nonempty(sampler, varnames, block_leaves(vnt, varnames))
     conditioned = conditioned_values(vnt, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
 
@@ -940,6 +1021,7 @@ function gibbs_initialstep_recursive(
     check_variable_set(spl, sampler, varnames, vnt, new_vnt, proposed)
 
     states = (states..., new_state)
+    blocks = (blocks..., block_leaves(new_vnt, varnames))
     return gibbs_initialstep_recursive(
         rng,
         model,
@@ -948,7 +1030,8 @@ function gibbs_initialstep_recursive(
         varname_vecs_tail,
         samplers_tail,
         new_vnt,
-        states;
+        states,
+        blocks;
         initial_params=initial_params,
         kwargs...,
     )
@@ -967,8 +1050,17 @@ function AbstractMCMC.step(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vnt, states = gibbs_step_recursive(
-        rng, model, AbstractMCMC.step, spl, varnames, samplers, states, state.vnt; kwargs...
+    vnt, states, blocks = gibbs_step_recursive(
+        rng,
+        model,
+        AbstractMCMC.step,
+        spl,
+        varnames,
+        samplers,
+        states,
+        state.blocks,
+        state.vnt;
+        kwargs...,
     )
 
     transition = if discard_sample
@@ -978,7 +1070,7 @@ function AbstractMCMC.step(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states)
+    return transition, GibbsState(vnt, states, blocks)
 end
 
 function AbstractMCMC.step_warmup(
@@ -994,7 +1086,7 @@ function AbstractMCMC.step_warmup(
     states = state.states
     @assert length(samplers) == length(state.states)
 
-    vnt, states = gibbs_step_recursive(
+    vnt, states, blocks = gibbs_step_recursive(
         rng,
         model,
         AbstractMCMC.step_warmup,
@@ -1002,6 +1094,7 @@ function AbstractMCMC.step_warmup(
         varnames,
         samplers,
         states,
+        state.blocks,
         state.vnt;
         kwargs...,
     )
@@ -1012,7 +1105,7 @@ function AbstractMCMC.step_warmup(
             DynamicPPL.InitFromParams(vnt), model, component_stats(spl, states)
         )
     end
-    return transition, GibbsState(vnt, states)
+    return transition, GibbsState(vnt, states, blocks)
 end
 
 """
@@ -1039,24 +1132,35 @@ function gibbs_step_recursive(
     varname_vecs,
     samplers,
     states,
+    blocks,
     global_vnt,
-    new_states=();
+    new_states=(),
+    new_blocks=();
     kwargs...,
 )
     # End recursion.
     if isempty(varname_vecs) && isempty(samplers) && isempty(states)
-        return global_vnt, new_states
+        return global_vnt, new_states, new_blocks
     end
 
     varnames, varname_vecs_tail... = varname_vecs
     sampler, samplers_tail... = samplers
     state, states_tail... = states
+    block, blocks_tail... = blocks
     # Construct the conditional model that this sampler should use.
     conditioned = conditioned_values(global_vnt, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
     # Update the sampler's state based on global values that were provided by other
-    # samplers.
-    state = gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
+    # samplers. A block another component's step has reshaped since this one last stepped
+    # goes to the `ReshapedBlock` method, which throws unless the sampler implements it.
+    current_block = block_leaves(global_vnt, varnames)
+    check_block_nonempty(sampler, varnames, current_block)
+    reshaped = block_reshaped(block, current_block)
+    state = if reshaped === nothing
+        gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
+    else
+        gibbs_update_state!!(sampler, state, conditioned_model, global_vnt, reshaped)
+    end
 
     # Take a step with the local sampler. We don't need the actual sample, only the state.
     # Note that we pass `discard_sample=true` after `kwargs...`, because AbstractMCMC will
@@ -1071,6 +1175,7 @@ function gibbs_step_recursive(
     check_variable_set(spl, sampler, varnames, global_vnt, new_global_vnt, proposed)
 
     new_states = (new_states..., new_state)
+    new_blocks = (new_blocks..., block_leaves(new_global_vnt, varnames))
     return gibbs_step_recursive(
         rng,
         model,
@@ -1079,8 +1184,10 @@ function gibbs_step_recursive(
         varname_vecs_tail,
         samplers_tail,
         states_tail,
+        blocks_tail,
         new_global_vnt,
-        new_states;
+        new_states,
+        new_blocks;
         kwargs...,
     )
 end
