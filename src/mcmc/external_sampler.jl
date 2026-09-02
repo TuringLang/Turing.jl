@@ -97,6 +97,15 @@ list above. The wrapper's `gibbs_update_state!!` rebuilds the `LogDensityFunctio
 parameter layout it had at the first step, so a wrapped sampler cannot own a Gibbs block whose
 set of variables changes between sweeps, whatever it declares. A sampler that needs one has to
 take option 1.
+
+One method the wrapper cannot implement for you:
+
+- `AbstractMCMC.setparams!!(model::AbstractMCMC.LogDensityModel, state, params)`: required to
+  serve as a Gibbs component. Gibbs re-conditions the model between sweeps, so this must
+  recompute any log-density the state caches, not only write `params` into it. Define the
+  three-argument form: AbstractMCMC's fallback drops `model` and calls a two-argument
+  `setparams!!(state, params)`, which cannot recompute anything, and a state that caches a
+  log-density would then start each step from the previous conditioning's value.
 """
 struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
        AbstractSampler

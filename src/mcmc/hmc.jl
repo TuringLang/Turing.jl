@@ -518,7 +518,11 @@ function gibbs_update_state!!(
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
     new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-    # We also need to update the position variables in the PhasePoint.
+    # We also need to update the position variables in the PhasePoint. Its cached `ℓπ` and
+    # gradient are left at the previous conditioning's values, which is safe only because
+    # `AHMC.transition` rebuilds the phasepoint from `new_hamiltonian` before using it, under
+    # `FullMomentumRefreshment`. A kernel that trusted the incoming `z.ℓπ` would start from a
+    # log-density computed under the old conditioning.
     new_z = deepcopy(state.z)
     new_z.θ .= new_params
     return HMCState(

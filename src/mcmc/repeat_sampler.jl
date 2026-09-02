@@ -9,7 +9,9 @@ $(FIELDS)
 # Examples
 ```julia
 repeated_sampler = RepeatSampler(sampler, 10)
-AbstractMCMC.step(rng, model, repeated_sampler) # take 10 steps of `sampler`
+# The initial step is a single step of `sampler`; it is the steps from a state that repeat.
+_, state = AbstractMCMC.step(rng, model, repeated_sampler)
+AbstractMCMC.step(rng, model, repeated_sampler, state) # take 10 steps of `sampler`
 ```
 """
 struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSampler
