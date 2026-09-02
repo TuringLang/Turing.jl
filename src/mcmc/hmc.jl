@@ -99,6 +99,10 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     check_model && Turing._check_model(model, sampler)
+    # The generic `sample` in `abstractmcmc.jl` converts a `NamedTuple`/`Dict` here; this
+    # method exists only to resolve `nadapts` and `discard_initial`, so it has to do the same
+    # or `NUTS`/`HMCDA` reject an `initial_params` that `HMC` accepts.
+    initial_params = Turing._convert_initial_params(initial_params)
     if initial_state === nothing
         # If `nadapts` is `-1`, then the user called a convenience
         # constructor like `NUTS()` or `NUTS(0.65)`,
