@@ -30,6 +30,8 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `sample` with `Emcee` and `chain_type=MCMCChains.Chains` now returns a `Chains` instead of the raw transitions.
 
+`Prior()` now warns that `initial_params` has no effect rather than discarding it silently: every draw comes from the prior independently, so there is no starting point for one to set.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
