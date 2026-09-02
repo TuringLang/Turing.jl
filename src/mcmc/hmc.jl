@@ -425,6 +425,19 @@ gen_metric(dim::Int, ::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(::Int, ::AdaptiveHamiltonian, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
+# `n_adapts = 0` asks an adaptive sampler not to adapt, which `AHMCAdaptor` honours with
+# `NoAdaptation`. There is then no preconditioner to renew a metric from, so it is built at the
+# current dimension in the sampler's own metric type, exactly as for a `StaticHamiltonian`.
+# Without this, any Gibbs use of `NUTS(0, δ)` or `HMCDA(0, δ, λ)` failed on the first state
+# update with `FieldError: NoAdaptation has no field pc`, while the same sampler used on its
+# own worked (Turing.jl#2400).
+function gen_metric(
+    dim::Int,
+    spl::AdaptiveHamiltonian,
+    ::HMCState{TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
+) where {TKernel,THam,PhType}
+    return getmetricT(spl)(dim)
+end
 
 function make_ahmc_kernel(alg::HMC, ϵ)
     return AHMC.HMCKernel(
@@ -510,36 +523,9 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    return _hmc_gibbs_update_state(spl, state, model, global_vals; rebuild_layout=false)
-end
-
-# A `StaticHamiltonian` can take its block at a new shape: `gen_metric` builds its metric at
-# the current dimension, so the only things sized for the old block are the parameter layout
-# and the phasepoint, and both are rebuilt below. An `AdaptiveHamiltonian` deliberately has no
-# such method -- `gen_metric` renews its metric from `state.adaptor`, whose mass matrix is
-# sized for the shape it adapted to, and resetting the adaptation mid-chain is the user's call.
-function gibbs_update_state!!(
-    spl::StaticHamiltonian,
-    state::HMCState,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
-    ::ReshapedBlock,
-)
-    return _hmc_gibbs_update_state(spl, state, model, global_vals; rebuild_layout=true)
-end
-
-function _hmc_gibbs_update_state(
-    spl::Hamiltonian,
-    state::HMCState,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple;
-    rebuild_layout::Bool,
-)
     # Construct a new LDF with the newly conditioned `model` (not `state.ldf.model`, which
     # contains stale conditioned values) and recompute the vectorised params.
-    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(
-        state.ldf, model, global_vals; rebuild_layout=rebuild_layout
-    )
+    new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
     # Update the Hamiltonian (because that depends on the LDF).
     metric = gen_metric(LogDensityProblems.dimension(new_ldf), spl, state)
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
@@ -550,8 +536,8 @@ function _hmc_gibbs_update_state(
     # only because `AHMC.transition` rebuilds the phasepoint from `new_hamiltonian` before
     # using it, under `FullMomentumRefreshment`; a kernel that trusted the incoming `z.ℓπ`
     # would start from a log-density computed under the old conditioning. It also cannot
-    # absorb a change of length, so a reshaped block gets one built from scratch instead,
-    # correct by construction at the cost of one gradient.
+    # absorb a change of length, so a block whose dimension moved gets one built from scratch
+    # instead, correct by construction at the cost of one gradient.
     new_z = if length(new_params) == length(state.z.θ)
         z = deepcopy(state.z)
         z.θ .= new_params
@@ -562,4 +548,20 @@ function _hmc_gibbs_update_state(
     return HMCState(
         state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf, state.stat
     )
+end
+
+# A `StaticHamiltonian` can take its block at a new shape with no special handling: the layout
+# is rebuilt from the current values either way, `gen_metric` builds its metric at the current
+# dimension, and the phasepoint above is rebuilt when the length moved. An
+# `AdaptiveHamiltonian` deliberately has no such method -- `gen_metric` renews its metric from
+# `state.adaptor`, whose mass matrix is sized for the shape it adapted to, and resetting the
+# adaptation mid-chain is the user's call rather than a detail of conditioning.
+function gibbs_update_state!!(
+    spl::StaticHamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
 end

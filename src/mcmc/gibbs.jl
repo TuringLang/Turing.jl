@@ -67,6 +67,10 @@ still gets the right answer for a sampler Turing declares unusable.
 """
 isgibbscomponent(spl::AbstractSampler) = supports_gibbs(spl)
 
+# TODO(#2863): remove the `isgibbscomponent` bridge, and the `gibbs_get_raw_values` one below,
+# once the deprecation period is over. Consulting a deprecated name from the new one keeps a
+# third-party overload working, but it means two names can disagree until then.
+#
 # An `isgibbscomponent` overload is any method more specific than the one above, which is what
 # `supports_gibbs`'s fallback looks for. `Base.depwarn` is silent unless asked for
 # (`--depwarn=yes`, as package test suites use), which is right here: the sampler's author has
@@ -109,6 +113,12 @@ allow_varying_dimension(::AbstractSampler) = false
 # a claim made about the sampler inside says nothing about what survives the wrapper.
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
+# A default `MH()` proposes from the prior, so the proposal density cancels against it and the
+# acceptance ratio collapses to a likelihood ratio, which is defined across supports of
+# different dimension. Give any variable its own proposal and that cancellation is gone, so the
+# answer is `false` as soon as one is specified. `_require_same_variables` makes the same
+# distinction per variable, for the case where only some have proposals.
+allow_varying_dimension(spl::MH) = isempty(spl.vns_with_proposal)
 
 # For an error about an unsupported component, the wrapper's own name says nothing: both
 # wrappers forward `supports_gibbs`, so the sampler that answered is the one inside.
@@ -323,48 +333,37 @@ them later.
 Returns `(new_ldf, new_params, accs)` where `accs` is the set of accumulators after
 evaluation, from which extra accumulators (e.g. `LogLikelihoodAccumulator`) can be read.
 
-The flat layout of `old_ldf` is reused by default, because its ordering is what the component's
-own state, such as a Hamiltonian metric, is indexed by; moving it under the component would
-silently permute that state. Pass `rebuild_layout=true` when the block has been reshaped and
-that ordering therefore describes a different set of variables; only a component implementing
-[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref) has reason to.
+The flat layout is built from `global_vals` rather than reused from `old_ldf`. A layout is keyed
+by tilde statement and carries each variable's transform, so a reused one is stale the moment
+the model takes a different branch -- not only when a variable joins or leaves the block, but
+also when the same variables arrive under different keys, or with a different transform and so
+a different linked dimension. Evaluating against a stale layout fails inside DynamicPPL naming
+no variable. Built from the values, the layout is identical whenever the execution path is,
+which is exactly when the component's own state depends on the ordering, and differs only when
+that state was going to be wrong anyway.
 """
 function gibbs_recompute_ldf_and_params(
     old_ldf::DynamicPPL.LogDensityFunction,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
-    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=();
-    rebuild_layout::Bool=false,
+    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
 ) where {N}
-    layout = DynamicPPL.get_all_ranges_and_transforms(old_ldf)
-    # Built without `adtype` first, so that nothing is prepared at the previous step's point:
-    # the layout guarantees the same variables, not the same position, and a taped backend
-    # records its tape wherever it is prepared. The second construction prepares at the
-    # current point and is the only one that prepares at all.
-    new_ldf = if !rebuild_layout
-        # Reuse the layout, so the flat ordering the component's own state is indexed by does
-        # not move under it.
-        DynamicPPL.LogDensityFunction(
-            model,
-            DynamicPPL.get_logdensity_callable(old_ldf),
-            layout,
-            DynamicPPL.get_sample_input_vector(old_ldf);
-            adtype=nothing,
-        )
-    else
-        # The block has been reshaped, so the old ordering describes different variables and
-        # there is nothing to preserve.
-        DynamicPPL.LogDensityFunction(
-            model,
-            DynamicPPL.get_logdensity_callable(old_ldf),
-            old_ldf.transform_strategy;
-            adtype=nothing,
-        )
-    end
+    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
+    # Establish the layout the newly conditioned model actually has, at the current values.
+    # `InitFromParams` with no fallback draws nothing, so this consumes no randomness -- unlike
+    # building the layout through the `transform_strategy` constructor, which draws from the
+    # prior with whatever the default rng happens to be.
+    probe = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
+    _, probe = DynamicPPL.init!!(model, probe, init_strategy, old_ldf.transform_strategy)
+    # Built without `adtype` first, so that nothing is prepared at a point we are about to
+    # replace: a taped backend records its tape wherever it is prepared. The construction
+    # below prepares at the current point and is the only one that prepares at all.
+    new_ldf = DynamicPPL.LogDensityFunction(
+        model, DynamicPPL.get_logdensity_callable(old_ldf), probe; adtype=nothing
+    )
     accs = DynamicPPL.OnlyAccsVarInfo(
         DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...
     )
-    init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
     _, accs = DynamicPPL.init!!(
         new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
     )
@@ -491,14 +490,13 @@ Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
 
 Every variable in the model must be handled by at least one component sampler, and several
-components may sample the same variable. What they may not do is split a value that is stored
-as a unit: if one component declares `x` and another `x[1]`, whether Gibbs can express that
-depends on how the values arrive. Written element by element -- `x[1] ~ Normal(); x[2] ~
-Normal()`, sampled by MH -- each element is a key of its own and the partition works. Written
-as one draw, `x ~ MvNormal(...)`, or handed back as a unit by a component that vectorises its
-parameters, such as HMC, `x` is a single key: Gibbs cannot free part of it and throws. So the
-same pair of declared varnames may sample or throw depending on the model and on the other
-component's sampler.
+components may sample the same variable. What they may not do is split a value that the model
+stores as a unit: if one component declares `x` and another `x[1]`, whether Gibbs can express
+that depends on the model's tilde statements. Written element by element -- `x[1] ~ Normal();
+x[2] ~ Normal()` -- each element is a key of its own and the partition works. Written as one
+draw, `x ~ MvNormal(...)`, `x` is a single key: Gibbs cannot free part of it and throws. Which
+sampler holds the containing block makes no difference, because the values Gibbs threads come
+from evaluating the model rather than from what a component hands back.
 
 Variables the model only reaches on some sweeps need care:
 
@@ -604,9 +602,9 @@ function block_leaves(vnt::DynamicPPL.VarNamedTuple, varnames)
 end
 
 """
-    check_block_nonempty(sampler, varnames, block)
+    check_block_nonempty(varnames, block)
 
-Throw if the model currently reaches none of the variables `sampler` samples.
+Throw if the model currently reaches none of the variables a component samples.
 
 A component with nothing to sample is refused rather than skipped. `MH` would in fact sample
 such a partition correctly, and skipping the component for that sweep is the sensible
@@ -614,7 +612,7 @@ semantics, but a `LogDensityFunction` over no variables is ill-formed and fails 
 with `VectorEvaluator requires a vector of floating-point values`. Refusing uniformly is loud
 and easy to revisit; letting it through for some samplers and not others is neither.
 """
-function check_block_nonempty(sampler, varnames, block)
+function check_block_nonempty(varnames, block)
     isempty(block) || return nothing
     return throw(
         ArgumentError(
@@ -639,9 +637,13 @@ end
 """
     GibbsInitStrategy(varnames, strategies)
 
-Initialise each variable with the strategy of the component sampler that samples it, so that
-e.g. an `HMC` component still gets its `InitFromUniform` starting point inside Gibbs. A
-variable no component claims falls back to the prior.
+Initialise each variable with the strategy of the component sampler that samples it, choosing
+by ownership; a variable no component claims falls back to the prior.
+
+This produces the single initial draw the first sweep starts from, and nothing else. Each
+component's own initialisation does not go through it: `gibbs_initialstep_recursive` asks
+`init_strategy(sampler)` directly, because ownership is ambiguous where components overlap. So
+an `HMC` component gets its `InitFromUniform` starting point from there, not from here.
 """
 struct GibbsInitStrategy{V,S} <: DynamicPPL.AbstractInitStrategy
     varnames::V
@@ -726,6 +728,42 @@ function _require_varying_dimension(sampler, leaf, what::String)
             remedy,
         ),
     )
+end
+
+"""
+    check_reported_variables(varnames, conditioned, report)
+
+Throw if `report` contains a value for a variable the component did not sample and was
+conditioned on.
+
+`gibbs_get_parameter_values`' contract is that a component reports only what it samples, and
+`merge` gives the report priority, so a foreign value silently replaces another block's --
+either frozen for the rest of the run, or re-sampled afterwards from a corrupted conditional,
+which looks perfectly plausible in the chain.
+
+A component may legitimately report a variable it does not sample when that variable did not
+exist to be conditioned on and its own step brought it into being: it is assumed rather than
+observed, so it lands in the component's accumulator. That case is not an error here --
+[`check_variable_set`](@ref)'s appearance branch diagnoses it, and names the component that
+should have sampled it. Only a variable that *was* conditioned can have been overwritten.
+"""
+function check_reported_variables(
+    varnames, conditioned::DynamicPPL.VarNamedTuple, report::DynamicPPL.VarNamedTuple
+)
+    for vn in keys(report), leaf in AbstractPPL.varname_leaves(vn, report[vn])
+        any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) && continue
+        DynamicPPL.hasvalue(conditioned, leaf) || continue
+        throw(
+            ArgumentError(
+                "The component sampling $(join(varnames, ", ")) reported a value for " *
+                "$(leaf), which it does not sample and which was conditioned on for its " *
+                "step. Reporting it overwrites the value the component that does sample it " *
+                "produced. `gibbs_get_parameter_values` must return only the variables its " *
+                "own sampler is responsible for.",
+            ),
+        )
+    end
+    return nothing
 end
 
 """
@@ -993,7 +1031,7 @@ function gibbs_initialstep_recursive(
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    check_block_nonempty(sampler, varnames, block_leaves(vnt, varnames))
+    check_block_nonempty(varnames, block_leaves(vnt, varnames))
     conditioned = conditioned_values(vnt, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
 
@@ -1016,7 +1054,9 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
-    proposed = merge(conditioned, gibbs_get_parameter_values(new_state))
+    report = gibbs_get_parameter_values(new_state)
+    check_reported_variables(varnames, conditioned, report)
+    proposed = merge(conditioned, report)
     new_vnt = reached_values(rng, model, proposed)
     check_variable_set(spl, sampler, varnames, vnt, new_vnt, proposed)
 
@@ -1154,7 +1194,7 @@ function gibbs_step_recursive(
     # samplers. A block another component's step has reshaped since this one last stepped
     # goes to the `ReshapedBlock` method, which throws unless the sampler implements it.
     current_block = block_leaves(global_vnt, varnames)
-    check_block_nonempty(sampler, varnames, current_block)
+    check_block_nonempty(varnames, current_block)
     reshaped = block_reshaped(block, current_block)
     state = if reshaped === nothing
         gibbs_update_state!!(sampler, state, conditioned_model, global_vnt)
@@ -1170,7 +1210,9 @@ function gibbs_step_recursive(
         rng, conditioned_model, sampler, state; kwargs..., discard_sample=true
     )
 
-    proposed = merge(conditioned, gibbs_get_parameter_values(new_state))
+    report = gibbs_get_parameter_values(new_state)
+    check_reported_variables(varnames, conditioned, report)
+    proposed = merge(conditioned, report)
     new_global_vnt = reached_values(rng, model, proposed)
     check_variable_set(spl, sampler, varnames, global_vnt, new_global_vnt, proposed)
 

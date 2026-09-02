@@ -1040,6 +1040,32 @@ end
         @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
     end
 
+    @testset "an adaptive sampler with adaptation switched off works as a component" begin
+        # `n_adapts = 0` asks `NUTS`/`HMCDA` not to adapt, which `AHMCAdaptor` honours with
+        # `NoAdaptation`. Gibbs then has no preconditioner to renew a metric from, and every
+        # such component used to fail on its first state update with
+        # `FieldError: NoAdaptation has no field pc` -- while the same sampler used on its own
+        # worked, which is what Turing.jl#2400 pins.
+        @model function g()
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            return 1.5 ~ Normal(m, sqrt(s))
+        end
+        for component in (NUTS(0, 0.65), HMCDA(0, 0.65, 0.3))
+            chn = sample(
+                Xoshiro(1),
+                g(),
+                Gibbs(@varname(s) => MH(), @varname(m) => component),
+                400;
+                progress=false,
+            )
+            ms = vec(chn[@varname(m)])
+            @test all(isfinite, ms)
+            # Not adapting is fine; not moving is not.
+            @test std(ms) > 0.1
+        end
+    end
+
     @testset "a variable appearing mid-run needs a suitable component sampler (#2810)" begin
         # The example from #2810: `z` exists only while `x > 0`, so it appears part-way through
         # a run. Whichever block owns it has to be able to sample a set of variables that
@@ -1064,15 +1090,13 @@ end
         # Naming the components by sampler type made this message useless whenever two
         # components share one, which is the common case: it read "during a step of MH, which
         # does not sample it: MH does".
+        #
+        # `Xoshiro(5)` draws `x > 0`, so `z` is in the first snapshot, its component
+        # initialises normally, and it is `x`'s step that later removes `z` -- the ownership
+        # guard, which names both components.
+        split_z = Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => MH())
         err = try
-            sample(
-                Xoshiro(470),
-                f(),
-                Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => MH()),
-                200;
-                check_model=false,
-                progress=false,
-            )
+            sample(Xoshiro(5), f(), split_z, 200; check_model=false, progress=false)
             nothing
         catch e
             e
@@ -1080,6 +1104,15 @@ end
         @test err isa ArgumentError
         @test occursin("component sampling x", err.msg)
         @test occursin("component sampling z", err.msg)
+
+        # `Xoshiro(470)` draws `x < 0`, so `z` is absent from the first snapshot and its
+        # component has nothing to sample. That is refused before any component steps, which
+        # unlike the case above does not depend on what the first sweep happens to draw. The
+        # remedy is the same; the message cannot name `x`, because nothing tells Gibbs which
+        # variable decides `z`'s existence.
+        @test_throws "has nothing to sample" sample(
+            Xoshiro(470), f(), split_z, 200; check_model=false, progress=false
+        )
 
         # Seed 4's initial draw already takes the branch, so `z` is in the first snapshot and
         # the every-variable-has-a-component check refuses it at the initial step, before any
@@ -1101,43 +1134,43 @@ end
         @test err isa ArgumentError
         @test occursin("has no component for z", err.msg)
 
-        # `x` and `z` share a block here, so ownership is satisfied and the capability gate is
-        # what refuses it: `MH` does not declare it can sample a varying set. Seeds 1 and 4 take
-        # different branches of the check, so both are worth pinning.
-        err = try
-            sample(
-                Xoshiro(1),
+        # `x` and `z` share a block here, and a default `MH()` proposes both from their
+        # priors. The proposal density then cancels against the prior and the acceptance ratio
+        # collapses to a likelihood ratio, which is defined between spaces of different
+        # dimension -- so this is a legitimate move across supports, not something to refuse.
+        # The model is prior-only, so P(x > 0) = 1/2 exactly.
+        ps = map((1, 4, 5)) do seed
+            chn = sample(
+                Xoshiro(seed),
                 f(),
                 Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH()),
-                100;
+                20_000;
+                discard_initial=5_000,
                 check_model=false,
                 progress=false,
             )
-            nothing
-        catch e
-            e
+            return mean(vec(chn[@varname(x)]) .> 0)
         end
-        @test err isa ArgumentError
-        @test occursin("does not declare it can sample", err.msg)
+        @test mean(ps) ≈ 0.5 atol = 0.02
 
-        # A variable going away is the other direction of the same check, and reaching it needs
-        # both a seed whose initial draw has `z` and a component that owns `z` but cannot sample
-        # a varying set: `z` then drops out of that component's own report.
-        err = try
-            sample(
-                Xoshiro(4),
-                f(),
-                Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH()),
-                100;
-                check_model=false,
-                progress=false,
-            )
-            nothing
-        catch e
-            e
-        end
-        @test err isa ArgumentError
-        @test occursin("stopped existing", err.msg)
+        # Give a variable its own proposal and the cancellation is gone, so the same block is
+        # refused. `MH` also checks this itself, at the proposal rather than afterwards,
+        # because Gibbs only ever sees the state `MH` returns: on rejection that is the state
+        # it proposed *from*, so a rejected crossing would otherwise leave no trace while
+        # having been scored with an invalid ratio.
+        @test !Turing.Inference.allow_varying_dimension(MH(@varname(z) => Normal(0, 0.5)))
+        @test Turing.Inference.allow_varying_dimension(MH())
+        @test_throws ArgumentError sample(
+            Xoshiro(1),
+            f(),
+            Gibbs(
+                @varname(y) => MH(),
+                (@varname(x), @varname(z)) => MH(@varname(z) => Normal(0, 0.5)),
+            ),
+            200;
+            check_model=false,
+            progress=false,
+        )
         # Assigned to MH, whose acceptance ratio is not valid across a change of dimension.
         @test_throws ArgumentError sample(
             Xoshiro(470),

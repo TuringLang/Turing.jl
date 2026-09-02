@@ -336,6 +336,64 @@ function AbstractMCMC.step(
     return transition, MHState(vi, stat)
 end
 
+"""
+    _require_same_variables(spl, old_vi, new_vi)
+
+Throw if a proposal reached a different set of variables from the state it was proposed from
+*and* the variable that came or went is one `spl` proposes for explicitly.
+
+A default `MH()` proposes every variable from its prior, and then the acceptance ratio
+
+    p(x')L(x') q(x|x') / (p(x)L(x) q(x'|x))
+
+has `q = p`, so the prior densities cancel and it collapses to `L(x')/L(x)`. That is defined
+between spaces of different dimension, which makes a prior-proposal move across supports a
+legitimate one: on the dynamic model in the tests it recovers P(b=1) = 0.3965 over six seeds
+against an exact 0.394. So this is not a property of `MH` as a sampler, and it cannot be read
+off `allow_varying_dimension` alone.
+
+A variable with its own proposal is different: `q` no longer cancels against `p`, and the ratio
+across two supports is not the one the algorithm assumes. Only those are refused, and the
+refusal happens here rather than downstream because it has to happen whatever the outcome. On
+rejection `MH` returns the state it proposed *from*, so nothing afterwards can tell that a
+crossing was proposed, and Gibbs -- which sees only the returned state -- would let a run
+finish while every such proposal had been scored with an invalid ratio.
+
+`:=` quantities are excluded: they are not variables, and a branch may compute different ones
+without the support having changed. Membership in `vns_with_proposal` is tested exactly as
+`MHUnspecifiedPriorsAccumulator` tests it, so that this agrees with which variables the sampler
+really proposes from the prior.
+"""
+function _require_same_variables(
+    spl::MH, old_vi::DynamicPPL.AbstractVarInfo, new_vi::DynamicPPL.AbstractVarInfo
+)
+    isempty(spl.vns_with_proposal) && return nothing
+    function leaves(vnt)
+        return Set(
+            leaf for vn in keys(vnt) for leaf in AbstractPPL.varname_leaves(vn, vnt[vn])
+        )
+    end
+    before = leaves(DynamicPPL.get_parameter_values(old_vi))
+    after = leaves(DynamicPPL.get_parameter_values(new_vi))
+    isequal(before, after) && return nothing
+    changed = union(setdiff(before, after), setdiff(after, before))
+    custom = filter(in(spl.vns_with_proposal), changed)
+    isempty(custom) && return nothing
+    leaf = first(custom)
+    what = leaf in before ? "is absent from" : "appears in"
+    return throw(
+        ArgumentError(
+            "`MH` proposed a state with a different set of variables from the one it " *
+            "proposed from: $(leaf) $(what) the proposal, and $(leaf) has a proposal of its " *
+            "own. Its proposal density does not cancel against the prior, so the " *
+            "acceptance ratio between the two supports is not the one the algorithm " *
+            "assumes. Propose $(leaf) from its prior, by leaving it out of the `MH` " *
+            "constructor, or sample it and the variables that decide whether it exists with " *
+            "a component built for a varying set, such as `PG`.",
+        ),
+    )
+end
+
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
@@ -367,6 +425,7 @@ function AbstractMCMC.step(
     _, new_vi = DynamicPPL.init!!(
         rng, model, new_vi, init_strategy_given_old, spl.transform_strategy
     )
+    _require_same_variables(spl, old_vi, new_vi)
     new_lp = DynamicPPL.getlogjoint_internal(new_vi)
     # We need to reconstruct the initialisation strategy for the 'reverse' transition
     # i.e. from new_vi to old_vi. That allows us to calculate the proposal density
@@ -522,8 +581,8 @@ end
 function gibbs_update_state!!(
     spl::MH, state::MHState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
-    # `state` here is a AbstractVarInfo; the MH sampler since Turing v0.40 only uses
-    # the accumulator part of the state. We do need to reevaluate the model though
+    # `state.vi` is an `AbstractVarInfo`; the MH sampler since Turing v0.40 only uses
+    # the accumulator part of it. We do need to reevaluate the model though
     # because it's necessary for the log-probability to be updated to reflect the new
     # values in `global_vals`. If we don't do that, the MH acceptance step will return
     # wrong results.
