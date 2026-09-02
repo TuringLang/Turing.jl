@@ -164,6 +164,15 @@ struct LinkedRW{C}
 end
 LinkedRW(var::Real) = LinkedRW(var * I)
 
+# For example, `LinkExact(Set([@varname(x)]))` links `x` but not `x[1]`,
+# whereas `DynamicPPL.LinkSome` links both.
+struct LinkExact{V<:Set{<:VarName}} <: DynamicPPL.AbstractTransformStrategy
+    vns::V
+end
+function DynamicPPL.target_transform(strategy::LinkExact, vn::VarName)
+    return vn in strategy.vns ? DynamicPPL.DynamicLink() : DynamicPPL.Unlink()
+end
+
 """
     InitFromProposals(proposals::VarNamedTuple, verbose::Bool)
 
@@ -222,11 +231,12 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     # have `LinkedRW` proposals. That in turn is obtained using `MHLinkedValuesAccumulator`.
     function init_strategy_constructor(raw_vals, linked_vals)
         proposals = DynamicPPL.VarNamedTuple()
+        raw_vns = Set(keys(raw_vals))
         for pair in vn_proposal_pairs
             # Convert all keys to VarNames.
             vn, proposal = pair
             vn = _to_varname(vn)
-            if vn ∉ keys(raw_vals)
+            if vn ∉ raw_vns
                 continue
             end
             proposal_dist = if proposal isa Distribution
@@ -254,7 +264,7 @@ function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     link_strategy = if isempty(linkedrw_vns)
         DynamicPPL.UnlinkAll()
     else
-        DynamicPPL.LinkSome(linkedrw_vns, DynamicPPL.UnlinkAll())
+        LinkExact(linkedrw_vns)
     end
     return MH(init_strategy_constructor, link_strategy, all_vns)
 end

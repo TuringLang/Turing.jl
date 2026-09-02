@@ -108,24 +108,28 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
         end
 
-        @testset "ignored aggregate proposal" begin
+        @testset "ignored aggregate proposals" begin
             @model function f()
                 x = zeros(2)
                 x[1] ~ Exponential(0.5)
                 return x[2] ~ Exponential(0.5)
             end
 
-            expected = sample(StableRNG(2876), f(), MH(), 20; progress=false)
-            actual = sample(
-                StableRNG(2876),
-                f(),
-                MH(@varname(x) => filldist(Exponential(1.0), 2)),
-                20;
-                progress=false,
-                verbose=false,
-            )
-            @test actual[@varname(x[1])] == expected[@varname(x[1])]
-            @test actual[@varname(x[2])] == expected[@varname(x[2])]
+            expected = sample(StableRNG(2876), f(), MH(), 20; progress=false, verbose=false)
+            for proposal in (filldist(Exponential(1.0), 2), LinkedRW([1.0 0.0; 0.0 1.0]))
+                @testset let proposal = proposal
+                    actual = sample(
+                        StableRNG(2876),
+                        f(),
+                        MH(@varname(x) => proposal),
+                        20;
+                        progress=false,
+                        verbose=false,
+                    )
+                    @test actual[@varname(x[1])] == expected[@varname(x[1])]
+                    @test actual[@varname(x[2])] == expected[@varname(x[2])]
+                end
+            end
         end
     end
 
