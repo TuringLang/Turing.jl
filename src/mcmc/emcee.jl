@@ -81,7 +81,7 @@ function AbstractMCMC.step(
     end
 
     linked_vis = map(vi -> DynamicPPL.link!!(vi, model), vis)
-    check_walkers_same_dimension(linked_vis)
+    check_walkers_same_layout(linked_vis)
     state = EmceeState(
         DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vis[1]),
         map(linked_vis) do vi
@@ -93,31 +93,38 @@ function AbstractMCMC.step(
 end
 
 """
-    check_walkers_same_dimension(linked_vis)
+    check_walkers_same_layout(linked_vis)
 
-Throw unless every walker has the same number of parameters.
+Throw unless every walker has the same parameter layout.
 
-The stretch move interpolates between two walkers' position vectors, so the ensemble needs one
-parameter space shared by all of them. On a model whose set of variables depends on its own
-draws, walkers initialised from the prior can land in different branches and so have different
-lengths, and the mismatch otherwise surfaces as a `DimensionMismatch` from inside the proposal's
-broadcast.
+The stretch move interpolates between two walkers' position vectors, and the single
+`LogDensityFunction` is built from the first walker, so every walker's vector is decoded against
+that one layout. All of them therefore have to describe the same variables in the same order. On
+a model whose set of variables depends on its own draws, walkers initialised from the prior land
+in different branches and do not.
 
-The check is necessary rather than sufficient: it rules out walkers that start in different
-branches, not a model whose dimension varies at all. A proposal can still reach a vector whose
-trace visits other variables, and the single `LogDensityFunction` built here would decode it
-against the layout of the first walker. `Emcee` has no way to express that, so a dynamic model
-is best avoided with it entirely.
+The variables are compared, not the total length. Two branches can hold different variables and
+the same number of parameters -- `if b; x ~ Normal(); else; y ~ Normal(); end` -- and comparing
+lengths passed those walkers, after which sampling threw `KeyError: key y not found` from inside
+the decode.
 """
-function check_walkers_same_dimension(linked_vis)
-    dims = map(vi -> length(vi[:]), linked_vis)
-    allequal(dims) && return nothing
-    throw(
+function check_walkers_same_layout(linked_vis)
+    # Names AND total length: `keys` yields whole-variable `VarName`s, so a variable whose
+    # dimension varies gives the same names in every branch, and comparing names alone let
+    # `n ~ Normal(); x ~ MvNormal(zeros(n > 0 ? 2 : 3), I)` through to the `DimensionMismatch`
+    # this exists to prevent. Comparing lengths alone let different variables of equal total
+    # width through to a `KeyError`. Both are needed.
+    layouts = map(vi -> (collect(keys(vi)), length(vi[:])), linked_vis)
+    allequal(layouts) && return nothing
+    shown = unique(map(l -> string("[", join(l[1], ", "), "] of ", l[2]), layouts))
+    return throw(
         ArgumentError(
-            "`Emcee`'s walkers have different numbers of parameters ($(join(sort(unique(dims)), ", "))). " *
-            "The stretch move moves along the line between two walkers, so they all have to " *
-            "live in one parameter space. This model's set of variables depends on its own " *
-            "draws, which `Emcee` cannot sample.",
+            "`Emcee`'s walkers do not have the same parameter layout " *
+            "($(join(shown, " versus "))). " *
+            "The stretch move moves along the line between two walkers and every walker is " *
+            "decoded against one layout, so they all have to live in one parameter space. " *
+            "This model's set of variables depends on its own draws, which `Emcee` cannot " *
+            "sample.",
         ),
     )
 end
