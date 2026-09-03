@@ -251,11 +251,40 @@ end
         x ~ Normal(m, 1)
         return 2.0 ~ Normal(x, 1)
     end
-    @test_throws "its argument `x` is `missing`" sample(
+    @test_throws "is or holds `missing`" sample(
         StableRNG(468),
         impute(missing),
         Gibbs(@varname(m) => MH(), @varname(x) => MH()),
         10;
+        progress=false,
+    )
+    # An element of an array argument goes the same way as a whole one, and a keyword argument
+    # lands in `model.defaults` rather than `model.args`. Both reached the likelihood.
+    @model function partly(x)
+        mu ~ Normal()
+        for i in eachindex(x)
+            x[i] ~ Normal(mu, 1)
+        end
+    end
+    @test_throws "is or holds `missing`" sample(
+        StableRNG(468),
+        partly([1.5, missing]),
+        Gibbs(@varname(mu) => MH(), @varname(x[2]) => MH()),
+        10;
+        check_model=false,
+        progress=false,
+    )
+    @model function bykeyword(a; b=missing)
+        m ~ Normal()
+        a ~ Normal(m, 1)
+        return b ~ Normal(m, 1)
+    end
+    @test_throws "is or holds `missing`" sample(
+        StableRNG(468),
+        bykeyword(1.0),
+        Gibbs(@varname(m) => MH(), @varname(b) => MH()),
+        10;
+        check_model=false,
         progress=false,
     )
     # Gibbs's restriction, not the model's: another sampler takes it, and so does Gibbs once

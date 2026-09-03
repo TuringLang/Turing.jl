@@ -1230,34 +1230,44 @@ end
 """
     check_no_missing_arguments(model)
 
-Refuse a model with an argument bound to `missing`.
+Refuse a model with an argument bound to `missing`, or holding one.
 
-Gibbs conditions every component on the variables it does not sample, and `condition` cannot
-take precedence over a `missing` argument: the `missing` reaches the likelihood and throws
-`MethodError: no method matching loglikelihood(::Normal{Float64}, ::Missing)`.
+Gibbs conditions every component on the variables it does not sample, and conditioning cannot
+reach a variable that is a model argument: the compiler reads the argument directly for such a
+tilde and never consults the condition context, so the `missing` arrives at the likelihood and
+throws `MethodError: no method matching loglikelihood(::Normal{Float64}, ::Missing)`. An element
+of an array argument goes the same way as a whole one.
 
-Gibbs's restriction, not the model's, so it belongs here and not in `_check_model`: a model
-taking `x` as an argument and drawing `x ~ Normal(m, 1)` from it samples to the right posterior
-under `MH` when called with `missing`.
+This is a capability `GibbsContext` had and conditioning does not: it made the variable an
+assumption and supplied the value itself. Restoring it needs `condition` to take precedence over
+a model argument (DynamicPPL.jl#1462, unmerged), and `missing` as a latent marker is due for
+deprecation anyway (DynamicPPL.jl#1464), so Gibbs refuses instead of failing inside the
+likelihood. Other samplers are unaffected.
 
-A whole argument only. An array holding a `missing` is a different mechanism -- the element is
-latent while its neighbours are data, and conditioning reaches it element by element -- so
-an argument of `[1.5, missing]` samples under Gibbs and must not be caught here.
+Deliberately coarse: an argument that is `missing` but never the left-hand side of a tilde is
+refused too, though it would sample. Telling the two apart needs an evaluation, and a false
+refusal that names the argument is easier to act on than a `MethodError` from inside DynamicPPL.
 """
 function check_no_missing_arguments(model::DynamicPPL.Model)
-    for (name, arg) in pairs(model.args)
-        ismissing(arg) || continue
+    # `defaults` as well as `args`: a keyword argument bound to `missing` lands there, and
+    # reaches the likelihood exactly as a positional one does.
+    for (name, arg) in Iterators.flatten((pairs(model.args), pairs(model.defaults)))
+        _holds_missing(arg) || continue
         throw(
             ArgumentError(
-                "`Gibbs` cannot sample this model: its argument `$(name)` is `missing`. " *
-                "Gibbs conditions each component on the variables it does not sample, and " *
-                "conditioning cannot override a `missing` argument, so the `missing` " *
-                "reaches the likelihood. Declare `$(name)` inside the model instead of " *
-                "taking it as an argument, and condition on your observations.",
+                "`Gibbs` cannot sample this model: its argument `$(name)` is or holds " *
+                "`missing`. Gibbs conditions each component on the variables it does not " *
+                "sample, and conditioning cannot reach a variable that is a model argument, " *
+                "so the `missing` reaches the likelihood. Declare `$(name)` inside the model " *
+                "instead of taking it as an argument, and condition on your observations.",
             ),
         )
     end
 end
+
+_holds_missing(x) = ismissing(x)
+# The eltype test keeps this O(1) for an ordinary data array, which cannot hold a `missing`.
+_holds_missing(x::AbstractArray) = eltype(x) >: Missing && any(ismissing, x)
 
 """
     gibbs_initial_values(rng, model, spl, initial_params)

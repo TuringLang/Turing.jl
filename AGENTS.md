@@ -131,12 +131,15 @@ refused with a `ReshapedBlock`. Layout, not chain correctness.
 
 ### Gibbs refuses a `missing` model argument
 
-`condition` cannot override an argument bound to `missing`: it reaches the likelihood and throws
-from inside `loglikelihood` (DynamicPPL.jl#1457, unmerged). Gibbs conditions every component on
-what it does not sample, so `check_no_missing_arguments` refuses such a model up front. A whole
-argument only — an array holding a `missing` is per-element and samples fine. Gibbs's
-restriction, not the model's, since `MH` takes such a model: keep it out of `_check_model`.
-`missing` as a latent marker is due for deprecation (DynamicPPL.jl#1464).
+Conditioning cannot reach a variable that is a model argument: the compiler reads the argument
+directly for such a tilde, so the `missing` arrives at the likelihood and throws. This is a
+capability `GibbsContext` had and conditioning does not, so Gibbs refuses instead —
+`check_no_missing_arguments`, over `model.args` AND `model.defaults`, whole arguments and array
+elements alike. Do not narrow it on the strength of a `GibbsConditional` test: that sampler
+evaluates without a log-likelihood accumulator and masks the failure. Restoring the capability
+needs DynamicPPL.jl#1462 (unmerged), and `missing` as a latent marker is due for deprecation
+anyway (DynamicPPL.jl#1464). Keep the check in Gibbs and out of `_check_model`: other samplers
+take these models.
 
 ### Conditioned variables are observations
 

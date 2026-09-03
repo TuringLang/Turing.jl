@@ -8,26 +8,25 @@ using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
-    @testset "observed elements of a partly-missing array argument" begin
-        @model function partly(x)
+    @testset "observed and latent elements of one array" begin
+        @model function partly()
             mu ~ Normal()
-            for i in eachindex(x)
-                x[i] ~ Normal(mu, 1)
-            end
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(mu, 1)
+            return x[2] ~ Normal(mu, 1)
         end
 
-        # `x[1]` is data from the argument, `x[2]` is latent and conditioned by Gibbs on the
-        # other component's draw. The conditional has to see both: a key-level merge keeps one
-        # and drops the other.
+        # `x[1]` is conditioned data, `x[2]` is latent and conditioned by Gibbs on the other
+        # component's draw. The conditional has to see both: a key-level merge keeps one and
+        # drops the other. Conditioned rather than a `missing` argument, which Gibbs refuses.
         seen = Ref{Any}(nothing)
         function cond_mu(vnt)
             seen[] = vnt
             return Normal(0, 1)
         end
         spl = Gibbs(@varname(mu) => GibbsConditional(cond_mu), @varname(x[2]) => MH())
-        sample(
-            Xoshiro(1), partly([1.5, missing]), spl, 3; check_model=false, progress=false
-        )
+        model = DynamicPPL.condition(partly(), Dict(@varname(x[1]) => 1.5))
+        sample(Xoshiro(1), model, spl, 3; check_model=false, progress=false)
         @test DynamicPPL.getvalue(seen[], @varname(x[1])) == 1.5
         @test DynamicPPL.hasvalue(seen[], @varname(x[2]))
     end
