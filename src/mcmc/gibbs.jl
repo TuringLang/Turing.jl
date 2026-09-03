@@ -587,69 +587,21 @@ A type representing a Gibbs sampler.
 
 # Constructors
 
-`Gibbs` needs to be given a set of pairs of variable names and samplers. Instead of a single
-variable name per sampler, one can also give an iterable of variables, all of which are
-sampled by the same component sampler.
+`Gibbs` takes pairs of variable names and samplers. A variable name is a `Symbol` or a
+`VarName`, and an iterable of them assigns several variables to one component:
 
-Each variable name can be given as either a `Symbol` or a `VarName`.
-
-Some examples of valid constructors are:
 ```julia
 Gibbs(:x => NUTS(), :y => MH())
-Gibbs(@varname(x) => NUTS(), @varname(y) => MH())
 Gibbs((@varname(x), :y) => NUTS(), :z => MH())
 ```
 
-Every variable in the model must be handled by at least one component sampler, and several
-components may sample the same variable. What they may not do is split a value that the model
-stores as a unit: if one component declares `x` and another `x[1]`, whether Gibbs can express
-that depends on the model's tilde statements. Written element by element -- `x[1] ~ Normal();
-x[2] ~ Normal()` -- each element is a key of its own and the partition works. Written as one
-draw, `x ~ MvNormal(...)`, `x` is a single key: Gibbs cannot free part of it and throws. Which
-sampler holds the containing block makes no difference, because the values Gibbs threads come
-from evaluating the model rather than from what a component hands back.
+Every variable the model reaches must belong to a component, and several components may share
+one. What they may not do is split a value the model stores as a unit: `x[1] ~ Normal();
+x[2] ~ Normal()` gives each element its own key and splits cleanly, while `x ~ MvNormal(...)`
+is one key that Gibbs cannot free part of.
 
-Variables the model only reaches on some sweeps need care:
-
-```julia
-@model function f()
-    x ~ Normal()
-    y ~ Normal()
-    if x > 0
-        z ~ Normal()
-    end
-end
-
-# `x` decides whether `z` exists, so they share a block, sampled by `PG`, which can handle a
-# set of variables that changes between sweeps.
-sample(f(), Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => PG(20)), 1000)
-```
-
-Three partitions of that model are rejected, each naming the variable and the components:
-
-  - `Gibbs(@varname(x) => MH(), @varname(y) => MH())` -- nothing samples `z`. Every variable the
-    model reaches must belong to a component, whether or not it is always reached.
-  - `Gibbs(@varname(x) => MH(), @varname(y) => MH(), @varname(z) => PG(20))` -- `z` is split from
-    `x`, which decides whether it exists. The `x` component's step is what makes `z` come and go,
-    so that step proposes between states with different sets of variables while a *different*
-    component samples `z`, leaving that one conditioning on a `z` the proposed state does not
-    have. The chain still runs but comes back biased, which is why this is refused rather than
-    warned about. Giving `z` to `PG` does not help: it is never asked, because it is not the
-    component whose step changed anything.
-The same applies to a new element rather than a new name: an `x[5]` first reached inside a
-branch is treated exactly like `z` above.
-
-When each is caught varies, and cannot be made uniform. A component that cannot serve in Gibbs
-at all is refused when the `Gibbs` sampler is constructed, and anything already visible in the
-first draw is refused at the first step. The rest can only surface while sampling, because
-whether `z` exists depends on `x`, which is drawn during the run: the same partition may be
-refused at the first sweep or fifty sweeps in, depending on the draws. Sampling stops with an
-error at that point rather than carrying on, since the chain from an invalid partition is
-biased rather than merely noisy.
-
-A component's step can reach into another block in two ways, because a variable in one block
-may decide something about a variable in another without ever sampling it. Only one of the two
-is refused:
+A component's step may reach into another block, because a variable in one block can decide
+something about a variable in another without sampling it. Only one of those is refused:
 
 > A component may never change the dimension of a variable belonging to another component, or
 > whether that variable exists at all, unless the two share it.
@@ -663,12 +615,29 @@ component that samples both.
 | which distribution a tilde draws from | its family or its support moves | yes, at your risk |
 | a distribution's parameters only      | neither; the form is unchanged  | yes               |
 
-The third row is the ordinary hierarchical case and carries no risk at all: under
-`m ~ Normal(0, 1)` in one block and `x ~ Normal(m, 1)` in another, `x`'s distribution differs
-every sweep while the set it is drawn from does not.
+The third row is the ordinary hierarchical case and carries no risk: `m ~ Normal(0, 1)` in one
+block and `x ~ Normal(m, 1)` in another changes `x`'s distribution every sweep but not the set
+it is drawn from.
 
-The first row is what Gibbs refuses. The shape to recognise is a variable that decides how many
-of another variable exist:
+# Examples
+
+`x` decides whether `z` exists, so they share a block, given to a component that can sample a
+set of variables that changes between sweeps:
+
+```julia
+@model function f()
+    x ~ Normal()
+    y ~ Normal()
+    if x > 0
+        z ~ Normal()
+    end
+end
+
+sample(f(), Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => PG(20)), 1000)
+```
+
+The first row of the table is what Gibbs refuses, and the shape to recognise is a variable
+deciding how many of another exist:
 
 ```julia
 @model function bad_dimension()
@@ -688,13 +657,11 @@ The variable θ[2] stopped existing during a step of the component sampling b, w
 sample it. The component sampling θ does.
 ```
 
-The risk it is refused for: while `b`'s component steps, `θ` is conditioned and cannot move, so
-if `b` flips the sweep now holds a `θ` of the wrong length. Whichever component then conditions
-on it is conditioning on a state that does not exist, and the chain comes back biased rather
-than merely slow. `Gibbs((@varname(b), @varname(θ)) => PG(20))` samples the same model
-correctly -- P(b=1) of 0.467, 0.486, 0.480 over three seeds -- because `PG` redraws whatever the
-model reaches each sweep, which is what owning a varying set requires. Declaring that is
-[`allow_varying_dimension`](@ref).
+While `b`'s component steps, `θ` is conditioned and cannot move, so if `b` flips the sweep holds
+a `θ` of the wrong length and whichever component conditions on it next is conditioning on a
+state that does not exist. The chain comes back biased rather than merely slow.
+`Gibbs((@varname(b), @varname(θ)) => PG(20))` samples it correctly, because `PG` redraws
+whatever the model reaches each sweep. Declaring that is [`allow_varying_dimension`](@ref).
 
 !!! warning "A support that another block decides can silently give the wrong answer"
     The second row is permitted, and Gibbs will not stop you, but it is only correct when the
@@ -723,52 +690,27 @@ model reaches each sweep, which is what owning a varying set requires. Declaring
     `Gibbs((@varname(b), @varname(x)) => MH())` on the same model. Nothing warns, and the chain
     looks healthy.
 
-    Note that dimension is not what makes this fatal, which is why the rule above does not
-    reach it. `x ~ Dirichlet(3)` against `x ~ MvNormal(zeros(3), I)` has three values either
-    way and is absorbed just as thoroughly -- 0.0 on every seed tried, against 0.644 in one
-    block. Nor is a change of family: `Uniform(0, 1)` and `Uniform(2, 3)` are the same family.
-
-    What separates safe from fatal is whether every pair of reachable supports shares enough
-    mass, and no single model evaluation can decide that, which is why this is yours to
-    establish rather than Gibbs's to check.
-
-    Nested supports are the safe shape. With `x ~ Uniform(-5, 5)` in one block and
-    `y ~ truncated(Normal(); lower=x)` in another -- Turing.jl#2801 -- every reachable pair
-    overlaps, and the split chain does explore the whole of `x`'s range and converge to the
-    same answer as one block over both. Expect it to mix much more slowly, though: that split
-    needed of the order of 200,000 draws to settle where the shared block needed a fifth of
-    that. If you are unsure, sample the same model in one block and compare.
-
-What *is* refused -- a variable appearing or leaving -- is checked on a best-effort basis, and
-that too is worth knowing precisely.
+    Neither dimension nor family separates the safe case from the fatal one -- that example
+    holds both constant. What separates them is whether every pair of reachable supports shares
+    enough mass, which no single model evaluation can decide, so it is yours to establish rather
+    than Gibbs's to check. Nested supports are the safe shape: `x ~ Uniform(-5, 5)` in one block
+    and `y ~ truncated(Normal(); lower=x)` in another explores the whole of `x`'s range and
+    converges to the same answer as one block over both, though it mixes far more slowly. If you
+    are unsure, sample the same model in one block and compare.
 
 !!! warning "The existence check is best-effort, not a guarantee"
-    Gibbs compares the snapshots either side of a component's step, so it only ever observes
-    states that component *accepted*. An `MH` component that proposes the deciding variable
-    across and has the proposal rejected leaves no trace, and the sweep carries on.
+    Gibbs compares the snapshots either side of a component's step, so it only observes states
+    that component *accepted*: a proposal that crosses and is rejected leaves no trace, and a
+    decider that stays put for a whole run leaves the partition unexamined. A run that completes
+    is not evidence that the partition is valid.
 
-    In practice it is reliable, because the deciding variable usually does move: on the model
-    above it refused the split partition on all 40 seeds tried, at 50, 300 and 2000 draws
-    alike. But that is a fact about those chains, not a guarantee -- a decider that happens to
-    stay put for the whole run leaves the partition unexamined. A run that completes is not
-    evidence that the partition is valid.
+    A partition may therefore be refused at the first sweep or fifty sweeps in, depending on the
+    draws. Sampling stops there rather than carrying on, since the chain from an invalid
+    partition is biased rather than merely noisy.
 
-!!! note
-    None of this is a property of Gibbs sampling. A component's target is its full conditional
-    whichever block the decider sits in. What the existence rule protects is this
-    implementation's bookkeeping: a component holding a flat parameter layout cannot be
-    re-pointed at a different one mid-step, and `PG`/`CSMC` are the only components here that
-    rebuild their trace each sweep.
-
-    A change of support that leaves the dimension alone can still move a block's *linked*
-    dimension -- a simplex occupies one number fewer than the free vector of the same length --
-    and that is refused for a component which cannot rebuild, by
-    [`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref). That refusal is about layout,
-    not about correctness of the chain.
-
-Each component sampler initialises the variables it samples with its own default strategy, so
-e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
-overrides that and applies to the model as a whole; it cannot yet be set per component.
+Each component initialises the variables it samples with its own default strategy, so an `HMC`
+component starts from its `InitFromUniform`. A user-supplied `initial_params` overrides that and
+applies to the model as a whole; it cannot yet be set per component.
 
 # Fields
 $(TYPEDFIELDS)
