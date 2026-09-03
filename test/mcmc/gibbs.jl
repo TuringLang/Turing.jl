@@ -10,7 +10,8 @@ using ..NumericalTests:
 import Combinatorics
 using AbstractMCMC: AbstractMCMC
 using AbstractPPL: AbstractPPL
-using Distributions: InverseGamma, Normal
+using Bijectors: Bijectors
+using Distributions: Distributions, InverseGamma, Normal
 using Distributions: sample
 using DynamicPPL: DynamicPPL
 using FlexiChains: FlexiChains
@@ -217,6 +218,28 @@ end
         # The wrapper forwards `supports_gibbs`, so the sampler that answered is the inner one.
         @test occursin("Prior is not", err.msg) || occursin("SMC is not", err.msg)
     end
+end
+
+@testset "a component that keeps no linked layout needs no link" begin
+    # `MH` rebuilds from the conditioned values each step, so `Gibbs` compares its block at the
+    # values' own shape and never derives a linking transform for it. The distribution has to
+    # move every sweep, since an unchanged one is settled without measuring either way.
+    struct Unlinkable{T} <: Distributions.ContinuousUnivariateDistribution
+        lo::T
+    end
+    Distributions.logpdf(d::Unlinkable, x) = Distributions.logpdf(Normal(d.lo, 1), x)
+    function Distributions.rand(rng::Random.AbstractRNG, d::Unlinkable)
+        return rand(rng, Normal(d.lo, 1))
+    end
+    Bijectors.VectorBijectors.to_linked_vec(::Unlinkable) = error("cannot be linked")
+
+    @model function moving()
+        a ~ Normal()
+        return x ~ Unlinkable(a)
+    end
+    @test sample(
+        Xoshiro(1), moving(), Gibbs(:a => MH(), :x => MH()), 20; progress=false
+    ) isa Any
 end
 
 @testset "latent declared as a missing model argument" begin

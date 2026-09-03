@@ -95,6 +95,9 @@ struct GibbsConditional{C} <: AbstractSampler
 end
 
 supports_gibbs(::GibbsConditional) = true
+# The conditional distributions are rebuilt from the conditioned values on every step, so
+# nothing sized for the block survives between them.
+keeps_linked_layout(::GibbsConditional) = false
 
 """
     build_values_vnt(model::DynamicPPL.Model)

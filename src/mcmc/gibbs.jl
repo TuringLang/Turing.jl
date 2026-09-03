@@ -127,6 +127,31 @@ allow_varying_dimension(::PG) = true
 # recorded which proposals were used.
 allow_varying_dimension(::MH) = true
 
+"""
+    keeps_linked_layout(spl::AbstractSampler)
+
+Whether `spl` carries a parameter vector in linked space, so that a change in a variable's
+*linked* width reshapes its block.
+
+`true` by default, since a sampler that does carry one is broken by a reshape it is not told
+about. A sampler that keeps nothing between steps answers `false` and has its block compared at
+the values' native shape, which costs no `Bijectors` transform: deriving one is not free, and
+for a distribution that defines no link it is not possible.
+
+An approximation of the question that decides anything, which is whether the sampler's
+`ReshapedBlock` method throws. That cannot be asked -- the throwing fallback is a method like
+any other -- so a sampler whose method merely delegates still answers `true` and still pays for
+a measurement whose verdict cannot change what it does. `HMC` is the case in point.
+"""
+keeps_linked_layout(::AbstractSampler) = true
+keeps_linked_layout(spl::RepeatSampler) = keeps_linked_layout(spl.sampler)
+# Not forwarded through `ExternalSampler`, as with `allow_varying_dimension`: the wrapper builds
+# its own linked `LogDensityFunction` whatever the sampler inside would have answered.
+# These rebuild from the conditioned values on every step and hold no linked vector between
+# them, which is also why their `ReshapedBlock` methods delegate to the four-argument form.
+keeps_linked_layout(::MH) = false
+keeps_linked_layout(::PG) = false
+
 # For an error about an unsupported component, the wrapper's own name says nothing: both
 # wrappers forward `supports_gibbs`, so the sampler that answered is the one inside.
 _component_name(spl::AbstractSampler) = nameof(typeof(spl))
@@ -465,20 +490,24 @@ function _snapshot(accs)
 end
 
 """
-    _same_layout(before, now)
+    _same_layout(before, now, linked)
 
-Whether two `(dist, val)` records occupy the same number of numbers once linked.
+Whether two `(dist, val)` records occupy the same layout, measured in linked space when the
+component holds one (see [`keeps_linked_layout`](@ref)) and at the values' own shape otherwise.
 
-An unchanged distribution settles it without measuring: the linked width is a function of the
-distribution, and measuring means deriving the linking transform, which under `fix_transforms`
-the caller has asked not to pay for once per tilde per step.
+An unchanged distribution settles it either way without measuring: the layout is a function of
+the distribution, and measuring in linked space means deriving the linking transform, which
+under `fix_transforms` the caller has asked not to pay for once per tilde per step.
 
 When they differ the width is measured by linking the value, not inferred from the family or the
 bijector's type. Those are proxies that diverge from the layout: keying on the family refused an
 adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved.
 """
-function _same_layout((dist_before, val_before), (dist_now, val_now))
+function _same_layout((dist_before, val_before), (dist_now, val_now), linked::Bool)
     isequal(dist_before, dist_now) && return true
+    # Reached only once the leaf sets have compared equal, and for an array value a shape
+    # change renames its leaves, so this is insurance for a container whose leaves do not.
+    linked || return size(val_before) == size(val_now)
     return _linked_width(dist_before, val_before) == _linked_width(dist_now, val_now)
 end
 
@@ -870,7 +899,7 @@ end
 
 # `nothing` if the block has the shape the component last saw, otherwise the variable that
 # changed it. Which one is reported only shapes the error message, so any of them will do.
-function block_reshaped(before, now)
+function block_reshaped(before, now, linked::Bool)
     if !isequal(before.leaves, now.leaves)
         joined = setdiff(now.leaves, before.leaves)
         isempty(joined) || return ReshapedBlock(first(joined), :joined)
@@ -883,7 +912,8 @@ function block_reshaped(before, now)
     for (vn, rec) in now.layout
         i = findfirst(p -> p.first == vn, before.layout)
         i === nothing && return ReshapedBlock(vn, :respecified)
-        _same_layout(before.layout[i].second, rec) || return ReshapedBlock(vn, :respecified)
+        _same_layout(before.layout[i].second, rec, linked) ||
+            return ReshapedBlock(vn, :respecified)
     end
     for (vn, _) in before.layout
         any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :respecified)
@@ -1337,7 +1367,7 @@ function gibbs_initialstep_recursive(
         rng,
         conditioned_model,
         sampler;
-        # FIXME: This will cause issues if the sampler expects initial params in unconstrained space.
+        # FIXME: This will cause issues if the sampler expects initial params in linked space.
         # This is not the case for any samplers in Turing.jl, but will be for external samplers, etc.
         initial_params=component_init,
         kwargs...,
@@ -1450,7 +1480,7 @@ function gibbs_step_recursive(
     # goes to the `ReshapedBlock` method, which throws unless the sampler implements it.
     current_block = block_fingerprint(snapshot, varnames)
     check_block_nonempty(varnames, current_block.leaves)
-    reshaped = block_reshaped(block, current_block)
+    reshaped = block_reshaped(block, current_block, keeps_linked_layout(sampler))
     state = if reshaped === nothing
         gibbs_update_state!!(sampler, state, conditioned_model, snapshot.values)
     else

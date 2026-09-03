@@ -57,12 +57,14 @@ To plug a sampler into Gibbs, implement:
   - Optionally, `supports_gibbs(sampler)` — return `false` to disallow use in Gibbs (the default is `true`). The old name `isgibbscomponent` still works, with a deprecation warning.
   - Optionally, `allow_varying_dimension(sampler)` — return `true` if the sampler's own proposal can move between supports *within* a step (the default is `false`). See its docstring for what declaring it obliges the sampler to handle.
   - Optionally, `gibbs_update_state!!(sampler, state, model, global_vals, ::ReshapedBlock)` — the five-argument form, called instead of the four-argument one when another component has changed the block's parameter layout since this sampler last stepped. It defaults to throwing, so implementing it *is* the declaration: no trait can fall out of step with it, and a sampler predating it keeps the safe answer.
+  - Optionally, `keeps_linked_layout(sampler)` — return `false` if the sampler holds no parameter vector in linked space (the default is `true`). Its block is then compared at the values' native shape, deriving no `Bijectors` transform, which a distribution defining no link cannot supply anyway. `MH`, `PG`/`CSMC` and `GibbsConditional` answer `false`.
   - Optionally, `gibbs_get_stats(state)` — return a `NamedTuple` of the component's statistics for the chain (the default is empty). Gibbs drops component transitions, so statistics have to come off the state.
 
 The gate compares each tilde's linked width, measured by linking the value, not the family or
 the bijector's type: those are proxies that diverge from the layout, and keying on the family
 refused an adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved. An
-unchanged distribution short-circuits, so nothing is derived unless one moves. A
+unchanged distribution short-circuits, and a component answering `false` to `keeps_linked_layout`
+never measures at all, so nothing is derived unless it has to be. A
 `truncated(Normal(); lower=a)` with a moving bound is not a reshape either. `MH`, `PG`/`CSMC`
 and `GibbsConditional` delegate to the four-argument form, and a non-adapting `Hamiltonian`
 rebuilds (`HMC`, `NUTS(0, δ)`, `HMCDA(0, δ, λ)`). An adapting `NUTS` or `HMCDA`, `ESS` and
@@ -80,7 +82,9 @@ Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not 
 
 Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability — for example, MH uses custom accumulators to capture proposal distributions and linked values, so it works directly with `OnlyAccsVarInfo` + `init!!` instead. Either approach is fine; the key constraint is no `VarInfo`.
 
-Note: "linked" and "unconstrained" are synonymous in this codebase. Linking transforms constrained parameters to unconstrained (Euclidean) space for gradient-based sampling.
+Say "linked" and "unlinked", not "unconstrained" and "constrained": linking is what the API is named after (`to_linked_vec`, `UnlinkAll`, `LinkAll`), so the two vocabularies cannot both track it. Linking transforms parameters to unconstrained (Euclidean) space for gradient-based sampling.
+
+Three exceptions, all deliberate. `unconstrained` is the public keyword of `externalsampler` and `vi`, and `AbstractMCMC.requires_unconstrained_space` is upstream, so prose about those keeps their word. A docstring may define "linked" in terms of "unconstrained" once, for a reader who knows only the latter. And in `src/optimisation/` "constraints" already means the user's `lb`/`ub` bounds -- an "unconstrained mode" there is one no bound reached, nothing to do with linking -- so never reach for that word to mean linked space.
 
 ### `VarNamedTuple` for parameter collections
 
