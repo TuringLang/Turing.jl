@@ -326,23 +326,138 @@ function make_optim_bounds_and_init(
     # TODO(penelopeysm) This should really be exported
     et = eltype(DynamicPPL.get_input_vector_type(ldf))
     inits = fill(et(NaN), nelems)
-    lb = fill(et(-Inf), nelems)
-    ub = fill(et(Inf), nelems)
+    lb_vec = fill(et(-Inf), nelems)
+    ub_vec = fill(et(Inf), nelems)
+    # Which variables a bound was actually written for. `check_constraints_reached` needs this
+    # rather than a prediction of it: asking `get_constraints` instead reported a bound as used
+    # whenever the collection could answer for the variable, which is not the same as the bound
+    # reaching this assembly. A bound naming non-leading elements of a variable the model writes
+    # whole -- `x[2]`, or `x[1]` and `x[3]` -- never arrives here at all, and was passed as
+    # harmless while the mode came back unconstrained.
+    applied_lb, applied_ub = VarName[], VarName[]
     for (vn, init_val) in constraint_acc.init_vecs
         range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
-            lb[range] = constraint_acc.lb_vecs[vn]
+            check_bound_covers(lb, "lb", vn, range)
+            lb_vec[range] = constraint_acc.lb_vecs[vn]
+            # Recorded as applied only if the caller's value can be read for this variable.
+            # `haskey` is true whenever the accumulator visited it, which it does even when the
+            # value cannot be read -- a scalar `lb = (x = 0.9,)` against an element-wise
+            # `x[1] ~` leaves an infinite bound behind, and counting that as applied dropped
+            # the caller's bound in silence. Testing `isfinite` on the result instead would
+            # refuse a bound the caller deliberately wrote as infinite.
+            get_constraints(lb, vn) === nothing || push!(applied_lb, vn)
         end
         if haskey(constraint_acc.ub_vecs, vn)
-            ub[range] = constraint_acc.ub_vecs[vn]
+            check_bound_covers(ub, "ub", vn, range)
+            ub_vec[range] = constraint_acc.ub_vecs[vn]
+            get_constraints(ub, vn) === nothing || push!(applied_ub, vn)
         end
     end
+    # The loop above visits the model's variables, so a bound whose key names none of them is
+    # never consulted and the mode comes back unconstrained. Name it instead.
+    check_constraints_reached(lb, "lb", applied_lb, keys(constraint_acc.init_vecs))
+    check_constraints_reached(ub, "ub", applied_ub, keys(constraint_acc.init_vecs))
     # Make sure we have filled in all values. This should never happen, but we should just
     # check.
     if any(isnan, inits)
         error("Could not generate vector of initial values as some values are missing.")
     end
     # Concretise before returning.
-    return [x for x in lb], [x for x in ub], [x for x in inits]
+    return [x for x in lb_vec], [x for x in ub_vec], [x for x in inits]
+end
+
+"""
+    check_bound_covers(constraints, name, vn, range)
+
+Throw unless `constraints` bounds every element of `vn`, or none of them.
+
+A bound reaches the optimiser only if it covers a whole variable as the model writes it, so a
+bound on part of one is a mistake rather than a partial constraint: the unmentioned elements are
+left free and the mode comes back unconstrained in them.
+
+Scalar leaves are counted, not keys, because one key can hold many: `lb = (x = [0.9, 0.9],)`
+covers two under a single key, `Dict(x[1] => 0.9, x[2] => 0.9)` the same two under one key each,
+and `lb = (x = (a = [0.1, 0.1], b = 0.1),)` covers three. A key coarser than `vn` counts only if
+a value can be read for `vn` -- a scalar `lb = (x = 0.9,)` holds nothing for an element-wise
+`x[1] ~` and is never applied.
+"""
+function check_bound_covers(constraints::DynamicPPL.VarNamedTuple, name, vn, range)
+    covered = 0
+    for leaf in keys(constraints)
+        if AbstractPPL.subsumes(vn, leaf)
+            # A key inside `vn` contributes the scalar leaves it holds, not the length of its
+            # value: `(a = [0.1, 0.1], b = 0.1)` is one key of length two holding three
+            # elements.
+            covered += count(
+                Returns(true), DynamicPPL.varname_leaves(leaf, constraints[leaf])
+            )
+        elseif AbstractPPL.subsumes(leaf, vn)
+            # A key coarser than `vn` covers it only if a value can actually be read for `vn`:
+            # `lb = (x = [0.9, 0.9],)` bounds both of an element-wise `x[1] ~`, `x[2] ~`, while
+            # a scalar `lb = (x = 0.9,)` holds nothing for `x[1]` and is never applied. Asking
+            # subsumption alone treated the scalar as covering them and dropped it in silence.
+            get_constraints(constraints, vn) === nothing || return nothing
+        end
+    end
+    # Nothing bound for this variable at all is not this check's business:
+    # `check_constraints_reached` decides whether such a key is malformed or merely moot.
+    (covered == 0 || covered == length(range)) && return nothing
+    return throw(
+        ArgumentError(
+            "`$(name)` names $(covered) element(s) under $(vn), which the model writes as one " *
+            "value of $(length(range)) element(s). A bound is honoured only if it covers the " *
+            "whole variable, so bound every element of $(vn) or none of it.",
+        ),
+    )
+end
+
+"""
+    check_constraints_reached(constraints, name, applied, model_vns)
+
+Complain about any bound that was not applied.
+
+`applied` lists the variables a bound was actually written for, taken from the assembly rather
+than predicted: whether the collection *could* answer for a variable is not the same question as
+whether a bound reached the optimiser.
+
+`applied` and `model_vns` hold whole tilde `VarName`s, which may be compound, so a bound is
+matched against them by subsumption in either direction. That is why the accounting is per leaf
+and not per key: `keys(constraints)` gives the caller's key, `x` for `lb = (x = [0.9, 100.0],)`,
+and subsumption would let the one element a model writing only `x[1]` consumes stand for the
+whole key, dropping the rest without a word.
+
+An unapplied bound is fatal when the model reaches a variable covering it, since bounding part of
+a value the model writes whole cannot be honoured. When no reached variable covers it the bound
+is merely moot -- the key may name a variable that is conditioned, fixed, or in a branch not
+taken, which is indistinguishable here from one naming nothing -- so that warns.
+"""
+function check_constraints_reached(constraints::VarNamedTuple, name, applied, model_vns)
+    claims(vns, leaf) =
+        any(vns) do vn
+            AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
+        end
+    leaves = Iterators.flatten(
+        DynamicPPL.varname_leaves(key, constraints[key]) for key in keys(constraints)
+    )
+    unapplied = [leaf for leaf in leaves if !claims(applied, leaf)]
+    isempty(unapplied) && return nothing
+    malformed = filter(leaf -> claims(model_vns, leaf), unapplied)
+    if !isempty(malformed)
+        # Name the variables that could have used these keys, not every variable in the model.
+        covering = sort!(unique(vn for vn in model_vns if claims(malformed, vn)); by=string)
+        throw(
+            ArgumentError(
+                "`$(name)` has bounds for $(join(sort!(malformed; by=string), ", ")) that " *
+                "cannot be applied. The model writes those values as " *
+                "$(join(covering, ", ")), and a bound is honoured only if it covers a whole " *
+                "variable as the model writes it. Bound every element of it, or none.",
+            ),
+        )
+    end
+    @warn "`$(name)` has bounds for $(join(unapplied, ", ")) that no variable of the model " *
+        "can use, so they have no effect. The model's variables are $(join(model_vns, ", ")). " *
+        "This is harmless if the variable is conditioned, fixed, or in a branch not taken."
+    return nothing
 end

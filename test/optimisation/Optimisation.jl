@@ -17,7 +17,8 @@ using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
-using Test: @test, @testset, @test_throws
+using Logging: Logging
+using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 using Turing.Optimisation:
     ModeResult, InitWithConstraintCheck, satisfies_constraints, make_optim_bounds_and_init
@@ -155,6 +156,137 @@ end
         )
     end
 
+    @testset "bound naming no variable" begin
+        # Bounds are applied by asking for each variable the model reaches, so a key matching
+        # none of them is dropped and the unconstrained mode returned. That is warned about
+        # rather than refused: a key naming a variable the model has but does not reach --
+        # conditioned, fixed, or in a branch not taken -- is indistinguishable from one naming
+        # nothing, and refusing it broke reusing one `lb`/`ub` across variants of a model.
+        @model function normal_m()
+            x ~ Normal(0, 1)
+            return 1.0 ~ Normal(x, 1)
+        end
+        @test_logs min_level = Logging.Warn match_mode = :any (
+            :warn, r"no variable of the model can use"
+        ) maximum_a_posteriori(normal_m(); lb=(nope=0.0,), ub=(nope=1.0,))
+        # A bound that does name one still binds.
+        @test maximum_a_posteriori(normal_m(); lb=(x=0.7,), ub=(x=10.0,)).params[@varname(
+            x
+        )] ≈ 0.7 atol = 1e-4
+
+        # A key can name a variable the model has and still not be usable. A scalar bound on
+        # an element-wise `x[i] ~` was silently dropped, and a bound on one element of a
+        # variable the model writes whole reached the assembly a bound short and raised a
+        # bare `DimensionMismatch`.
+        @model function elementwise()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(0, 1)
+            x[2] ~ Normal(0, 1)
+            return 1.0 ~ Normal(x[1] + x[2], 1)
+        end
+        @model function whole()
+            x ~ MvNormal(zeros(2), I)
+            return 1.0 ~ Normal(x[1] + x[2], 1)
+        end
+        # A scalar bound on a variable the model writes element by element cannot be read for
+        # any of those elements, so it is refused rather than warned about: the model does reach
+        # `x`, which makes this a malformed bound and not a moot key. Give one per element.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,)),
+        )
+        # A bound written at a compound `VarName`, or per element of a variable the model
+        # writes whole, IS applied and must not be complained about. Testing each enumerated
+        # leaf key in isolation refused both of these, since no single-leaf subset answers for
+        # a compound name.
+        @model function slice()
+            x = Vector{Float64}(undef, 2)
+            x[1:2] ~ MvNormal(zeros(2), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        @test maximum_a_posteriori(slice(); lb=Dict(@varname(x[1:2]) => [0.9, 0.9]), ub=Dict(@varname(x[1:2]) => [9.0, 9.0])).params[@varname(
+            x[1]
+        )] ≈ 0.9 atol = 1e-4
+        @test maximum_a_posteriori(whole(); lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9), ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)).params[@varname(
+            x
+        )] ≈ [0.9, 0.9] atol = 1e-4
+        # A compound key covering more elements than the model reaches drops the surplus.
+        # Accounting per key rather than per leaf let the one element `x[1]` consumes stand for
+        # the whole of `x`, so the bound on `x[2]` disappeared without a word.
+        @model function first_only()
+            x = Vector{Float64}(undef, 1)
+            x[1] ~ Normal(0, 1)
+            return 1.0 ~ Normal(x[1], 1)
+        end
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, r"bounds for x\[2\]") maximum_a_posteriori(
+            first_only(); lb=(x=[0.9, 100.0],), ub=(x=[9.0, 200.0],)
+        )
+        # A bound on a variable the model does not reach is moot, not an error: the mode is
+        # still correctly constrained on the variables that do exist.
+        @model function gd()
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            return 1.0 ~ Normal(m, sqrt(s))
+        end
+        for variant in (gd() | (m=1.0,), DynamicPPL.fix(gd(), (m=1.0,)))
+            # Warned about, not refused, and `s` is still bounded.
+            @test_logs min_level = Logging.Warn match_mode = :any (
+                :warn, r"no variable of the model can use"
+            ) maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0))
+            @test maximum_a_posteriori(variant; lb=(s=0.9, m=-9.0), ub=(s=10.0, m=9.0)).params[@varname(
+                s
+            )] >= 0.9 - 1e-6
+        end
+        # The case the fix exists for. The accumulator sizes its bound vector from the highest
+        # index named, so `x[1]` alone came back short and raised a bare `DimensionMismatch`,
+        # while `x[2]` alone, or `x[1]` with `x[3]`, produced a full-length vector that passed
+        # and left the unnamed elements free -- the mode came back at 0.25 for each under a
+        # lower bound of 0.5.
+        @model function whole3()
+            x ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        @model function slice3()
+            x = Vector{Float64}(undef, 3)
+            x[1:3] ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        for m3 in (whole3(), slice3())
+            for lb3 in (
+                Dict(@varname(x[2]) => 0.5),
+                Dict(@varname(x[1]) => 0.5, @varname(x[3]) => 0.5),
+            )
+                ub3 = Dict(k => 9.0 for k in keys(lb3))
+                @test_throws "element(s) under" maximum_a_posteriori(m3; lb=lb3, ub=ub3)
+            end
+            @test maximum_a_posteriori(m3; lb=(x=fill(0.5, 3),), ub=(x=fill(9.0, 3),)).params[@varname(
+                x[1]
+            )] ≈ 0.5 atol = 1e-4
+        end
+
+        @test_throws(
+            "which the model writes as one value",
+            maximum_a_posteriori(
+                whole(); lb=Dict(@varname(x[1]) => 0.9), ub=Dict(@varname(x[1]) => 9.0)
+            ),
+        )
+        # Counting elements alone cannot tell a covering bound from one that names as many
+        # elements somewhere else, so the coincidence has to be caught by the reachability
+        # accounting instead.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(
+                whole();
+                lb=Dict(@varname(x[1]) => 0.9, @varname(x[3]) => 0.9),
+                ub=Dict(@varname(x[1]) => 9.0, @varname(x[3]) => 9.0),
+            ),
+        )
+        # Bounding every element works for both shapes.
+        for m in (elementwise(), whole())
+            @test maximum_a_posteriori(m; lb=(x=[0.9, 0.9],), ub=(x=[9.0, 9.0],)) isa Any
+        end
+    end
+
     @testset "generation of vector constraints" begin
         @testset "$dist" for (lb, ub, dist) in (
             ((x=0.1,), (x=0.5,), Normal()),
@@ -169,6 +301,15 @@ end
                 (x=(a=0.1, b=0.1),),
                 (x=(a=0.5, b=0.5),),
                 product_distribution((a=Beta(2, 2), b=Beta(2, 2))),
+            ),
+            # A field holding several elements: the coverage check must count scalar leaves,
+            # not the two fields of the named tuple.
+            (
+                (x=(a=[0.1, 0.1], b=0.1),),
+                (x=(a=[0.5, 0.5], b=0.5),),
+                product_distribution((
+                    a=product_distribution([Beta(2, 2), Beta(2, 2)]), b=Beta(2, 2)
+                )),
             ),
         )
             @model f() = x ~ dist
