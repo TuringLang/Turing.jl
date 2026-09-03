@@ -210,6 +210,17 @@ end
         @test maximum_a_posteriori(whole(); lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9), ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)).params[@varname(
             x
         )] ≈ [0.9, 0.9] atol = 1e-4
+        # A compound key covering more elements than the model reaches drops the surplus.
+        # Accounting per key rather than per leaf let the one element `x[1]` consumes stand for
+        # the whole of `x`, so the bound on `x[2]` disappeared without a word.
+        @model function first_only()
+            x = Vector{Float64}(undef, 1)
+            x[1] ~ Normal(0, 1)
+            return 1.0 ~ Normal(x[1], 1)
+        end
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, r"bounds for x\[2\]") maximum_a_posteriori(
+            first_only(); lb=(x=[0.9, 100.0],), ub=(x=[9.0, 200.0],)
+        )
         # A bound on a variable the model does not reach is moot, not an error: the mode is
         # still correctly constrained on the variables that do exist.
         @model function gd()
@@ -218,13 +229,56 @@ end
             return 1.0 ~ Normal(m, sqrt(s))
         end
         for variant in (gd() | (m=1.0,), DynamicPPL.fix(gd(), (m=1.0,)))
-            @test maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0)) isa
-                Any
+            # Warned about, not refused, and `s` is still bounded.
+            @test_logs min_level = Logging.Warn match_mode = :any (
+                :warn, r"no variable of the model can use"
+            ) maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0))
+            @test maximum_a_posteriori(variant; lb=(s=0.9, m=-9.0), ub=(s=10.0, m=9.0)).params[@varname(
+                s
+            )] >= 0.9 - 1e-6
         end
+        # The case the fix exists for. The accumulator sizes its bound vector from the highest
+        # index named, so `x[1]` alone came back short and raised a bare `DimensionMismatch`,
+        # while `x[2]` alone, or `x[1]` with `x[3]`, produced a full-length vector that passed
+        # and left the unnamed elements free -- the mode came back at 0.25 for each under a
+        # lower bound of 0.5.
+        @model function whole3()
+            x ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        @model function slice3()
+            x = Vector{Float64}(undef, 3)
+            x[1:3] ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        for m3 in (whole3(), slice3())
+            for lb3 in (
+                Dict(@varname(x[2]) => 0.5),
+                Dict(@varname(x[1]) => 0.5, @varname(x[3]) => 0.5),
+            )
+                ub3 = Dict(k => 9.0 for k in keys(lb3))
+                @test_throws "element(s) under" maximum_a_posteriori(m3; lb=lb3, ub=ub3)
+            end
+            @test maximum_a_posteriori(m3; lb=(x=fill(0.5, 3),), ub=(x=fill(9.0, 3),)).params[@varname(
+                x[1]
+            )] ≈ 0.5 atol = 1e-4
+        end
+
         @test_throws(
             "which the model writes as one value",
             maximum_a_posteriori(
                 whole(); lb=Dict(@varname(x[1]) => 0.9), ub=Dict(@varname(x[1]) => 9.0)
+            ),
+        )
+        # Counting elements alone cannot tell a covering bound from one that names as many
+        # elements somewhere else, so the coincidence has to be caught by the reachability
+        # accounting instead.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(
+                whole();
+                lb=Dict(@varname(x[1]) => 0.9, @varname(x[3]) => 0.9),
+                ub=Dict(@varname(x[1]) => 9.0, @varname(x[3]) => 9.0),
             ),
         )
         # Bounding every element works for both shapes.
@@ -247,6 +301,15 @@ end
                 (x=(a=0.1, b=0.1),),
                 (x=(a=0.5, b=0.5),),
                 product_distribution((a=Beta(2, 2), b=Beta(2, 2))),
+            ),
+            # A field holding several elements: the coverage check must count scalar leaves,
+            # not the two fields of the named tuple.
+            (
+                (x=(a=[0.1, 0.1], b=0.1),),
+                (x=(a=[0.5, 0.5], b=0.5),),
+                product_distribution((
+                    a=product_distribution([Beta(2, 2), Beta(2, 2)]), b=Beta(2, 2)
+                )),
             ),
         )
             @model f() = x ~ dist

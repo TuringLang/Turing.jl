@@ -54,9 +54,9 @@ using Turing
     end
 
     @testset "chain_type" begin
-        # `bundle_samples` declared `::Type{MCMCChains.Chains}` positionally where the caller
-        # passes it as a keyword, so this silently fell through to the generic method and
-        # returned the raw transitions.
+        # `bundle_samples` declared `kwargs...` as positional varargs instead of keyword
+        # varargs, so calls that forwarded keyword arguments silently fell through to the generic
+        # method and returned the raw transitions.
         chain = sample(
             StableRNG(7), gdemo_default, Emcee(4), 5; chain_type=MCMCChains.Chains
         )
@@ -77,7 +77,7 @@ using Turing
             end
         end
         @test_throws(
-            "do not have the same parameter layout",
+            "do not occupy the same parameter layout",
             sample(StableRNG(5), branchy(), Emcee(10), 5),
         )
         # Two branches can hold different variables and the same total dimension, which a
@@ -93,7 +93,7 @@ using Turing
             end
         end
         @test_throws(
-            "do not have the same parameter layout",
+            "do not occupy the same parameter layout",
             sample(StableRNG(468), samelen(), Emcee(10, 2.0), 5),
         )
         # And the converse: the same variable NAMES with a different width. Comparing names
@@ -105,8 +105,22 @@ using Turing
             return 0.5 ~ Normal(sum(x), 1.0)
         end
         @test_throws(
-            "do not have the same parameter layout",
+            "do not occupy the same parameter layout",
             sample(StableRNG(468), samenames(), Emcee(20, 2.0), 5),
+        )
+        # And two variables trading dimensions: the names match and so does the total, so
+        # neither a name comparison nor a total-length one sees it, and the decode then fails
+        # with a `DimensionMismatch`. Each variable's own width is what has to agree.
+        @model function trade()
+            n ~ Normal()
+            k = n > 0 ? 2 : 3
+            x ~ MvNormal(zeros(k), I)
+            y ~ MvNormal(zeros(5 - k), I)
+            return 0.5 ~ Normal(sum(x) + sum(y), 1)
+        end
+        @test_throws(
+            "do not occupy the same parameter layout",
+            sample(StableRNG(468), trade(), Emcee(10, 2.0), 5),
         )
     end
 end
