@@ -375,35 +375,39 @@ end
 """
     check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
 
-Throw unless every key of `constraints` is one [`get_constraints`](@ref) will actually reach.
+Warn about any bound in `constraints` that no variable of the model can use.
 
 Bounds are applied by asking `get_constraints(constraints, vn)` for each variable the model
-reaches, which is a `haskey` on the whole collection, so a key it does not answer for is
-ignored and `estimate_mode` returns the unconstrained mode with no complaint.
+reaches, so one it cannot answer for is ignored, and `estimate_mode` returns as if that bound had
+never been given. The original silence over that was the defect; `lb = (nope = 0.0,)` alone left
+`bounds_kwargs` empty and the mode came back unconstrained.
 
-The test here is that same `haskey`, and it has to be: a key can name a variable the model
-does have and still not be reached. `lb = (x = 0.0,)` against an element-wise `x[1] ~`,
-`x[2] ~` is the case -- a scalar bound is not a value for `x[1]`, so the bound is dropped --
-and `lb = Dict(@varname(x[1]) => 0.0)` against a whole `x ~ MvNormal(...)` is the other, which
-reaches the vectorised assembly a bound short and fails with a bare `DimensionMismatch`.
-Asking about subsumption instead of about `haskey` accepted both, which is worse than not
-checking: it reads as an assurance the bound was applied. Give a bound per element of the
-variable as it is written (`lb = (x = [0.0, 0.0],)` for either model above).
+Two granularities have to be reconciled, and getting that wrong is what made an earlier version
+of this check refuse bounds that work. `keys(constraints)` enumerates *leaves* -- a bound written
+`Dict(@varname(x[1:2]) => [0.9, 0.9])` enumerates as `x[1]`, `x[2]` -- while `model_vns` holds
+whole tilde `VarName`s, which may be compound. Asking about a single leaf in isolation therefore
+answers `false` for the compound name that in fact consumes it. So a leaf counts as used when
+some reached variable both draws from these constraints and stands in a subsumption relation to
+it, which compares the two at the same granularity.
+
+This warns rather than throws because a bound naming a variable the model has but does not reach
+-- conditioned, fixed, or in a branch not taken -- is indistinguishable here from one naming
+nothing at all: `model_vns` holds only what was reached. Refusing it broke the ordinary pattern
+of reusing one `lb`/`ub` across conditioned variants of a model, whose modes were correctly
+constrained on the variables that do exist. A bound of the wrong *shape* is a different matter
+and still throws; see [`check_bound_length`](@ref).
 """
 function check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
-    for key in keys(constraints)
-        # Asked of this key alone: with the whole collection, one usable key would excuse
-        # every unusable one beside it.
-        only_key = DynamicPPL.subset(constraints, (key,))
-        any(vn -> get_constraints(only_key, vn) !== nothing, model_vns) && continue
-        throw(
-            ArgumentError(
-                "`$(name)` has a bound for $(key) that no variable of the model can " *
-                "use, so it would be ignored and the mode returned as if unconstrained. " *
-                "The model's variables are $(join(model_vns, ", ")); give a bound per " *
-                "element of each, shaped as the model writes it.",
-            ),
-        )
-    end
+    used(leaf) =
+        any(model_vns) do vn
+            get_constraints(constraints, vn) === nothing && return false
+            return AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
+        end
+    unused = [leaf for leaf in keys(constraints) if !used(leaf)]
+    isempty(unused) && return nothing
+    @warn "`$(name)` has bounds for $(join(unused, ", ")) that no variable of the model can " *
+        "use, so they have no effect. The model's variables are $(join(model_vns, ", ")). A " *
+        "bound is applied only if it covers a whole variable as the model writes it; this is " *
+        "harmless if the variable is conditioned, fixed, or in a branch not taken."
     return nothing
 end
