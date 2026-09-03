@@ -61,7 +61,8 @@ To plug a sampler into Gibbs, implement:
 
 The gate compares each tilde's linked width, measured by linking the value, not the family or
 the bijector's type: those are proxies that diverge from the layout, and keying on the family
-refused an adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved. A
+refused an adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved. An
+unchanged distribution short-circuits, so nothing is derived unless one moves. A
 `truncated(Normal(); lower=a)` with a moving bound is not a reshape either. `MH`, `PG`/`CSMC`
 and `GibbsConditional` delegate to the four-argument form, and a non-adapting `Hamiltonian`
 rebuilds (`HMC`, `NUTS(0, δ)`, `HMCDA(0, δ, λ)`). An adapting `NUTS` or `HMCDA`, `ESS` and

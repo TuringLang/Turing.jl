@@ -465,26 +465,31 @@ function _snapshot(accs)
 end
 
 """
-    _layout_signature(dist, val)
+    _same_layout(before, now)
 
-The linked layout of one tilde statement: how many numbers `val` occupies in a sampler's
-unconstrained parameter vector.
+Whether two `(dist, val)` records occupy the same number of numbers once linked.
 
-Measured by linking `val`, not inferred from the distribution. The family and the bijector's
-type are proxies for the layout and part company with it: `Normal()` and `TDist(3)` are
-different families with the same scalar linked layout, and keying on the family refused an
-adapting `NUTS` whose block had not moved at all.
+An unchanged distribution settles it without measuring: the linked width is a function of the
+distribution, and measuring means deriving the linking transform, which under `fix_transforms`
+the caller has asked not to pay for once per tilde per step.
 
-`to_linked_vec` rather than `bijector`: the former is what a distribution must provide to be
-sampled, while the generic univariate `bijector` reaches for `minimum`/`maximum`, which a
-distribution defining only the vector interface need not have.
+When they differ the width is measured by linking the value, not inferred from the family or the
+bijector's type. Those are proxies that diverge from the layout: keying on the family refused an
+adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved.
 """
-function _layout_signature(dist, val)
-    return length(Bijectors.VectorBijectors.to_linked_vec(dist)(val))
+function _same_layout((dist_before, val_before), (dist_now, val_now))
+    isequal(dist_before, dist_now) && return true
+    return _linked_width(dist_before, val_before) == _linked_width(dist_now, val_now)
 end
 
+# `to_linked_vec` rather than `bijector`: the former is what a distribution must provide to be
+# sampled, while the generic univariate `bijector` reaches for `minimum`/`maximum`.
+_linked_width(dist, val) = length(Bijectors.VectorBijectors.to_linked_vec(dist)(val))
+
 const LAYOUT_ACC_NAME = :GibbsLayouts
-_store_layout(val, tval, logjac, vn, dist) = _layout_signature(dist, val)
+# The distribution and value, not the width: measuring the width derives a transform, and an
+# unchanged distribution needs no measurement. See `_same_layout`.
+_store_layout(val, tval, logjac, vn, dist) = (dist, val)
 function LayoutAccumulator()
     return DynamicPPL.VNTAccumulator{LAYOUT_ACC_NAME}(_store_layout)
 end
@@ -875,11 +880,10 @@ function block_reshaped(before, now)
     # `x[i]` in three gives identical leaves and two DISJOINT layouts, so a loop that skipped a
     # key the other side lacked saw nothing while the linked dimension moved from two to three.
     # A key on one side only is itself proof the layout changed.
-    isequal(Set(before.layout), Set(now.layout)) && return nothing
-    for (vn, key) in now.layout
+    for (vn, rec) in now.layout
         i = findfirst(p -> p.first == vn, before.layout)
         i === nothing && return ReshapedBlock(vn, :respecified)
-        isequal(before.layout[i].second, key) || return ReshapedBlock(vn, :respecified)
+        _same_layout(before.layout[i].second, rec) || return ReshapedBlock(vn, :respecified)
     end
     for (vn, _) in before.layout
         any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :respecified)
