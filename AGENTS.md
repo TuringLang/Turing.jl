@@ -93,35 +93,37 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 
 `Turing.Inference.allow_discrete_variables(sampler)` defaults to `true`. Gradient-based samplers (all `Hamiltonian` subtypes) override this to `false`. `_check_model` uses this to validate the model before sampling. If adding a new sampler that requires continuous variables, override `allow_discrete_variables` to return `false`.
 
-### One component may not reshape another's variables
+### One component may not change another's dimension or existence
 
-A component may never change the dimension or the distributional form of a variable belonging
-to another component, unless the two share that variable. Sharing is the only remedy: put the deciding
-variable and what it decides in one block, or write a component that samples both. Both halves
-are enforced in `check_variable_set` by the same ownership test:
+A component may never change the dimension of a variable belonging to another component, or
+whether that variable exists at all, unless the two share it. Sharing is the only remedy: put
+the deciding variable and what it decides in one block, or write a component that samples both.
 
-  - whether a tilde statement executes at all — the variable appears or leaves;
-  - which distribution it draws from — its family or its support moves, the variable persists.
+A component moving another block's *support or distributional form* is a different matter and is
+PERMITTED. That is a deliberate relaxation: each component's kernel stays invariant for its full
+conditional, and what a support change can cost is irreducibility, which depends on whether
+every reachable pair of supports overlaps — a question no single model evaluation decides. It is
+therefore the caller's to establish. The `Gibbs` docstring carries the warning and a worked bad
+example (`Uniform(0, 1)` against `Uniform(2, 3)`, absorbed, measured P(b=1) of 0.0/0.0/1.0
+against 0.515 in one block); do not weaken that warning, and do not add an inferred refusal in
+its place. Note the safe case is not distinguished by dimension or by family: the fatal example
+holds both constant.
 
-The second is compared through a *support signature*, `(nameof(typeof(d)), Bijectors.bijector(d))`,
-recorded per tilde statement during the snapshot evaluation: the type name for the family, the
-bijector for the support, both required to be unchanged. So the form is compared and not merely
-the support — `Normal(0, 1)` becoming `TDist(3)` is refused — but never the parameters, since
-`x ~ Normal(m, 1)` with `m` in another block has a different distribution every sweep and the
-same signature, and refusing that would refuse every hierarchical model.
+What is refused — a variable appearing or leaving — is enforced in `check_variable_set` on a
+best-effort basis only. It compares the snapshots either side of a component's step, so a
+crossing that was proposed and rejected leaves no trace and passes. In practice it is reliable —
+on the dimension example in the `Gibbs` docstring it refused the split partition on all 40 seeds
+tried, at 50, 300 and 2000 draws alike — but that is a fact about those chains, not a guarantee:
+a decider that stays put for a whole run leaves the partition unexamined. Do not treat a
+completed run as evidence that a partition is valid, and do not describe the check as a
+guarantee in docs or error text. Ownership is tested by `_require_owned`:
 
-A distribution that implements only the vector linking interface has no `bijector`, and its
-signature falls back to the family alone. That still catches a change of family, and misses only
-a same-family change of support, which needs bounds to express and so is not expressible for
-such a distribution either.
+  - whether a tilde statement executes at all — the variable appears or leaves.
 
-This is an assumption of this implementation, not a property of Gibbs sampling. Each
-component's target is its full conditional wherever the decider sits; what breaks is the
-bookkeeping — a snapshot of raw values cannot see a support change, and a component holding a
-flat parameter layout cannot be re-pointed at another one. It is also conservative: what
-actually separates a fatal support change from a harmless one is irreducibility, which no
-single evaluation decides, so some correct partitions are refused. Do not tighten or loosen it
-without reading the note in the `Gibbs` docstring, which records the measured counter-example.
+Support signatures are still recorded per tilde statement, because `block_fingerprint` needs
+them: a support change can move a block's *linked* dimension even when its values keep their
+shape, and a component that cannot rebuild for that is refused by `gibbs_update_state!!` for a
+`ReshapedBlock`. That refusal is about layout, not about the correctness of the chain.
 
 ### Conditioned variables are observations
 

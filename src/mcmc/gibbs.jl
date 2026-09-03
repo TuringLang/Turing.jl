@@ -286,14 +286,15 @@ sampler says that it copes -- the implementation is the declaration, so there is
 trait that could fall out of step with what the sampler actually does, and a sampler written
 before this method existed keeps the safe answer.
 
-Turing's own answers: `MH` and `PG` delegate to the four-argument form, caching nothing shaped
-like the block. `HMC` and the other [`StaticHamiltonian`](@ref)s rebuild both the parameter
-layout and the phasepoint. `NUTS` and `HMCDA` do not implement it, since `gen_metric` renews an
-[`AdaptiveHamiltonian`](@ref)'s metric from `state.adaptor`, whose mass matrix is sized for the
-shape it adapted to; resetting the adaptation instead would discard it mid-chain, which is a
-decision for the user rather than a detail of conditioning. Nor does `ESS`, whose prior means
-are gathered for the block it was built on, nor `externalsampler`, whose wrapped state is
-opaque.
+Turing's own answers: `MH`, `PG` and `GibbsConditional` delegate to the four-argument form,
+caching nothing shaped like the block. A [`Hamiltonian`](@ref) that is not adapting rebuilds
+both the parameter layout and the phasepoint, which covers `HMC` and also `NUTS(0, δ)` and
+`HMCDA(0, δ, λ)`, whose states carry `NoAdaptation`. An *adapting* `NUTS` or `HMCDA` does not
+implement it, since `gen_metric` renews an [`AdaptiveHamiltonian`](@ref)'s metric from
+`state.adaptor`, whose mass matrix is sized for the shape it adapted to; resetting the
+adaptation instead would discard it mid-chain, which is a decision for the user rather than a
+detail of conditioning. Nor does `ESS`, whose prior means are gathered for the block it was
+built on, nor `externalsampler`, whose wrapped state is opaque.
 """
 function _reshape_description(r::ReshapedBlock)
     r.change === :joined && return "$(r.variable) joined it"
@@ -357,8 +358,8 @@ function gibbs_recompute_ldf_and_params(
     old_ldf::DynamicPPL.LogDensityFunction,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
-    extra_accs::NTuple{N,<:DynamicPPL.AbstractAccumulator}=(),
-) where {N}
+    extra_accs::Tuple{Vararg{DynamicPPL.AbstractAccumulator}}=(),
+)
     init_strategy = DynamicPPL.InitFromParams(global_vals, nothing)
     # Establish the layout the newly conditioned model actually has, at the current values.
     # `InitFromParams` with no fallback draws nothing, so this consumes no randomness -- unlike
@@ -366,6 +367,15 @@ function gibbs_recompute_ldf_and_params(
     # prior with whatever the default rng happens to be.
     probe = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
     _, probe = DynamicPPL.init!!(model, probe, init_strategy, old_ldf.transform_strategy)
+    # `old_ldf.transform_strategy` is reused deliberately, including under `fix_transforms`,
+    # where it is a `WithTransforms` whose frozen set covers only the variables reached when the
+    # `LogDensityFunction` was built. A variable the block later gains falls through to that
+    # strategy's fallback and is sampled unlinked while its siblings are linked -- measured on a
+    # two-branch model, 32 of 59 rebuilds in one run. That is correct rather than broken:
+    # `Unlink` means the variable really is sampled in raw space and its density is accounted
+    # for there, and the answers match `fix_transforms=false` and a single-block reference to
+    # within seed noise. It costs a gained positive variable some rejections at its boundary.
+    # Do not add a guard against the mixed strategy; refusing it would reject working runs.
     # Built without `adtype` first, so that nothing is prepared at a point we are about to
     # replace: a taped backend records its tape wherever it is prepared. The construction
     # below prepares at the current point and is the only one that prepares at all.
@@ -380,7 +390,7 @@ function gibbs_recompute_ldf_and_params(
     )
     new_params = DynamicPPL.get_vector_params(accs)
     if old_ldf.adtype !== nothing
-        # `new_ldf`'s own layout, not `layout`: they differ when the block was reshaped.
+        # The layout comes from `new_ldf`, which was rebuilt at the block's current shape.
         new_ldf = DynamicPPL.LogDensityFunction(
             model,
             DynamicPPL.get_logdensity_callable(old_ldf),
@@ -444,108 +454,62 @@ end
 # Raw values, plus the support signature of each tilde statement that produced them.
 function _snapshot_accs()
     return DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.RawValueAccumulator(false), SupportSignatureAccumulator()
+        DynamicPPL.RawValueAccumulator(false), LayoutSignatureAccumulator()
     )
 end
 
 function _snapshot(accs)
     return Snapshot(
         DynamicPPL.get_raw_values(accs),
-        DynamicPPL.getacc(accs, Val(SUPPORT_ACC_NAME)).values,
+        DynamicPPL.getacc(accs, Val(LAYOUT_ACC_NAME)).values,
     )
 end
 
 """
-    _support_signature(dist)
+    _layout_signature(dist)
 
-A value that differs whenever a distribution's support or its form does.
+A value that differs whenever a variable's parameter layout can differ.
 
-The snapshot Gibbs threads holds raw values, which say nothing about the set a variable is
-drawn from, so this has to come from the tilde's own distribution during the evaluation. Two
-parts, because the rule asks for both to be unchanged:
+The snapshot Gibbs threads holds raw values, which say nothing about how many numbers a variable
+occupies once linked, so this has to come from the tilde's own distribution during the
+evaluation. Two parts, both needed by [`block_fingerprint`](@ref):
 
-  - the type name, for the distributional form. `Normal(0, 1)` and `TDist(3)` share the support
-    of the whole line and are still a change.
-  - `Bijectors.bijector`, for the support of a continuous variable. It is the
-    constrained-to-unconstrained map, so it carries the support and nothing else: every
-    `Normal(m, sigma)` gives the same `identity`, which an ordinary hierarchical
-    `x ~ Normal(m, 1)` depends on, while `truncated(Normal(); lower=x)` gives a
-    `TruncatedBijector` carrying `x` and so registers when `x` moves.
-  - the bounds, for the support of a discrete one. See [`_support_bounds`](@ref).
+  - the type name, for the distributional form;
+  - the *type* of `Bijectors.bijector`, for the transform. A change of transform type is what can
+    move the linked dimension -- `x ~ Dirichlet(3)` occupies two numbers and
+    `x ~ MvNormal(zeros(3), I)` three -- while a change *within* one type cannot, so a
+    `truncated(Normal(); lower=a)` whose bound moves every sweep is not a change of layout.
 
-The bijector is what makes the continuous case uniform across shapes, which bounds alone could
-not be: bounds exist only for univariate distributions, so a signature built from them silently
-ignored the support of everything else -- a
-`product_distribution([truncated(Normal(); lower=a), ...])` whose bound came from another block
-passed unnoticed while its univariate sibling was refused. The bounds supplement it rather than
-replacing it.
+The type rather than the transform itself, deliberately. A bijector is an ordinary struct, and
+one whose type defines no `==` falls back to `===`, which compares an immutable struct's fields
+by identity: `ProductBijector`'s only field is a freshly allocated `Vector`, so two bijectors
+built from the same distribution compare unequal. Comparing types sidesteps that, and is the
+right granularity here anyway.
 
-Two kinds of support change get past all three parts, and both are reducible. One is a support
-carried entirely by a distribution's parameters: `Categorical([0.5, 0.5, 0, 0])` and
-`Categorical([0, 0, 0.5, 0.5])` are both supported on `1:4` as far as `Distributions` is
-concerned. The other is a discrete distribution that reports no bounds, `Multinomial(n, p)`
-among them, where the bijector is `identity` and [`_support_bounds`](@ref) has nothing to
-return. Both pass, and a component moving another block's variable that way is accepted. This
-signature is what the rule can enforce, not the whole of what the rule says.
+`bijector` is not part of what a model must provide -- a distribution implementing only
+`Bijectors.VectorBijectors.to_linked_vec` samples correctly under every sampler, while the
+generic univariate `bijector` reaches for `minimum`/`maximum`, which such a distribution need
+not define. Asking for it anyway made Gibbs the one sampler that could not take the model, so a
+`MethodError` falls back to the form alone.
 """
-function _support_signature(d::Distributions.Distribution)
-    # `bijector` is not part of what a model has to provide. A distribution implementing only
-    # the vector linking interface, `Bijectors.VectorBijectors.to_linked_vec`, samples correctly
-    # under every sampler, while Bijectors' generic univariate `bijector` reaches for
-    # `minimum`/`maximum`, which such a distribution need not define. Asking for it anyway made
-    # Gibbs the one sampler that could not take the model. Deriving the transform instead is no
-    # good either: it is the expensive step `fix_transforms` exists to avoid, and doing it once
-    # per tilde per sweep would defeat that.
-    try
-        return (nameof(typeof(d)), Bijectors.bijector(d), _support_bounds(d))
-    catch e
-        e isa MethodError || rethrow()
-        # The form alone still catches a change of distribution, and misses only a same-type
-        # change of support, which needs the bounds to express in the first place.
-        return (nameof(typeof(d)),)
-    end
+function _layout_signature(d::Distributions.Distribution)
+    return (nameof(typeof(d)), _transform_type(d))
 end
-_support_signature(d) = (nameof(typeof(d)),)
+_layout_signature(d) = (nameof(typeof(d)), nothing)
 
-"""
-    _support_bounds(dist)
-
-The bounds of `dist`'s support, or `()` when it does not report them.
-
-This is what carries the support of a *discrete* variable. A discrete variable is never linked,
-so `Bijectors.bijector` is `identity` for the whole family and says nothing about which values it
-can take: `DiscreteUniform(1, 2)` and `DiscreteUniform(3, 4)` are disjoint and would otherwise
-share a signature. With `b` in one block choosing between them and `k` in another, the chain is
-absorbed into whichever branch it started in -- P(b=1) came back 0.0 or 1.0 by seed against an
-exact 0.5.
-
-Multivariate distributions are asked too, and must be: restricting this to the univariate case
-left every discrete *vector* with the signature `(family, identity, ())`, which is the same hole
-one shape up. A `product_distribution` of `DiscreteUniform(1, 2)` and one of
-`DiscreteUniform(3, 4)` are told apart only here.
-
-Not every distribution reports bounds, and one that does not is left uncovered rather than
-refused: `Multinomial(n, p)` has no `minimum`, so a component moving another block's variable
-between `Multinomial(2, p)` and `Multinomial(4, p)` still passes unseen. Continuous
-distributions lose nothing by it, since the bijector carries their support; discrete ones with no
-bounds are the residue of this rule, alongside a support carried purely by parameters. Both are
-recorded in the note in the `Gibbs` docstring.
-"""
-function _support_bounds(d::Distributions.Distribution)
-    # Guarded here rather than by `_support_signature`'s own `try`, so that a distribution
-    # without bounds keeps the rest of its signature instead of falling back to the family.
+function _transform_type(d)
     return try
-        (minimum(d), maximum(d))
+        typeof(Bijectors.bijector(d))
     catch e
         e isa MethodError || rethrow()
-        ()
+        nothing
     end
 end
 
-const SUPPORT_ACC_NAME = :GibbsSupportSignatures
-_store_support(val, tval, logjac, vn, dist) = _support_signature(dist)
-function SupportSignatureAccumulator()
-    return DynamicPPL.VNTAccumulator{SUPPORT_ACC_NAME}(_store_support)
+const LAYOUT_ACC_NAME = :GibbsLayoutSignatures
+_store_layout(val, tval, logjac, vn, dist) = _layout_signature(dist)
+function LayoutSignatureAccumulator()
+    return DynamicPPL.VNTAccumulator{LAYOUT_ACC_NAME}(_store_layout)
 end
 
 """
@@ -676,53 +640,123 @@ error at that point rather than carrying on, since the chain from an invalid par
 biased rather than merely noisy.
 
 A component's step can reach into another block in two ways, because a variable in one block
-may decide something about a variable in another without ever sampling it. Both are refused by
-one rule:
+may decide something about a variable in another without ever sampling it. Only one of the two
+is refused:
 
-> A component may never change the dimension or the distributional form of a variable
-> belonging to another component, unless the two share that variable.
+> A component may never change the dimension of a variable belonging to another component, or
+> whether that variable exists at all, unless the two share it.
 
-Sharing is the remedy in either direction: put the deciding variable and what it decides in one
-block, or write a component that samples both.
+Sharing is the remedy: put the deciding variable and what it decides in one block, or write a
+component that samples both.
 
-| What another component's step changes | Effect on this block             | Treatment  |
-|---------------------------------------|----------------------------------|------------|
-| whether a tilde statement executes    | variable appears or leaves       | refused    |
-| which distribution a tilde draws from | its family or its support moves  | refused    |
-| a distribution's parameters only      | neither; the form is unchanged   | allowed    |
+| What another component's step changes | Effect on this block            | Allowed?          |
+|---------------------------------------|---------------------------------|-------------------|
+| whether a tilde statement executes    | variable appears or leaves      | no                |
+| which distribution a tilde draws from | its family or its support moves | yes, at your risk |
+| a distribution's parameters only      | neither; the form is unchanged  | yes               |
 
-"Distributional form" is the family together with the support, and never the parameters. Both
-halves of it are compared, so `x ~ Normal(0, 1)` becoming `x ~ TDist(3)` is refused even though
-the support is the whole line either way.
-
-Excluding the parameters is what makes the third row work, and it is the common case: under
+The third row is the ordinary hierarchical case and carries no risk at all: under
 `m ~ Normal(0, 1)` in one block and `x ~ Normal(m, 1)` in another, `x`'s distribution differs
-every sweep while its family and its support do not, and refusing that would refuse every
-hierarchical model.
+every sweep while the set it is drawn from does not.
 
-The second row is the one worth knowing about, because it was previously silent. With `b` in
-one block and `x ~ Dirichlet(3)` under `b == 1` but `x ~ MvNormal(zeros(3), I)` otherwise, `x`'s
-leaf set and its three raw values are the same either way. Each component's conditional is
-individually correct, but a draw from the second branch almost never lies on the simplex, so
-once the chain leaves `b == 1` it cannot return: it is reducible rather than biased, and used to
-return P(b=1) near 0 or near 1 against an exact 0.6456.
+The first row is what Gibbs refuses. The shape to recognise is a variable that decides how many
+of another variable exist:
+
+```julia
+@model function bad_dimension()
+    b ~ Bernoulli(0.5)
+    θ = Vector{Float64}(undef, b ? 2 : 1)
+    for i in eachindex(θ)
+        θ[i] ~ Normal(0, 1)
+    end
+    return 1.0 ~ Normal(sum(θ), 1.0)
+end
+```
+
+`Gibbs(@varname(b) => MH(), @varname(θ) => MH())` is refused, with
+
+```
+The variable θ[2] stopped existing during a step of the component sampling b, which does not
+sample it. The component sampling θ does.
+```
+
+The risk it is refused for: while `b`'s component steps, `θ` is conditioned and cannot move, so
+if `b` flips the sweep now holds a `θ` of the wrong length. Whichever component then conditions
+on it is conditioning on a state that does not exist, and the chain comes back biased rather
+than merely slow. `Gibbs((@varname(b), @varname(θ)) => PG(20))` samples the same model
+correctly -- P(b=1) of 0.467, 0.486, 0.480 over three seeds -- because `PG` redraws whatever the
+model reaches each sweep, which is what owning a varying set requires. Declaring that is
+[`allow_varying_dimension`](@ref).
+
+!!! warning "A support that another block decides can silently give the wrong answer"
+    The second row is permitted, and Gibbs will not stop you, but it is only correct when the
+    supports overlap enough for the chain to move between them. Each component's kernel stays
+    invariant for its own full conditional; what you can lose is *irreducibility*, and a chain
+    that is invariant but not irreducible converges to the wrong distribution without erring.
+
+    The failing shape is disjoint supports. With
+
+    ```julia
+    @model function bad()
+        b ~ Bernoulli(0.5)
+        if b
+            x ~ Uniform(0.0, 1.0)
+        else
+            x ~ Uniform(2.0, 3.0)
+        end
+        return 0.5 ~ Normal(x, 5.0)
+    end
+    ```
+
+    and `Gibbs(@varname(b) => MH(), @varname(x) => MH())`, once `x` is in `(0, 1)` the `b`
+    component evaluates `p(b = 0 | x) = 0`, because that `x` is impossible under
+    `Uniform(2, 3)`. So `b` can never flip, and the chain is absorbed in whichever branch it
+    started: measured P(b=1) of 0.0, 0.0 and 1.0 over three seeds, against 0.515 from
+    `Gibbs((@varname(b), @varname(x)) => MH())` on the same model. Nothing warns, and the chain
+    looks healthy.
+
+    Note that dimension is not what makes this fatal, which is why the rule above does not
+    reach it. `x ~ Dirichlet(3)` against `x ~ MvNormal(zeros(3), I)` has three values either
+    way and is absorbed just as thoroughly -- 0.0 on every seed tried, against 0.644 in one
+    block. Nor is a change of family: `Uniform(0, 1)` and `Uniform(2, 3)` are the same family.
+
+    What separates safe from fatal is whether every pair of reachable supports shares enough
+    mass, and no single model evaluation can decide that, which is why this is yours to
+    establish rather than Gibbs's to check.
+
+    Nested supports are the safe shape. With `x ~ Uniform(-5, 5)` in one block and
+    `y ~ truncated(Normal(); lower=x)` in another -- Turing.jl#2801 -- every reachable pair
+    overlaps, and the split chain does explore the whole of `x`'s range and converge to the
+    same answer as one block over both. Expect it to mix much more slowly, though: that split
+    needed of the order of 200,000 draws to settle where the shared block needed a fifth of
+    that. If you are unsure, sample the same model in one block and compare.
+
+What *is* refused -- a variable appearing or leaving -- is checked on a best-effort basis, and
+that too is worth knowing precisely.
+
+!!! warning "The existence check is best-effort, not a guarantee"
+    Gibbs compares the snapshots either side of a component's step, so it only ever observes
+    states that component *accepted*. An `MH` component that proposes the deciding variable
+    across and has the proposal rejected leaves no trace, and the sweep carries on.
+
+    In practice it is reliable, because the deciding variable usually does move: on the model
+    above it refused the split partition on all 40 seeds tried, at 50, 300 and 2000 draws
+    alike. But that is a fact about those chains, not a guarantee -- a decider that happens to
+    stay put for the whole run leaves the partition unexamined. A run that completes is not
+    evidence that the partition is valid.
 
 !!! note
-    That the decider and what it decides must share a block is an assumption of *this* Gibbs
-    implementation, not a property of Gibbs sampling. A component's target is its full
-    conditional whichever block the decider sits in; what breaks is this implementation's
-    bookkeeping -- a snapshot of raw values cannot see a support change, and a component
-    holding a flat parameter layout cannot be re-pointed at a different one.
+    None of this is a property of Gibbs sampling. A component's target is its full conditional
+    whichever block the decider sits in. What the existence rule protects is this
+    implementation's bookkeeping: a component holding a flat parameter layout cannot be
+    re-pointed at a different one mid-step, and `PG`/`CSMC` are the only components here that
+    rebuild their trace each sweep.
 
-    The rule is also deliberately conservative. Whether a particular support change is fatal
-    is a question about irreducibility, which no single model evaluation can decide, so
-    partitions that would have sampled correctly are refused with the rest: with `a` in one
-    block and `x ~ truncated(Normal(); lower=a)` in another, the region stays connected and
-    the split agreed with a single-block reference to 0.0015 before this rule refused it.
-    Turing.jl#2801 is the same shape and had a regression test asserting it against a NUTS
-    ground truth. Put such variables in one block -- which recovers that answer -- or write a
-    sampler for them. A Gibbs built to track supports, or to reason about reachability, could
-    relax this.
+    A change of support that leaves the dimension alone can still move a block's *linked*
+    dimension -- a simplex occupies one number fewer than the free vector of the same length --
+    and that is refused for a component which cannot rebuild, by
+    [`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref). That refusal is about layout,
+    not about correctness of the chain.
 
 Each component sampler initialises the variables it samples with its own default strategy, so
 e.g. an `HMC` component starts from its `InitFromUniform`. A user-supplied `initial_params`
@@ -774,6 +808,17 @@ struct GibbsState{Sn<:Snapshot,S,B}
     # right after each step rather than at the end of the sweep: a later component can reshape
     # an earlier one's block, so there is no single snapshot that answers for all of them.
     blocks::B
+end
+
+# Whether `varnames` claims `vn`, whichever of the two is written at the coarser granularity: a
+# component naming `x` claims the tilde `x[1]`, and one naming `x[1], x[2], x[3]` claims the
+# tilde `x`. Both describe the same block, and these checks have to agree with `block_leaves`,
+# which compares per leaf. A component owning only part of a stored value is refused separately,
+# by `check_all_variables_handled`.
+function _claims(varnames, vn)
+    return any(varnames) do hv
+        AbstractPPL.subsumes(hv, vn) || AbstractPPL.subsumes(vn, hv)
+    end
 end
 
 # The leaves of `vnt` that `varnames` claims, i.e. the shape of that component's block.
@@ -835,16 +880,18 @@ function block_fingerprint(snapshot::Snapshot, varnames)
     # supply. The order is the evaluation's, so it is stable between sweeps.
     layout = Pair{VarName,Any}[]
     for vn in keys(snapshot.supports)
-        any(hv -> AbstractPPL.subsumes(hv, vn), varnames) || continue
-        push!(layout, vn => _layout_key(snapshot.supports[vn]))
+        # Either direction: a component may name a variable the model writes in one tilde by
+        # its elements (`x[1], x[2], x[3]` for an `x ~`), and then no declared name subsumes the
+        # tilde key. Asking one way only left the layout empty for such a block, so the half of
+        # the fingerprint that exists to see a relinking saw nothing at all.
+        _claims(varnames, vn) || continue
+        push!(layout, vn => snapshot.supports[vn])
     end
     return (leaves=block_leaves(snapshot.values, varnames), layout=layout)
 end
 
 # The part of a support signature that can move the linked dimension: the distributional form,
 # and the transform's type rather than the transform. See `block_fingerprint`.
-_layout_key(sig::Tuple{Any}) = sig
-_layout_key(sig::Tuple) = (sig[1], typeof(sig[2]))
 
 # `nothing` if the block has the shape the component last saw, otherwise the variable that
 # changed it. Which one is reported only shapes the error message, so any of them will do.
@@ -1007,6 +1054,19 @@ end
 
 Check that a change in the set of variables is one the component that made it may make.
 
+This is a best-effort check, not an enforcement of the rule in the [`Gibbs`](@ref) docstring.
+It compares the snapshots either side of a component's step, so it sees only what that
+component accepted: a proposal that crossed and was rejected leaves both snapshots equal and
+passes. In practice it is reliable, because the deciding variable usually does move -- on the
+`bad_dimension` model in the [`Gibbs`](@ref) docstring it refused the split partition on all 40
+seeds tried, at 50, 300 and 2000 draws alike -- but that is a fact about those chains, not a
+guarantee. Returning normally therefore says nothing about whether the partition is valid;
+meeting the requirement is the caller's job.
+
+Only a variable appearing or leaving is checked. A component moving the *support* of another
+block's variable is permitted, and deliberately unchecked; see the warning in the [`Gibbs`](@ref)
+docstring for what that costs and who owns it.
+
 Two conditions have to hold together, and anything else throws:
 
   - the component taking the step declares [`allow_varying_dimension`](@ref); and
@@ -1059,41 +1119,17 @@ function check_variable_set(
         ((new_vnt, old_vnt, "appeared"), (old_vnt, new_vnt, "stopped existing"))
         for vn in keys(from), leaf in AbstractPPL.varname_leaves(vn, from[vn])
             DynamicPPL.hasvalue(to, leaf) && continue
-            _require_owned(
-                spl,
-                sampler,
-                varnames,
-                leaf,
-                what,
-                "the other component conditions on a variable the state being proposed does " *
-                "not have, and the chain comes back biased",
-            )
+            _require_owned(spl, sampler, varnames, leaf, what)
             _require_varying_dimension(sampler, leaf, what)
         end
     end
     # A variable can also change without coming or going, if another component's step decided
-    # which distribution its tilde statement draws from. The rule is the same as above and the
-    # test is the same: a component may move the dimension or the distributional form of a
-    # variable only if it samples that variable. The form is the family together with the
-    # support and never the parameters, so a hierarchical `x ~ Normal(m, 1)` is untouched.
-    # Compared per tilde statement, which is the granularity a distribution belongs to.
-    for vn in keys(old.supports)
-        DynamicPPL.hasvalue(new.supports, vn) || continue
-        isequal(old.supports[vn], DynamicPPL.getvalue(new.supports, vn)) && continue
-        # Ownership is the whole rule here. `allow_varying_dimension` is a different
-        # question -- whether a proposal may move between two sets of variables -- and the set
-        # has not changed, so asking it would refuse a component that samples both the decider
-        # and what it decides, which is exactly the arrangement this check asks for.
-        _require_owned(
-            spl,
-            sampler,
-            varnames,
-            vn,
-            "changed distributional form or dimension",
-            "the two components disagree about the set it is drawn from, and the chain can " *
-            "be left unable to return to part of the space",
-        )
-    end
+    # which distribution its tilde statement draws from. That is NOT refused here -- see the
+    # warning in the `Gibbs` docstring for why it is the caller's to get right, and for the
+    # example that shows what it costs when they do not. The signatures are still recorded,
+    # because `block_fingerprint` needs them: a change of transform can move a block's linked
+    # dimension, which is a bookkeeping matter and is refused for a component that cannot
+    # rebuild.
     # Anything the model reaches that the component did not report was drawn from the prior by
     # `reached_values`, just to let the evaluation finish. The loops above have already ruled
     # on whether the variable may come or go, so what is left is a component that sampled a
@@ -1118,15 +1154,12 @@ end
 Throw unless `leaf`, whose existence just changed, is sampled by the component that changed it.
 
 A variable coming or going under one component's proposal while another samples it means that
-other component conditions on a variable absent from the state being proposed: the two blocks
-disagree about the support, and the chain comes back biased even though both samplers can
-handle varying dimension on their own.
+other component conditions on a variable absent from the state being proposed, and the chain
+comes back biased. `what` says which direction it moved.
 """
-function _require_owned(
-    spl::Gibbs, sampler, varnames, leaf, what::String, consequence::String
-)
-    any(hv -> AbstractPPL.subsumes(hv, leaf), varnames) && return nothing
-    owner = findfirst(vns -> any(hv -> AbstractPPL.subsumes(hv, leaf), vns), spl.varnames)
+function _require_owned(spl::Gibbs, sampler, varnames, leaf, what::String)
+    _claims(varnames, leaf) && return nothing
+    owner = findfirst(vns -> _claims(vns, leaf), spl.varnames)
     return throw(
         ArgumentError(
             if owner === nothing
@@ -1141,7 +1174,9 @@ function _require_owned(
                 "The variable $(leaf) $(what) during a step of the component sampling " *
                 "$(join(varnames, ", ")), which does not sample it. The component sampling " *
                 "$(join(spl.varnames[owner], ", ")) does. Whichever component's step " *
-                "decides this has to be the one that samples $(leaf), or $(consequence). " *
+                "decides this has to be the one that samples $(leaf), or that other " *
+                "component conditions on a variable the state being proposed does not have, " *
+                "and the chain comes back biased. " *
                 "Put $(leaf) and whatever decides this in one block."
             end,
         ),

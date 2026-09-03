@@ -1123,12 +1123,18 @@ end
         @test any(m -> !(lo < m < hi), vec(chn[@varname(m)]))
     end
 
-    @testset "a component may not move another block's support" begin
-        # The rule: a component may move the dimension or support of a variable only if it also
-        # samples it. Both models below have a decider in one block and the affected variable
-        # in another, so both are refused -- including the second, which would in fact have
-        # sampled correctly, because whether a support change is fatal is a question about
-        # irreducibility that no single evaluation can answer.
+    @testset "a component may move another block's support, at the caller's risk" begin
+        # A component moving the support or distributional form of another block's variable is
+        # PERMITTED. Whether it is correct turns on irreducibility -- whether every reachable
+        # pair of supports overlaps -- which no single evaluation decides, so it is the caller's
+        # to establish and Gibbs does not refuse it. See the warning in the `Gibbs` docstring.
+        #
+        # The models below cover both sides. `absorb`, `discrete_support` and
+        # `discrete_vector` have DISJOINT supports and are absorbed when split: correct in one
+        # block, wrong in two, with nothing raised. `bounded` has NESTED supports and is
+        # correct either way -- the same shape as Turing.jl#2801 below. What is asserted here
+        # is that none of them is refused any more; `disjoint_supports` further down measures
+        # the cost, and the #2801 testset measures the safe case.
         @model function absorb()
             b ~ Bernoulli(0.5)
             if b == 1
@@ -1144,7 +1150,8 @@ end
             return 0.3 ~ Normal(x, 0.5)
         end
         # A discrete variable is never linked, so its bijector is `identity` whatever its
-        # support and the bounds are the only thing separating these two branches. Without
+        # support, and only the bounds separated these two branches while the rule existed.
+        # Kept as a partition that must not be refused. Without
         # them the partition was accepted and absorbed, returning P(b=1) of 0.0 or 1.0 by
         # seed against an exact 0.5.
         @model function discrete_support()
@@ -1174,15 +1181,18 @@ end
             (discrete_support(), @varname(b), @varname(k)),
             (discrete_vector(), @varname(b), @varname(k)),
         )
-            @test_throws "changed distributional form or dimension" sample(
+            # Neither form is refused. For the three disjoint-support models the split answer
+            # is wrong and the shared one right; for `bounded` both are right. Only the
+            # absence of a refusal is asserted here -- the numbers are measured by
+            # `disjoint_supports` below and by the #2801 testset.
+            @test sample(
                 Xoshiro(2),
                 model,
                 Gibbs(decider => MH(), affected => MH()),
                 200;
                 check_model=false,
                 progress=false,
-            )
-            # Sharing the block satisfies the rule, so the same model samples.
+            ) isa Any
             @test sample(
                 Xoshiro(2),
                 model,
@@ -1192,6 +1202,98 @@ end
                 progress=false,
             ) isa Any
         end
+
+        # A signature has to compare by support, not by object identity. `ProductBijector`
+        # defines no `==`, so two bijectors built from the SAME distribution were unequal and a
+        # partition that never changes anything was refused on its first sweep.
+        @model function prodmodel()
+            m ~ Normal(0, 1)
+            x ~ product_distribution([Dirichlet(ones(3)), Dirichlet(ones(3))])
+            return 0.2 ~ Normal(sum(x) + m, 1.0)
+        end
+        @test sample(
+            Xoshiro(3),
+            prodmodel(),
+            Gibbs(@varname(m) => MH(), @varname(x) => MH()),
+            100;
+            check_model=false,
+            progress=false,
+        ) isa Any
+
+        # A component may name what the model writes in one tilde by its elements. Asking
+        # subsumption one way only made the ownership test refuse the very arrangement this
+        # docstring prescribes, and left `block_fingerprint`'s layout empty so a relinking
+        # passed the gate.
+        @model function decided()
+            a ~ Normal()
+            if a > 0
+                x ~ Dirichlet(3, 1.0)
+            else
+                x ~ MvNormal(zeros(3), LinearAlgebra.I)
+            end
+            return 0.4 ~ Normal(sum(x), 1.0)
+        end
+        elementwise_x = (@varname(x[1]), @varname(x[2]), @varname(x[3]))
+        @test sample(
+            Xoshiro(8),
+            decided(),
+            Gibbs((@varname(a), elementwise_x...) => MH()),
+            100;
+            check_model=false,
+            progress=false,
+        ) isa Any
+        @model function relinked_by_b(y)
+            b ~ Bernoulli(0.5)
+            if b
+                x ~ Dirichlet(3, 1.0)
+            else
+                x ~ MvNormal(zeros(3), LinearAlgebra.I)
+            end
+            return y ~ Normal(sum(x), 1.0)
+        end
+        @test_throws "does not implement" sample(
+            Xoshiro(8),
+            relinked_by_b(1.0),
+            Gibbs((@varname(b), @varname(x)) => PG(10), elementwise_x => NUTS()),
+            100;
+            progress=false,
+        )
+
+        # The cost of the relaxation, measured. `Uniform(0,1)` against `Uniform(2,3)` has one
+        # dimension either way and the same family, so nothing about it is refused; the split
+        # chain is absorbed while the shared block is right.
+        @model function disjoint_supports()
+            b ~ Bernoulli(0.5)
+            if b
+                x ~ Uniform(0.0, 1.0)
+            else
+                x ~ Uniform(2.0, 3.0)
+            end
+            return 0.5 ~ Normal(x, 5.0)
+        end
+        shared = mean(
+            sample(
+                StableRNG(1),
+                disjoint_supports(),
+                Gibbs((@varname(b), @varname(x)) => MH()),
+                3000;
+                discard_initial=500,
+                progress=false,
+            )[@varname(b)],
+        )
+        @test shared ≈ 0.5 atol = 0.06
+        split_chain = sample(
+            StableRNG(1),
+            disjoint_supports(),
+            Gibbs(@varname(b) => MH(), @varname(x) => MH()),
+            3000;
+            discard_initial=500,
+            check_model=false,
+            progress=false,
+        )
+        # Absorbed: every draw of `b` is the value it started at. Asserted so that a future
+        # change which makes this partition mix, or refuses it again, is noticed here.
+        @test length(unique(vec(split_chain[@varname(b)]))) == 1
 
         # A distribution whose PARAMETERS depend on another block is the ordinary hierarchical
         # case and must not be refused: `x`'s support is the whole line every sweep.
@@ -1733,14 +1835,13 @@ end
 
     @testset "dynamic transformations with linked samplers" begin
         # Turing.jl#2801. `y`'s transform depends on `x`, and the linked value for `y` was
-        # once not updated when `x` changed, which gave wrong answers; that was fixed, and
-        # this testset asserted the split partition against a NUTS ground truth.
+        # once not updated when `x` changed, which gave wrong answers.
         #
-        # It is now refused instead. `x` sits in one block and moves the support of a `y` in
-        # another, which is the arrangement Gibbs no longer accepts -- deliberately, and at
-        # the cost of a partition that did sample correctly. The remedy the error gives is
-        # tested below rather than merely stated: one block over both recovers the same
-        # answer.
+        # `x` moves the support of a `y` in another block, which Gibbs permits: the supports
+        # are nested, every reachable pair overlaps, and the split partition is irreducible.
+        # This is the safe side of the warning in the `Gibbs` docstring, and the ground truth
+        # below is what makes it safe rather than merely unrefused -- contrast
+        # `disjoint_supports` above, which is permitted and wrong.
         @model function dyn()
             x ~ Uniform(-5, 5)
             return y ~ truncated(Normal(); lower=x)
@@ -1751,9 +1852,17 @@ end
             Gibbs(:x => MH(), :y => HMC(0.1, 20)),
             Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
         )
-            @test_throws "changed distributional form or dimension" sample(
-                StableRNG(468), model, spl, 100; progress=false
+            # Irreducibility is the property that matters and the one that is cheap to
+            # assert: `x` reaches both ends of its prior, so the split chain is not absorbed.
+            # Its *mean* is not asserted here -- it mixes far more slowly than the shared
+            # block and needs on the order of 200_000 draws to settle, where it converges to
+            # the same answer (E[x] of -0.085 and 0.047 over two seeds against -0.005 from one
+            # block). Contrast `disjoint_supports` above, whose `x` never leaves one interval.
+            chn_split = sample(
+                StableRNG(468), model, spl, 5_000; discard_initial=1_000, progress=false
             )
+            xs = vec(chn_split[@varname(x)])
+            @test maximum(xs) - minimum(xs) > 8.0
         end
 
         # Ground truth from NUTS, as before: mean(x) = 0.0, mean(y) = 1.5.
