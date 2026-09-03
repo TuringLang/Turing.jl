@@ -1194,11 +1194,44 @@ function check_all_variables_handled(vnt::DynamicPPL.VarNamedTuple, spl::Gibbs)
 end
 
 """
+    check_no_missing_arguments(model)
+
+Refuse a model with an argument bound to `missing`.
+
+Gibbs conditions every component on the variables it does not sample, and `condition` cannot
+take precedence over a `missing` argument: the `missing` reaches the likelihood and throws
+`MethodError: no method matching loglikelihood(::Normal{Float64}, ::Missing)`.
+
+Gibbs's restriction, not the model's, so it belongs here and not in `_check_model`: a model
+taking `x` as an argument and drawing `x ~ Normal(m, 1)` from it samples to the right posterior
+under `MH` when called with `missing`.
+
+A whole argument only. An array holding a `missing` is a different mechanism -- the element is
+latent while its neighbours are data, and conditioning reaches it element by element -- so
+an argument of `[1.5, missing]` samples under Gibbs and must not be caught here.
+"""
+function check_no_missing_arguments(model::DynamicPPL.Model)
+    for (name, arg) in pairs(model.args)
+        ismissing(arg) || continue
+        throw(
+            ArgumentError(
+                "`Gibbs` cannot sample this model: its argument `$(name)` is `missing`. " *
+                "Gibbs conditions each component on the variables it does not sample, and " *
+                "conditioning cannot override a `missing` argument, so the `missing` " *
+                "reaches the likelihood. Declare `$(name)` inside the model instead of " *
+                "taking it as an argument, and condition on your observations.",
+            ),
+        )
+    end
+end
+
+"""
     gibbs_initial_values(rng, model, spl, initial_params)
 
 Return the values the sweep starts from, and check that every one of them has a component.
 """
 function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
+    check_no_missing_arguments(model)
     _, accs = DynamicPPL.init!!(
         rng, model, _snapshot_accs(), initial_params, DynamicPPL.UnlinkAll()
     )

@@ -125,6 +125,17 @@ distribution change can move a block's *linked* dimension even when its values k
 and a component that cannot rebuild for that is refused by `gibbs_update_state!!` for a
 `ReshapedBlock`. That refusal is about layout, not about the correctness of the chain.
 
+### Gibbs refuses a `missing` model argument
+
+`condition` cannot take precedence over an argument bound to `missing`, so the `missing` reaches
+the likelihood and throws from inside `loglikelihood` (DynamicPPL.jl#1457, unmerged). Because
+Gibbs conditions every component on the variables it does not sample, it cannot take such a
+model at all, and `check_no_missing_arguments` refuses it up front. A whole argument only: an
+array holding a `missing` is per-element and samples fine, so do not widen the check to it. This is Gibbs's restriction,
+not the model's — `MH` samples `impute(missing)` correctly — so keep the check in Gibbs and out
+of `_check_model`. `missing`-based latent selection is due for deprecation
+(DynamicPPL.jl#1464); do not add a workaround that outlives it.
+
 ### Conditioned variables are observations
 
 Gibbs conditions a component on every variable it does not sample, so those variables reach `tilde_observe!!` and particle samplers (PG/CSMC) reweight on them. That is what makes the component's target correct: a conditioned variable the target depends on must reweight the sweep, while one it does not contributes the same increment to every particle, which ESS-gated resampling ignores. Do not try to route them through `tilde_assume!!` to avoid resampling.

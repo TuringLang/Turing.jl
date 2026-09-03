@@ -220,18 +220,34 @@ end
 end
 
 @testset "latent declared as a missing model argument" begin
-    # Conditioning has to reach a variable that is also a model argument: Gibbs conditions
-    # every non-target variable, and here the non-target `x` is an argument bound to
-    # `missing`. Needs DynamicPPL to let `condition` take precedence over a missing argument
-    # (DynamicPPL.jl#1457); otherwise `missing` is passed to the likelihood and errors.
+    # Gibbs conditions every non-target variable, and conditioning cannot override an argument
+    # bound to `missing`: the `missing` reaches the likelihood. Refused with the argument named,
+    # rather than left to throw `MethodError` from inside `loglikelihood`.
     @model function impute(x)
+        m ~ Normal(0, 1)
+        x ~ Normal(m, 1)
+        return 2.0 ~ Normal(x, 1)
+    end
+    @test_throws "its argument `x` is `missing`" sample(
+        StableRNG(468),
+        impute(missing),
+        Gibbs(@varname(m) => MH(), @varname(x) => MH()),
+        10;
+        progress=false,
+    )
+    # Gibbs's restriction, not the model's: another sampler takes it, and so does Gibbs once
+    # the variable is declared in the model rather than taken as an argument.
+    @test mean(
+        sample(StableRNG(468), impute(missing), MH(), 2000; progress=false)[@varname(m)]
+    ) ≈ 2 / 3 atol = 0.15
+    @model function impute_inner()
         m ~ Normal(0, 1)
         x ~ Normal(m, 1)
         return 2.0 ~ Normal(x, 1)
     end
     chn = sample(
         StableRNG(468),
-        impute(missing),
+        impute_inner(),
         Gibbs(@varname(m) => MH(), @varname(x) => MH()),
         2000;
         progress=false,

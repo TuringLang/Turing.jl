@@ -14,6 +14,8 @@ A Gibbs component whose block the model currently reaches none of is refused, ra
 
 `GibbsConditional` can now be handed its block at a new dimension between its own steps; it previously threw a `BoundsError` from inside a `setindex`, because the conditional distributions were shaped against the values from the previous step.
 
+`Gibbs` refuses a model with an argument bound to `missing`, naming the argument. Conditioning cannot override such an argument, so the `missing` reached the likelihood and threw a `MethodError` from inside `loglikelihood`. Declare the variable in the model instead of taking it as an argument. Other samplers are unaffected.
+
 Every variable must be declared for a component, and `check_model=false` no longer skips that check.
 
 Component samplers report only `~` values to Gibbs, so a `:=` quantity inside a branch is no longer taken for a variable that appeared mid-run. Requires DynamicPPL 0.42.8.
