@@ -1,13 +1,53 @@
 using DynamicPPL: AbstractInitStrategy, AbstractAccumulator
 using Distributions
 
+# Store model-shaped constraints separately from keys retained only for reachability errors.
+struct ModelConstraints{V<:VarNamedTuple}
+    values::V
+    unmatched::Vector{Pair{VarName,Any}}
+end
+ModelConstraints(values::VarNamedTuple) = ModelConstraints(values, Pair{VarName,Any}[])
+
+function _model_constraints_from_pairs(constraints, template::VarNamedTuple)
+    values = VarNamedTuple()
+    unmatched = Pair{VarName,Any}[]
+    for (vn, value) in constraints
+        sym = AbstractPPL.getsym(vn)
+        if !haskey(template.data, sym)
+            push!(unmatched, vn => value)
+            continue
+        end
+        try
+            values = DynamicPPL.templated_setindex!!(values, value, vn, template.data[sym])
+        catch err
+            err isa BoundsError || rethrow()
+            # Preserve out-of-range keys for the domain-specific coverage check below.
+            push!(unmatched, vn => value)
+        end
+    end
+    return ModelConstraints(values, unmatched)
+end
+function ModelConstraints(constraints::AbstractDict{<:VarName}, template::VarNamedTuple)
+    return _model_constraints_from_pairs(constraints, template)
+end
+function ModelConstraints(constraints::NamedTuple, ::VarNamedTuple)
+    return ModelConstraints(VarNamedTuple(constraints))
+end
+function ModelConstraints(constraints::VarNamedTuple, template::VarNamedTuple)
+    return _model_constraints_from_pairs(pairs(constraints), template)
+end
+
+function _constraint_pairs(constraints::ModelConstraints)
+    return Iterators.flatten((pairs(constraints.values), constraints.unmatched))
+end
+
 """
     InitWithConstraintCheck(lb, ub, actual_strategy) <: AbstractInitStrategy
 
 Initialise parameters with `actual_strategy`, but check that the initialised
 parameters satisfy any bounds in `lb` and `ub`.
 """
-struct InitWithConstraintCheck{Tlb<:VarNamedTuple,Tub<:VarNamedTuple} <:
+struct InitWithConstraintCheck{Tlb<:ModelConstraints,Tub<:ModelConstraints} <:
        AbstractInitStrategy
     lb::Tlb
     ub::Tub
@@ -20,6 +60,9 @@ function get_constraints(constraints::VarNamedTuple, vn::VarName)
     else
         return nothing
     end
+end
+function get_constraints(constraints::ModelConstraints, vn::VarName)
+    return get_constraints(constraints.values, vn)
 end
 
 const MAX_ATTEMPTS = 1000
@@ -168,7 +211,7 @@ can_have_linked_constraints(::Dirichlet) = false
 can_have_linked_constraints(::LKJCholesky) = false
 
 struct ConstraintAccumulator{
-    T<:DynamicPPL.AbstractTransformStrategy,Vlb<:VarNamedTuple,Vub<:VarNamedTuple
+    T<:DynamicPPL.AbstractTransformStrategy,Vlb<:ModelConstraints,Vub<:ModelConstraints
 } <: AbstractAccumulator
     "Whether to store constraints in linked space or not."
     transform_strategy::T
@@ -186,7 +229,9 @@ struct ConstraintAccumulator{
     space (if link=false)."
     ub_vecs::Dict{VarName,AbstractVector}
     function ConstraintAccumulator(
-        link::DynamicPPL.AbstractTransformStrategy, lb::VarNamedTuple, ub::VarNamedTuple
+        link::DynamicPPL.AbstractTransformStrategy,
+        lb::ModelConstraints,
+        ub::ModelConstraints,
     )
         return new{typeof(link),typeof(lb),typeof(ub)}(
             link,
@@ -311,6 +356,26 @@ function make_optim_bounds_and_init(
     lb::VarNamedTuple,
     ub::VarNamedTuple,
 )
+    return make_optim_bounds_and_init(
+        rng,
+        ldf,
+        initial_params,
+        ModelConstraints(lb),
+        ModelConstraints(ub),
+        Dict{VarName,Any}(),
+        Dict{VarName,Any}(),
+    )
+end
+
+function make_optim_bounds_and_init(
+    rng::Random.AbstractRNG,
+    ldf::LogDensityFunction,
+    initial_params::AbstractInitStrategy,
+    lb::ModelConstraints,
+    ub::ModelConstraints,
+    resolved_lb::AbstractDict,
+    resolved_ub::AbstractDict,
+)
     # Initialise a VarInfo with parameters that satisfy the constraints.
     # ConstraintAccumulator only needs the raw value so we can use UnlinkAll() as the
     # transform strategy for this
@@ -347,12 +412,20 @@ function make_optim_bounds_and_init(
             # `x[1] ~` leaves an infinite bound behind, and counting that as applied dropped
             # the caller's bound in silence. Testing `isfinite` on the result instead would
             # refuse a bound the caller deliberately wrote as infinite.
-            get_constraints(lb, vn) === nothing || push!(applied_lb, vn)
+            site_lb = get_constraints(lb, vn)
+            if site_lb !== nothing
+                push!(applied_lb, vn)
+                resolved_lb[vn] = site_lb
+            end
         end
         if haskey(constraint_acc.ub_vecs, vn)
             check_bound_covers(ub, "ub", vn, range)
             ub_vec[range] = constraint_acc.ub_vecs[vn]
-            get_constraints(ub, vn) === nothing || push!(applied_ub, vn)
+            site_ub = get_constraints(ub, vn)
+            if site_ub !== nothing
+                push!(applied_ub, vn)
+                resolved_ub[vn] = site_ub
+            end
         end
     end
     # The loop above visits the model's variables, so a bound whose key names none of them is
@@ -383,17 +456,15 @@ and `lb = (x = (a = [0.1, 0.1], b = 0.1),)` covers three. A key coarser than `vn
 a value can be read for `vn` -- a scalar `lb = (x = 0.9,)` holds nothing for an element-wise
 `x[1] ~` and is never applied.
 """
-function check_bound_covers(constraints::DynamicPPL.VarNamedTuple, name, vn, range)
+function check_bound_covers(constraints::ModelConstraints, name, vn, range)
     covered = 0
-    for leaf in keys(constraints)
-        if AbstractPPL.subsumes(vn, leaf)
+    for (key, value) in _constraint_pairs(constraints)
+        if AbstractPPL.subsumes(vn, key)
             # A key inside `vn` contributes the scalar leaves it holds, not the length of its
             # value: `(a = [0.1, 0.1], b = 0.1)` is one key of length two holding three
             # elements.
-            covered += count(
-                Returns(true), DynamicPPL.varname_leaves(leaf, constraints[leaf])
-            )
-        elseif AbstractPPL.subsumes(leaf, vn)
+            covered += count(Returns(true), DynamicPPL.varname_leaves(key, value))
+        elseif AbstractPPL.subsumes(key, vn)
             # A key coarser than `vn` covers it only if a value can actually be read for `vn`:
             # `lb = (x = [0.9, 0.9],)` bounds both of an element-wise `x[1] ~`, `x[2] ~`, while
             # a scalar `lb = (x = 0.9,)` holds nothing for `x[1]` and is never applied. Asking
@@ -433,13 +504,14 @@ a value the model writes whole cannot be honoured. When no reached variable cove
 is merely moot -- the key may name a variable that is conditioned, fixed, or in a branch not
 taken, which is indistinguishable here from one naming nothing -- so that warns.
 """
-function check_constraints_reached(constraints::VarNamedTuple, name, applied, model_vns)
+function check_constraints_reached(constraints::ModelConstraints, name, applied, model_vns)
     claims(vns, leaf) =
         any(vns) do vn
             AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
         end
     leaves = Iterators.flatten(
-        DynamicPPL.varname_leaves(key, constraints[key]) for key in keys(constraints)
+        DynamicPPL.varname_leaves(key, value) for
+        (key, value) in _constraint_pairs(constraints)
     )
     unapplied = [leaf for leaf in leaves if !claims(applied, leaf)]
     isempty(unapplied) && return nothing
