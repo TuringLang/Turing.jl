@@ -320,12 +320,12 @@ detail of conditioning. Nor does `ESS`, whose prior means are gathered for the b
 built on, nor `externalsampler`, whose wrapped state is opaque.
 """
 function _reshape_description(r::ReshapedBlock)
-    r.change === :joined && return "$(r.variable) joined it"
-    r.change === :left && return "$(r.variable) left it"
+    r.change === _BLOCK_JOINED && return "$(r.variable) joined it"
+    r.change === _BLOCK_LEFT && return "$(r.variable) left it"
     # A key on one side only says the block is written by different tilde statements, which is
     # not the same fact as a variable relinking, and may leave the width untouched: one
     # `MvNormal(2)` site against two scalar `Normal` sites is two numbers either way.
-    r.change === :rekeyed &&
+    r.change === _BLOCK_REKEYED &&
         return "$(r.variable) is now written by a different tilde statement"
     return "$(r.variable) is now drawn from a distribution that links to a different width"
 end
@@ -395,18 +395,9 @@ function gibbs_recompute_ldf_and_params(
     # prior with whatever the default rng happens to be.
     probe = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
     _, probe = DynamicPPL.init!!(model, probe, init_strategy, old_ldf.transform_strategy)
-    # `old_ldf.transform_strategy` is reused deliberately, including under `fix_transforms`,
-    # where it is a `WithTransforms` whose frozen set covers only the variables reached when the
-    # `LogDensityFunction` was built. A variable the block later gains falls through to that
-    # strategy's fallback and is sampled unlinked while its siblings are linked -- measured on a
-    # two-branch model, 32 of 59 rebuilds in one run. That is correct rather than broken:
-    # `Unlink` means the variable really is sampled in raw space and its density is accounted
-    # for there, and the answers match `fix_transforms=false` and a single-block reference to
-    # within seed noise. It costs a gained positive variable some rejections at its boundary.
-    # Do not add a guard against the mixed strategy; refusing it would reject working runs.
-    # Built without `adtype` first, so that nothing is prepared at a point we are about to
-    # replace: a taped backend records its tape wherever it is prepared. The construction
-    # below prepares at the current point and is the only one that prepares at all.
+    # A new variable falls through a frozen transform strategy's fallback. Mixing linked and
+    # unlinked variables is valid because each density is evaluated in its chosen space.
+    # Build without `adtype` so a taped backend is prepared only at the current parameters.
     new_ldf = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.get_logdensity_callable(old_ldf), probe; adtype=nothing
     )
@@ -841,8 +832,8 @@ end
 function block_reshaped(before, now, linked::Bool)
     if !isequal(before.leaves, now.leaves)
         joined = setdiff(now.leaves, before.leaves)
-        isempty(joined) || return ReshapedBlock(first(joined), :joined)
-        return ReshapedBlock(first(setdiff(before.leaves, now.leaves)), :left)
+        isempty(joined) || return ReshapedBlock(first(joined), _BLOCK_JOINED)
+        return ReshapedBlock(first(setdiff(before.leaves, now.leaves)), _BLOCK_LEFT)
     end
     # The tilde keys matter as much as what they map to. A branch writing `x` in one tilde and
     # `x[i]` in three gives identical leaves and two DISJOINT layouts, so a loop that skipped a
@@ -850,12 +841,12 @@ function block_reshaped(before, now, linked::Bool)
     # A key on one side only is itself proof the layout changed.
     for (vn, rec) in now.layout
         i = findfirst(p -> p.first == vn, before.layout)
-        i === nothing && return ReshapedBlock(vn, :rekeyed)
+        i === nothing && return ReshapedBlock(vn, _BLOCK_REKEYED)
         _same_layout(before.layout[i].second, rec, linked) ||
-            return ReshapedBlock(vn, :respecified)
+            return ReshapedBlock(vn, _BLOCK_RESPECIFIED)
     end
     for (vn, _) in before.layout
-        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :rekeyed)
+        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, _BLOCK_REKEYED)
     end
     return nothing
 end

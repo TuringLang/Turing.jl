@@ -21,20 +21,25 @@ function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
     return Turing._check_model(model, !allow_discrete_variables(sampler))
 end
 
+@enum _BlockChange begin
+    _BLOCK_JOINED       # A variable entered the block.
+    _BLOCK_LEFT         # A variable left the block.
+    _BLOCK_REKEYED      # `x ~ MvNormal(...)` becomes separate `x[i] ~ Normal()` sites.
+    _BLOCK_RESPECIFIED  # `x ~ Dirichlet(3, 1)` becomes `x ~ MvNormal(3, 1)`: width 2 → 3.
+end
+
 """
-    ReshapedBlock(variable::VarName, change::Symbol)
+    ReshapedBlock(variable::VarName, change::_BlockChange)
 
-Says that the parameter layout of the block a Gibbs component samples is no longer the one that
-component last saw, because of `variable`. `change` says how:
+Say why a Gibbs component's parameter layout differs from the one it last saw:
 
-  - `:joined`, the variable is in the block now and was not before;
-  - `:left`, the reverse;
-  - `:respecified`, it is in both, but its tilde statement now draws from a distribution with a
-    different linking transform, so the block's linked dimension may have moved although its
-    leaves have not.
+  - `_BLOCK_JOINED`: `variable` is now in the block;
+  - `_BLOCK_LEFT`: `variable` is no longer in the block;
+  - `_BLOCK_REKEYED`: `variable` is now written by a different tilde statement;
+  - `_BLOCK_RESPECIFIED`: `variable` now links to a different width.
 
-All three mean the same thing to a sampler -- rebuild whatever you sized for the block -- and
-`change` only shapes the error message when one cannot.
+Every case requires the sampler to rebuild state sized for the block. `change` otherwise only
+shapes the error message.
 
 Defined here rather than beside the rest of the Gibbs interface because the samplers that
 dispatch on it are loaded first. See the five-argument
@@ -42,7 +47,7 @@ dispatch on it are loaded first. See the five-argument
 """
 struct ReshapedBlock{V<:VarName}
     variable::V
-    change::Symbol
+    change::_BlockChange
 end
 
 """

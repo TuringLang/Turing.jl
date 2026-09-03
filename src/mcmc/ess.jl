@@ -198,19 +198,9 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # TODO(TuringLang/Turing.jl#2873): the priors are NOT constant, and carrying them forward
-    # is a silent wrong answer. `state.priors` is captured once, at the first step, under
-    # whatever the other blocks held then. `ESSPrior` builds the ellipse centre from it via
-    # `mean(dist)`, while the draw comes from the refreshed `ldf`, so once a prior's parameters
-    # belong to another component the move is no longer invariant for the conditional it is
-    # meant to target. On `mu ~ Normal(0, 10); 8.0 ~ Normal(mu, 0.5); x ~ Normal(mu, 1)` under
-    # `Gibbs(:mu => MH(), :x => ESS())`, E[x] came back -7.5, -13.2, -2.6, -12.0 over seeds
-    # 1-4 against a posterior mean near 8.0, which `Gibbs(:mu => MH(), :x => HMC(0.3, 8))`
-    # recovers. The fix is to rebuild the priors from this same evaluation rather than reuse
-    # them; it is not made here because it is not a matter of this branch.
-    #
-    # We pass an extra LogLikelihoodAccumulator here so that we can calculate the new loglike
-    # in one pass.
+    # TODO(TuringLang/Turing.jl#2873): Rebuild the priors here. Reusing `state.priors` is
+    # incorrect when another component changes their parameters.
+    # Collect the new likelihood during the same model evaluation.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
         state.ldf, model, global_vals, (DynamicPPL.LogLikelihoodAccumulator(),)
     )
