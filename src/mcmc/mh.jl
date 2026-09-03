@@ -380,9 +380,21 @@ function _require_same_variables(
     # `spl.vns_with_proposal`, whose keys may match no tilde statement and so be declared
     # without ever being used. A variable drawn from its prior cancels against `p` in the
     # ratio whatever its dimension, so only one that was proposed from breaks the crossing.
-    used = union(leaves(used_proposals(old_vi)), leaves(used_proposals(new_vi)))
+    #
+    # These are tilde `VarName`s, and `before`/`after` are leaves. They cannot be compared
+    # directly: `varname_leaves` expands by the *value* it is given, so parameter values
+    # expand `x` into `x[1], x[2]` while the distributions here hit its scalar fallback and
+    # stay `x`. Intersecting the two sets therefore matched nothing for any variable that is
+    # not scalar, and the check never fired for the vector case it most needs to catch. They
+    # are related by subsumption instead, which holds whichever side is the coarser.
+    used = union(keys(used_proposals(old_vi)), keys(used_proposals(new_vi)))
     changed = union(setdiff(before, after), setdiff(after, before))
-    custom = intersect(changed, used)
+    function proposed_from(leaf)
+        any(used) do vn
+            AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
+        end
+    end
+    custom = filter(proposed_from, collect(changed))
     isempty(custom) && return nothing
     leaf = first(custom)
     what = leaf in before ? "is absent from" : "appears in"

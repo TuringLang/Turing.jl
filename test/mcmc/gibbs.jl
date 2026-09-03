@@ -1337,6 +1337,36 @@ end
         # would otherwise leave no trace while having been scored with an invalid ratio.
         @test Turing.Inference.allow_varying_dimension(MH())
         @test Turing.Inference.allow_varying_dimension(MH(@varname(z) => Normal(0, 0.5)))
+        # The crossing variable need not be scalar. `used_proposals` is keyed by tilde
+        # `VarName`, while the values it is compared against expand to leaves, so comparing the
+        # two directly matched nothing for a vector and the check never fired: the partition
+        # below was accepted and returned P(b=1) = 0.08 against an analytic 0.4462.
+        @model function vec_crossing()
+            b ~ Bernoulli(0.5)
+            mu = 0.0
+            if b
+                x ~ MvNormal(zeros(2), LinearAlgebra.I)
+                mu = sum(x)
+            end
+            return 1.0 ~ Normal(mu, 1.0)
+        end
+        @test_throws "has a proposal of its own" sample(
+            StableRNG(6),
+            vec_crossing(),
+            Gibbs((@varname(b), @varname(x)) => MH(@varname(x) => LinkedRW(1.0))),
+            200;
+            check_model=false,
+            progress=false,
+        )
+        # Proposed from its prior, the same crossing is legitimate and must still run.
+        @test sample(
+            StableRNG(6),
+            vec_crossing(),
+            Gibbs((@varname(b), @varname(x)) => MH()),
+            200;
+            check_model=false,
+            progress=false,
+        ) isa Any
         @test_throws ArgumentError sample(
             Xoshiro(1),
             f(),
