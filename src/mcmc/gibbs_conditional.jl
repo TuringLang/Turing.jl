@@ -118,7 +118,8 @@ leave in its place.
 """
 function build_values_vnt(model::DynamicPPL.Model)
     context = model.context
-    args = DynamicPPL.VarNamedTuple(model.args)
+    # Keyword arguments too: `model.args` alone left `f(; y = 2.0)` invisible here.
+    args = DynamicPPL.VarNamedTuple(model_argument_values(model))
     vals = merge(args, DynamicPPL.conditioned(context), DynamicPPL.fixed(context))
     for vn in keys(args), leaf in AbstractPPL.varname_leaves(vn, args[vn])
         arg_value = DynamicPPL.getvalue(args, leaf)

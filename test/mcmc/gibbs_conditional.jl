@@ -8,6 +8,26 @@ using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
+    @testset "a keyword model argument reaches the conditional" begin
+        # `model.args` holds only positional arguments; a keyword one lands in
+        # `model.defaults` and was invisible here.
+        @model function kw(; y=2.0)
+            m ~ Normal()
+            return y ~ Normal(m, 1)
+        end
+        seen = Ref{Any}(nothing)
+        cond_m(vnt) = (seen[] = vnt; Normal(0, 1))
+        sample(
+            Xoshiro(1),
+            kw(),
+            Gibbs(@varname(m) => GibbsConditional(cond_m)),
+            3;
+            check_model=false,
+            progress=false,
+        )
+        @test DynamicPPL.getvalue(seen[], @varname(y)) == 2.0
+    end
+
     @testset "observed and latent elements of one array" begin
         @model function partly()
             mu ~ Normal()

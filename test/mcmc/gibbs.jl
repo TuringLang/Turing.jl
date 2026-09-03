@@ -274,6 +274,22 @@ end
         check_model=false,
         progress=false,
     )
+    # A nested container hides a `missing` from a check that reads `eltype` alone, since the
+    # outer element type is the inner array, never `>: Missing`.
+    @model function nested(x)
+        mu ~ Normal()
+        for v in x, e in v
+            e ~ Normal(mu, 1)
+        end
+    end
+    @test_throws "is or holds `missing`" sample(
+        StableRNG(468),
+        nested([[1.5, missing]]),
+        Gibbs(@varname(mu) => MH()),
+        10;
+        check_model=false,
+        progress=false,
+    )
     @model function bykeyword(a; b=missing)
         m ~ Normal()
         a ~ Normal(m, 1)

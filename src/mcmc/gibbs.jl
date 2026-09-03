@@ -1218,6 +1218,17 @@ function check_all_variables_handled(vnt::DynamicPPL.VarNamedTuple, spl::Gibbs)
 end
 
 """
+    model_argument_values(model)
+
+The values `model`'s arguments supply, keyword as well as positional.
+
+`model.args` holds only the positional ones; a keyword argument, whether defaulted or passed,
+lands in `model.defaults`. Reading one and not the other is how a keyword argument became
+invisible to two separate callers, so both ask here.
+"""
+model_argument_values(model::DynamicPPL.Model) = merge(model.args, model.defaults)
+
+"""
     check_no_missing_arguments(model)
 
 Refuse a model with an argument bound to `missing`, or holding one.
@@ -1239,9 +1250,7 @@ refused too, though it would sample. Telling the two apart needs an evaluation, 
 refusal that names the argument is easier to act on than a `MethodError` from inside DynamicPPL.
 """
 function check_no_missing_arguments(model::DynamicPPL.Model)
-    # `defaults` as well as `args`: a keyword argument bound to `missing` lands there, and
-    # reaches the likelihood exactly as a positional one does.
-    for (name, arg) in Iterators.flatten((pairs(model.args), pairs(model.defaults)))
+    for (name, arg) in pairs(model_argument_values(model))
         _holds_missing(arg) || continue
         throw(
             ArgumentError(
@@ -1256,8 +1265,14 @@ function check_no_missing_arguments(model::DynamicPPL.Model)
 end
 
 _holds_missing(x) = ismissing(x)
-# The eltype test keeps this O(1) for an ordinary data array, which cannot hold a `missing`.
-_holds_missing(x::AbstractArray) = eltype(x) >: Missing && any(ismissing, x)
+# Both halves of the gate are load-bearing. An array of bits types can hold no `missing` and
+# nest none either, which keeps this O(1) for ordinary data; but `Missing` is itself a bits
+# type, so a `Vector{Missing}` needs the first half, and a nested container's `eltype` is never
+# `>: Missing`, so it needs the second. Anything past the gate has its elements asked.
+function _holds_missing(x::AbstractArray)
+    (eltype(x) >: Missing || !isbitstype(eltype(x))) || return false
+    return any(_holds_missing, x)
+end
 
 """
     gibbs_initial_values(rng, model, spl, initial_params)
