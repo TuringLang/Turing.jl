@@ -118,13 +118,9 @@ allow_varying_dimension(::AbstractSampler) = false
 # a claim made about the sampler inside says nothing about what survives the wrapper.
 allow_varying_dimension(spl::RepeatSampler) = allow_varying_dimension(spl.sampler)
 allow_varying_dimension(::PG) = true
-# Whether a crossing is valid for `MH` is decided per variable and per evaluation: a variable
-# drawn from its prior cancels against `p` in the acceptance ratio whatever its dimension, one
-# proposed from does not. A trait asked once, before any evaluation, cannot know which applies,
-# and reading the declared proposal keys instead is wrong in both directions, since a key may
-# match no tilde statement and so be declared without ever being used. So `MH` answers `true`
-# and polices each crossing itself in `_require_same_variables`, where the evaluations have
-# recorded which proposals were used.
+# `MH` proposes every variable from its prior, so `q` cancels against `p` in the acceptance
+# ratio and a crossing between supports is legitimate whatever the dimension. Per-variable
+# proposals, which would break that cancellation, no longer exist.
 allow_varying_dimension(::MH) = true
 
 """

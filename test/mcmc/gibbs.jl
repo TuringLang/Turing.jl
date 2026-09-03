@@ -1489,22 +1489,11 @@ end
         end
         @test mean(ps) ≈ 0.5 atol = 0.02
 
-        # Give a variable its own proposal and the cancellation is gone, so the same block is
-        # refused -- but by `MH` itself, per variable, not by the trait. Whether a crossing is
-        # valid depends on which variable moved and whether that one was proposed from, which
-        # is a fact about one evaluation; a trait asked once cannot supply it, and reading the
-        # declared proposal keys instead is wrong in both directions, since a key may match no
-        # tilde statement and so never be used. So the trait is `true` for every `MH`, and the
-        # refusal happens where the evaluations have recorded what was actually proposed from.
-        # It has to happen there for a second reason: Gibbs only ever sees the state `MH`
-        # returns, which on rejection is the state it proposed *from*, so a rejected crossing
-        # would otherwise leave no trace while having been scored with an invalid ratio.
+        # `MH` proposes every variable from its prior, so `q` cancels against `p` in the
+        # acceptance ratio and a crossing is legitimate whatever the dimension. Per-variable
+        # proposals, which would break that cancellation, no longer exist.
         @test Turing.Inference.allow_varying_dimension(MH())
-        @test Turing.Inference.allow_varying_dimension(MH(@varname(z) => Normal(0, 0.5)))
-        # The crossing variable need not be scalar. `used_proposals` is keyed by tilde
-        # `VarName`, while the values it is compared against expand to leaves, so comparing the
-        # two directly matched nothing for a vector and the check never fired: the partition
-        # below was accepted and returned P(b=1) = 0.08 against an analytic 0.4462.
+        # The crossing variable need not be scalar.
         @model function vec_crossing()
             b ~ Bernoulli(0.5)
             mu = 0.0
@@ -1514,15 +1503,6 @@ end
             end
             return 1.0 ~ Normal(mu, 1.0)
         end
-        @test_throws "has a proposal of its own" sample(
-            StableRNG(6),
-            vec_crossing(),
-            Gibbs((@varname(b), @varname(x)) => MH(@varname(x) => LinkedRW(1.0))),
-            200;
-            check_model=false,
-            progress=false,
-        )
-        # Proposed from its prior, the same crossing is legitimate and must still run.
         @test sample(
             StableRNG(6),
             vec_crossing(),
@@ -1531,18 +1511,8 @@ end
             check_model=false,
             progress=false,
         ) isa Any
-        @test_throws ArgumentError sample(
-            Xoshiro(1),
-            f(),
-            Gibbs(
-                @varname(y) => MH(),
-                (@varname(x), @varname(z)) => MH(@varname(z) => Normal(0, 0.5)),
-            ),
-            200;
-            check_model=false,
-            progress=false,
-        )
-        # Assigned to MH, whose acceptance ratio is not valid across a change of dimension.
+        # Refused for ownership, not for the ratio: `x` decides whether `z` exists and sits
+        # in another block.
         @test_throws ArgumentError sample(
             Xoshiro(470),
             f(),
@@ -1910,34 +1880,19 @@ end
         end
         model = dyn()
 
-        for spl in (
-            Gibbs(:x => MH(), :y => HMC(0.1, 20)),
-            Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
+        samplers = (
+            Gibbs(:x => MH(), :y => HMC(0.1, 20)), Gibbs(:x => MH(), :y => MH([1.0;;]))
         )
-            # Irreducibility is the property that matters and the one that is cheap to
-            # assert: `x` reaches both ends of its prior, so the split chain is not absorbed.
-            # Its *mean* is not asserted here -- it mixes far more slowly than the shared
-            # block and needs on the order of 200_000 draws to settle, where it converges to
-            # the same answer (E[x] of -0.085 and 0.047 over two seeds against -0.005 from one
-            # block). Contrast `disjoint_supports` above, whose `x` never leaves one interval.
-            chn_split = sample(
-                StableRNG(468), model, spl, 5_000; discard_initial=1_000, progress=false
+        for spl in samplers
+            chn = sample(
+                StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
             )
-            xs = vec(chn_split[@varname(x)])
-            @test maximum(xs) - minimum(xs) > 8.0
+            # Ground truth from NUTS. Asserted on the SPLIT partitions, which are the only
+            # ones that condition `y` on an `x` sampled elsewhere: a range check on `x`, or
+            # a mean over one block holding both, passes with the staleness reintroduced.
+            @test mean(chn[:x]) ≈ 0.0 atol = 0.1
+            @test mean(chn[:y]) ≈ 1.5 atol = 0.1
         end
-
-        # Ground truth from NUTS, as before: mean(x) = 0.0, mean(y) = 1.5.
-        chn = sample(
-            StableRNG(468),
-            model,
-            Gibbs((@varname(x), @varname(y)) => MH()),
-            20_000;
-            discard_initial=5_000,
-            progress=false,
-        )
-        @test mean(chn[:x]) ≈ 0.0 atol = 0.1
-        @test mean(chn[:y]) ≈ 1.5 atol = 0.1
     end
 end
 

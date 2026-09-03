@@ -50,6 +50,12 @@ For how the model and inference machinery works under the hood, see the [Dynamic
 
 The Gibbs sampler (`src/mcmc/gibbs.jl`) is the most complex piece in Turing.jl. It threads a `VarNamedTuple` of raw values for all variables through the sweep. To step a component, it `condition`s the model on the values of every variable that component does not sample (`conditioned_values` picks them out), runs the component sampler, and merges the values it returns into the next component's conditioning set. The threaded `VarNamedTuple` is never mutated in place.
 
+Gibbs owns the assignment of variables to component samplers. Repeating that assignment
+inside a component risks updating or scoring the wrong variables; see
+`VarNamedTuple` for parameter collections below.
+`Gibbs(@varname(x) => MH(cov_matrix))` applies `cov_matrix` to the complete linked vector of
+the conditioned `x` block.
+
 To plug a sampler into Gibbs, implement:
 
   - `gibbs_get_parameter_values(state)` — return a `VarNamedTuple` of the values of the variables this sampler is responsible for, leaving out `:=` quantities. The old name `gibbs_get_raw_values` still works, with a deprecation warning.
@@ -80,7 +86,7 @@ rebuilds (`HMC`, `NUTS(0, δ)`, `HMCDA(0, δ, λ)`). An adapting `NUTS` or `HMCD
 
 Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not `VarInfo`. `VarInfo` is being phased out across the ecosystem.
 
-Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability — for example, MH uses custom accumulators to capture proposal distributions and linked values, so it works directly with `OnlyAccsVarInfo` + `init!!` instead. Either approach is fine; the key constraint is no `VarInfo`.
+Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability. `MH()` works directly with `OnlyAccsVarInfo` + `init!!` because it draws proposals from the model prior; `MH(cov_matrix)` delegates to an external sampler and uses `LogDensityFunction`. Either approach is fine; the key constraint is no `VarInfo`.
 
 Say "linked" and "unlinked", not "unconstrained" and "constrained": linking is what the API is named after (`to_linked_vec`, `UnlinkAll`, `LinkAll`), so the two vocabularies cannot both track it. Linking transforms parameters to unconstrained (Euclidean) space for gradient-based sampling.
 
@@ -89,6 +95,12 @@ Three exceptions, all deliberate. `unconstrained` is the public keyword of `exte
 ### `VarNamedTuple` for parameter collections
 
 Interfaces that accept or return named parameter collections should use `VarNamedTuple`, not `NamedTuple` or `Dict{VarName}`. `NamedTuple` and `Dict{VarName}` are accepted as user-facing input but should be converted to `VarNamedTuple` at the boundary (see `_to_varnamedtuple` in `src/common.jl`). Don't propagate them through internal code.
+
+Do not infer executed `~` sites from `haskey` or `keys` on a parameter
+`VarNamedTuple`: `haskey(values, @varname(x))` can match stored descendants, and one ranged
+site can be stored as several keys. Treating these keys as sampling sites can score a
+proposal against the wrong values, giving incorrect acceptance probabilities and
+potentially biased inference.
 
 ### `getlogjoint_internal` vs `getlogjoint`
 
