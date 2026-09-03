@@ -21,6 +21,40 @@ function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
     return Turing._check_model(model, !allow_discrete_variables(sampler))
 end
 
+function _variable_set_checked(
+    model::DynamicPPL.Model{F,A,D,M}, sampler::AbstractSampler
+) where {F,A,D,M}
+    allow_varying_dimension(sampler) && return model
+    previous = Ref{Union{Nothing,Set{VarName}}}(nothing)
+    evaluator = function (args...; kwargs...)
+        result, vi = model.f(args...; kwargs...)
+        # Log-density-only evaluations do not carry raw values.
+        if DynamicPPL.hasacc(vi, Val(:RawValues))
+            values = DynamicPPL.get_parameter_values(vi)
+            current = Set(
+                leaf for (vn, value) in pairs(values) for
+                leaf in AbstractPPL.varname_leaves(vn, value)
+            )
+            if previous[] !== nothing && current != previous[]
+                changed = join(sort!(string.(collect(symdiff(current, previous[])))), ", ")
+                throw(
+                    ArgumentError(
+                        "Consecutive model evaluations do not occupy the same parameter " *
+                        "layout: $changed appeared or disappeared during a step of " *
+                        "$(_trait_owner_name(sampler)), which does not declare support for " *
+                        "varying dimension.",
+                    ),
+                )
+            end
+            previous[] = current
+        end
+        return result, vi
+    end
+    return DynamicPPL.Model{DynamicPPL.requires_threadsafe(model),M}(
+        evaluator, model.args, model.defaults, model.context
+    )
+end
+
 @enum _BlockChange begin
     _BLOCK_JOINED       # A variable entered the block.
     _BLOCK_LEFT         # A variable left the block.
@@ -148,7 +182,7 @@ function AbstractMCMC.sample(
     check_model && Turing._check_model(model, spl)
     chain = AbstractMCMC.mcmcsample(
         rng,
-        model,
+        _variable_set_checked(model, spl),
         spl,
         N;
         initial_params=Turing._convert_initial_params(initial_params),

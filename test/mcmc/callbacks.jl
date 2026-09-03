@@ -1,6 +1,15 @@
 module CallbacksTests
 
 using Test, Turing, AbstractMCMC, Random, Distributions, LinearAlgebra
+using Turing: DynamicPPL
+
+struct UnmarkedMH <: AbstractMCMC.AbstractSampler end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, ::UnmarkedMH, state...; kwargs...
+)
+    return AbstractMCMC.step(rng, model, MH(), state...; kwargs...)
+end
 
 @model function test_normals()
     x ~ Normal()
@@ -63,6 +72,45 @@ end
         @test haskey(pairs_dict, :acceptance_rate)
         @test haskey(pairs_dict, :hamiltonian_energy)
     end
+end
+
+@testset "Varying-dimension checks" begin
+    @model function dynamic()
+        x ~ Normal()
+        if x > 0
+            z ~ Normal()
+        end
+    end
+
+    function sample_dynamic(seed, sampler=UnmarkedMH(); n=2, kwargs...)
+        return sample(Xoshiro(seed), dynamic(), sampler, n; progress=false, kwargs...)
+    end
+
+    @test_throws r"z appeared or disappeared.*UnmarkedMH" sample_dynamic(
+        4; initial_params=InitFromParams((; x=-1.0))
+    )
+    @test_throws r"z appeared or disappeared.*UnmarkedMH" sample_dynamic(
+        1; initial_params=InitFromParams((; x=1.0, z=0.0))
+    )
+
+    # The change occurs between the discarded initial draw and the first retained draw.
+    @test_throws r"z appeared or disappeared.*UnmarkedMH" sample_dynamic(
+        4; n=1, initial_params=InitFromParams((; x=-1.0)), num_warmup=1, discard_initial=1
+    )
+
+    @test_throws r"z appeared or disappeared.*UnmarkedMH" sample_dynamic(
+        4, RepeatSampler(UnmarkedMH(), 1), initial_params=InitFromParams((; x=-1.0))
+    )
+
+    callback_calls = Ref(0)
+    callback(args...; kwargs...) = (callback_calls[] += 1)
+    @model fixed() = x ~ Normal()
+    sample(Xoshiro(4), fixed(), UnmarkedMH(), 3; callback, progress=false)
+    @test callback_calls[] == 3
+
+    @test Turing.Inference.allow_varying_dimension(Prior())
+    @test Turing.Inference.allow_varying_dimension(PG(5))
+    @test sample_dynamic(4, PG(5); n=10) isa VNChain
 end
 
 end

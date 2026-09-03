@@ -22,6 +22,8 @@ docstring ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 ## Other changes
 
+`sample` now rejects changes to the sampled variable set unless the sampler declares support through `allow_varying_dimension`.
+
 `ESS` Gibbs components now use the current conditional prior after another component changes its parameters
 ([#2885](https://github.com/TuringLang/Turing.jl/pull/2885)).
 

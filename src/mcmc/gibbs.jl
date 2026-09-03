@@ -122,6 +122,8 @@ allow_varying_dimension(::PG) = true
 # ratio and a crossing between supports is legitimate whatever the dimension. Per-variable
 # proposals, which would break that cancellation, no longer exist.
 allow_varying_dimension(::MH) = true
+# `Prior` similarly rebuilds its trace from an unconditional prior draw on every step.
+allow_varying_dimension(::Prior) = true
 
 """
     keeps_linked_layout(spl::AbstractSampler)
@@ -738,6 +740,8 @@ end
 # `GibbsState`, which do not exist; without this, nesting fails with a `MethodError` several
 # steps in rather than at construction.
 supports_gibbs(::Gibbs) = false
+# Gibbs enforces the trait for each component and verifies ownership of every changed leaf.
+allow_varying_dimension(::Gibbs) = true
 # TODO(penelopeysm): `allow_discrete_variables(::Gibbs)` could be smarter, since a component
 # may not allow discrete variables even though Gibbs itself does.
 
