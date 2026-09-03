@@ -795,6 +795,20 @@ end
             )
         end
 
+        # `externalsampler` answers from the wrapper's own space, not the sampler inside: with
+        # `unconstrained=false` the wrapper works in unlinked space, so its block must not be
+        # compared in linked space it never uses.
+        @test !Turing.Inference.keeps_linked_layout(
+            externalsampler(
+                AdvancedMH.RWMH(MvNormal(zeros(1), LinearAlgebra.I)); unconstrained=false
+            ),
+        )
+        @test Turing.Inference.keeps_linked_layout(
+            externalsampler(
+                AdvancedMH.RWMH(MvNormal(zeros(1), LinearAlgebra.I)); unconstrained=true
+            ),
+        )
+
         # A block can change shape with its leaf set unchanged, when a component that shares
         # the variable moves it to one that links to a different width: `x` has three leaves
         # either way, but a simplex occupies two numbers and a free vector three. The gate
@@ -1140,10 +1154,9 @@ end
         @test length(acceptance) == 9
         @test all(0 .<= acceptance .<= 1)
         @test all(>(0), collect(skipmissing(vec(chn[Symbol("h_n_steps")]))))
-        # `MH` contributes none: its `accepted` flag rides on the transition, which Gibbs
-        # discards, and main's `MH` keeps no state to hang it on. A component reports
-        # statistics only if its state carries them.
-        @test !any(k -> occursin("m_accepted", string(k)), keys(chn))
+        accepted = collect(skipmissing(vec(chn[Symbol("m_accepted")])))
+        @test length(accepted) == 10
+        @test all(a -> a isa Bool, accepted)
 
         # Components sampling the same variables are distinguished by their index.
         chn2 = sample(

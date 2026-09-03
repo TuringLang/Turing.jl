@@ -21,6 +21,20 @@ function MH(::Pair, ::Vararg{Pair})
     )
 end
 
+"""
+    MHState(vi, accepted)
+
+`MH`'s state: the varinfo it returns, and whether its last step accepted.
+
+The flag rides on the transition as well, but `Gibbs` steps its components with
+`discard_sample=true` and keeps only the state, so a statistic reachable only from the
+transition never reaches the chain.
+"""
+struct MHState{V<:DynamicPPL.AbstractVarInfo}
+    vi::V
+    accepted::Bool
+end
+
 function mh_varinfo()
     return DynamicPPL.setacc!!(
         DynamicPPL.OnlyAccsVarInfo(), DynamicPPL.RawValueAccumulator(true)
@@ -55,17 +69,18 @@ function AbstractMCMC.step(
 
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=true))
-    return transition, vi
+    return transition, MHState(vi, true)
 end
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     ::MH,
-    old_vi::DynamicPPL.OnlyAccsVarInfo;
+    state::MHState;
     discard_sample=false,
     kwargs...,
 )
+    old_vi = state.vi
     old_lp = DynamicPPL.getlogjoint_internal(old_vi)
 
     new_vi = mh_varinfo()
@@ -85,7 +100,7 @@ function AbstractMCMC.step(
     end
     transition =
         discard_sample ? nothing : DynamicPPL.ParamsWithStats(vi, (; accepted=accepted))
-    return transition, vi
+    return transition, MHState(vi, accepted)
 end
 
 # RWMH can be delegated to AdvancedMH. The type bound is intentionally lax because we just
@@ -98,22 +113,25 @@ end
 #### Gibbs interface
 ####
 
+# `gibbs_get_parameter_values` is deliberately not specialised -- gibbs.jl keeps it as the sole
+# entry point so the deprecated name is still consulted -- so the values come through here.
+_default_parameter_values(state::MHState) = DynamicPPL.get_parameter_values(state.vi)
+gibbs_get_stats(state::MHState) = (; accepted=state.accepted)
+
 function gibbs_update_state!!(
-    ::MH,
-    state::AbstractVarInfo,
-    model::DynamicPPL.Model,
-    global_vals::DynamicPPL.VarNamedTuple,
+    ::MH, state::MHState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
     # Reevaluate the model to reflect values changed by the other Gibbs components.
     init_strat = DynamicPPL.InitFromParams(global_vals, nothing)
-    return last(DynamicPPL.init!!(model, state, init_strat, DynamicPPL.UnlinkAll()))
+    vi = last(DynamicPPL.init!!(model, state.vi, init_strat, DynamicPPL.UnlinkAll()))
+    return MHState(vi, state.accepted)
 end
 
 # `MH` reproposes from the values it is handed and keeps no layout, so a block another
 # component reshaped needs nothing special.
 function gibbs_update_state!!(
     spl::MH,
-    state::AbstractVarInfo,
+    state::MHState,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
     ::ReshapedBlock,

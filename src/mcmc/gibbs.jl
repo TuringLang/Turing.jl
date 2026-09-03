@@ -141,8 +141,10 @@ a measurement whose verdict cannot change what it does. `HMC` is the case in poi
 """
 keeps_linked_layout(::AbstractSampler) = true
 keeps_linked_layout(spl::RepeatSampler) = keeps_linked_layout(spl.sampler)
-# Not forwarded through `ExternalSampler`, as with `allow_varying_dimension`: the wrapper builds
-# its own linked `LogDensityFunction` whatever the sampler inside would have answered.
+# `ExternalSampler` answers from the wrapper, not the sampler inside: the type parameter says
+# which space the wrapper's own `LogDensityFunction` is built in, and `unconstrained=false`
+# means `UnlinkAll()`, so that block must be compared where the wrapper actually works.
+keeps_linked_layout(::ExternalSampler{unconstrained}) where {unconstrained} = unconstrained
 # These rebuild from the conditioned values on every step and hold no linked vector between
 # them, which is also why their `ReshapedBlock` methods delegate to the four-argument form.
 keeps_linked_layout(::MH) = false
