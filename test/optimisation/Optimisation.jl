@@ -210,6 +210,17 @@ end
         @test maximum_a_posteriori(whole(); lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9), ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)).params[@varname(
             x
         )] ≈ [0.9, 0.9] atol = 1e-4
+        # A compound key covering more elements than the model reaches drops the surplus.
+        # Accounting per key rather than per leaf let the one element `x[1]` consumes stand for
+        # the whole of `x`, so the bound on `x[2]` disappeared without a word.
+        @model function first_only()
+            x = Vector{Float64}(undef, 1)
+            x[1] ~ Normal(0, 1)
+            return 1.0 ~ Normal(x[1], 1)
+        end
+        @test_logs min_level = Logging.Warn match_mode = :any (:warn, r"bounds for x\[2\]") maximum_a_posteriori(
+            first_only(); lb=(x=[0.9, 100.0],), ub=(x=[9.0, 200.0],)
+        )
         # A bound on a variable the model does not reach is moot, not an error: the mode is
         # still correctly constrained on the variables that do exist.
         @model function gd()

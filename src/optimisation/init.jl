@@ -420,9 +420,11 @@ Complain about any bound that was not applied.
 than predicted: whether the collection *could* answer for a variable is not the same question as
 whether a bound reached the optimiser.
 
-`keys(constraints)` enumerates leaves while `applied` and `model_vns` hold whole tilde
-`VarName`s, which may be compound, so a leaf is matched against them by subsumption in either
-direction.
+`applied` and `model_vns` hold whole tilde `VarName`s, which may be compound, so a bound is
+matched against them by subsumption in either direction. That is why the accounting is per leaf
+and not per key: `keys(constraints)` gives the caller's key, `x` for `lb = (x = [0.9, 100.0],)`,
+and subsumption would let the one element a model writing only `x[1]` consumes stand for the
+whole key, dropping the rest without a word.
 
 An unapplied bound is fatal when the model reaches a variable covering it, since bounding part of
 a value the model writes whole cannot be honoured. When no reached variable covers it the bound
@@ -434,7 +436,10 @@ function check_constraints_reached(constraints::VarNamedTuple, name, applied, mo
         any(vns) do vn
             AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
         end
-    unapplied = [leaf for leaf in keys(constraints) if !claims(applied, leaf)]
+    leaves = Iterators.flatten(
+        DynamicPPL.varname_leaves(key, constraints[key]) for key in keys(constraints)
+    )
+    unapplied = [leaf for leaf in leaves if !claims(applied, leaf)]
     isempty(unapplied) && return nothing
     malformed = filter(leaf -> claims(model_vns, leaf), unapplied)
     if !isempty(malformed)
