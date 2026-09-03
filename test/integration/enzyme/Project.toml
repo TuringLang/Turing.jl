@@ -8,8 +8,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [sources]
-# TEMPORARY: drop with the matching pin in ../../../Project.toml once DynamicPPL 0.42.8 is released.
-DynamicPPL = {rev = "condition-missing", url = "https://github.com/TuringLang/DynamicPPL.jl.git"}
 Turing = {path = "../../../"}
 
 [compat]
