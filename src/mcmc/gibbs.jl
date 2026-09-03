@@ -480,10 +480,12 @@ ignored the support of everything else -- a
 passed unnoticed while its univariate sibling was refused. The bounds supplement it rather than
 replacing it.
 
-Neither half sees a support carried entirely by a distribution's parameters, and one of those
-is reducible: `Categorical([0.5, 0.5, 0, 0])` and `Categorical([0, 0, 0.5, 0.5])` are both
-supported on `1:4` as far as `Distributions` is concerned, so a component moving between them
-passes. That is the conservatism note in the `Gibbs` docstring seen from the other side -- this
+Two kinds of support change get past all three parts, and both are reducible. One is a support
+carried entirely by a distribution's parameters: `Categorical([0.5, 0.5, 0, 0])` and
+`Categorical([0, 0, 0.5, 0.5])` are both supported on `1:4` as far as `Distributions` is
+concerned. The other is a discrete distribution that reports no bounds, `Multinomial(n, p)`
+among them, where the bijector is `identity` and [`_support_bounds`](@ref) has nothing to
+return. Both pass, and a component moving another block's variable that way is accepted. This
 signature is what the rule can enforce, not the whole of what the rule says.
 """
 function _support_signature(d::Distributions.Distribution)
@@ -508,20 +510,37 @@ _support_signature(d) = (nameof(typeof(d)),)
 """
     _support_bounds(dist)
 
-The bounds of `dist`'s support if it is univariate, and `()` otherwise.
+The bounds of `dist`'s support, or `()` when it does not report them.
 
 This is what carries the support of a *discrete* variable. A discrete variable is never linked,
-so `Bijectors.bijector` is `identity` for the whole family and says nothing about which values
-it can take: `DiscreteUniform(1, 2)` and `DiscreteUniform(3, 4)` are disjoint and would
-otherwise share a signature. With `b` in one block choosing between them and `k` in another, the
-chain is absorbed into whichever branch it started in -- P(b=1) came back 0.0 or 1.0 by seed
-against an exact 0.5, while the two in one block give 0.5.
+so `Bijectors.bijector` is `identity` for the whole family and says nothing about which values it
+can take: `DiscreteUniform(1, 2)` and `DiscreteUniform(3, 4)` are disjoint and would otherwise
+share a signature. With `b` in one block choosing between them and `k` in another, the chain is
+absorbed into whichever branch it started in -- P(b=1) came back 0.0 or 1.0 by seed against an
+exact 0.5.
 
-Univariate continuous distributions are included too, where the bijector already carries the
-support and these only agree with it.
+Multivariate distributions are asked too, and must be: restricting this to the univariate case
+left every discrete *vector* with the signature `(family, identity, ())`, which is the same hole
+one shape up. A `product_distribution` of `DiscreteUniform(1, 2)` and one of
+`DiscreteUniform(3, 4)` are told apart only here.
+
+Not every distribution reports bounds, and one that does not is left uncovered rather than
+refused: `Multinomial(n, p)` has no `minimum`, so a component moving another block's variable
+between `Multinomial(2, p)` and `Multinomial(4, p)` still passes unseen. Continuous
+distributions lose nothing by it, since the bijector carries their support; discrete ones with no
+bounds are the residue of this rule, alongside a support carried purely by parameters. Both are
+recorded in the note in the `Gibbs` docstring.
 """
-_support_bounds(d::Distributions.UnivariateDistribution) = (minimum(d), maximum(d))
-_support_bounds(::Distributions.Distribution) = ()
+function _support_bounds(d::Distributions.Distribution)
+    # Guarded here rather than by `_support_signature`'s own `try`, so that a distribution
+    # without bounds keeps the rest of its signature instead of falling back to the family.
+    return try
+        (minimum(d), maximum(d))
+    catch e
+        e isa MethodError || rethrow()
+        ()
+    end
+end
 
 const SUPPORT_ACC_NAME = :GibbsSupportSignatures
 _store_support(val, tval, logjac, vn, dist) = _support_signature(dist)

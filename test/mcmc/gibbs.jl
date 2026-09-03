@@ -1122,10 +1122,23 @@ end
             end
             return 0.2 ~ Normal(k, 1.0)
         end
+        # A discrete VECTOR has an `identity` bijector too, and restricting the bounds to
+        # univariate distributions left it with nothing carrying its support at all -- the same
+        # absorption one shape up, P(b=1) of 0.0 or 1.0 by seed against an exact 0.99999979.
+        @model function discrete_vector()
+            b ~ Bernoulli(0.5)
+            if b == 1
+                k ~ product_distribution([DiscreteUniform(1, 2), DiscreteUniform(1, 2)])
+            else
+                k ~ product_distribution([DiscreteUniform(3, 4), DiscreteUniform(3, 4)])
+            end
+            return 0.2 ~ Normal(sum(k), 1.0)
+        end
         for (model, decider, affected) in (
             (absorb(), @varname(b), @varname(x)),
             (bounded(), @varname(a), @varname(x)),
             (discrete_support(), @varname(b), @varname(k)),
+            (discrete_vector(), @varname(b), @varname(k)),
         )
             @test_throws "changed distributional form or dimension" sample(
                 Xoshiro(2),
