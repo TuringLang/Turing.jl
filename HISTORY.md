@@ -1,7 +1,3 @@
-# Unreleased
-
-`estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence.
-
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
