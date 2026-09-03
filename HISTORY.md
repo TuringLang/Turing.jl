@@ -1,3 +1,11 @@
+# 0.48.0
+
+## Breaking changes
+
+`MH(var => proposal, ...)` and `LinkedRW` have been removed. Use `MH()` for prior
+proposals, or `MH(cov_matrix)` for a Gaussian random walk over the complete linked
+parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable block.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
