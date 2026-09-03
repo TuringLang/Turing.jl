@@ -10,14 +10,14 @@ parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable blo
 Gibbs now conditions its components with `DynamicPPL.condition`. `GibbsContext` and
 `Turing.Inference.make_conditional` are removed. Rename `isgibbscomponent` to
 `supports_gibbs` and `gibbs_get_raw_values` to `gibbs_get_parameter_values`; the old names
-are deprecated. Models with an argument that contains `missing` are no longer supported:
-declare the latent variable inside the model and condition on observations instead
+are deprecated. Gibbs no longer supports model arguments containing `missing`: declare the
+latent variable inside the model and condition on observations instead
 ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 Every variable reached by a Gibbs model must belong to a component. A component may not
 change the dimension or existence of a variable owned only by another component; put the
 variable and whatever decides its shape in one block. Changes to another block's support or
-distributional form remain unchecked and can make the chain non-irreducible; see the `Gibbs`
+distributional form remain unchecked and can make the chain reducible; see the `Gibbs`
 docstring ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 ## Other changes

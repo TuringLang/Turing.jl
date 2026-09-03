@@ -24,7 +24,7 @@ end
 @enum _BlockChange begin
     _BLOCK_JOINED       # A variable entered the block.
     _BLOCK_LEFT         # A variable left the block.
-    _BLOCK_REKEYED      # `x ~ MvNormal(...)` becomes separate `x[i] ~ Normal()` sites.
+    _BLOCK_REKEYED      # Same leaves: `x ~ MvNormal(2, 1)` becomes two `x[i] ~ Normal()` sites.
     _BLOCK_RESPECIFIED  # `x ~ Dirichlet(3, 1)` becomes `x ~ MvNormal(3, 1)`: width 2 → 3.
 end
 
@@ -38,8 +38,8 @@ Say why a Gibbs component's parameter layout differs from the one it last saw:
   - `_BLOCK_REKEYED`: `variable` is now written by a different tilde statement;
   - `_BLOCK_RESPECIFIED`: `variable` now links to a different width.
 
-Every case requires the sampler to rebuild state sized for the block. `change` otherwise only
-shapes the error message.
+Every case invalidates state sized for the block. `change` otherwise only shapes the error
+message.
 
 Defined here rather than beside the rest of the Gibbs interface because the samplers that
 dispatch on it are loaded first. See the five-argument

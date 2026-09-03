@@ -320,14 +320,18 @@ detail of conditioning. Nor does `ESS`, whose prior means are gathered for the b
 built on, nor `externalsampler`, whose wrapped state is opaque.
 """
 function _reshape_description(r::ReshapedBlock)
-    r.change === _BLOCK_JOINED && return "$(r.variable) joined it"
-    r.change === _BLOCK_LEFT && return "$(r.variable) left it"
-    # A key on one side only says the block is written by different tilde statements, which is
-    # not the same fact as a variable relinking, and may leave the width untouched: one
-    # `MvNormal(2)` site against two scalar `Normal` sites is two numbers either way.
-    r.change === _BLOCK_REKEYED &&
+    if r.change === _BLOCK_JOINED
+        return "$(r.variable) joined it"
+    elseif r.change === _BLOCK_LEFT
+        return "$(r.variable) left it"
+    elseif r.change === _BLOCK_REKEYED
+        # Re-keying can leave the width unchanged: one multivariate site and several scalar
+        # sites may hold the same number of parameters.
         return "$(r.variable) is now written by a different tilde statement"
-    return "$(r.variable) is now drawn from a distribution that links to a different width"
+    elseif r.change === _BLOCK_RESPECIFIED
+        return "$(r.variable) is now drawn from a distribution that links to a different width"
+    end
+    return error("Unknown block change: $(r.change)")
 end
 
 function gibbs_update_state!!(
