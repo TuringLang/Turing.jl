@@ -145,8 +145,9 @@ end
 """
     _shape_template(dist)
 
-A container shaped like `dist`, for `templated_setindex!!` to size an array by, or
-`NoTemplate()` when the distribution says nothing about a shape.
+A container shaped and typed like `dist`, for `templated_setindex!!` to size an array by, or
+`NoTemplate()` when the distribution says nothing about a shape. Only its shape and element
+type are read, so it is left uninitialised.
 
 The shape has to come from the distribution being written, not from the values the state holds:
 those describe the previous step, and another component may have changed the block's dimension
@@ -159,7 +160,7 @@ matrix-variate distribution knows its own size, which is exactly the missing hin
 one at an indexed `VarName` does not, and does not need it.
 """
 _shape_template(::Distributions.UnivariateDistribution) = DynamicPPL.NoTemplate()
-_shape_template(d::Distributions.Distribution) = zeros(size(d))
+_shape_template(d::Distributions.Distribution) = Array{eltype(d)}(undef, size(d))
 _shape_template(_) = DynamicPPL.NoTemplate()
 function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTuple)
     vns = keys(raw_values)
