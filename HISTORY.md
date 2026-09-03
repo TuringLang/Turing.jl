@@ -1,44 +1,8 @@
 # Unreleased
 
-Gibbs conditions its component samplers with `DynamicPPL.condition` instead of its own `GibbsContext`, which is gone along with `Turing.Inference.make_conditional`.
-
-Gibbs now rejects two partitions it used to accept and sample incorrectly. Splitting a value the model stores as one unit -- one component owning `x[1]` while another owns `x`, where the model writes `x` in a single tilde -- throws instead of handing the first component a larger block. Whether a value is stored as a unit depends only on the model's tilde statements, not on which sampler holds the containing block, so element-wise `x[1] ~` and `x[2] ~` split cleanly under any component. And a component whose step changes which variables the model reaches has to be able to sample a varying set of them, which of Turing's samplers means `PG` / `CSMC`: put the variable and whatever decides whether it exists in one block. Previously the deciding variable could sit in another component, and the chain came back biased.
-
-A Gibbs component may never change the dimension of a variable belonging to another component, or whether that variable exists at all, unless the two share it. Put the deciding variable and what it decides in one block, or write a sampler for them. A variable deciding how many of another exist is the shape this catches: `b ~ Bernoulli(0.5); θ = Vector(undef, b ? 2 : 1); for i in eachindex(θ); θ[i] ~ Normal(); end` split as `Gibbs(:b => MH(), :θ => MH())` is refused, and `Gibbs((:b, :θ) => PG(20))` samples it correctly. The check observes only the states a component accepted, so a crossing proposed and rejected passes unnoticed: treat it as a net for mistakes rather than a guarantee.
-
-A component moving another block's *support or distributional form* is permitted and is not checked. Each component's kernel stays invariant for its full conditional, but if two reachable supports do not overlap the chain is absorbed and returns a wrong answer with nothing raised. Establishing that they overlap is yours to do, and neither dimension nor distribution family tells the safe case from the fatal one; the `Gibbs` docstring has the warning and a worked example. Where they do overlap, as in nested supports, expect much slower mixing than the same variables in one block.
-
-A Gibbs component can now be handed its block at a new shape between its own steps. That happens when another component decides whether one of the block's variables exists, as in `Gibbs((@varname(b), @varname(θ)) => PG(20), @varname(θ) => HMC(0.1, 5))`, and also when it moves one to a distribution that links to a different width, which can change the block's linked dimension while leaving its variables alone -- a simplex occupies one number fewer than the free vector of the same length. That previously failed with a `BoundsError` from inside the parameter layout. A sampler declares it copes by implementing the new five-argument form `Turing.Inference.gibbs_update_state!!(sampler, state, model, global_vals, ::Turing.Inference.ReshapedBlock)`, which defaults to throwing with an explanation. `MH`, `PG`/`CSMC`, `GibbsConditional` and any `Hamiltonian` not adapting -- `HMC`, and `NUTS(0, δ)` or `HMCDA(0, δ, λ)` -- implement it. An adapting `NUTS` or `HMCDA`, `ESS` and `externalsampler` do not, each carrying something sized for the block: a mass matrix adapted to the old shape in the Hamiltonian case. A sampler written against the four-argument form alone keeps the safe answer.
-
-A Gibbs component whose block the model currently reaches none of is refused, rather than skipped for that sweep. This is the case where another component decides whether the block's variables exist at all, as opposed to how many of them there are, and it previously failed with `VectorEvaluator requires a vector of floating-point values` from inside the `LogDensityFunction`. Skipping the component is the sensible semantics and may follow later; for now the refusal is uniform across samplers.
-
-`GibbsConditional` can now be handed its block at a new dimension between its own steps; it previously threw a `BoundsError` from inside a `setindex`, because the conditional distributions were shaped against the values from the previous step.
-
-`Gibbs` refuses a model with an argument bound to `missing`, naming the argument. Conditioning cannot override such an argument, so the `missing` reached the likelihood and threw a `MethodError` from inside `loglikelihood`. Declare the variable in the model instead of taking it as an argument. Other samplers are unaffected.
-
-Every variable must be declared for a component, and `check_model=false` no longer skips that check.
-
-Component samplers report only `~` values to Gibbs, so a `:=` quantity inside a branch is no longer taken for a variable that appeared mid-run. Requires DynamicPPL 0.42.8.
-
-Each component initialises its own variables with its own init strategy, so an `HMC` component keeps its `InitFromUniform` starting point instead of being forced to the prior.
-
-Gibbs chains carry component statistics, prefixed with the symbols that component samples: an `HMC` component on `h` contributes `h_acceptance_rate` and the rest. Samplers opt in with `Turing.Inference.gibbs_get_stats(state)`.
-
-`Turing.Inference.isgibbscomponent` is now `supports_gibbs`, and `gibbs_get_raw_values` is now `gibbs_get_parameter_values`. An overload of either old name still works, with a deprecation warning.
-
-`RepeatSampler` and `externalsampler` now forward the traits of the sampler they wrap -- `allow_discrete_variables`, `init_strategy` and `post_sample_hook` -- so a value the inner sampler declares is no longer replaced by the default once wrapped. `allow_varying_dimension` is deliberately not forwarded through `externalsampler`, whose own machinery fixes the parameter layout.
-
-`allow_discrete_variables` now lives in `Turing.Inference`, alongside the other sampler traits, rather than at `Turing`. It is exported from there, so `Turing.allow_discrete_variables` still names the same function and an existing overload keeps working.
+Gibbs conditions its component samplers with `DynamicPPL.condition`. `GibbsContext` and `Turing.Inference.make_conditional` are gone, `isgibbscomponent` is now `supports_gibbs`, and `gibbs_get_raw_values` is now `gibbs_get_parameter_values`, the old names deprecated. Every variable must belong to a component. Partitions that used to sample incorrectly are now refused: one component may not change the dimension of another component's variable, or whether it exists, unless the two share it, so put the deciding variable and what it decides in one block. A model with an argument bound to `missing` is refused as well. Letting one component change another's support or distributional form stays permitted and unchecked. `Gibbs` is effectively a framework for composing MCMC kernels, and it will accept configurations that are not valid samplers: establishing that yours is valid, in particular that the chain can still reach the whole posterior, is your responsibility. A configuration that cannot returns a wrong answer with nothing raised; see the `Gibbs` docstring before relying on one. Chains now carry each component's statistics ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 `NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
-
-`sample` with `Emcee` and `chain_type=MCMCChains.Chains` now returns a `Chains` instead of the raw transitions.
-
-`Prior()` now warns that `initial_params` has no effect rather than discarding it silently: every draw comes from the prior independently, so there is no starting point for one to set.
-
-`estimate_mode` no longer ignores a bound it cannot apply in silence. A bound of the wrong shape -- covering part of a variable the model writes whole -- now throws, where it previously failed with a bare `DimensionMismatch`; give one bound per element, shaped as the model writes the variable. A bound whose key no variable can use warns instead, since a key naming a variable that is conditioned, fixed, or in a branch not taken cannot be told apart here from one naming nothing at all, and the mode is still correctly constrained on the variables that do exist.
-
-`Emcee` now refuses walkers that start in different parameter layouts, naming the layouts, instead of failing with a `DimensionMismatch` from inside the stretch proposal. The move interpolates between two walkers' positions, so they all have to share one parameter space.
 
 # 0.47.4
 

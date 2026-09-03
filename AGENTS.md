@@ -56,8 +56,16 @@ To plug a sampler into Gibbs, implement:
   - `gibbs_update_state!!(sampler, state, model, global_vals)` — update the sampler's state to reflect new conditioned values. For samplers that use `LogDensityFunction`, the helper `gibbs_recompute_ldf_and_params` handles the common case.
   - Optionally, `supports_gibbs(sampler)` — return `false` to disallow use in Gibbs (the default is `true`). The old name `isgibbscomponent` still works, with a deprecation warning.
   - Optionally, `allow_varying_dimension(sampler)` — return `true` if the sampler's own proposal can move between supports *within* a step (the default is `false`). See its docstring for what declaring it obliges the sampler to handle.
-  - Optionally, `gibbs_update_state!!(sampler, state, model, global_vals, ::ReshapedBlock)` — the five-argument form, called instead of the four-argument one when another component's step has changed the block's parameter layout since this sampler last stepped, either by changing which variables it holds or by moving one to a distribution that links to a different width. The gate compares the linked width, measured by linking the value, not the distribution's family or its bijector's type: those are proxies that diverge from the layout, and keying on the family refused an adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved. A `truncated(Normal(); lower=a)` whose bound moves every sweep is likewise not a reshape. It defaults to throwing, so implementing it is how a sampler declares that it copes; there is no separate trait that could fall out of step with the implementation, and a sampler written before it existed keeps the safe answer. `MH`, `PG`/`CSMC` and `GibbsConditional` delegate to the four-argument form; a `Hamiltonian` that is not adapting rebuilds its parameter layout and phasepoint, which covers `HMC` and also `NUTS(0, δ)` and `HMCDA(0, δ, λ)`, whose states carry `NoAdaptation`. An adapting `NUTS` or `HMCDA`, `ESS` and `externalsampler` do not implement it, each carrying something sized for the block.
+  - Optionally, `gibbs_update_state!!(sampler, state, model, global_vals, ::ReshapedBlock)` — the five-argument form, called instead of the four-argument one when another component has changed the block's parameter layout since this sampler last stepped. It defaults to throwing, so implementing it *is* the declaration: no trait can fall out of step with it, and a sampler predating it keeps the safe answer.
   - Optionally, `gibbs_get_stats(state)` — return a `NamedTuple` of the component's statistics for the chain (the default is empty). Gibbs drops component transitions, so statistics have to come off the state.
+
+The gate compares each tilde's linked width, measured by linking the value, not the family or
+the bijector's type: those are proxies that diverge from the layout, and keying on the family
+refused an adapting `NUTS` for a `Normal()`/`TDist(3)` branch whose block had not moved. A
+`truncated(Normal(); lower=a)` with a moving bound is not a reshape either. `MH`, `PG`/`CSMC`
+and `GibbsConditional` delegate to the four-argument form, and a non-adapting `Hamiltonian`
+rebuilds (`HMC`, `NUTS(0, δ)`, `HMCDA(0, δ, λ)`). An adapting `NUTS` or `HMCDA`, `ESS` and
+`externalsampler` do not, each carrying something sized for the block.
 
 ### Extension
 
@@ -95,46 +103,35 @@ User-facing functions accept `initial_params` as a convenience. `_convert_initia
 
 ### One component may not change another's dimension or existence
 
-A component may never change the dimension of a variable belonging to another component, or
-whether that variable exists at all, unless the two share it. Sharing is the only remedy: put
-the deciding variable and what it decides in one block, or write a component that samples both.
+A component may never change the dimension of a variable belonging to another, or whether it
+exists, unless the two share it. The only remedy is sharing: put the deciding variable and what
+it decides in one block, or write a component that samples both.
 
-A component moving another block's *support or distributional form* is a different matter and is
-PERMITTED. That is a deliberate relaxation: each component's kernel stays invariant for its full
-conditional, and what a support change can cost is irreducibility, which depends on whether
-every reachable pair of supports overlaps — a question no single model evaluation decides. It is
-therefore the caller's to establish. The `Gibbs` docstring carries the warning and a worked bad
-example (`Uniform(0, 1)` against `Uniform(2, 3)`, absorbed, measured P(b=1) of 0.0/0.0/1.0
-against 0.515 in one block); do not weaken that warning, and do not add an inferred refusal in
-its place. Note the safe case is not distinguished by dimension or by family: the fatal example
+Moving another block's *support or distributional form* is PERMITTED, deliberately. Each kernel
+stays invariant for its full conditional; what breaks is irreducibility, which no model
+evaluation decides, so it is the caller's to establish. The `Gibbs` docstring carries the
+warning and a worked bad example — do not weaken it, and do not add an inferred refusal in its
+place. Neither dimension nor family separates the safe case from the fatal one; that example
 holds both constant.
 
-What is refused — a variable appearing or leaving — is enforced in `check_variable_set` on a
-best-effort basis only. It compares the snapshots either side of a component's step, so a
-crossing that was proposed and rejected leaves no trace and passes. In practice it is reliable —
-on the dimension example in the `Gibbs` docstring it refused the split partition on all 40 seeds
-tried, at 50, 300 and 2000 draws alike — but that is a fact about those chains, not a guarantee:
-a decider that stays put for a whole run leaves the partition unexamined. Do not treat a
-completed run as evidence that a partition is valid, and do not describe the check as a
-guarantee in docs or error text. Ownership is tested by `_require_owned`:
+The refusal is best-effort: `check_variable_set` compares snapshots either side of a step, so a
+rejected crossing leaves no trace and a decider that never moves leaves the partition
+unexamined. Never call it a guarantee in docs or error text, and never read a completed run as
+evidence that a partition is valid. `_require_owned` tests one thing: whether a tilde statement
+executes at all.
 
-  - whether a tilde statement executes at all — the variable appears or leaves.
-
-The linked width is still recorded per tilde statement, because `block_fingerprint` needs it: a
-distribution change can move a block's *linked* dimension even when its values keep their shape,
-and a component that cannot rebuild for that is refused by `gibbs_update_state!!` for a
-`ReshapedBlock`. That refusal is about layout, not about the correctness of the chain.
+`block_fingerprint` records each tilde's linked width because a distribution change can move a
+block's linked dimension while its values keep their shape; a component that cannot rebuild is
+refused with a `ReshapedBlock`. Layout, not chain correctness.
 
 ### Gibbs refuses a `missing` model argument
 
-`condition` cannot take precedence over an argument bound to `missing`, so the `missing` reaches
-the likelihood and throws from inside `loglikelihood` (DynamicPPL.jl#1457, unmerged). Because
-Gibbs conditions every component on the variables it does not sample, it cannot take such a
-model at all, and `check_no_missing_arguments` refuses it up front. A whole argument only: an
-array holding a `missing` is per-element and samples fine, so do not widen the check to it. This is Gibbs's restriction,
-not the model's — `MH` samples `impute(missing)` correctly — so keep the check in Gibbs and out
-of `_check_model`. `missing`-based latent selection is due for deprecation
-(DynamicPPL.jl#1464); do not add a workaround that outlives it.
+`condition` cannot override an argument bound to `missing`: it reaches the likelihood and throws
+from inside `loglikelihood` (DynamicPPL.jl#1457, unmerged). Gibbs conditions every component on
+what it does not sample, so `check_no_missing_arguments` refuses such a model up front. A whole
+argument only — an array holding a `missing` is per-element and samples fine. Gibbs's
+restriction, not the model's, since `MH` takes such a model: keep it out of `_check_model`.
+`missing` as a latent marker is due for deprecation (DynamicPPL.jl#1464).
 
 ### Conditioned variables are observations
 
@@ -144,4 +141,4 @@ Gibbs conditions a component on every variable it does not sample, so those vari
 
   - Non-breaking changes target `main`; breaking changes target the `breaking` branch.
   - Julia ≥ 1.10.8 required (see `[compat]` in `Project.toml`).
-  - `HISTORY.md`: one line for a bugfix or internal change. Only a breaking change or new feature earns more, and only what a user needs to act on it: what broke, and the old → new form. The mechanism and any measurements belong in the commit and the PR.
+  - `HISTORY.md`: one line for a bugfix or internal change. Only a breaking change or new feature earns more, and only what a user needs to act on it: what broke, and the old → new form. The mechanism and any measurements belong in the commit and the PR. End each entry with its PR: `([#1234](https://github.com/TuringLang/Turing.jl/pull/1234))`.
