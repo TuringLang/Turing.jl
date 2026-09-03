@@ -1124,9 +1124,10 @@ end
         @test length(acceptance) == 9
         @test all(0 .<= acceptance .<= 1)
         @test all(>(0), collect(skipmissing(vec(chn[Symbol("h_n_steps")]))))
-        accepted = collect(skipmissing(vec(chn[Symbol("m_accepted")])))
-        @test length(accepted) == 10
-        @test all(a -> a isa Bool, accepted)
+        # `MH` contributes none: its `accepted` flag rides on the transition, which Gibbs
+        # discards, and main's `MH` keeps no state to hang it on. A component reports
+        # statistics only if its state carries them.
+        @test !any(k -> occursin("m_accepted", string(k)), keys(chn))
 
         # Components sampling the same variables are distinguished by their index.
         chn2 = sample(

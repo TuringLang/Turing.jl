@@ -629,12 +629,6 @@ Three partitions of that model are rejected, each naming the variable and the co
     have. The chain still runs but comes back biased, which is why this is refused rather than
     warned about. Giving `z` to `PG` does not help: it is never asked, because it is not the
     component whose step changed anything.
-  - `Gibbs(@varname(y) => MH(), (@varname(x), @varname(z)) => MH(@varname(z) => Normal()))` --
-    the block is right, but `z` is given a proposal of its own, so its proposal density no
-    longer cancels against its prior and the acceptance ratio between the two supports is not
-    the one the algorithm assumes. The same partition with a plain `MH()` samples correctly,
-    because proposing from the prior is what makes the cancellation hold.
-
 The same applies to a new element rather than a new name: an `x[5]` first reached inside a
 branch is treated exactly like `z` above.
 
