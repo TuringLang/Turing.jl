@@ -18,7 +18,9 @@ import ReverseDiff
 import Statistics
 using StableRNGs: StableRNG
 using StatsFuns: logsumexp
-using Test: @test, @test_throws, @testset
+using Logging: Logging
+import Test
+using Test: @test, @test_logs, @test_throws, @testset
 using Turing
 
 @testset verbose = true "Testing Inference.jl" begin
@@ -210,6 +212,44 @@ using Turing
             @test isapprox(chain[:logjoint], chain[:logprior] .+ chain[:loglikelihood])
             # And that the outcome is not influenced by the likelihood
             @test mean(chain[@varname(x)]) ≈ 0.0 atol = 0.1
+        end
+
+        @testset "initial_params is ignored out loud, not in silence" begin
+            @model f() = x ~ Normal(2.0, 1.0)
+            @test_logs (:warn, r"`initial_params` has no effect") sample(
+                StableRNG(3),
+                f(),
+                Prior(),
+                2;
+                initial_params=DynamicPPL.InitFromParams((x=99.0,)),
+            )
+            # Said once per `sample`, not once per session: `maxlog` would leave every call
+            # after the first as quiet as before the warning existed. And not once per draw
+            # either, which is why it lives in the method that starts a run.
+            tl = Test.TestLogger()
+            Logging.with_logger(tl) do
+                for i in 1:3
+                    sample(
+                        StableRNG(i),
+                        f(),
+                        Prior(),
+                        2;
+                        initial_params=DynamicPPL.InitFromParams((x=99.0,)),
+                    )
+                end
+            end
+            @test count(r -> occursin("initial_params", string(r.message)), tl.logs) == 3
+            # The ordinary path stays silent, which is the risk of warning from `step`.
+            @test_logs min_level = Logging.Warn sample(StableRNG(3), f(), Prior(), 5)
+            # And the draws really are prior draws, not the value that was ignored.
+            chain = sample(
+                StableRNG(3),
+                f(),
+                Prior(),
+                200;
+                initial_params=DynamicPPL.InitFromParams((x=99.0,)),
+            )
+            @test all(<(20), chain[@varname(x)])
         end
     end
 
