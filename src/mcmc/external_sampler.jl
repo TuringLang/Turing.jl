@@ -66,9 +66,49 @@ with Turing.jl:
   VarInfo before evaluation, and ensures that the parameter values passed to your sampler
   will always be in unconstrained (Euclidean) space.
 
-- `Turing.Inference.isgibbscomponent(::MySampler)`: If you want to disallow your sampler
+- `Turing.Inference.supports_gibbs(::MySampler)`: If you want to disallow your sampler
   from a component in Turing's Gibbs sampler, you should make this evaluate to `false`. Note
   that the default is `true`, so you should only need to implement this in special cases.
+
+- `Turing.Inference.allow_discrete_variables(::MySampler)`: Return `false` if your sampler needs every
+  variable to be continuous, as the gradient-based ones do. `sample` checks the model against
+  this before it starts.
+
+- `Turing.Inference.gibbs_get_stats(::MyState)`: The statistics of the step that produced this
+  state, as a `NamedTuple`, for a Gibbs chain to carry. Gibbs drops component transitions, so
+  they cannot come from there. The wrapper implements this for you from
+  `AbstractMCMC.getstats`.
+
+- `Turing.Inference.post_sample_hook(chain, ::MySampler)`: Anything to report once sampling has
+  finished, such as a warning about numerical errors. Returns `nothing` by default.
+
+- `Turing.Inference.init_strategy(::MySampler)`: The `DynamicPPL.AbstractInitStrategy` your
+  sampler starts from when the caller gives no `initial_params`. The default is
+  `InitFromPrior()`; Gibbs asks each component for its own.
+
+`supports_gibbs`, `allow_discrete_variables`, `init_strategy` and `post_sample_hook` are the
+whole of Turing's own interface for running a sampler on a model, together with
+`allow_varying_dimension`, which is on the list for a sampler you write yourself but is not
+forwarded through this wrapper, for the reason below. One that implements
+`AbstractMCMC.step` for `DynamicPPL.Model` (option 1 above) and overrides whichever of them do
+not match its defaults needs no wrapping at all; `externalsampler` exists only to supply the
+`step` method option 2 leaves out. Serving as a Gibbs component takes two further methods,
+`Turing.Inference.gibbs_get_parameter_values` and `Turing.Inference.gibbs_update_state!!`, which the
+wrapper implements for you -- and which are also why `allow_varying_dimension` is not on the
+list above. `allow_varying_dimension` is not forwarded, and the wrapper implements no
+`gibbs_update_state!!` for a `ReshapedBlock`: the wrapped state is opaque, so there is no way to
+tell what within it is shaped like the block. A wrapped sampler therefore cannot own a Gibbs
+block whose set of variables changes, whatever it declares; one that needs to has to take
+option 1.
+
+One method the wrapper cannot implement for you:
+
+- `AbstractMCMC.setparams!!(model::AbstractMCMC.LogDensityModel, state, params)`: required to
+  serve as a Gibbs component. Gibbs re-conditions the model between sweeps, so this must
+  recompute any log-density the state caches, not only write `params` into it. Define the
+  three-argument form: AbstractMCMC's fallback drops `model` and calls a two-argument
+  `setparams!!(state, params)`, which cannot recompute anything, and a state that caches a
+  log-density would then start each step from the previous conditioning's value.
 """
 struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
        AbstractSampler
@@ -123,6 +163,22 @@ function externalsampler(
     unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler),
 )
     return ExternalSampler(sampler, adtype, Val(unconstrained))
+end
+
+function allow_discrete_variables(spl::ExternalSampler)
+    return allow_discrete_variables(spl.sampler)
+end
+
+# Where the sampler wants to start is its own business: wrapping does not constrain it, since
+# `find_initial_params_ldf` turns whatever strategy it names into the vector the sampler sees.
+# Contrast `allow_varying_dimension`, which the wrapper keeps at `false` whatever it wraps
+# because there its own `gibbs_update_state!!` is the constraint.
+init_strategy(spl::ExternalSampler) = init_strategy(spl.sampler)
+
+# Same reasoning: whatever the sampler wants to report once sampling ends does not change for
+# being wrapped.
+function post_sample_hook(chain, spl::ExternalSampler; kwargs...)
+    return post_sample_hook(chain, spl.sampler; kwargs...)
 end
 
 struct TuringState{S,P<:AbstractVector,L<:DynamicPPL.LogDensityFunction}
@@ -254,12 +310,45 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::TuringState)
+const _ABSTRACTMCMC_SETPARAMS_FALLBACK = which(
+    AbstractMCMC.setparams!!, Tuple{AbstractMCMC.AbstractModel,Any,Any}
+)
+
+_check_external_sampler_setparams_for_gibbs(::AbstractSampler, ::Any) = nothing
+function _check_external_sampler_setparams_for_gibbs(
+    sampler::ExternalSampler, state::TuringState
+)
+    signature = Tuple{
+        AbstractMCMC.LogDensityModel{typeof(state.ldf)},
+        typeof(state.state),
+        typeof(state.params),
+    }
+    if which(AbstractMCMC.setparams!!, signature) === _ABSTRACTMCMC_SETPARAMS_FALLBACK
+        sampler_name = nameof(typeof(sampler.sampler))
+        state_name = nameof(typeof(state.state))
+        throw(
+            ArgumentError(
+                "externalsampler($(sampler_name)) cannot be used as a Gibbs component: " *
+                "`AbstractMCMC.setparams!!` for $(state_name) dispatches to " *
+                "AbstractMCMC's fallback, which discards the reconditioned model. Define " *
+                "a three-argument method for this state type that updates all " *
+                "model-dependent state. A cacheless state may delegate explicitly to " *
+                "`setparams!!(state, params)`. See " *
+                "Turing.jl/issues/2875 for details.",
+            ),
+        )
+    end
+    return nothing
+end
+
+function gibbs_get_parameter_values(state::TuringState)
     pws = DynamicPPL.ParamsWithStats(
         state.params, state.ldf; include_log_probs=false, include_colon_eq=false
     )
     return pws.params
 end
+
+gibbs_get_stats(state::TuringState) = AbstractMCMC.getstats(state.state)
 
 function gibbs_update_state!!(
     ::ExternalSampler,

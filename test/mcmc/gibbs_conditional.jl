@@ -1,12 +1,91 @@
 module GibbsConditionalTests
 
+using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
-using Random: Random
+using LinearAlgebra: LinearAlgebra
+using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
+    @testset "a ranged site is one variable, not several" begin
+        # `theta[:] ~ MvNormal(...)` is one tilde statement stored under `theta[1], theta[2]`,
+        # so counting keys refused the single-distribution form it is meant to support. The
+        # conditional is stored at `theta` and each tilde key resolves to it by subsumption.
+        @model function ranged(n)
+            theta = Vector{Float64}(undef, n)
+            theta[:] ~ MvNormal(zeros(n), LinearAlgebra.I)
+            return 1.0 ~ Normal(sum(theta), 1)
+        end
+        for n in (1, 2)
+            spl = Gibbs(
+                @varname(theta) =>
+                    GibbsConditional(_ -> MvNormal(zeros(n), LinearAlgebra.I)),
+            )
+            @test sample(
+                Xoshiro(1), ranged(n), spl, 20; check_model=false, progress=false
+            ) isa VNChain
+        end
+        # Two genuine variables under one distribution are still refused.
+        @model function two()
+            a ~ Normal()
+            b ~ Normal()
+            return 1.0 ~ Normal(a + b, 1)
+        end
+        @test_throws "multiple variables" sample(
+            Xoshiro(1),
+            two(),
+            Gibbs((@varname(a), @varname(b)) => GibbsConditional(_ -> Normal())),
+            5;
+            check_model=false,
+            progress=false,
+        )
+    end
+
+    @testset "a keyword model argument reaches the conditional" begin
+        # `model.args` holds only positional arguments; a keyword one lands in
+        # `model.defaults` and was invisible here.
+        @model function kw(; y=2.0)
+            m ~ Normal()
+            return y ~ Normal(m, 1)
+        end
+        seen = Ref{Any}(nothing)
+        cond_m(vnt) = (seen[] = vnt; Normal(0, 1))
+        sample(
+            Xoshiro(1),
+            kw(),
+            Gibbs(@varname(m) => GibbsConditional(cond_m)),
+            3;
+            check_model=false,
+            progress=false,
+        )
+        @test DynamicPPL.getvalue(seen[], @varname(y)) == 2.0
+    end
+
+    @testset "observed and latent elements of one array" begin
+        @model function partly()
+            mu ~ Normal()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal(mu, 1)
+            return x[2] ~ Normal(mu, 1)
+        end
+
+        # `x[1]` is conditioned data, `x[2]` is latent and conditioned by Gibbs on the other
+        # component's draw. The conditional has to see both: a key-level merge keeps one and
+        # drops the other. Conditioned rather than a `missing` argument, which Gibbs refuses.
+        seen = Ref{Any}(nothing)
+        function cond_mu(vnt)
+            seen[] = vnt
+            return Normal(0, 1)
+        end
+        spl = Gibbs(@varname(mu) => GibbsConditional(cond_mu), @varname(x[2]) => MH())
+        model = DynamicPPL.condition(partly(), Dict(@varname(x[1]) => 1.5))
+        sample(Xoshiro(1), model, spl, 3; check_model=false, progress=false)
+        @test DynamicPPL.getvalue(seen[], @varname(x[1])) == 1.5
+        @test DynamicPPL.hasvalue(seen[], @varname(x[2]))
+    end
+
     @testset "Gamma model tests" begin
         @model function inverse_gdemo(x)
             precision ~ Gamma(2, inv(3))
@@ -228,7 +307,7 @@ using Turing
 
             # As above, but reverse the order of condition and fix.
             model_fix_condition = fix(condition(base_model; x2=x2_obs); x1=x1_obs)
-            chain = sample(StableRNG(23), model_condition_fix, sampler, 10_000)
+            chain = sample(StableRNG(23), model_fix_condition, sampler, 10_000)
             @test mean(chain[@varname(mean1)]) ≈ 0.0 atol = 0.1
             @test mean(chain[@varname(mean2)]) ≈ true_mean2 atol = 0.1
         end
@@ -292,6 +371,31 @@ using Turing
         @test mean(chain[@varname(b[1])]) ≈ 100.0 atol = 0.05
         @test mean(chain[@varname(b[2])]) ≈ 200.0 atol = 0.05
         @test mean(chain[@varname(b[3])]) ≈ 20.0 atol = 0.05
+    end
+
+    @testset "block reshaped by another component" begin
+        # `b` decides how many elements of `theta` the model reaches, so the
+        # `GibbsConditional` block arrives at a new dimension between its own steps. The
+        # conditional distributions describe the block as it is now; the state's values
+        # describe it as it was, so they cannot be used to shape the result.
+        @model function dyn()
+            b ~ Bernoulli(0.5)
+            n = b ? 2 : 1
+            theta = Vector{Float64}(undef, n)
+            for i in 1:n
+                theta[i] ~ Normal(0, 1)
+            end
+            return 1.0 ~ Normal(sum(theta), 1.0)
+        end
+        function cond(vnt)
+            n = vnt[@varname(b)] ? 2 : 1
+            return Dict(@varname(theta[i]) => Normal(0, 1) for i in 1:n)
+        end
+        sampler = Gibbs(
+            (@varname(b), @varname(theta)) => PG(20),
+            @varname(theta) => GibbsConditional(cond),
+        )
+        @test sample(StableRNG(468), dyn(), sampler, 20) isa Any
     end
 
     @testset "Helpful error outside Gibbs" begin

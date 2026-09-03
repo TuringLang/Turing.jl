@@ -41,9 +41,9 @@ DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
 MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
 
 [extensions]
+TuringDistributionsExt = "Distributions"
 TuringDynamicHMCExt = "DynamicHMC"
 TuringMCMCChainsExt = "MCMCChains"
-TuringDistributionsExt = "Distributions"
 
 [compat]
 ADTypes = "1.9"
@@ -60,7 +60,7 @@ DataStructures = "0.18, 0.19"
 Distributions = "0.25.77"
 DocStringExtensions = "0.8, 0.9"
 DynamicHMC = "3.4"
-DynamicPPL = "0.42.7"
+DynamicPPL = "0.42.9"
 EllipticalSliceSampling = "0.5, 1, 2"
 FlexiChains = "0.6"
 ForwardDiff = "0.10.3, 1"

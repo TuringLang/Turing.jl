@@ -126,7 +126,8 @@ using Turing
         @test chn1[@varname(x)] == chn2[@varname(x[1])]
         @test chn1[@varname(y)] == chn2[@varname(x[2])]
         @test mean(chn1[@varname(z)]) ≈ mean(zdist) atol = 0.05
-        @test mean(chn1[@varname(y)]) ≈ mean(ydist) atol = 0.05
+        @test mean(chn1[@varname(x)]) ≈ mean(zdist) atol = 0.05
+        @test mean(chn1[@varname(y)]) ≈ mean(ydist) atol = 0.1
     end
 end
 

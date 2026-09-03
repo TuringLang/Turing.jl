@@ -185,7 +185,7 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::TuringESSState)
+function gibbs_get_parameter_values(state::TuringESSState)
     pws = DynamicPPL.ParamsWithStats(
         state.params, state.ldf; include_log_probs=false, include_colon_eq=false
     )
@@ -198,12 +198,14 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # We need to update everything in `state` except for the priors (which are constant). We
-    # pass an extra LogLikelihoodAccumulator here so that we can calculate the new loglike in
-    # one pass.
+    # Another component can change the parameters of this block's conditional priors.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
-        state.ldf, model, global_vals, (DynamicPPL.LogLikelihoodAccumulator(),)
+        state.ldf,
+        model,
+        global_vals,
+        (DynamicPPL.LogLikelihoodAccumulator(), DynamicPPL.PriorDistributionAccumulator()),
     )
     new_loglike = DynamicPPL.getloglikelihood(accs)
-    return TuringESSState(new_ldf, new_params, new_loglike, state.priors)
+    new_priors = DynamicPPL.get_priors(accs)
+    return TuringESSState(new_ldf, new_params, new_loglike, new_priors)
 end

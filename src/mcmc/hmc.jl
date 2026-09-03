@@ -1,7 +1,7 @@
 abstract type Hamiltonian <: AbstractSampler end
 abstract type StaticHamiltonian <: Hamiltonian end
 abstract type AdaptiveHamiltonian <: Hamiltonian end
-Turing.allow_discrete_variables(sampler::Hamiltonian) = false
+allow_discrete_variables(sampler::Hamiltonian) = false
 
 ###
 ### Sampler states
@@ -13,6 +13,7 @@ struct HMCState{
     PhType<:AHMC.PhasePoint,
     TAdapt<:AHMC.Adaptation.AbstractAdaptor,
     L<:DynamicPPL.LogDensityFunction,
+    S<:NamedTuple,
 }
     i::Int
     kernel::TKernel
@@ -20,6 +21,9 @@ struct HMCState{
     z::PhType
     adaptor::TAdapt
     ldf::L
+    # Statistics of the last step, kept so that they survive Gibbs, which drops component
+    # transitions (see `gibbs_get_stats`).
+    stat::S
 end
 
 ###
@@ -206,7 +210,7 @@ function AbstractMCMC.step(
         DynamicPPL.ParamsWithStats(theta, ldf, NamedTuple())
     end
 
-    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf)
+    state = HMCState(0, kernel, hamiltonian, z, adaptor, ldf, NamedTuple())
 
     return transition, state
 end
@@ -250,7 +254,7 @@ function AbstractMCMC.step(
     else
         DynamicPPL.ParamsWithStats(t.z.θ, state.ldf, t.stat)
     end
-    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf)
+    newstate = HMCState(i, kernel, hamiltonian, t.z, state.adaptor, state.ldf, t.stat)
 
     return transition, newstate
 end
@@ -425,6 +429,19 @@ gen_metric(dim::Int, ::Hamiltonian, state) = AHMC.UnitEuclideanMetric(dim)
 function gen_metric(::Int, ::AdaptiveHamiltonian, state)
     return AHMC.renew(state.hamiltonian.metric, AHMC.getM⁻¹(state.adaptor.pc))
 end
+# `n_adapts = 0` asks an adaptive sampler not to adapt, which `AHMCAdaptor` honours with
+# `NoAdaptation`. There is then no preconditioner to renew a metric from, so it is built at the
+# current dimension in the sampler's own metric type, exactly as for a `StaticHamiltonian`.
+# Without this, any Gibbs use of `NUTS(0, δ)` or `HMCDA(0, δ, λ)` failed on the first state
+# update with `FieldError: NoAdaptation has no field pc`, while the same sampler used on its
+# own worked (Turing.jl#2400).
+function gen_metric(
+    dim::Int,
+    spl::AdaptiveHamiltonian,
+    ::HMCState{TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
+) where {TKernel,THam,PhType}
+    return getmetricT(spl)(dim)
+end
 
 function make_ahmc_kernel(alg::HMC, ϵ)
     return AHMC.HMCKernel(
@@ -485,7 +502,7 @@ end
 #### Gibbs interface
 ####
 
-function gibbs_get_raw_values(state::HMCState)
+function gibbs_get_parameter_values(state::HMCState)
     # In general this needs reevaluation (unless the LDF has all fixed transforms --
     # DynamicPPL handles this.)
     pws = DynamicPPL.ParamsWithStats(
@@ -493,6 +510,8 @@ function gibbs_get_raw_values(state::HMCState)
     )
     return pws.params
 end
+
+gibbs_get_stats(state::HMCState) = state.stat
 
 function gibbs_update_state!!(
     spl::Hamiltonian,
@@ -508,8 +527,51 @@ function gibbs_update_state!!(
     lp_func = Base.Fix1(LogDensityProblems.logdensity, new_ldf)
     lp_grad_func = Base.Fix1(LogDensityProblems.logdensity_and_gradient, new_ldf)
     new_hamiltonian = AHMC.Hamiltonian(metric, lp_func, lp_grad_func)
-    # We also need to update the position variables in the PhasePoint.
-    new_z = deepcopy(state.z)
-    new_z.θ .= new_params
-    return HMCState(state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf)
+    # We also need to update the position variables in the PhasePoint. Writing into a copy
+    # keeps the cached `ℓπ` and gradient at the previous conditioning's values, which is safe
+    # only because `AHMC.transition` rebuilds the phasepoint from `new_hamiltonian` before
+    # using it, under `FullMomentumRefreshment`; a kernel that trusted the incoming `z.ℓπ`
+    # would start from a log-density computed under the old conditioning. It also cannot
+    # absorb a change of length, so a block whose dimension moved gets one built from scratch
+    # instead, correct by construction at the cost of one gradient.
+    new_z = if length(new_params) == length(state.z.θ)
+        z = deepcopy(state.z)
+        z.θ .= new_params
+        z
+    else
+        AHMC.phasepoint(new_hamiltonian, new_params, zero(new_params))
+    end
+    return HMCState(
+        state.i, state.kernel, new_hamiltonian, new_z, state.adaptor, new_ldf, state.stat
+    )
+end
+
+# A `StaticHamiltonian` can take its block at a new shape with no special handling: the layout
+# is rebuilt from the current values either way, `gen_metric` builds its metric at the current
+# dimension, and the phasepoint above is rebuilt when the length moved. An
+# `AdaptiveHamiltonian` deliberately has no such method -- `gen_metric` renews its metric from
+# `state.adaptor`, whose mass matrix is sized for the shape it adapted to, and resetting the
+# adaptation mid-chain is the user's call rather than a detail of conditioning.
+function gibbs_update_state!!(
+    spl::StaticHamiltonian,
+    state::HMCState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
+end
+
+# The property is really "nothing this state carries is sized for the block", which also holds
+# for an `AdaptiveHamiltonian` asked not to adapt: `NoAdaptation` has no mass matrix to be
+# stale, and `gen_metric` builds one at the current dimension for it. Declaring the capability
+# on `StaticHamiltonian` alone refused `NUTS(0, δ)` and `HMCDA(0, δ, λ)` a block they can take.
+function gibbs_update_state!!(
+    spl::AdaptiveHamiltonian,
+    state::HMCState{TKernel,THam,PhType,AHMC.Adaptation.NoAdaptation},
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+) where {TKernel,THam,PhType}
+    return gibbs_update_state!!(spl, state, model, global_vals)
 end

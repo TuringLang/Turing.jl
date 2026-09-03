@@ -156,7 +156,7 @@ function advance!(particle::Particle)
     reference = particle.reference
     if score === nothing && reference !== nothing
         dropped = setdiff(
-            keys(reference), keys(DynamicPPL.get_raw_values(particle.varinfo))
+            keys(reference), keys(DynamicPPL.get_parameter_values(particle.varinfo))
         )
         isempty(dropped) || error(
             "the reference execution trace changed while replaying retained values " *
@@ -320,7 +320,7 @@ end
 #   @addlogprob!: accloglikelihood!! -> acclogp_and_mirror!! -> map_accumulator!! -> acclogp
 #                 (the `@addlogprob! (; ...)` NamedTuple form arrives via acclogp!!, and its
 #                 `logprior` field produces in acclogprior!! itself)
-#   Gibbs:        GibbsContext turns a tilde_assume!! into a tilde_observe!!
+#   Gibbs:        a conditioned variable is an observation, so it hits tilde_observe!!
 Libtask.@might_produce(DynamicPPL.tilde_observe!!)
 Libtask.@might_produce(DynamicPPL.accumulate_observe!!)
 Libtask.@might_produce(DynamicPPL.acclogp)
@@ -875,23 +875,35 @@ function pg_transition_and_state(rng, particles, logZ, discard_sample)
             deepcopy(retained.varinfo), (; log_normalizing_constant=logZ)
         )
     end
-    return transition, PGState(DynamicPPL.get_raw_values(retained.varinfo))
+    return transition, PGState(DynamicPPL.get_parameter_values(retained.varinfo))
 end
 
 #
 # Gibbs interface
 #
 
-gibbs_get_raw_values(state::PGState) = state.trajectory
+gibbs_get_parameter_values(state::PGState) = state.trajectory
+
+# The retained trajectory is re-derived from the values every sweep and keeps only the
+# addresses the model still visits, so a reshaped block is the ordinary path.
+function gibbs_update_state!!(
+    spl::PG,
+    state::PGState,
+    model::DynamicPPL.Model,
+    global_vals::DynamicPPL.VarNamedTuple,
+    ::ReshapedBlock,
+)
+    return gibbs_update_state!!(spl, state, model, global_vals)
+end
 
 function gibbs_update_state!!(
     ::PG, state::PGState, model::DynamicPPL.Model, global_vals::DynamicPPL.VarNamedTuple
 )
     # Re-derive the retained trajectory under the values the other Gibbs components have since
     # updated, keeping only the addresses this model still visits. The `nothing` fallback errors on
-    # an address `global_vals` lacks rather than inventing one; `GibbsContext` puts every address
-    # the component owns into the global values before we get here.
+    # an address `global_vals` lacks rather than inventing one; Gibbs merges every address the
+    # component owns into the global values before we get here.
     init = DynamicPPL.InitFromParams(global_vals, nothing)
     vi = last(DynamicPPL.init!!(model, trajectory_varinfo(), init, DynamicPPL.UnlinkAll()))
-    return PGState(DynamicPPL.get_raw_values(vi))
+    return PGState(DynamicPPL.get_parameter_values(vi))
 end

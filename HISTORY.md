@@ -4,19 +4,42 @@
 
 `MH(var => proposal, ...)` and `LinkedRW` have been removed. Use `MH()` for prior
 proposals, or `MH(cov_matrix)` for a Gaussian random walk over the complete linked
-parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable block.
+parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable block
+([#2883](https://github.com/TuringLang/Turing.jl/pull/2883)).
+
+Gibbs now conditions its components with `DynamicPPL.condition`. `GibbsContext` and
+`Turing.Inference.make_conditional` are removed. Rename `isgibbscomponent` to
+`supports_gibbs` and `gibbs_get_raw_values` to `gibbs_get_parameter_values`; the old names
+are deprecated. Gibbs no longer supports model arguments containing `missing`: declare the
+latent variable inside the model and condition on observations instead
+([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
+
+Every variable reached by a Gibbs model must belong to a component. A component may not
+change the dimension or existence of a variable owned only by another component; put the
+variable and whatever decides its shape in one block. Changes to another block's support or
+distributional form remain unchecked and can make the chain reducible; see the `Gibbs`
+docstring ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 ## Other changes
 
-`NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
+`ESS` Gibbs components now use the current conditional prior after another component changes its parameters
+([#2885](https://github.com/TuringLang/Turing.jl/pull/2885)).
 
-`Emcee` now honours `chain_type=MCMCChains.Chains`, and refuses walkers that start in different parameter layouts instead of failing inside the decode or the stretch proposal.
+Gibbs chains now include component-sampler statistics
+([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
-`estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence.
+`NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did ([#2878](https://github.com/TuringLang/Turing.jl/pull/2878)).
+
+`Emcee` now honours `chain_type=MCMCChains.Chains`, and refuses walkers that start in different parameter layouts instead of failing inside the decode or the stretch proposal ([#2879](https://github.com/TuringLang/Turing.jl/pull/2879)).
 
 `estimate_mode` now represents indexed bounds using the model's parameter shapes, avoiding growable-array warnings during optimisation ([#2888](https://github.com/TuringLang/Turing.jl/pull/2888)).
 
-`Prior()` now warns that `initial_params` has no effect instead of discarding it silently.
+`estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence ([#2880](https://github.com/TuringLang/Turing.jl/pull/2880)).
+
+`Prior()` now warns that `initial_params` has no effect instead of discarding it silently ([#2881](https://github.com/TuringLang/Turing.jl/pull/2881)).
+
+`Gibbs` now rejects an external sampler whose state inherits AbstractMCMC's model-dropping
+three-argument `setparams!!` fallback, rather than running with stale model-dependent caches.
 
 # 0.47.4
 

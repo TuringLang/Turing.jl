@@ -28,6 +28,7 @@ using Turing.Inference: AdvancedHMC
     end
     AbstractMCMC.getparams(s::MyState) = s.params
     AbstractMCMC.getstats(s::MyState) = (param_length=length(s.params),)
+    AbstractMCMC.setparams!!(::MyState, params) = MyState(params)
 
     # externalsamplers must accept LogDensityModel inside their step function.
     # By default Turing gives the externalsampler a LDF constructed with
@@ -146,6 +147,11 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
     @test all(chn[:param_length] .== 2)
+
+    @testset "Gibbs requires model-aware state updates" begin
+        spl = Gibbs(@varname(a) => externalsampler(MySampler()), @varname(b) => MH())
+        @test_throws "Turing.jl/issues/2875" AbstractMCMC.step(StableRNG(42), model, spl)
+    end
 
     @testset "warmup steps reach the external sampler" begin
         spl = WarmupCounter()
@@ -385,6 +391,31 @@ end
         #     end
         # end
     end
+end
+
+@testset "traits a wrapped sampler declares" begin
+    struct TraitSampler <: AbstractMCMC.AbstractSampler end
+    Turing.allow_discrete_variables(::TraitSampler) = false
+    Turing.Inference.allow_varying_dimension(::TraitSampler) = true
+    Turing.Inference.init_strategy(::TraitSampler) = DynamicPPL.InitFromUniform()
+
+    wrapped = externalsampler(TraitSampler())
+    repeated = Turing.Inference.RepeatSampler(TraitSampler(), 2)
+
+    # Wrapping does not change whether the sampler needs every variable continuous.
+    @test !Turing.allow_discrete_variables(wrapped)
+    @test !Turing.allow_discrete_variables(repeated)
+
+    # A varying set of variables is the wrapper's constraint, not the inner sampler's:
+    # `gibbs_update_state!!` reuses the parameter layout the LDF had at the first step.
+    @test !Turing.Inference.allow_varying_dimension(wrapped)
+    # `RepeatSampler` hands `gibbs_update_state!!` to the sampler it wraps, so it forwards.
+    @test Turing.Inference.allow_varying_dimension(repeated)
+
+    # Where the sampler starts is its own business, so both wrappers forward it. Without this
+    # a declared strategy was silently replaced by the `InitFromPrior()` fallback.
+    @test Turing.Inference.init_strategy(wrapped) isa DynamicPPL.InitFromUniform
+    @test Turing.Inference.init_strategy(repeated) isa DynamicPPL.InitFromUniform
 end
 
 end
