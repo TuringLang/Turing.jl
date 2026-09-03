@@ -1,7 +1,3 @@
-# Unreleased
-
-`Emcee` now honours `chain_type=MCMCChains.Chains`, and refuses walkers that start in different parameter layouts instead of failing inside the decode or the stretch proposal.
-
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
