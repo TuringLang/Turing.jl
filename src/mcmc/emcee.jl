@@ -81,7 +81,7 @@ function AbstractMCMC.step(
     end
 
     linked_vis = map(vi -> DynamicPPL.link!!(vi, model), vis)
-    check_walkers_same_dimension(linked_vis)
+    check_walkers_same_layout(linked_vis)
     state = EmceeState(
         DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vis[1]),
         map(linked_vis) do vi
@@ -93,30 +93,43 @@ function AbstractMCMC.step(
 end
 
 """
-    check_walkers_same_dimension(linked_vis)
+    check_walkers_same_layout(linked_vis)
 
-Throw unless every walker has the same number of parameters.
+Throw unless every walker occupies the same parameter layout.
 
-The stretch move interpolates between two walkers' position vectors, so the ensemble needs one
-parameter space shared by all of them. On a model whose set of variables depends on its own
-draws, walkers initialised from the prior can land in different branches and so have different
-lengths, and the mismatch otherwise surfaces as a `DimensionMismatch` from inside the proposal's
-broadcast.
+The stretch move interpolates between two walkers' position vectors, and the single
+`LogDensityFunction` is built from the first walker, so every walker's vector is decoded against
+that one layout. All of them therefore have to hold the same variables in the same order at the
+same widths. On a model whose set of variables, or their sizes, depends on its own draws,
+walkers initialised from the prior do not.
 
-The check is necessary rather than sufficient: it rules out walkers that start in different
-branches, not a model whose dimension varies at all. A proposal can still reach a vector whose
-trace visits other variables, and the single `LogDensityFunction` built here would decode it
-against the layout of the first walker. `Emcee` has no way to express that, so a dynamic model
-is best avoided with it entirely.
+Each variable's own width is compared, not the names and not the total. Names alone passed
+walkers agreeing on names while a variable's dimension differed, and names with the total passed
+two variables trading dimensions -- `x` of 2 and `y` of 3 against `x` of 3 and `y` of 2 -- both
+of which then failed inside the decode or the proposal's broadcast.
+
+This is necessary rather than sufficient: it rules out walkers whose *starting* layouts differ,
+not a model whose layout can vary at all. A proposal can still reach a vector whose trace visits
+other variables or other sizes, and it would be decoded against the first walker's layout. A
+model like that is best not sampled with `Emcee`.
 """
-function check_walkers_same_dimension(linked_vis)
-    dims = map(vi -> length(vi[:]), linked_vis)
-    allequal(dims) && return nothing
-    throw(
+function check_walkers_same_layout(linked_vis)
+    layouts = map(linked_vis) do vi
+        [
+            vn => length(DynamicPPL.get_internal_value(tv)) for
+            (vn, tv) in pairs(DynamicPPL.get_values(vi))
+        ]
+    end
+    allequal(layouts) && return nothing
+    shown = unique(
+        map(l -> string("[", join(("$k of $v" for (k, v) in l), ", "), "]"), layouts)
+    )
+    return throw(
         ArgumentError(
-            "`Emcee`'s walkers have different numbers of parameters ($(join(sort(unique(dims)), ", "))). " *
-            "The stretch move moves along the line between two walkers, so they all have to " *
-            "live in one parameter space. This model's set of variables depends on its own " *
+            "`Emcee`'s walkers do not occupy the same parameter layout " *
+            "($(join(shown, " versus "))). The stretch move moves along the line between two " *
+            "walkers and every walker is decoded against one layout, so they all have to live " *
+            "in one parameter space. This model's variables, or their sizes, depend on its own " *
             "draws, which `Emcee` cannot sample.",
         ),
     )
