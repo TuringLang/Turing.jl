@@ -14,6 +14,8 @@ parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable blo
 
 `estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence.
 
+`estimate_mode` now represents indexed bounds using the model's parameter shapes, avoiding growable-array warnings during optimisation.
+
 `Prior()` now warns that `initial_params` has no effect instead of discarding it silently.
 
 # 0.47.4
