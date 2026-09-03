@@ -22,6 +22,8 @@ docstring ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 
 ## Other changes
 
+`ESS` Gibbs components now use the current conditional prior after another component changes its parameters.
+
 Gibbs chains now include component-sampler statistics
 ([#2863](https://github.com/TuringLang/Turing.jl/pull/2863)).
 

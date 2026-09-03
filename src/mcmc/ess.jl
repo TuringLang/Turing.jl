@@ -198,12 +198,14 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # TODO(TuringLang/Turing.jl#2873): Rebuild the priors here. Reusing `state.priors` is
-    # incorrect when another component changes their parameters.
-    # Collect the new likelihood during the same model evaluation.
+    # Another component can change the parameters of this block's conditional priors.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
-        state.ldf, model, global_vals, (DynamicPPL.LogLikelihoodAccumulator(),)
+        state.ldf,
+        model,
+        global_vals,
+        (DynamicPPL.LogLikelihoodAccumulator(), DynamicPPL.PriorDistributionAccumulator()),
     )
     new_loglike = DynamicPPL.getloglikelihood(accs)
-    return TuringESSState(new_ldf, new_params, new_loglike, state.priors)
+    new_priors = DynamicPPL.get_priors(accs)
+    return TuringESSState(new_ldf, new_params, new_loglike, new_priors)
 end
