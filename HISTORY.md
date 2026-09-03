@@ -32,6 +32,8 @@ Gibbs chains now include component-sampler statistics
 
 `Emcee` now honours `chain_type=MCMCChains.Chains`, and refuses walkers that start in different parameter layouts instead of failing inside the decode or the stretch proposal ([#2879](https://github.com/TuringLang/Turing.jl/pull/2879)).
 
+`estimate_mode` now represents indexed bounds using the model's parameter shapes, avoiding growable-array warnings during optimisation ([#2888](https://github.com/TuringLang/Turing.jl/pull/2888)).
+
 `estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence ([#2880](https://github.com/TuringLang/Turing.jl/pull/2880)).
 
 `Prior()` now warns that `initial_params` has no effect instead of discarding it silently ([#2881](https://github.com/TuringLang/Turing.jl/pull/2881)).
