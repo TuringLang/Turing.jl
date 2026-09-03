@@ -295,6 +295,33 @@ using Turing
         )
     end
 
+    @testset "raw initial_params for the adapting samplers" begin
+        # `NUTS`/`HMCDA` resolve `nadapts` in their own `sample` method, which copied the
+        # generic body without its `_convert_initial_params` call, so a `NamedTuple` or
+        # `Dict{VarName}` that `HMC` accepted raised a `TypeError` for them from the typed
+        # `initial_params` keyword. The first draw is checked, not merely that nothing throws,
+        # so that a conversion which quietly substituted the prior would still fail here.
+        @model function two()
+            s ~ InverseGamma(2, 3)
+            return x ~ Normal(0, sqrt(s))
+        end
+        for spl in (NUTS(5, 0.65), HMCDA(5, 0.65, 1.0), HMC(0.1, 5))
+            for init in ((s=1.0, x=0.5), Dict(@varname(s) => 1.0, @varname(x) => 0.5))
+                chain = sample(
+                    StableRNG(4),
+                    two(),
+                    spl,
+                    10;
+                    initial_params=init,
+                    discard_adapt=false,
+                    progress=false,
+                )
+                @test chain[@varname(s)][1] == 1.0
+                @test chain[@varname(x)][1] == 0.5
+            end
+        end
+    end
+
     @testset "check_model fails with discrete variables" begin
         @model function discrete_model()
             return x ~ Categorical([0.5, 0.5])

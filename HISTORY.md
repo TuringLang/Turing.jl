@@ -1,4 +1,6 @@
-# 0.48.0
+# Unreleased
+
+`NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
 
 ## Breaking changes
 
