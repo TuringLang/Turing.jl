@@ -188,9 +188,13 @@ end
             x ~ MvNormal(zeros(2), I)
             return 1.0 ~ Normal(x[1] + x[2], 1)
         end
-        @test_logs min_level = Logging.Warn match_mode = :any (
-            :warn, r"no variable of the model can use"
-        ) maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,))
+        # A scalar bound on a variable the model writes element by element cannot be read for
+        # any of those elements, so it is refused rather than warned about: the model does reach
+        # `x`, which makes this a malformed bound and not a moot key. Give one per element.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,)),
+        )
         # A bound written at a compound `VarName`, or per element of a variable the model
         # writes whole, IS applied and must not be complained about. Testing each enumerated
         # leaf key in isolation refused both of these, since no single-leaf subset answers for

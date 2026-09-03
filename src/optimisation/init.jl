@@ -328,20 +328,37 @@ function make_optim_bounds_and_init(
     inits = fill(et(NaN), nelems)
     lb_vec = fill(et(-Inf), nelems)
     ub_vec = fill(et(Inf), nelems)
+    # Which variables a bound was actually written for. `check_constraints_reached` needs this
+    # rather than a prediction of it: asking `get_constraints` instead reported a bound as used
+    # whenever the collection could answer for the variable, which is not the same as the bound
+    # reaching this assembly. A bound naming non-leading elements of a variable the model writes
+    # whole -- `x[2]`, or `x[1]` and `x[3]` -- never arrives here at all, and was passed as
+    # harmless while the mode came back unconstrained.
+    applied_lb, applied_ub = VarName[], VarName[]
     for (vn, init_val) in constraint_acc.init_vecs
         range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
         if haskey(constraint_acc.lb_vecs, vn)
-            lb_vec[range] = check_bound_length(constraint_acc.lb_vecs[vn], "lb", vn, range)
+            check_bound_covers(lb, "lb", vn, range)
+            lb_vec[range] = constraint_acc.lb_vecs[vn]
+            # Recorded as applied only if the caller's value can be read for this variable.
+            # `haskey` is true whenever the accumulator visited it, which it does even when the
+            # value cannot be read -- a scalar `lb = (x = 0.9,)` against an element-wise
+            # `x[1] ~` leaves an infinite bound behind, and counting that as applied dropped
+            # the caller's bound in silence. Testing `isfinite` on the result instead would
+            # refuse a bound the caller deliberately wrote as infinite.
+            get_constraints(lb, vn) === nothing || push!(applied_lb, vn)
         end
         if haskey(constraint_acc.ub_vecs, vn)
-            ub_vec[range] = check_bound_length(constraint_acc.ub_vecs[vn], "ub", vn, range)
+            check_bound_covers(ub, "ub", vn, range)
+            ub_vec[range] = constraint_acc.ub_vecs[vn]
+            get_constraints(ub, vn) === nothing || push!(applied_ub, vn)
         end
     end
     # The loop above visits the model's variables, so a bound whose key names none of them is
     # never consulted and the mode comes back unconstrained. Name it instead.
-    check_constraints_reached(lb, "lb", keys(constraint_acc.init_vecs))
-    check_constraints_reached(ub, "ub", keys(constraint_acc.init_vecs))
+    check_constraints_reached(lb, "lb", applied_lb, keys(constraint_acc.init_vecs))
+    check_constraints_reached(ub, "ub", applied_ub, keys(constraint_acc.init_vecs))
     # Make sure we have filled in all values. This should never happen, but we should just
     # check.
     if any(isnan, inits)
@@ -352,62 +369,93 @@ function make_optim_bounds_and_init(
 end
 
 """
-    check_bound_length(bound, name, vn, range)
+    check_bound_covers(constraints::VarNamedTuple, name, vn, range)
 
-Return `bound`, having checked it has one entry per element of `vn`.
+Throw unless `constraints` bounds every element of `vn`.
 
-A bound naming part of a variable the model writes whole -- `lb = Dict(@varname(x[1]) => 0.0)`
-against `x ~ MvNormal(zeros(2), I)` -- answers `haskey` and so reaches this assembly, but with
-fewer entries than the variable occupies. Assigning it raised a bare `DimensionMismatch` naming
-neither the variable nor the keyword.
+A bound is honoured only if it covers a whole variable as the model writes it, and the count of
+the caller's keys falling under `vn` is what says whether it does. Comparing the *length* of the
+assembled bound vector instead caught only some of the ways it can fall short: the accumulator
+sizes that vector from the highest index the caller mentioned, so `Dict(@varname(x[1]) => 0.5)`
+against `x ~ MvNormal(zeros(3), I)` produced a one-element vector and was caught, while `x[2]`
+alone, or `x[1]` together with `x[3]`, produced a three-element one that passed and left the
+unmentioned slots unbounded -- the mode came back at 0.25 for every element under a lower bound
+of 0.5.
 """
-function check_bound_length(bound, name, vn, range)
-    length(bound) == length(range) && return bound
-    throw(
+function check_bound_covers(constraints::DynamicPPL.VarNamedTuple, name, vn, range)
+    # Elements, not keys: one key can hold a whole vector, so `lb = (x = [0.9, 0.9],)` covers
+    # two elements under a single key while `Dict(x[1] => 0.9, x[2] => 0.9)` covers the same two
+    # under one key each.
+    covered = 0
+    for leaf in keys(constraints)
+        if AbstractPPL.subsumes(vn, leaf)
+            # A key inside `vn` contributes the elements it holds.
+            covered += length(DynamicPPL.getvalue(constraints, leaf))
+        elseif AbstractPPL.subsumes(leaf, vn)
+            # A key coarser than `vn` covers it only if a value can actually be read for `vn`:
+            # `lb = (x = [0.9, 0.9],)` bounds both of an element-wise `x[1] ~`, `x[2] ~`, while
+            # a scalar `lb = (x = 0.9,)` holds nothing for `x[1]` and is never applied. Asking
+            # subsumption alone treated the scalar as covering them and dropped it in silence.
+            get_constraints(constraints, vn) === nothing || return nothing
+        end
+    end
+    # Nothing bound for this variable at all is not this check's business:
+    # `check_constraints_reached` decides whether such a key is malformed or merely moot.
+    (covered == 0 || covered == length(range)) && return nothing
+    return throw(
         ArgumentError(
-            "`$(name)` gives $(length(bound)) bound(s) for $(vn), which the model writes as " *
-            "one value of $(length(range)) element(s). Bound every element of $(vn) or none " *
-            "of it.",
+            "`$(name)` bounds $(covered) element(s) of $(vn), which the model writes as one " *
+            "value of $(length(range)) element(s). A bound is honoured only if it covers the " *
+            "whole variable, so bound every element of $(vn) or none of it.",
         ),
     )
 end
 
 """
-    check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
+    check_constraints_reached(constraints::VarNamedTuple, name, applied, model_vns)
 
-Warn about any bound in `constraints` that no variable of the model can use.
+Complain about any bound in `constraints` that was not applied.
 
-Bounds are applied by asking `get_constraints(constraints, vn)` for each variable the model
-reaches, so one it cannot answer for is ignored, and `estimate_mode` returns as if that bound had
-never been given. The original silence over that was the defect; `lb = (nope = 0.0,)` alone left
-`bounds_kwargs` empty and the mode came back unconstrained.
+`applied` is the list of variables a bound was actually written for, taken from the assembly
+rather than predicted: a bound reaches the optimiser only if it arrives there, and asking
+`get_constraints` whether the collection *could* answer for a variable is not the same
+question. A bound on non-leading elements of a variable the model writes whole -- `x[2]`, or
+`x[1]` together with `x[3]`, against `x ~ MvNormal(zeros(3), I)` -- never arrives, and was
+reported as used while the mode came back unconstrained.
 
-Two granularities have to be reconciled, and getting that wrong is what made an earlier version
-of this check refuse bounds that work. `keys(constraints)` enumerates *leaves* -- a bound written
-`Dict(@varname(x[1:2]) => [0.9, 0.9])` enumerates as `x[1]`, `x[2]` -- while `model_vns` holds
-whole tilde `VarName`s, which may be compound. Asking about a single leaf in isolation therefore
-answers `false` for the compound name that in fact consumes it. So a leaf counts as used when
-some reached variable both draws from these constraints and stands in a subsumption relation to
-it, which compares the two at the same granularity.
+Two granularities have to be reconciled, and getting that wrong made an earlier version of this
+check refuse bounds that work. `keys(constraints)` enumerates *leaves*, so a bound written
+`Dict(@varname(x[1:2]) => [0.9, 0.9])` enumerates as `x[1]`, `x[2]`, while `applied` and
+`model_vns` hold whole tilde `VarName`s, which may be compound. A leaf is matched against them
+by subsumption in either direction, which compares the two at the same granularity.
 
-This warns rather than throws because a bound naming a variable the model has but does not reach
--- conditioned, fixed, or in a branch not taken -- is indistinguishable here from one naming
-nothing at all: `model_vns` holds only what was reached. Refusing it broke the ordinary pattern
-of reusing one `lb`/`ub` across conditioned variants of a model, whose modes were correctly
-constrained on the variables that do exist. A bound of the wrong *shape* is a different matter
-and still throws; see [`check_bound_length`](@ref).
+An unapplied bound is fatal when the model *does* reach a variable covering it, since that is a
+malformed bound: bounding part of a variable the model writes as one value cannot be honoured,
+and asking for it is a mistake worth stopping for. When no reached variable covers it the bound
+is merely moot -- the key may name a variable that is conditioned, fixed, or in a branch not
+taken, which is indistinguishable here from one naming nothing at all -- so that warns, and the
+mode is still correctly constrained on the variables that do exist.
 """
-function check_constraints_reached(constraints::VarNamedTuple, name, model_vns)
-    used(leaf) =
-        any(model_vns) do vn
-            get_constraints(constraints, vn) === nothing && return false
-            return AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
+function check_constraints_reached(constraints::VarNamedTuple, name, applied, model_vns)
+    claims(vns, leaf) =
+        any(vns) do vn
+            AbstractPPL.subsumes(vn, leaf) || AbstractPPL.subsumes(leaf, vn)
         end
-    unused = [leaf for leaf in keys(constraints) if !used(leaf)]
-    isempty(unused) && return nothing
-    @warn "`$(name)` has bounds for $(join(unused, ", ")) that no variable of the model can " *
-        "use, so they have no effect. The model's variables are $(join(model_vns, ", ")). A " *
-        "bound is applied only if it covers a whole variable as the model writes it; this is " *
-        "harmless if the variable is conditioned, fixed, or in a branch not taken."
+    unapplied = [leaf for leaf in keys(constraints) if !claims(applied, leaf)]
+    isempty(unapplied) && return nothing
+    malformed = filter(leaf -> claims(model_vns, leaf), unapplied)
+    if !isempty(malformed)
+        throw(
+            ArgumentError(
+                "`$(name)` has bounds for $(join(malformed, ", ")) that cannot be applied. " *
+                "The model writes those values as $(join(model_vns, ", ")), and a bound is " *
+                "honoured only if it covers a whole variable as the model writes it. Bound " *
+                "every element of it, or none.",
+            ),
+        )
+    end
+    @warn "`$(name)` has bounds for $(join(unapplied, ", ")) that no variable of the model " *
+        "can use, so they have no effect. The model's variables are $(join(model_vns, ", ")). " *
+        "This is harmless if the variable is conditioned, fixed, or in a branch not taken."
     return nothing
 end
