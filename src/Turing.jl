@@ -96,7 +96,6 @@ export
     # Samplers - Turing.Inference
     Prior,
     MH,
-    LinkedRW,
     Emcee,
     ESS,
     Gibbs,

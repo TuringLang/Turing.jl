@@ -1,6 +1,20 @@
-# Unreleased
+# 0.48.0
+
+## Breaking changes
+
+`MH(var => proposal, ...)` and `LinkedRW` have been removed. Use `MH()` for prior
+proposals, or `MH(cov_matrix)` for a Gaussian random walk over the complete linked
+parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable block.
+
+## Other changes
 
 `NUTS` and `HMCDA` now accept a `NamedTuple` or `Dict{VarName}` `initial_params`, which `HMC` already did.
+
+`Emcee` now honours `chain_type=MCMCChains.Chains`, and refuses walkers that start in different parameter layouts instead of failing inside the decode or the stretch proposal.
+
+`estimate_mode` now throws on a bound that does not cover a whole variable, where it previously either dropped it and returned the unconstrained mode or failed with a bare `DimensionMismatch`, and warns on a bound no variable can use rather than ignoring it in silence.
+
+`Prior()` now warns that `initial_params` has no effect instead of discarding it silently.
 
 # 0.47.4
 

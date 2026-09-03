@@ -1,21 +1,17 @@
 module MHTests
 
 using AdvancedMH: AdvancedMH
-using Distributions:
-    Bernoulli, Dirichlet, Exponential, InverseGamma, LogNormal, MvNormal, Normal, sample
+using Distributions: Dirichlet, Exponential, LogNormal, MvNormal, Normal, sample
 using DynamicPPL: DynamicPPL, filldist
 using LinearAlgebra: I
-using Logging: Logging
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset, @test_throws, @test_logs
+using Test: @test, @testset, @test_throws
 using Turing
 using Turing.Inference: Inference
 
 using ..Models: gdemo_default, MoGtest_default
-using ..NumericalTests: check_MoGtest_default, check_gdemo, check_numerical
-
-GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
+using ..NumericalTests: check_MoGtest_default, check_gdemo
 
 @testset "mh.jl" begin
     @info "Starting MH tests"
@@ -23,16 +19,12 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
 
     @testset "mh constructor" begin
         N = 10
-        s1 = MH(:s => InverseGamma(2, 3), :m => GKernel(3.0, @varname(m)))
-        s2 = MH()
-        s3 = MH([1.0 0.1; 0.1 1.0])
+        @test_throws ArgumentError MH(:s => Normal())
+        @test_throws ArgumentError MH(@varname(s) => filldist(Exponential(1.0), 2))
 
-        c1 = sample(gdemo_default, s1, N)
-        c2 = sample(gdemo_default, s2, N)
-        c3 = sample(gdemo_default, s3, N)
-
-        s4 = Gibbs(:m => MH(), :s => MH())
-        c4 = sample(gdemo_default, s4, N)
+        sample(gdemo_default, MH(), N)
+        sample(gdemo_default, MH([1.0 0.1; 0.1 1.0]), N)
+        sample(gdemo_default, Gibbs(:m => MH(), :s => MH()), N)
     end
 
     @testset "basic accuracy tests" begin
@@ -53,56 +45,25 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
                 end
             end
             test_mean_and_std(MH())
-            test_mean_and_std(MH(@varname(x) => Normal(1.0)))
-            test_mean_and_std(MH(@varname(y) => Uniform(0, 1)))
-            test_mean_and_std(MH(@varname(x) => Normal(1.0), @varname(y) => Uniform(0, 1)))
-            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5)))
-            test_mean_and_std(MH(@varname(y) => LinkedRW(0.5)))
-            # this is a random walk in unlinked space
-            test_mean_and_std(MH(@varname(y) => vnt -> Normal(vnt[@varname(y)], 0.5)))
-            test_mean_and_std(MH(@varname(x) => Normal(), @varname(y) => LinkedRW(0.5)))
-            test_mean_and_std(MH(@varname(x) => LinkedRW(0.5), @varname(y) => Normal()))
             # this uses AdvancedMH
             test_mean_and_std(MH([1.0 0.1; 0.1 1.0]))
         end
 
-        @testset "bad proposals" begin
+        @testset "bad initial parameters" begin
             errmsg = "The initial parameters have zero probability density"
 
-            @model f() = x ~ Normal()
-            # Here we give `x` a constrained proposal. Any samples of `x` that fall outside
-            # of it will get a proposal density of -Inf, so should be rejected
-            fspl = MH(@varname(x) => Uniform(-1, 1))
-            # We now start the chain outside the proposal region. The point of this test is 
-            # to make sure that we throw a sensible error.
-            @test_throws errmsg sample(f(), fspl, 2; initial_params=InitFromParams((; x=2)))
-
-            # Same here, except that now it's the proposal that's bad, not the initial
-            # parameters.
             @model g() = x ~ Beta(2, 2)
-            gspl = MH(@varname(x) => Uniform(-2, -1))
-            @test_throws errmsg sample(g(), gspl, 2; initial_params=InitFromPrior())
+            @test_throws errmsg sample(g(), MH(), 2; initial_params=InitFromParams((; x=2)))
         end
 
-        @testset "with unspecified priors that depend on other variables" begin
+        @testset "with dependent priors" begin
             @model function f()
                 a ~ Normal()
                 x ~ Normal(0.0)
                 y ~ Normal(x)
                 return 2.0 ~ Normal(y)
             end
-            # If we don't specify a proposal for `y`, it will be sampled from `Normal(x)`.
-            # However, we need to be careful here since the value of `x` varies! This testset is
-            # essentially a test to check that `MHUnspecifiedPriorAccumulator` is doing
-            # the right thing, i.e., it correctly accumulates the prior for the evaluation that
-            # we're interested in.
-            chn = sample(StableRNG(468), f(), MH(@varname(a) => Normal()), 10000)
-            @test mean(chn[:a]) ≈ 0.0 atol = 0.05
-            @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
-            @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
-
-            # This should work too.
-            chn2 = sample(StableRNG(468), f(), MH(), 10000)
+            chn = sample(StableRNG(468), f(), MH(), 10000)
             @test mean(chn[:a]) ≈ 0.0 atol = 0.05
             @test mean(chn[:x]) ≈ 2 / 3 atol = 0.05
             @test mean(chn[:y]) ≈ 4 / 3 atol = 0.05
@@ -115,38 +76,10 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             y := x^2
             return nothing
         end
-        for spl in (MH(), MH(@varname(x) => Normal()), MH([1.0;;]))
+        for spl in (MH(), MH([1.0;;]))
             chn = sample(f(), spl, 20)
             @test chn[:y] == chn[:x] .^ 2
         end
-    end
-
-    @testset "info statements about proposals" begin
-        @model function f()
-            x = zeros(2)
-            x[1] ~ Normal()
-            return x[2] ~ Normal()
-        end
-
-        spl = MH(@varname(x[1]) => Normal(), @varname(x[2]) => Normal())
-        @test_logs (:info, r"varname x\[1\]: proposal .*Normal") (
-            :info, r"varname x\[2\]: proposal .*Normal"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
-
-        spl = MH(@varname(x) => MvNormal(zeros(2), I))
-        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
-            :info, r"varname x\[2\]: no proposal specified"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
-
-        spl = MH(@varname(x.a) => Normal(), @varname(x[2]) => Normal())
-        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
-            :info, r"varname x\[2\]: proposal .*Normal"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
-
-        # Check that verbose=false disables it
-        @test_logs min_level = Logging.Info sample(
-            f(), spl, 2; progress=false, verbose=false
-        )
     end
 
     @testset "with demo models" begin
@@ -157,14 +90,6 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
 
         @testset "gdemo_default" begin
             alg = MH()
-            chain = sample(
-                StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
-            )
-            check_gdemo(chain; atol=0.1)
-        end
-
-        @testset "gdemo_default with custom proposals" begin
-            alg = MH(:s => InverseGamma(2, 3), :m => GKernel(1.0, @varname(m)))
             chain = sample(
                 StableRNG(seed), gdemo_default, alg, 10_000; discard_initial, initial_params
             )
@@ -182,8 +107,8 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         @testset "MoGtest_default with Gibbs" begin
             gibbs = Gibbs(
                 (@varname(z1), @varname(z2), @varname(z3), @varname(z4)) => CSMC(15),
-                @varname(mu1) => MH(:mu1 => GKernel(1, @varname(mu1))),
-                @varname(mu2) => MH(:mu2 => GKernel(1, @varname(mu2))),
+                @varname(mu1) => MH([1.0;;]),
+                @varname(mu2) => MH([1.0;;]),
             )
             initial_params = InitFromParams((mu1=1.0, mu2=1.0, z1=0, z2=0, z3=1, z4=1))
             chain = sample(

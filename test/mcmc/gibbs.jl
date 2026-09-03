@@ -829,10 +829,10 @@ end
         end
         model = dyn()
 
-        for spl in (
-            Gibbs(:x => MH(), :y => HMC(0.1, 20)),
-            Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
+        samplers = (
+            Gibbs(:x => MH(), :y => HMC(0.1, 20)), Gibbs(:x => MH(), :y => MH([1.0;;]))
         )
+        for spl in samplers
             chn = sample(
                 StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
             )
