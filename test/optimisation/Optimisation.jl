@@ -930,7 +930,7 @@ end
         @model function collinear(x, y)
             a ~ Normal(0, 1)
             b ~ Normal(0, 1)
-            return y ~ MvNormal(a .* x .+ b .* x, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, I)
         end
 
         model = collinear(xs, ys)
