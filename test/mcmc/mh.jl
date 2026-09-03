@@ -60,6 +60,7 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
             test_mean_and_std(MH(@varname(y) => LinkedRW(0.5)))
             # this is a random walk in unlinked space
             test_mean_and_std(MH(@varname(y) => vnt -> Normal(vnt[@varname(y)], 0.5)))
+            # https://github.com/TuringLang/Turing.jl/issues/1583
             test_mean_and_std(MH(@varname(x) => Normal(), @varname(y) => LinkedRW(0.5)))
             test_mean_and_std(MH(@varname(x) => LinkedRW(0.5), @varname(y) => Normal()))
             # this uses AdvancedMH
@@ -121,31 +122,42 @@ GKernel(variance, vn) = (vnt -> Normal(vnt[vn], sqrt(variance)))
         end
     end
 
-    @testset "info statements about proposals" begin
-        @model function f()
+    @testset "proposal names and logging" begin
+        @model function indexed_sites()
             x = zeros(2)
             x[1] ~ Normal()
             return x[2] ~ Normal()
         end
 
-        spl = MH(@varname(x[1]) => Normal(), @varname(x[2]) => Normal())
+        # https://github.com/TuringLang/Turing.jl/issues/2876
+        aggregate_spl = MH(@varname(x) => MvNormal(zeros(2), I))
+        @test_throws ArgumentError sample(indexed_sites(), aggregate_spl, 2; progress=false)
+        indexed_spl = MH(@varname(x[1]) => Normal(), @varname(x[2]) => Normal())
         @test_logs (:info, r"varname x\[1\]: proposal .*Normal") (
             :info, r"varname x\[2\]: proposal .*Normal"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
+        ) match_mode = :any sample(indexed_sites(), indexed_spl, 2; progress=false)
 
-        spl = MH(@varname(x) => MvNormal(zeros(2), I))
-        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
-            :info, r"varname x\[2\]: no proposal specified"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
+        @model function ranged_site()
+            x = zeros(2)
+            return x[1:2] ~ MvNormal(zeros(2), I)
+        end
+        @test_throws ArgumentError sample(ranged_site(), indexed_spl, 2; progress=false)
+        ranged_spl = MH(@varname(x[1:2]) => MvNormal(zeros(2), I))
+        @test_logs (:info, r"varname x\[1:2\]: proposal") match_mode = :any sample(
+            ranged_site(), ranged_spl, 2; progress=false
+        )
 
-        spl = MH(@varname(x.a) => Normal(), @varname(x[2]) => Normal())
-        @test_logs (:info, r"varname x\[1\]: no proposal specified") (
-            :info, r"varname x\[2\]: proposal .*Normal"
-        ) match_mode = :any sample(f(), spl, 2; progress=false)
+        @model function deterministic_site()
+            x ~ Normal()
+            return y := x
+        end
+        @test_throws ArgumentError sample(
+            deterministic_site(), MH(:y => Normal()), 2; progress=false
+        )
 
         # Check that verbose=false disables it
         @test_logs min_level = Logging.Info sample(
-            f(), spl, 2; progress=false, verbose=false
+            indexed_sites(), indexed_spl, 2; progress=false, verbose=false
         )
     end
 

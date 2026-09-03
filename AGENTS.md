@@ -74,6 +74,15 @@ Note: "linked" and "unconstrained" are synonymous in this codebase. Linking tran
 
 Interfaces that accept or return named parameter collections should use `VarNamedTuple`, not `NamedTuple` or `Dict{VarName}`. `NamedTuple` and `Dict{VarName}` are accepted as user-facing input but should be converted to `VarNamedTuple` at the boundary (see `_to_varnamedtuple` in `src/common.jl`). Don't propagate them through internal code.
 
+Inference code that selects proposals, transforms, or density terms by `VarName` must use
+the exact name passed to `tilde_assume!!`. Parameter values do not preserve that identity:
+`haskey(values, @varname(x))` can succeed for separate sites `x[1]` and `x[2]`, while
+`keys(raw_values)` can expose those two names for the single site `x[1:2]`; raw values may
+also include `:=` outputs. Track executed sites separately and require exact membership.
+Otherwise sampling, transformation, and density accounting can cover different sites and
+bias the chain. MH proposal keys follow this rule; Gibbs alone determines which sites a
+component updates.
+
 ### `getlogjoint_internal` vs `getlogjoint`
 
 Samplers operating in unconstrained space should use `getlogjoint_internal`, which includes the Jacobian correction from the linking transform. This is the default and what you almost always want. The exceptions are ESS (which needs the likelihood in constrained space, per the algorithm) and optimisation (where the Jacobian term should not influence the objective).

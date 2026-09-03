@@ -11,7 +11,9 @@ Each argument `proposal` can be
 - Blank (i.e. `MH()`), in which case `MH` defaults to using the prior for each parameter as
   the proposal distribution.
 - A mapping of `VarName`s to a `Distribution`, `LinkedRW`, or a generic callable that
-  defines a conditional proposal distribution.
+  defines a conditional proposal distribution. Each key must exactly equal the complete
+  left-hand side of an executed `~` statement: `@varname(x)` does not match `x[1] ~ ...`.
+  A `Symbol` can be used when the left-hand side is a root `VarName`.
 
 
     MH(cov_matrix)
@@ -131,11 +133,7 @@ spl = MH(
 ```
 """
 struct MH{I,L<:DynamicPPL.AbstractTransformStrategy} <: AbstractSampler
-    "A function which takes two arguments: (1) the VarNamedTuple of raw values at the
-    previous step, and (2) a VarNamedTuple of linked values for any variables that have
-    `LinkedRW` proposals; and returns an AbstractInitStrategy. We don't have access to the
-    VNTs until the actual sampling, so we have to use a function here; the strategy itself
-    will be constructed anew in each sampling step."
+    "Construct an init strategy from raw values, linked values, and exact `~` sites."
     init_strategy_constructor::I
     "Linked variables, i.e., variables which have a `LinkedRW` proposal."
     transform_strategy::L
@@ -216,18 +214,14 @@ _to_varname(x) = throw(ArgumentError("Expected Symbol or VarName, got $(typeof(x
 
 function MH(pair1::SymOrVNPair, pairs::Vararg{SymOrVNPair})
     vn_proposal_pairs = (pair1, pairs...)
-    # It is assumed that `raw_vals` is a VarNamedTuple that has all the variables' values
-    # already set. We can obtain this by using `RawValueAccumulator`. Furthermore,
-    # `linked_vals` is a VarNamedTuple that stores a `MHLinkedVal` for any variables that
-    # have `LinkedRW` proposals. That in turn is obtained using `MHLinkedValuesAccumulator`.
-    function init_strategy_constructor(raw_vals, linked_vals)
+    function init_strategy_constructor(raw_vals, linked_vals, sites)
         proposals = DynamicPPL.VarNamedTuple()
         for pair in vn_proposal_pairs
-            # Convert all keys to VarNames.
             vn, proposal = pair
             vn = _to_varname(vn)
-            if !haskey(raw_vals, vn)
-                continue
+            if !(vn in keys(sites))
+                msg = "MH proposal `$vn` does not exactly match an executed `~` site"
+                throw(ArgumentError(msg))
             end
             proposal_dist = if proposal isa Distribution
                 # Static proposal.
@@ -271,6 +265,7 @@ function AbstractMCMC.step(
     # Generate and return initial parameters.
     vi = DynamicPPL.OnlyAccsVarInfo()
     vi = DynamicPPL.setacc!!(vi, DynamicPPL.RawValueAccumulator(true))
+    vi = DynamicPPL.setacc!!(vi, MHSitesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHLinkedValuesAccumulator())
     vi = DynamicPPL.setacc!!(vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal))
     _, vi = DynamicPPL.init!!(rng, model, vi, initial_params, spl.transform_strategy)
@@ -283,7 +278,10 @@ function AbstractMCMC.step(
     # here.
     initial_raw_values = DynamicPPL.get_raw_values(vi)
     initial_linked_values = DynamicPPL.getacc(vi, Val(MH_ACC_NAME)).values
-    init_strategy = spl.init_strategy_constructor(initial_raw_values, initial_linked_values)
+    initial_sites = DynamicPPL.getacc(vi, Val(MH_SITE_ACC_NAME)).values
+    init_strategy = spl.init_strategy_constructor(
+        initial_raw_values, initial_linked_values, initial_sites
+    )
     initial_unspecified_priors = DynamicPPL.getacc(vi, Val(MH_PRIOR_ACC_NAME)).values
     initial_log_proposal_density = log_proposal_density(
         vi, init_strategy, initial_unspecified_priors
@@ -308,10 +306,7 @@ function AbstractMCMC.step(
         )
     end
 
-    # We evaluate the model once with the sampler's init strategy and print all the
-    # proposals that were used. This helps the user detect cases where the proposals are
-    # silently ignored (e.g. because the VarName in the proposal doesn't match the VarName
-    # in the model).
+    # Evaluate the model once with a verbose strategy to report each site's proposal.
     if verbose && init_strategy isa InitFromProposals
         @info "When sampling with MH, the following proposals will be used at each step.\nThis output can be disabled by passing `verbose=false` to `sample()`."
         verbose_init_strategy = InitFromProposals(init_strategy.proposals, true)
@@ -338,15 +333,17 @@ function AbstractMCMC.step(
     # that were used in the previous step.
     old_raw_values = DynamicPPL.get_raw_values(old_vi)
     old_linked_values = DynamicPPL.getacc(old_vi, Val(MH_ACC_NAME)).values
+    old_sites = DynamicPPL.getacc(old_vi, Val(MH_SITE_ACC_NAME)).values
     old_unspecified_priors = DynamicPPL.getacc(old_vi, Val(MH_PRIOR_ACC_NAME)).values
 
     init_strategy_given_old = spl.init_strategy_constructor(
-        old_raw_values, old_linked_values
+        old_raw_values, old_linked_values, old_sites
     )
 
     # Evaluate the model with a new proposal.
     new_vi = DynamicPPL.OnlyAccsVarInfo()
     new_vi = DynamicPPL.setacc!!(new_vi, DynamicPPL.RawValueAccumulator(true))
+    new_vi = DynamicPPL.setacc!!(new_vi, MHSitesAccumulator())
     new_vi = DynamicPPL.setacc!!(new_vi, MHLinkedValuesAccumulator())
     new_vi = DynamicPPL.setacc!!(
         new_vi, MHUnspecifiedPriorsAccumulator(spl.vns_with_proposal)
@@ -360,10 +357,11 @@ function AbstractMCMC.step(
     # ratio.
     new_raw_values = DynamicPPL.get_raw_values(new_vi)
     new_linked_values = DynamicPPL.getacc(new_vi, Val(MH_ACC_NAME)).values
+    new_sites = DynamicPPL.getacc(new_vi, Val(MH_SITE_ACC_NAME)).values
     new_unspecified_priors = DynamicPPL.getacc(new_vi, Val(MH_PRIOR_ACC_NAME)).values
 
     init_strategy_given_new = spl.init_strategy_constructor(
-        new_raw_values, new_linked_values
+        new_raw_values, new_linked_values, new_sites
     )
 
     # Calculate the log-acceptance probability.
@@ -458,6 +456,12 @@ end
 function MHLinkedValuesAccumulator()
     return DynamicPPL.VNTAccumulator{MH_ACC_NAME}(store_linked_values)
 end
+
+# Record exact `~` VarNames for proposal matching; raw values split ranged sites and
+# include `:=` variables.
+const MH_SITE_ACC_NAME = :MHSites
+store_mh_site(val, tval, logjac, vn, dist) = nothing
+MHSitesAccumulator() = DynamicPPL.VNTAccumulator{MH_SITE_ACC_NAME}(store_mh_site)
 
 # Accumulator to store priors for any variables that were not given an explicit proposal.
 # This is needed to compute the log-proposal density correctly.
