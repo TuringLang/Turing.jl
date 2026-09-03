@@ -218,7 +218,7 @@ end
         @test whole_result.params[@varname(x)] ≈ [0.9, 0.9] atol = 1e-4
 
         lb_vnt, ub_vnt = Logging.with_logger(Logging.NullLogger()) do
-            return (
+            (
                 VarNamedTuple(Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9)),
                 VarNamedTuple(Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)),
             )

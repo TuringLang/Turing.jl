@@ -1,12 +1,11 @@
 using DynamicPPL: AbstractInitStrategy, AbstractAccumulator
 using Distributions
 
-# Store model-shaped constraints separately from keys retained only for reachability errors.
+# `values` uses model shapes; `unmatched` retains unrepresentable keys for diagnostics.
 struct ModelConstraints{V<:VarNamedTuple}
     values::V
     unmatched::Vector{Pair{VarName,Any}}
 end
-ModelConstraints(values::VarNamedTuple) = ModelConstraints(values, Pair{VarName,Any}[])
 
 function _model_constraints_from_pairs(constraints, template::VarNamedTuple)
     values = VarNamedTuple()
@@ -30,8 +29,8 @@ end
 function ModelConstraints(constraints::AbstractDict{<:VarName}, template::VarNamedTuple)
     return _model_constraints_from_pairs(constraints, template)
 end
-function ModelConstraints(constraints::NamedTuple, ::VarNamedTuple)
-    return ModelConstraints(VarNamedTuple(constraints))
+function ModelConstraints(constraints::NamedTuple, template::VarNamedTuple)
+    return ModelConstraints(VarNamedTuple(constraints), template)
 end
 function ModelConstraints(constraints::VarNamedTuple, template::VarNamedTuple)
     return _model_constraints_from_pairs(pairs(constraints), template)
@@ -39,6 +38,14 @@ end
 
 function _constraint_pairs(constraints::ModelConstraints)
     return Iterators.flatten((pairs(constraints.values), constraints.unmatched))
+end
+
+function _optimisation_layout_varinfo(model, transform_strategy)
+    vi = DynamicPPL.OnlyAccsVarInfo((
+        DynamicPPL.VectorValueAccumulator(), DynamicPPL.RawValueAccumulator(false)
+    ))
+    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior(), transform_strategy)
+    return vi
 end
 
 """
@@ -356,25 +363,27 @@ function make_optim_bounds_and_init(
     lb::VarNamedTuple,
     ub::VarNamedTuple,
 )
-    return make_optim_bounds_and_init(
+    layout_varinfo = _optimisation_layout_varinfo(ldf.model, ldf.transform_strategy)
+    parameter_template = DynamicPPL.get_raw_values(layout_varinfo)
+    return _make_optim_bounds_and_init!(
         rng,
         ldf,
         initial_params,
-        ModelConstraints(lb),
-        ModelConstraints(ub),
+        ModelConstraints(lb, parameter_template),
+        ModelConstraints(ub, parameter_template),
         Dict{VarName,Any}(),
         Dict{VarName,Any}(),
     )
 end
 
-function make_optim_bounds_and_init(
+function _make_optim_bounds_and_init!(
     rng::Random.AbstractRNG,
     ldf::LogDensityFunction,
     initial_params::AbstractInitStrategy,
     lb::ModelConstraints,
     ub::ModelConstraints,
-    resolved_lb::AbstractDict,
-    resolved_ub::AbstractDict,
+    resolved_lb::Dict{VarName,Any},
+    resolved_ub::Dict{VarName,Any},
 )
     # Initialise a VarInfo with parameters that satisfy the constraints.
     # ConstraintAccumulator only needs the raw value so we can use UnlinkAll() as the
@@ -393,13 +402,6 @@ function make_optim_bounds_and_init(
     inits = fill(et(NaN), nelems)
     lb_vec = fill(et(-Inf), nelems)
     ub_vec = fill(et(Inf), nelems)
-    # Which variables a bound was actually written for. `check_constraints_reached` needs this
-    # rather than a prediction of it: asking `get_constraints` instead reported a bound as used
-    # whenever the collection could answer for the variable, which is not the same as the bound
-    # reaching this assembly. A bound naming non-leading elements of a variable the model writes
-    # whole -- `x[2]`, or `x[1]` and `x[3]` -- never arrives here at all, and was passed as
-    # harmless while the mode came back unconstrained.
-    applied_lb, applied_ub = VarName[], VarName[]
     for (vn, init_val) in constraint_acc.init_vecs
         range = DynamicPPL.get_range_and_transform(ldf, vn).range
         inits[range] = init_val
@@ -414,7 +416,6 @@ function make_optim_bounds_and_init(
             # refuse a bound the caller deliberately wrote as infinite.
             site_lb = get_constraints(lb, vn)
             if site_lb !== nothing
-                push!(applied_lb, vn)
                 resolved_lb[vn] = site_lb
             end
         end
@@ -423,15 +424,14 @@ function make_optim_bounds_and_init(
             ub_vec[range] = constraint_acc.ub_vecs[vn]
             site_ub = get_constraints(ub, vn)
             if site_ub !== nothing
-                push!(applied_ub, vn)
                 resolved_ub[vn] = site_ub
             end
         end
     end
     # The loop above visits the model's variables, so a bound whose key names none of them is
     # never consulted and the mode comes back unconstrained. Name it instead.
-    check_constraints_reached(lb, "lb", applied_lb, keys(constraint_acc.init_vecs))
-    check_constraints_reached(ub, "ub", applied_ub, keys(constraint_acc.init_vecs))
+    check_constraints_reached(lb, "lb", keys(resolved_lb), keys(constraint_acc.init_vecs))
+    check_constraints_reached(ub, "ub", keys(resolved_ub), keys(constraint_acc.init_vecs))
     # Make sure we have filled in all values. This should never happen, but we should just
     # check.
     if any(isnan, inits)

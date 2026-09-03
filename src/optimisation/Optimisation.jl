@@ -158,7 +158,7 @@ end
 
 struct ConstraintCheckAccumulator{Vlb<:AbstractDict,Vub<:AbstractDict} <:
        AbstractAccumulator
-    # These maps are keyed by executed `~` sites; `VarNamedTuple` lookup also matches descendants.
+    # Keep exact site keys: `VarNamedTuple` can match `x[1]` from a bound for `x[1:2]`.
     lb::Vlb # Must be in unlinked space
     ub::Vub # Must be in unlinked space
 end
@@ -337,14 +337,8 @@ function estimate_mode(
     tfm_strategy = link ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     getlogdensity = logprob_func(estimator)
 
-    # Capture the model's parameter containers so indexed bounds can be represented with their
-    # actual shapes rather than inferred growable arrays.
-    layout_varinfo = DynamicPPL.OnlyAccsVarInfo((
-        DynamicPPL.VectorValueAccumulator(), DynamicPPL.RawValueAccumulator(false)
-    ))
-    _, layout_varinfo = DynamicPPL.init!!(
-        model, layout_varinfo, DynamicPPL.InitFromPrior(), tfm_strategy
-    )
+    # Capture model shapes before representing indexed bounds.
+    layout_varinfo = _optimisation_layout_varinfo(model, tfm_strategy)
     parameter_template = DynamicPPL.get_raw_values(layout_varinfo)
     lb = ModelConstraints(lb, parameter_template)
     ub = ModelConstraints(ub, parameter_template)
@@ -361,7 +355,7 @@ function estimate_mode(
     )
 
     # Generate bounds and initial parameters in the unlinked or linked space as requested.
-    lb_vec, ub_vec, inits_vec = make_optim_bounds_and_init(
+    lb_vec, ub_vec, inits_vec = _make_optim_bounds_and_init!(
         rng,
         ldf,
         Turing._convert_initial_params(initial_params),
