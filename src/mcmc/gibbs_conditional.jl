@@ -181,9 +181,9 @@ function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTu
         throw(ArgumentError(msg))
     end
     top_sym = only(syms)
-    # At the variable, not at a leaf, when the leaves are several: the distribution is the
-    # conditional for the whole of it, and `_cond_dist_for` resolves each tilde key to it.
-    vn = length(vns) == 1 ? only(vns) : VarName{top_sym}()
+    # Key the conditional at the variable even when it currently has one leaf: a ranged site
+    # of length one is stored as `theta[1]` but is evaluated as `theta[:]`.
+    vn = VarName{top_sym}()
     template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
     return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
 end

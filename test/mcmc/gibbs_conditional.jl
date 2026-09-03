@@ -13,16 +13,20 @@ using Turing
         # `theta[:] ~ MvNormal(...)` is one tilde statement stored under `theta[1], theta[2]`,
         # so counting keys refused the single-distribution form it is meant to support. The
         # conditional is stored at `theta` and each tilde key resolves to it by subsumption.
-        @model function ranged()
-            theta = Vector{Float64}(undef, 2)
-            theta[:] ~ MvNormal(zeros(2), LinearAlgebra.I)
+        @model function ranged(n)
+            theta = Vector{Float64}(undef, n)
+            theta[:] ~ MvNormal(zeros(n), LinearAlgebra.I)
             return 1.0 ~ Normal(sum(theta), 1)
         end
-        spl = Gibbs(
-            @varname(theta) => GibbsConditional(_ -> MvNormal(zeros(2), LinearAlgebra.I))
-        )
-        @test sample(Xoshiro(1), ranged(), spl, 20; check_model=false, progress=false) isa
-            Any
+        for n in (1, 2)
+            spl = Gibbs(
+                @varname(theta) =>
+                    GibbsConditional(_ -> MvNormal(zeros(n), LinearAlgebra.I)),
+            )
+            @test sample(
+                Xoshiro(1), ranged(n), spl, 20; check_model=false, progress=false
+            ) isa VNChain
+        end
         # Two genuine variables under one distribution are still refused.
         @model function two()
             a ~ Normal()
