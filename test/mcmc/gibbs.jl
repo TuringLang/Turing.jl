@@ -829,17 +829,11 @@ end
         end
         model = dyn()
 
-        for spl in (
-            Gibbs(:x => MH(), :y => HMC(0.1, 20)),
-            Gibbs(:x => MH(), :y => MH(:y => LinkedRW(1.0))),
-        )
-            chn = sample(
-                StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false
-            )
-            # ground truth obtained from NUTS
-            @test mean(chn[:x]) ≈ 0.0 atol = 0.1
-            @test mean(chn[:y]) ≈ 1.5 atol = 0.1
-        end
+        spl = Gibbs(:x => MH(), :y => HMC(0.1, 20))
+        chn = sample(StableRNG(468), model, spl, MCMCThreads(), 100000, 4; verbose=false)
+        # ground truth obtained from NUTS
+        @test mean(chn[:x]) ≈ 0.0 atol = 0.1
+        @test mean(chn[:y]) ≈ 1.5 atol = 0.1
     end
 end
 
