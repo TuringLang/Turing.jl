@@ -26,6 +26,10 @@ struct RepeatSampler{S<:AbstractMCMC.AbstractSampler} <: AbstractMCMC.AbstractSa
     end
 end
 
+function _variable_set_checked(sampler::RepeatSampler)
+    return RepeatSampler(_variable_set_checked(sampler.sampler), sampler.num_repeat)
+end
+
 function gibbs_update_state!!(
     sampler::RepeatSampler,
     state,

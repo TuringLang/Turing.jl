@@ -4,11 +4,29 @@ using Test, Turing, AbstractMCMC, Random, Distributions, LinearAlgebra
 using Turing: DynamicPPL
 
 struct UnmarkedMH <: AbstractMCMC.AbstractSampler end
+struct AlternatingSampler <: AbstractMCMC.AbstractSampler end
+
+@model fixed() = x ~ Normal()
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG, model::DynamicPPL.Model, ::UnmarkedMH, state...; kwargs...
 )
     return AbstractMCMC.step(rng, model, MH(), state...; kwargs...)
+end
+
+function AbstractMCMC.step(
+    ::Random.AbstractRNG,
+    ::typeof(fixed()),
+    ::AlternatingSampler,
+    second::Bool=false;
+    kwargs...,
+)
+    params = if second
+        DynamicPPL.VarNamedTuple(; x=0.0, z=0.0)
+    else
+        DynamicPPL.VarNamedTuple(; x=0.0)
+    end
+    return DynamicPPL.ParamsWithStats(params, (;)), !second
 end
 
 @model function test_normals()
@@ -102,11 +120,27 @@ end
         4, RepeatSampler(UnmarkedMH(), 1), initial_params=InitFromParams((; x=-1.0))
     )
 
+    @test_throws r"z appeared or disappeared.*AlternatingSampler" sample(
+        Xoshiro(4), fixed(), AlternatingSampler(), 2; progress=false
+    )
+    @test_throws r"z appeared or disappeared.*AlternatingSampler" sample(
+        Xoshiro(4), fixed(), RepeatSampler(AlternatingSampler(), 2), 2; progress=false
+    )
+
     callback_calls = Ref(0)
-    callback(args...; kwargs...) = (callback_calls[] += 1)
-    @model fixed() = x ~ Normal()
-    sample(Xoshiro(4), fixed(), UnmarkedMH(), 3; callback, progress=false)
+    callback_model = Ref{Any}()
+    callback_sampler = Ref{Any}()
+    function callback(_, model, sampler, args...; kwargs...)
+        callback_calls[] += 1
+        callback_model[] = model
+        callback_sampler[] = sampler
+        return nothing
+    end
+    model = fixed()
+    sample(Xoshiro(4), model, UnmarkedMH(), 3; callback, progress=false)
     @test callback_calls[] == 3
+    @test callback_model[] === model
+    @test callback_sampler[] isa UnmarkedMH
 
     @test Turing.Inference.allow_varying_dimension(Prior())
     @test Turing.Inference.allow_varying_dimension(PG(5))

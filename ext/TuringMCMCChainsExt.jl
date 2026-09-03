@@ -2,10 +2,37 @@ module TuringMCMCChainsExt
 
 using Turing
 using Turing: AbstractMCMC, DynamicPPL
-using Turing.Inference: HMC, NUTS, HMCDA, Emcee, EmceeState, SMC, _get_n_walkers
+using Turing.Inference:
+    HMC, NUTS, HMCDA, Emcee, EmceeState, SMC, _VariableSetCheckedSampler, _get_n_walkers
 using MCMCChains: MCMCChains
 
 import Turing.Inference: bundle_smc_samples, post_sample_hook
+
+function AbstractMCMC.bundle_samples(
+    samples::Vector{<:DynamicPPL.ParamsWithStats},
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    state,
+    chain_type::Type{MCMCChains.Chains};
+    kwargs...,
+)
+    return AbstractMCMC.bundle_samples(
+        samples, model, checked.sampler, state, chain_type; kwargs...
+    )
+end
+
+function AbstractMCMC.bundle_samples(
+    samples::Vector{<:Vector},
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    state,
+    chain_type::Type{MCMCChains.Chains};
+    kwargs...,
+)
+    return AbstractMCMC.bundle_samples(
+        samples, model, checked.sampler, state, chain_type; kwargs...
+    )
+end
 
 """
     loadstate(chain::MCMCChains.Chains)

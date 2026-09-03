@@ -77,42 +77,6 @@ isgibbscomponent(spl::AbstractSampler) = supports_gibbs(spl)
 # to act on it, not whoever runs it.
 const _ISGIBBSCOMPONENT_DEFAULT = which(isgibbscomponent, Tuple{AbstractSampler})
 
-"""
-    Turing.Inference.allow_varying_dimension(spl::AbstractSampler)
-
-Whether `spl` can move between supports *within* one of its own steps, that is, sample a block
-whose set of variables its own proposal changes.
-
-Defaults to `false`, because proposing between two supports takes a construction built for it.
-A `LogDensityFunction`'s layout is fixed for the whole of a step, so it has no slot for a
-variable the proposal reaches part-way through: a leapfrog step that crosses into another
-branch raises `KeyError` from DynamicPPL rather than reaching this check at all. `PG` and
-`CSMC` rebuild their trace each sweep, drawing whatever the model reaches, so they can.
-
-`MH` answers `true`, but not because every crossing is safe for it. Whether one is depends on
-the variable that moved: drawn from its prior, the proposal density cancels against the prior
-and the ratio collapses to a likelihood ratio, which is defined across dimensions; proposed
-from, it does not cancel. That is a fact about one variable in one evaluation, which a trait
-asked once cannot supply, so `MH` answers `true` here and refuses the invalid crossings itself.
-A component whose answer really is uniform should give it here.
-
-This is a different question from being *handed* a block at a new shape between one's own
-steps, which another component's step can do and which a component answers by implementing
-[`gibbs_update_state!!`](@ref) for a [`ReshapedBlock`](@ref).
-
-Returning `true` is a claim about the algorithm, and it carries an obligation: the component
-must have coherent semantics for a variable it samples going away and later coming back. `PG`
-and `CSMC` do. The reference particle replays the retained trajectory's *values*, so it
-reproduces that execution exactly and cannot reach an address the trajectory lacks, which it
-would otherwise refuse; the remaining particles draw from the prior and are free to reach a
-different set of addresses, which is what lets the block move between supports at all.
-
-Returning `true` is not by itself enough. For an array whose length varies
-(`for i in 1:n; x[i] ~ ...; end` under a random `n`), the block has to hold `n` as well: with
-`n` in another component, the conditioned `x[i]` become observations whose number depends on
-it, and `PG` refuses with "the number of observations must not be random".
-"""
-allow_varying_dimension(::AbstractSampler) = false
 # `RepeatSampler` hands the step to the sampler it wraps, so the inner answer is the right one.
 # `ExternalSampler` keeps the `false` default whatever it wraps: the wrapped state is opaque, so
 # a claim made about the sampler inside says nothing about what survives the wrapper.

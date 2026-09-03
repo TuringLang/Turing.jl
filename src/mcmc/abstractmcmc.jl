@@ -21,37 +21,124 @@ function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
     return Turing._check_model(model, !allow_discrete_variables(sampler))
 end
 
-function _variable_set_checked(
-    model::DynamicPPL.Model{F,A,D,M}, sampler::AbstractSampler
-) where {F,A,D,M}
-    allow_varying_dimension(sampler) && return model
-    previous = Ref{Union{Nothing,Set{VarName}}}(nothing)
-    evaluator = function (args...; kwargs...)
-        result, vi = model.f(args...; kwargs...)
-        # Log-density-only evaluations do not carry raw values.
-        if DynamicPPL.hasacc(vi, Val(:RawValues))
-            values = DynamicPPL.get_parameter_values(vi)
-            current = Set(
-                leaf for (vn, value) in pairs(values) for
-                leaf in AbstractPPL.varname_leaves(vn, value)
-            )
-            if previous[] !== nothing && current != previous[]
-                changed = join(sort!(string.(collect(symdiff(current, previous[])))), ", ")
-                throw(
-                    ArgumentError(
-                        "Consecutive model evaluations do not occupy the same parameter " *
-                        "layout: $changed appeared or disappeared during a step of " *
-                        "$(_trait_owner_name(sampler)), which does not declare support for " *
-                        "varying dimension.",
-                    ),
-                )
-            end
-            previous[] = current
-        end
-        return result, vi
+"""
+    Turing.Inference.allow_varying_dimension(sampler::AbstractSampler)
+
+Whether `sampler` supports states with different sets of sampled-variable leaves.
+
+Defaults to `false`. In that case, `sample` checks every transition, including discarded and
+warmup transitions, and throws if the set changes. A sampler that supports such changes must
+return `true` explicitly.
+"""
+allow_varying_dimension(::AbstractSampler) = false
+
+mutable struct _VariableSetCheckedSampler{S<:AbstractSampler} <: AbstractSampler
+    sampler::S
+    previous::Union{Nothing,Set{VarName}}
+end
+
+function _variable_set_checked(sampler::AbstractSampler)
+    return _VariableSetCheckedSampler(sampler, nothing)
+end
+
+function _sample_leaves(sample)
+    values, _ = FlexiChains.to_vnt_and_stats(sample)
+    return Set(
+        leaf for (vn, value) in pairs(values) for
+        leaf in AbstractPPL.varname_leaves(vn, value)
+    )
+end
+
+function _sample_leaves(samples::AbstractVector{<:DynamicPPL.ParamsWithStats})
+    return mapreduce(_sample_leaves, union, samples; init=Set{VarName}())
+end
+
+function _check_variable_set!(checked::_VariableSetCheckedSampler, transition)
+    current = _sample_leaves(transition)
+    if checked.previous !== nothing && current != checked.previous
+        changed = join(sort!(string.(collect(symdiff(current, checked.previous)))), ", ")
+        throw(
+            ArgumentError(
+                "Consecutive transitions do not occupy the same parameter layout: " *
+                "$changed appeared or disappeared during a step of " *
+                "$(nameof(typeof(checked.sampler))), which does not declare support for " *
+                "varying dimension.",
+            ),
+        )
     end
-    return DynamicPPL.Model{DynamicPPL.requires_threadsafe(model),M}(
-        evaluator, model.args, model.defaults, model.context
+    checked.previous = current
+    return nothing
+end
+
+function _checked_step(
+    step_function,
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    args...;
+    discard_sample::Bool=false,
+    kwargs...,
+)
+    transition, state = step_function(
+        rng, model, checked.sampler, args...; kwargs..., discard_sample=false
+    )
+    _check_variable_set!(checked, transition)
+    return (discard_sample ? nothing : transition), state
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    args...;
+    kwargs...,
+)
+    return _checked_step(AbstractMCMC.step, rng, model, checked, args...; kwargs...)
+end
+
+function AbstractMCMC.step_warmup(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    args...;
+    kwargs...,
+)
+    return _checked_step(AbstractMCMC.step_warmup, rng, model, checked, args...; kwargs...)
+end
+
+function AbstractMCMC.bundle_samples(
+    samples::AbstractVector,
+    model::DynamicPPL.Model,
+    checked::_VariableSetCheckedSampler,
+    state,
+    chain_type::Type{VNChain};
+    kwargs...,
+)
+    return AbstractMCMC.bundle_samples(
+        samples, model, checked.sampler, state, chain_type; kwargs...
+    )
+end
+
+function _mcmcsample_with_variable_check(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    sampler::AbstractSampler,
+    args...;
+    callback=nothing,
+    kwargs...,
+)
+    allow_varying_dimension(sampler) &&
+        return AbstractMCMC.mcmcsample(rng, model, sampler, args...; callback, kwargs...)
+    checked = _variable_set_checked(sampler)
+    user_callback = if callback === nothing
+        nothing
+    else
+        function (rng, model, _, transition, state, iteration; kwargs...)
+            return callback(rng, model, sampler, transition, state, iteration; kwargs...)
+        end
+    end
+    return AbstractMCMC.mcmcsample(
+        rng, model, checked, args...; callback=user_callback, kwargs...
     )
 end
 
@@ -177,17 +264,19 @@ function AbstractMCMC.sample(
     check_model::Bool=true,
     chain_type=DEFAULT_CHAIN_TYPE,
     verbose::Bool=true,
+    callback=nothing,
     kwargs...,
 )
     check_model && Turing._check_model(model, spl)
-    chain = AbstractMCMC.mcmcsample(
+    chain = _mcmcsample_with_variable_check(
         rng,
-        _variable_set_checked(model, spl),
+        model,
         spl,
         N;
         initial_params=Turing._convert_initial_params(initial_params),
         chain_type,
         verbose,
+        callback,
         kwargs...,
     )
     post_sample_hook(chain, spl; verbose)
