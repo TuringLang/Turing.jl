@@ -28,6 +28,7 @@ using Turing.Inference: AdvancedHMC
     end
     AbstractMCMC.getparams(s::MyState) = s.params
     AbstractMCMC.getstats(s::MyState) = (param_length=length(s.params),)
+    AbstractMCMC.setparams!!(::MyState, params) = MyState(params)
 
     # externalsamplers must accept LogDensityModel inside their step function.
     # By default Turing gives the externalsampler a LDF constructed with
@@ -146,6 +147,11 @@ using Turing.Inference: AdvancedHMC
     @test all(chn[:logprior] .== expected_logpdf)
     @test all(chn[:loglikelihood] .== 0.0)
     @test all(chn[:param_length] .== 2)
+
+    @testset "Gibbs requires model-aware state updates" begin
+        spl = Gibbs(@varname(a) => externalsampler(MySampler()), @varname(b) => MH())
+        @test_throws "Turing.jl/issues/2875" AbstractMCMC.step(StableRNG(42), model, spl)
+    end
 
     @testset "warmup steps reach the external sampler" begin
         spl = WarmupCounter()

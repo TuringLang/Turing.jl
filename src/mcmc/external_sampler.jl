@@ -310,6 +310,37 @@ end
 #### Gibbs interface
 ####
 
+const _ABSTRACTMCMC_SETPARAMS_FALLBACK = which(
+    AbstractMCMC.setparams!!, Tuple{AbstractMCMC.AbstractModel,Any,Any}
+)
+
+_check_external_sampler_setparams_for_gibbs(::AbstractSampler, ::Any) = nothing
+function _check_external_sampler_setparams_for_gibbs(
+    sampler::ExternalSampler, state::TuringState
+)
+    signature = Tuple{
+        AbstractMCMC.LogDensityModel{typeof(state.ldf)},
+        typeof(state.state),
+        typeof(state.params),
+    }
+    if which(AbstractMCMC.setparams!!, signature) === _ABSTRACTMCMC_SETPARAMS_FALLBACK
+        sampler_name = nameof(typeof(sampler.sampler))
+        state_name = nameof(typeof(state.state))
+        throw(
+            ArgumentError(
+                "externalsampler($(sampler_name)) cannot be used as a Gibbs component: " *
+                "`AbstractMCMC.setparams!!` for $(state_name) dispatches to " *
+                "AbstractMCMC's fallback, which discards the reconditioned model. Define " *
+                "a three-argument method for this state type that updates all " *
+                "model-dependent state. A cacheless state may delegate explicitly to " *
+                "`setparams!!(state, params)`. See " *
+                "Turing.jl/issues/2875 for details.",
+            ),
+        )
+    end
+    return nothing
+end
+
 function gibbs_get_parameter_values(state::TuringState)
     pws = DynamicPPL.ParamsWithStats(
         state.params, state.ldf; include_log_probs=false, include_colon_eq=false

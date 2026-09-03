@@ -1332,6 +1332,7 @@ function gibbs_initialstep_recursive(
         kwargs...,
         discard_sample=true,
     )
+    _check_external_sampler_setparams_for_gibbs(sampler, new_state)
     report = gibbs_get_parameter_values(new_state)
     check_reported_variables(varnames, conditioned, report)
     proposed = merge(conditioned, report)
