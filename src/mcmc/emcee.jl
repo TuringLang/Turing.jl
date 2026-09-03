@@ -108,10 +108,16 @@ walkers agreeing on names while a variable's dimension differed, and names with 
 two variables trading dimensions -- `x` of 2 and `y` of 3 against `x` of 3 and `y` of 2 -- both
 of which then failed inside the decode or the proposal's broadcast.
 
-This is necessary rather than sufficient: it rules out walkers whose *starting* layouts differ,
-not a model whose layout can vary at all. A proposal can still reach a vector whose trace visits
-other variables or other sizes, and it would be decoded against the first walker's layout. A
-model like that is best not sampled with `Emcee`.
+Widths and not transforms: the layout fixes each variable's range, while its link is re-derived
+at every evaluation, so walkers holding one variable under different transforms still sample
+correctly, and comparing transforms would refuse them.
+
+This is necessary rather than sufficient, and only the *initial* walkers are examined. A
+proposal can still cross into a branch none of them started in, and the decode then fails on a
+variable the layout has no range for -- `m ~ Normal(); m > 0 ? (x ~ Normal()) : (y ~ Normal())`,
+started entirely in `m > 0`, raises `KeyError: key y not found` once a proposal reaches `m < 0`.
+Catching that would mean validating every evaluation. A model whose layout varies at all is best
+not sampled with `Emcee`.
 """
 function check_walkers_same_layout(linked_vis)
     layouts = map(linked_vis) do vi
