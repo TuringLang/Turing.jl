@@ -270,6 +270,17 @@ end
                 whole(); lb=Dict(@varname(x[1]) => 0.9), ub=Dict(@varname(x[1]) => 9.0)
             ),
         )
+        # Counting elements alone cannot tell a covering bound from one that names as many
+        # elements somewhere else, so the coincidence has to be caught by the reachability
+        # accounting instead.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(
+                whole();
+                lb=Dict(@varname(x[1]) => 0.9, @varname(x[3]) => 0.9),
+                ub=Dict(@varname(x[1]) => 9.0, @varname(x[3]) => 9.0),
+            ),
+        )
         # Bounding every element works for both shapes.
         for m in (elementwise(), whole())
             @test maximum_a_posteriori(m; lb=(x=[0.9, 0.9],), ub=(x=[9.0, 9.0],)) isa Any
@@ -290,6 +301,15 @@ end
                 (x=(a=0.1, b=0.1),),
                 (x=(a=0.5, b=0.5),),
                 product_distribution((a=Beta(2, 2), b=Beta(2, 2))),
+            ),
+            # A field holding several elements: the coverage check must count scalar leaves,
+            # not the two fields of the named tuple.
+            (
+                (x=(a=[0.1, 0.1], b=0.1),),
+                (x=(a=[0.5, 0.5], b=0.5),),
+                product_distribution((
+                    a=product_distribution([Beta(2, 2), Beta(2, 2)]), b=Beta(2, 2)
+                )),
             ),
         )
             @model f() = x ~ dist

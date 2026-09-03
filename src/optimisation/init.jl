@@ -377,20 +377,22 @@ A bound reaches the optimiser only if it covers a whole variable as the model wr
 bound on part of one is a mistake rather than a partial constraint: the unmentioned elements are
 left free and the mode comes back unconstrained in them.
 
-Elements are counted, not keys, because one key can hold many: `lb = (x = [0.9, 0.9],)` covers
-two under a single key, `Dict(x[1] => 0.9, x[2] => 0.9)` the same two under one key each. A key
-coarser than `vn` counts only if a value can be read for `vn` -- a scalar `lb = (x = 0.9,)` holds
-nothing for an element-wise `x[1] ~` and is never applied.
+Scalar leaves are counted, not keys, because one key can hold many: `lb = (x = [0.9, 0.9],)`
+covers two under a single key, `Dict(x[1] => 0.9, x[2] => 0.9)` the same two under one key each,
+and `lb = (x = (a = [0.1, 0.1], b = 0.1),)` covers three. A key coarser than `vn` counts only if
+a value can be read for `vn` -- a scalar `lb = (x = 0.9,)` holds nothing for an element-wise
+`x[1] ~` and is never applied.
 """
 function check_bound_covers(constraints::DynamicPPL.VarNamedTuple, name, vn, range)
-    # Elements, not keys: one key can hold a whole vector, so `lb = (x = [0.9, 0.9],)` covers
-    # two elements under a single key while `Dict(x[1] => 0.9, x[2] => 0.9)` covers the same two
-    # under one key each.
     covered = 0
     for leaf in keys(constraints)
         if AbstractPPL.subsumes(vn, leaf)
-            # A key inside `vn` contributes the elements it holds.
-            covered += length(DynamicPPL.getvalue(constraints, leaf))
+            # A key inside `vn` contributes the scalar leaves it holds, not the length of its
+            # value: `(a = [0.1, 0.1], b = 0.1)` is one key of length two holding three
+            # elements.
+            covered += count(
+                Returns(true), DynamicPPL.varname_leaves(leaf, constraints[leaf])
+            )
         elseif AbstractPPL.subsumes(leaf, vn)
             # A key coarser than `vn` covers it only if a value can actually be read for `vn`:
             # `lb = (x = [0.9, 0.9],)` bounds both of an element-wise `x[1] ~`, `x[2] ~`, while
