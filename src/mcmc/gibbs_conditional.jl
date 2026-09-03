@@ -167,17 +167,23 @@ _shape_template(::Distributions.UnivariateDistribution) = DynamicPPL.NoTemplate(
 _shape_template(d::Distributions.Distribution) = Array{eltype(d)}(undef, size(d))
 _shape_template(_) = DynamicPPL.NoTemplate()
 function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTuple)
-    vns = keys(raw_values)
-    if length(vns) > 1
+    vns = collect(keys(raw_values))
+    # Distinct variables, not distinct keys. One tilde statement can leave several: a
+    # `theta[:] ~ MvNormal(...)` site stores `theta[1], theta[2]`, so counting keys refused
+    # the very form this method exists to support.
+    syms = unique(AbstractPPL.getsym(vn) for vn in vns)
+    if length(syms) > 1
         msg = (
             "In GibbsConditional, `get_cond_dists` returned a single distribution," *
-            " but multiple variables ($vns) are being sampled. Please return a" *
+            " but multiple variables ($syms) are being sampled. Please return a" *
             " VarNamedTuple mapping variable names to distributions instead."
         )
         throw(ArgumentError(msg))
     end
-    vn = only(vns)
-    top_sym = AbstractPPL.getsym(vn)
+    top_sym = only(syms)
+    # At the variable, not at a leaf, when the leaves are several: the distribution is the
+    # conditional for the whole of it, and `_cond_dist_for` resolves each tilde key to it.
+    vn = length(vns) == 1 ? only(vns) : VarName{top_sym}()
     template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
     return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
 end
@@ -185,11 +191,28 @@ end
 struct InitFromCondDists{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInitStrategy
     cond_dists::V
 end
+"""
+    _cond_dist_for(cond_dists, vn)
+
+The conditional distribution governing the tilde statement at `vn`.
+
+Keyed by subsumption, not by equality. The conditional may be stored at a coarser `VarName`
+than the statement uses -- `theta[:] ~ MvNormal(...)` is one distribution for the whole of
+`theta`, and the single-distribution form of `get_cond_dists` never sees the tilde key -- so an
+exact lookup raised a `MethodError` from inside the distribution.
+"""
+function _cond_dist_for(cond_dists::DynamicPPL.VarNamedTuple, vn::VarName)
+    for key in keys(cond_dists)
+        (key == vn || AbstractPPL.subsumes(key, vn)) && return cond_dists[key]
+    end
+    throw(KeyError(vn))
+end
+
 function DynamicPPL.init(
     rng::Random.AbstractRNG, vn::VarName, ::Distribution, init_strat::InitFromCondDists
 )
     return DynamicPPL.TransformedValue(
-        rand(rng, init_strat.cond_dists[vn]), DynamicPPL.NoTransform()
+        rand(rng, _cond_dist_for(init_strat.cond_dists, vn)), DynamicPPL.NoTransform()
     )
 end
 

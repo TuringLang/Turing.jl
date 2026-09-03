@@ -2,12 +2,43 @@ module GibbsConditionalTests
 
 using AbstractPPL: AbstractPPL
 using DynamicPPL: DynamicPPL
+using LinearAlgebra: LinearAlgebra
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
+    @testset "a ranged site is one variable, not several" begin
+        # `theta[:] ~ MvNormal(...)` is one tilde statement stored under `theta[1], theta[2]`,
+        # so counting keys refused the single-distribution form it is meant to support. The
+        # conditional is stored at `theta` and each tilde key resolves to it by subsumption.
+        @model function ranged()
+            theta = Vector{Float64}(undef, 2)
+            theta[:] ~ MvNormal(zeros(2), LinearAlgebra.I)
+            return 1.0 ~ Normal(sum(theta), 1)
+        end
+        spl = Gibbs(
+            @varname(theta) => GibbsConditional(_ -> MvNormal(zeros(2), LinearAlgebra.I))
+        )
+        @test sample(Xoshiro(1), ranged(), spl, 20; check_model=false, progress=false) isa
+            Any
+        # Two genuine variables under one distribution are still refused.
+        @model function two()
+            a ~ Normal()
+            b ~ Normal()
+            return 1.0 ~ Normal(a + b, 1)
+        end
+        @test_throws "multiple variables" sample(
+            Xoshiro(1),
+            two(),
+            Gibbs((@varname(a), @varname(b)) => GibbsConditional(_ -> Normal())),
+            5;
+            check_model=false,
+            progress=false,
+        )
+    end
+
     @testset "a keyword model argument reaches the conditional" begin
         # `model.args` holds only positional arguments; a keyword one lands in
         # `model.defaults` and was invisible here.

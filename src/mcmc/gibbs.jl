@@ -322,6 +322,11 @@ built on, nor `externalsampler`, whose wrapped state is opaque.
 function _reshape_description(r::ReshapedBlock)
     r.change === :joined && return "$(r.variable) joined it"
     r.change === :left && return "$(r.variable) left it"
+    # A key on one side only says the block is written by different tilde statements, which is
+    # not the same fact as a variable relinking, and may leave the width untouched: one
+    # `MvNormal(2)` site against two scalar `Normal` sites is two numbers either way.
+    r.change === :rekeyed &&
+        return "$(r.variable) is now written by a different tilde statement"
     return "$(r.variable) is now drawn from a distribution that links to a different width"
 end
 
@@ -903,12 +908,12 @@ function block_reshaped(before, now, linked::Bool)
     # A key on one side only is itself proof the layout changed.
     for (vn, rec) in now.layout
         i = findfirst(p -> p.first == vn, before.layout)
-        i === nothing && return ReshapedBlock(vn, :respecified)
+        i === nothing && return ReshapedBlock(vn, :rekeyed)
         _same_layout(before.layout[i].second, rec, linked) ||
             return ReshapedBlock(vn, :respecified)
     end
     for (vn, _) in before.layout
-        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :respecified)
+        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :rekeyed)
     end
     return nothing
 end

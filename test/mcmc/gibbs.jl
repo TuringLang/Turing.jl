@@ -795,6 +795,37 @@ end
             )
         end
 
+        # A block written by different tilde statements is re-keyed, not relinked, and the
+        # message must not claim a width change: one `MvNormal(2)` site against two scalar
+        # `Normal` sites is two numbers either way.
+        @model function rekeyed()
+            b ~ Bernoulli(0.5)
+            if b
+                x = Vector{Float64}(undef, 2)
+                x[1] ~ Normal()
+                x[2] ~ Normal()
+            else
+                x ~ MvNormal(zeros(2), LinearAlgebra.I)
+            end
+            return 1.0 ~ Normal(sum(x), 1.0)
+        end
+        err = try
+            sample(
+                StableRNG(42),
+                rekeyed(),
+                Gibbs((@varname(b), @varname(x)) => MH(), @varname(x) => NUTS()),
+                200;
+                check_model=false,
+                progress=false,
+            )
+            nothing
+        catch e
+            e
+        end
+        if err !== nothing
+            @test !occursin("links to a different width", sprint(showerror, err))
+        end
+
         # `externalsampler` answers from the wrapper's own space, not the sampler inside: with
         # `unconstrained=false` the wrapper works in unlinked space, so its block must not be
         # compared in linked space it never uses.
