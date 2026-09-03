@@ -472,8 +472,6 @@ function AHMCAdaptor(
     da = AHMC.StepSizeAdaptor(alg.δ, ϵ)
 
     iszero(alg.n_adapts) && return AHMC.Adaptation.NoAdaptation()
-    # A unit metric needs no special case: `MassMatrixAdaptor` gives it a `UnitMassMatrix`,
-    # whose `adapt!` leaves M^-1 at `I`, so only the step size adapts either way.
     adaptor = AHMC.StanHMCAdaptor(pc, da)
     AHMC.initialize!(adaptor, nadapts)
     return adaptor

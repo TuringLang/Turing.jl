@@ -24,6 +24,10 @@ using Turing
 # meaningful in practice (in particular, to trigger this we would need to call `g(..., f)`,
 # which is incredibly unlikely).
 Aqua.test_ambiguities([Turing]; exclude=[Libtask.might_produce])
-Aqua.test_all(Turing; ambiguities=false)
+# The persistent-tasks check precompiles a temporary package in a subprocess. On the
+# Windows runners that subprocess dies intermittently before the check runs, and Aqua
+# reports the precompilation failure as a persistent-tasks failure, see
+# https://github.com/JuliaTesting/Aqua.jl/issues/315.
+Aqua.test_all(Turing; ambiguities=false, persistent_tasks=!Sys.iswindows())
 
 end
