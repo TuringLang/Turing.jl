@@ -204,12 +204,29 @@ end
             x[1:2] ~ MvNormal(zeros(2), I)
             return 1.0 ~ Normal(sum(x), 1)
         end
-        @test maximum_a_posteriori(slice(); lb=Dict(@varname(x[1:2]) => [0.9, 0.9]), ub=Dict(@varname(x[1:2]) => [9.0, 9.0])).params[@varname(
-            x[1]
-        )] ≈ 0.9 atol = 1e-4
-        @test maximum_a_posteriori(whole(); lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9), ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)).params[@varname(
-            x
-        )] ≈ [0.9, 0.9] atol = 1e-4
+        slice_result = @test_logs min_level = Logging.Warn maximum_a_posteriori(
+            slice();
+            lb=Dict(@varname(x[1:2]) => [0.9, 0.9]),
+            ub=Dict(@varname(x[1:2]) => [9.0, 9.0]),
+        )
+        @test slice_result.params[@varname(x[1])] ≈ 0.9 atol = 1e-4
+        whole_result = @test_logs min_level = Logging.Warn maximum_a_posteriori(
+            whole();
+            lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9),
+            ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0),
+        )
+        @test whole_result.params[@varname(x)] ≈ [0.9, 0.9] atol = 1e-4
+
+        lb_vnt, ub_vnt = Logging.with_logger(Logging.NullLogger()) do
+            (
+                VarNamedTuple(Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9)),
+                VarNamedTuple(Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)),
+            )
+        end
+        vnt_result = @test_logs min_level = Logging.Warn maximum_a_posteriori(
+            whole(); lb=lb_vnt, ub=ub_vnt
+        )
+        @test vnt_result.params[@varname(x)] ≈ [0.9, 0.9] atol = 1e-4
         # A compound key covering more elements than the model reaches drops the surplus.
         # Accounting per key rather than per leaf let the one element `x[1]` consumes stand for
         # the whole of `x`, so the bound on `x[2]` disappeared without a word.
@@ -257,14 +274,16 @@ end
                 Dict(@varname(x[1]) => 0.5, @varname(x[3]) => 0.5),
             )
                 ub3 = Dict(k => 9.0 for k in keys(lb3))
-                @test_throws "element(s) under" maximum_a_posteriori(m3; lb=lb3, ub=ub3)
+                @test_logs min_level = Logging.Warn @test_throws(
+                    "element(s) under", maximum_a_posteriori(m3; lb=lb3, ub=ub3)
+                )
             end
             @test maximum_a_posteriori(m3; lb=(x=fill(0.5, 3),), ub=(x=fill(9.0, 3),)).params[@varname(
                 x[1]
             )] ≈ 0.5 atol = 1e-4
         end
 
-        @test_throws(
+        @test_logs min_level = Logging.Warn @test_throws(
             "which the model writes as one value",
             maximum_a_posteriori(
                 whole(); lb=Dict(@varname(x[1]) => 0.9), ub=Dict(@varname(x[1]) => 9.0)
@@ -273,7 +292,7 @@ end
         # Counting elements alone cannot tell a covering bound from one that names as many
         # elements somewhere else, so the coincidence has to be caught by the reachability
         # accounting instead.
-        @test_throws(
+        @test_logs min_level = Logging.Warn @test_throws(
             "cannot be applied",
             maximum_a_posteriori(
                 whole();
@@ -911,7 +930,7 @@ end
         @model function collinear(x, y)
             a ~ Normal(0, 1)
             b ~ Normal(0, 1)
-            return y ~ MvNormal(a .* x .+ b .* x, 1)
+            return y ~ MvNormal(a .* x .+ b .* x, I)
         end
 
         model = collinear(xs, ys)

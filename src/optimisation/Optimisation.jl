@@ -156,8 +156,9 @@ function DynamicPPL.InitFromParams(
     return DynamicPPL.InitFromParams(m.params, fallback)
 end
 
-struct ConstraintCheckAccumulator{Vlb<:VarNamedTuple,Vub<:VarNamedTuple} <:
+struct ConstraintCheckAccumulator{Vlb<:AbstractDict,Vub<:AbstractDict} <:
        AbstractAccumulator
+    # Keep exact site keys: `VarNamedTuple` can match `x[1]` from a bound for `x[1:2]`.
     lb::Vlb # Must be in unlinked space
     ub::Vub # Must be in unlinked space
 end
@@ -172,8 +173,8 @@ function DynamicPPL.accumulate_assume!!(
     template::Any,
 )
     # `val`, `acc.lb`, and `acc.ub` are all in unlinked space.
-    lb = get_constraints(acc.lb, vn)
-    ub = get_constraints(acc.ub, vn)
+    lb = get(acc.lb, vn, nothing)
+    ub = get(acc.ub, vn, nothing)
     if !satisfies_constraints(lb, ub, val, dist)
         throw(
             DomainError(
@@ -333,28 +334,35 @@ function estimate_mode(
     solve_kwargs...,
 )
     check_model && Turing._check_model(model)
-    lb = Turing._to_varnamedtuple(lb)
-    ub = Turing._to_varnamedtuple(ub)
-
-    # Generate a LogDensityFunction first. We do this first because we want to use the
-    # info stored in the LDF to generate the initial parameters and constraints in the
-    # correct order.
     tfm_strategy = link ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     getlogdensity = logprob_func(estimator)
+
+    # Capture model shapes before representing indexed bounds.
+    layout_varinfo = _optimisation_layout_varinfo(model, tfm_strategy)
+    parameter_template = DynamicPPL.get_raw_values(layout_varinfo)
+    lb = ModelConstraints(lb, parameter_template)
+    ub = ModelConstraints(ub, parameter_template)
+
+    resolved_lb = Dict{VarName,Any}()
+    resolved_ub = Dict{VarName,Any}()
     accs = if check_constraints_at_runtime
-        (logprob_accs(estimator)..., ConstraintCheckAccumulator(lb, ub))
+        (logprob_accs(estimator)..., ConstraintCheckAccumulator(resolved_lb, resolved_ub))
     else
         logprob_accs(estimator)
     end
-    # Note that we don't need adtype to construct the LDF, because it's specified inside the
-    # OptimizationProblem.
     ldf = LogDensityFunction(
-        model, getlogdensity, tfm_strategy, accs; fix_transforms=fix_transforms
+        model, getlogdensity, layout_varinfo, accs; fix_transforms=fix_transforms
     )
 
     # Generate bounds and initial parameters in the unlinked or linked space as requested.
-    lb_vec, ub_vec, inits_vec = make_optim_bounds_and_init(
-        rng, ldf, Turing._convert_initial_params(initial_params), lb, ub
+    lb_vec, ub_vec, inits_vec = _make_optim_bounds_and_init!(
+        rng,
+        ldf,
+        Turing._convert_initial_params(initial_params),
+        lb,
+        ub,
+        resolved_lb,
+        resolved_ub,
     )
     # If there are no constraints, then we can omit them from the OptimizationProblem
     # construction. Note that lb and ub must be provided together, not just one of them.
