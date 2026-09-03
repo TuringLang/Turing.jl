@@ -17,7 +17,8 @@ using ReverseDiff: ReverseDiff
 using StableRNGs: StableRNG
 using StatsBase: StatsBase
 using StatsBase: coef, coefnames, coeftable, informationmatrix, stderror, vcov
-using Test: @test, @testset, @test_throws
+using Logging: Logging
+using Test: @test, @test_logs, @testset, @test_throws
 using Turing
 using Turing.Optimisation:
     ModeResult, InitWithConstraintCheck, satisfies_constraints, make_optim_bounds_and_init
@@ -157,15 +158,17 @@ end
 
     @testset "bound naming no variable" begin
         # Bounds are applied by asking for each variable the model reaches, so a key matching
-        # none of them used to be dropped and the unconstrained mode returned.
+        # none of them is dropped and the unconstrained mode returned. That is warned about
+        # rather than refused: a key naming a variable the model has but does not reach --
+        # conditioned, fixed, or in a branch not taken -- is indistinguishable from one naming
+        # nothing, and refusing it broke reusing one `lb`/`ub` across variants of a model.
         @model function normal_m()
             x ~ Normal(0, 1)
             return 1.0 ~ Normal(x, 1)
         end
-        @test_throws(
-            "no variable of the model can use",
-            maximum_a_posteriori(normal_m(); lb=(nope=0.0,), ub=(nope=1.0,)),
-        )
+        @test_logs min_level = Logging.Warn match_mode = :any (
+            :warn, r"no variable of the model can use"
+        ) maximum_a_posteriori(normal_m(); lb=(nope=0.0,), ub=(nope=1.0,))
         # A bound that does name one still binds.
         @test maximum_a_posteriori(normal_m(); lb=(x=0.7,), ub=(x=10.0,)).params[@varname(
             x
@@ -185,10 +188,35 @@ end
             x ~ MvNormal(zeros(2), I)
             return 1.0 ~ Normal(x[1] + x[2], 1)
         end
-        @test_throws(
-            "no variable of the model can use",
-            maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,)),
-        )
+        @test_logs min_level = Logging.Warn match_mode = :any (
+            :warn, r"no variable of the model can use"
+        ) maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,))
+        # A bound written at a compound `VarName`, or per element of a variable the model
+        # writes whole, IS applied and must not be complained about. Testing each enumerated
+        # leaf key in isolation refused both of these, since no single-leaf subset answers for
+        # a compound name.
+        @model function slice()
+            x = Vector{Float64}(undef, 2)
+            x[1:2] ~ MvNormal(zeros(2), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        @test maximum_a_posteriori(slice(); lb=Dict(@varname(x[1:2]) => [0.9, 0.9]), ub=Dict(@varname(x[1:2]) => [9.0, 9.0])).params[@varname(
+            x[1]
+        )] ≈ 0.9 atol = 1e-4
+        @test maximum_a_posteriori(whole(); lb=Dict(@varname(x[1]) => 0.9, @varname(x[2]) => 0.9), ub=Dict(@varname(x[1]) => 9.0, @varname(x[2]) => 9.0)).params[@varname(
+            x
+        )] ≈ [0.9, 0.9] atol = 1e-4
+        # A bound on a variable the model does not reach is moot, not an error: the mode is
+        # still correctly constrained on the variables that do exist.
+        @model function gd()
+            s ~ InverseGamma(2, 3)
+            m ~ Normal(0, sqrt(s))
+            return 1.0 ~ Normal(m, sqrt(s))
+        end
+        for variant in (gd() | (m=1.0,), DynamicPPL.fix(gd(), (m=1.0,)))
+            @test maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0)) isa
+                Any
+        end
         @test_throws(
             "which the model writes as one value",
             maximum_a_posteriori(
