@@ -188,9 +188,13 @@ end
             x ~ MvNormal(zeros(2), I)
             return 1.0 ~ Normal(x[1] + x[2], 1)
         end
-        @test_logs min_level = Logging.Warn match_mode = :any (
-            :warn, r"no variable of the model can use"
-        ) maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,))
+        # A scalar bound on a variable the model writes element by element cannot be read for
+        # any of those elements, so it is refused rather than warned about: the model does reach
+        # `x`, which makes this a malformed bound and not a moot key. Give one per element.
+        @test_throws(
+            "cannot be applied",
+            maximum_a_posteriori(elementwise(); lb=(x=0.9,), ub=(x=9.0,)),
+        )
         # A bound written at a compound `VarName`, or per element of a variable the model
         # writes whole, IS applied and must not be complained about. Testing each enumerated
         # leaf key in isolation refused both of these, since no single-leaf subset answers for
@@ -214,9 +218,41 @@ end
             return 1.0 ~ Normal(m, sqrt(s))
         end
         for variant in (gd() | (m=1.0,), DynamicPPL.fix(gd(), (m=1.0,)))
-            @test maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0)) isa
-                Any
+            # Warned about, not refused, and `s` is still bounded.
+            @test_logs min_level = Logging.Warn match_mode = :any (
+                :warn, r"no variable of the model can use"
+            ) maximum_a_posteriori(variant; lb=(s=0.01, m=-9.0), ub=(s=10.0, m=9.0))
+            @test maximum_a_posteriori(variant; lb=(s=0.9, m=-9.0), ub=(s=10.0, m=9.0)).params[@varname(
+                s
+            )] >= 0.9 - 1e-6
         end
+        # The case the fix exists for. The accumulator sizes its bound vector from the highest
+        # index named, so `x[1]` alone came back short and raised a bare `DimensionMismatch`,
+        # while `x[2]` alone, or `x[1]` with `x[3]`, produced a full-length vector that passed
+        # and left the unnamed elements free -- the mode came back at 0.25 for each under a
+        # lower bound of 0.5.
+        @model function whole3()
+            x ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        @model function slice3()
+            x = Vector{Float64}(undef, 3)
+            x[1:3] ~ MvNormal(zeros(3), I)
+            return 1.0 ~ Normal(sum(x), 1)
+        end
+        for m3 in (whole3(), slice3())
+            for lb3 in (
+                Dict(@varname(x[2]) => 0.5),
+                Dict(@varname(x[1]) => 0.5, @varname(x[3]) => 0.5),
+            )
+                ub3 = Dict(k => 9.0 for k in keys(lb3))
+                @test_throws "element(s) under" maximum_a_posteriori(m3; lb=lb3, ub=ub3)
+            end
+            @test maximum_a_posteriori(m3; lb=(x=fill(0.5, 3),), ub=(x=fill(9.0, 3),)).params[@varname(
+                x[1]
+            )] ≈ 0.5 atol = 1e-4
+        end
+
         @test_throws(
             "which the model writes as one value",
             maximum_a_posteriori(
