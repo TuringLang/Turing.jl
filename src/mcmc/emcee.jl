@@ -103,10 +103,10 @@ that one layout. All of them therefore have to hold the same variables in the sa
 same widths. On a model whose set of variables, or their sizes, depends on its own draws,
 walkers initialised from the prior do not.
 
-Each variable's own width is compared, not the names and not the total. Names alone passed
-walkers agreeing on names while a variable's dimension differed, and names with the total passed
-two variables trading dimensions -- `x` of 2 and `y` of 3 against `x` of 3 and `y` of 2 -- both
-of which then failed inside the decode or the proposal's broadcast.
+Each variable's name, order, and width are compared, rather than only the names or the total
+width. Comparing names alone passed walkers agreeing on names while a variable's dimension
+differed, and names with the total width passed two variables trading dimensions -- `x` of 2 and
+`y` of 3 against `x` of 3 and `y` of 2 -- both of which then failed inside the decode or proposal.
 
 Widths and not transforms: the layout fixes each variable's range, while its link is re-derived
 at every evaluation, so walkers holding one variable under different transforms still sample

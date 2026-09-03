@@ -54,9 +54,9 @@ using Turing
     end
 
     @testset "chain_type" begin
-        # `bundle_samples` declared `::Type{MCMCChains.Chains}` positionally where the caller
-        # passes it as a keyword, so this silently fell through to the generic method and
-        # returned the raw transitions.
+        # `bundle_samples` declared `kwargs...` as positional varargs instead of keyword
+        # varargs, so calls that forwarded keyword arguments silently fell through to the generic
+        # method and returned the raw transitions.
         chain = sample(
             StableRNG(7), gdemo_default, Emcee(4), 5; chain_type=MCMCChains.Chains
         )
