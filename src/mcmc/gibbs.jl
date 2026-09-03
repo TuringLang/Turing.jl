@@ -854,11 +854,18 @@ function block_reshaped(before, now)
         isempty(joined) || return ReshapedBlock(first(joined), :joined)
         return ReshapedBlock(first(setdiff(before.leaves, now.leaves)), :left)
     end
+    # The tilde keys matter as much as what they map to. A branch writing `x` in one tilde and
+    # `x[i]` in three gives identical leaves and two DISJOINT layouts, so a loop that skipped a
+    # key the other side lacked saw nothing while the linked dimension moved from two to three.
+    # A key on one side only is itself proof the layout changed.
+    isequal(Set(before.layout), Set(now.layout)) && return nothing
     for (vn, key) in now.layout
         i = findfirst(p -> p.first == vn, before.layout)
-        i === nothing && continue
-        isequal(before.layout[i].second, key) && continue
-        return ReshapedBlock(vn, :respecified)
+        i === nothing && return ReshapedBlock(vn, :respecified)
+        isequal(before.layout[i].second, key) || return ReshapedBlock(vn, :respecified)
+    end
+    for (vn, _) in before.layout
+        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, :respecified)
     end
     return nothing
 end

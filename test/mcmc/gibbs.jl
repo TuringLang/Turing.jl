@@ -741,6 +741,40 @@ end
             200;
             progress=false,
         ) isa Any
+        # The tilde KEYS can change while the leaves do not: one branch writes `x` in a single
+        # tilde, the other writes `x[i]` in three. The two layouts are then disjoint, and a gate
+        # that only compared keys present on both sides saw nothing while the linked dimension
+        # moved from two to three, so `NUTS` died inside `AdvancedHMC` instead of being refused.
+        @model function keyswap(y)
+            b ~ Bernoulli(0.5)
+            if b
+                x ~ Dirichlet(3, 1.0)
+            else
+                x = Vector{Float64}(undef, 3)
+                for i in 1:3
+                    x[i] ~ Normal(0, 1)
+                end
+            end
+            return y ~ Normal(sum(x), 1.0)
+        end
+        keyswap_block = (@varname(b), @varname(x)) => PG(10)
+        # `NUTS` only: `ESS` refuses this model before the gate is reached, for a reason of its
+        # own -- a `Dirichlet` is not a Gaussian prior -- so it would not test what this does.
+        @test_throws "does not implement" sample(
+            StableRNG(8),
+            keyswap(1.0),
+            Gibbs(keyswap_block, @varname(x) => NUTS()),
+            100;
+            progress=false,
+        )
+        @test sample(
+            StableRNG(8),
+            keyswap(1.0),
+            Gibbs(keyswap_block, @varname(x) => HMC(0.05, 5)),
+            100;
+            progress=false,
+        ) isa Any
+
         # A bound that moves within one transform type is not a shape change, and must not be
         # gated: the linked dimension never moves, so an adapting `NUTS` copes.
         @model function movingbound()
