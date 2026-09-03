@@ -7,6 +7,8 @@ using DynamicPPL: DynamicPPL
 using Random: Random, Xoshiro
 using StableRNGs: StableRNG
 using FlexiChains: FlexiChains
+using LinearAlgebra: I
+using MCMCChains: MCMCChains
 using Test: @test, @test_throws, @testset
 using Turing
 
@@ -49,6 +51,77 @@ using Turing
         chain = sample(gdemo_default, spl, 1; initial_params=fill(initial_nt, nwalkers))
         @test chain[:s] == fill(2.0, 1, nwalkers)
         @test chain[:m] == fill(1.0, 1, nwalkers)
+    end
+
+    @testset "chain_type" begin
+        # `bundle_samples` declared `kwargs...` as positional varargs instead of keyword
+        # varargs, so calls that forwarded keyword arguments silently fell through to the generic
+        # method and returned the raw transitions.
+        chain = sample(
+            StableRNG(7), gdemo_default, Emcee(4), 5; chain_type=MCMCChains.Chains
+        )
+        @test chain isa MCMCChains.Chains
+    end
+
+    @testset "model whose dimension depends on its own draws" begin
+        # Walkers initialised from the prior land in different branches, so they have
+        # different numbers of parameters and the stretch move has no line to move along.
+        @model function branchy()
+            b ~ Bernoulli(0.5)
+            x ~ Normal(0, 1)
+            if b
+                y ~ Normal(0, 1)
+                1.0 ~ Normal(x + y, 1)
+            else
+                1.0 ~ Normal(x, 1)
+            end
+        end
+        @test_throws(
+            "do not occupy the same parameter layout",
+            sample(StableRNG(5), branchy(), Emcee(10), 5),
+        )
+        # Two branches can hold different variables and the same total dimension, which a
+        # comparison of lengths passed; sampling then threw `KeyError: key y not found`.
+        @model function samelen()
+            b ~ Bernoulli(0.5)
+            if b == 1
+                x ~ Normal(0, 1)
+                1.0 ~ Normal(x, 1)
+            else
+                y ~ Normal(100, 1)
+                1.0 ~ Normal(y, 1)
+            end
+        end
+        @test_throws(
+            "do not occupy the same parameter layout",
+            sample(StableRNG(468), samelen(), Emcee(10, 2.0), 5),
+        )
+        # And the converse: the same variable NAMES with a different width. Comparing names
+        # alone let this through to a `DimensionMismatch` from inside the stretch move, so both
+        # the names and the total length are compared.
+        @model function samenames()
+            n ~ Normal()
+            x ~ MvNormal(zeros(n > 0 ? 2 : 3), I)
+            return 0.5 ~ Normal(sum(x), 1.0)
+        end
+        @test_throws(
+            "do not occupy the same parameter layout",
+            sample(StableRNG(468), samenames(), Emcee(20, 2.0), 5),
+        )
+        # And two variables trading dimensions: the names match and so does the total, so
+        # neither a name comparison nor a total-length one sees it, and the decode then fails
+        # with a `DimensionMismatch`. Each variable's own width is what has to agree.
+        @model function trade()
+            n ~ Normal()
+            k = n > 0 ? 2 : 3
+            x ~ MvNormal(zeros(k), I)
+            y ~ MvNormal(zeros(5 - k), I)
+            return 0.5 ~ Normal(sum(x) + sum(y), 1)
+        end
+        @test_throws(
+            "do not occupy the same parameter layout",
+            sample(StableRNG(468), trade(), Emcee(10, 2.0), 5),
+        )
     end
 end
 

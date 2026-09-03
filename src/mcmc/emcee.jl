@@ -80,16 +80,65 @@ function AbstractMCMC.step(
         ]
     end
 
-    linked_vi = DynamicPPL.link!!(vis[1], model)
+    linked_vis = map(vi -> DynamicPPL.link!!(vi, model), vis)
+    check_walkers_same_layout(linked_vis)
     state = EmceeState(
-        DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vi),
-        map(vis) do vi
-            vi = DynamicPPL.link!!(vi, model)
+        DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vis[1]),
+        map(linked_vis) do vi
             AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
         end,
     )
 
     return transition, state
+end
+
+"""
+    check_walkers_same_layout(linked_vis)
+
+Throw unless every walker occupies the same parameter layout.
+
+The stretch move interpolates between two walkers' position vectors, and the single
+`LogDensityFunction` is built from the first walker, so every walker's vector is decoded against
+that one layout. All of them therefore have to hold the same variables in the same order at the
+same widths. On a model whose set of variables, or their sizes, depends on its own draws,
+walkers initialised from the prior do not.
+
+Each variable's name, order, and width are compared, rather than only the names or the total
+width. Comparing names alone passed walkers agreeing on names while a variable's dimension
+differed, and names with the total width passed two variables trading dimensions -- `x` of 2 and
+`y` of 3 against `x` of 3 and `y` of 2 -- both of which then failed inside the decode or proposal.
+
+Widths and not transforms: the layout fixes each variable's range, while its link is re-derived
+at every evaluation, so walkers holding one variable under different transforms still sample
+correctly, and comparing transforms would refuse them.
+
+This is necessary rather than sufficient, and only the *initial* walkers are examined. A
+proposal can still cross into a branch none of them started in, and the decode then fails on a
+variable the layout has no range for -- `m ~ Normal(); m > 0 ? (x ~ Normal()) : (y ~ Normal())`,
+started entirely in `m > 0`, raises `KeyError: key y not found` once a proposal reaches `m < 0`.
+Catching that would mean validating every evaluation. A model whose layout varies at all is best
+not sampled with `Emcee`.
+"""
+function check_walkers_same_layout(linked_vis)
+    layouts = map(linked_vis) do vi
+        [
+            vn => length(DynamicPPL.get_internal_value(tv)) for
+            (vn, tv) in pairs(DynamicPPL.get_values(vi))
+        ]
+    end
+    allequal(layouts) && return nothing
+    shown = unique(
+        map(l -> string("[", join(("$k of $v" for (k, v) in l), ", "), "]"), layouts)
+    )
+    return throw(
+        ArgumentError(
+            "`Emcee`'s walkers do not occupy the same parameter layout " *
+            "($(join(shown, " versus "))). The stretch move moves along the line between two " *
+            "walkers and every walker is decoded against one layout, so they all have to live " *
+            "in one parameter space. This model's variables, or their sizes, depend on its own " *
+            "draws, which `Emcee` cannot sample.",
+        ),
+    )
 end
 
 function AbstractMCMC.step(
