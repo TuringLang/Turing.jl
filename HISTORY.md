@@ -38,7 +38,7 @@ Gibbs chains carry component statistics, prefixed with the symbols that componen
 
 `estimate_mode` no longer ignores a bound it cannot apply in silence. A bound of the wrong shape -- covering part of a variable the model writes whole -- now throws, where it previously failed with a bare `DimensionMismatch`; give one bound per element, shaped as the model writes the variable. A bound whose key no variable can use warns instead, since a key naming a variable that is conditioned, fixed, or in a branch not taken cannot be told apart here from one naming nothing at all, and the mode is still correctly constrained on the variables that do exist.
 
-`Emcee` now refuses a model whose set of variables depends on its own draws, naming the walker dimensions, instead of failing with a `DimensionMismatch` from inside the stretch proposal. The move interpolates between two walkers' positions, so they all have to share one parameter space.
+`Emcee` now refuses walkers that start in different parameter layouts, naming the layouts, instead of failing with a `DimensionMismatch` from inside the stretch proposal. The move interpolates between two walkers' positions, so they all have to share one parameter space.
 
 # 0.47.4
 
