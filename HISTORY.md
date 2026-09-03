@@ -33,6 +33,9 @@ Gibbs chains now include component-sampler statistics
 
 `Prior()` now warns that `initial_params` has no effect instead of discarding it silently ([#2881](https://github.com/TuringLang/Turing.jl/pull/2881)).
 
+`Gibbs` now rejects an external sampler whose state inherits AbstractMCMC's model-dropping
+three-argument `setparams!!` fallback, rather than running with stale model-dependent caches.
+
 # 0.47.4
 
 `externalsampler` now forwards `AbstractMCMC.step_warmup` to the sampler it wraps, so an
