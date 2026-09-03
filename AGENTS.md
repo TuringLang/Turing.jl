@@ -50,6 +50,12 @@ For how the model and inference machinery works under the hood, see the [Dynamic
 
 The Gibbs sampler (`src/mcmc/gibbs.jl`) is the most complex piece in Turing.jl. It maintains a global `VarNamedTuple` of raw values for all variables. On each iteration, it conditions the model on the non-target variables via `GibbsContext`, runs the component sampler, and updates the global state.
 
+Gibbs owns the assignment of variables to component samplers. Repeating that assignment
+inside a component risks updating or scoring the wrong variables; see
+`VarNamedTuple` for parameter collections below.
+`Gibbs(@varname(x) => MH(cov_matrix))` applies `cov_matrix` to the complete linked vector of
+the conditioned `x` block.
+
 To plug a sampler into Gibbs, implement:
 
   - `gibbs_get_raw_values(state)` — return a `VarNamedTuple` of raw values for the variables this sampler is responsible for.
@@ -66,7 +72,7 @@ To plug a sampler into Gibbs, implement:
 
 Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not `VarInfo`. `VarInfo` is being phased out across the ecosystem.
 
-Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability — for example, MH uses custom accumulators to capture proposal distributions and linked values, so it works directly with `OnlyAccsVarInfo` + `init!!` instead. Either approach is fine; the key constraint is no `VarInfo`.
+Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability. `MH()` works directly with `OnlyAccsVarInfo` + `init!!` because it draws proposals from the model prior; `MH(cov_matrix)` delegates to an external sampler and uses `LogDensityFunction`. Either approach is fine; the key constraint is no `VarInfo`.
 
 Note: "linked" and "unconstrained" are synonymous in this codebase. Linking transforms constrained parameters to unconstrained (Euclidean) space for gradient-based sampling.
 
