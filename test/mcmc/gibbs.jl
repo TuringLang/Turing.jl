@@ -712,10 +712,10 @@ end
         end
 
         # A block can change shape with its leaf set unchanged, when a component that shares
-        # the variable moves it to a distribution that links differently: `x` has three leaves
+        # the variable moves it to one that links to a different width: `x` has three leaves
         # either way, but a simplex occupies two numbers and a free vector three. The gate
-        # compares the transform's type, so this reaches the capability check rather than
-        # dying inside `AdvancedHMC` with a bare `DimensionMismatch`.
+        # compares the linked width, so this reaches the capability check rather than dying
+        # inside `AdvancedHMC` with a bare `DimensionMismatch`.
         @model function relinked(y)
             b ~ Bernoulli(0.5)
             if b == 1
@@ -1124,17 +1124,11 @@ end
     end
 
     @testset "a component may move another block's support, at the caller's risk" begin
-        # A component moving the support or distributional form of another block's variable is
-        # PERMITTED. Whether it is correct turns on irreducibility -- whether every reachable
-        # pair of supports overlaps -- which no single evaluation decides, so it is the caller's
-        # to establish and Gibbs does not refuse it. See the warning in the `Gibbs` docstring.
-        #
-        # The models below cover both sides. `absorb`, `discrete_support` and
-        # `discrete_vector` have DISJOINT supports and are absorbed when split: correct in one
-        # block, wrong in two, with nothing raised. `bounded` has NESTED supports and is
-        # correct either way -- the same shape as Turing.jl#2801 below. What is asserted here
-        # is that none of them is refused any more; `disjoint_supports` further down measures
-        # the cost, and the #2801 testset measures the safe case.
+        # None of these is refused. `absorb`, `discrete_support` and `discrete_vector` have
+        # DISJOINT supports and are absorbed when split, giving a wrong answer with nothing
+        # raised; `bounded` has NESTED supports and is correct either way. `disjoint_supports`
+        # below measures the cost and the Turing.jl#2801 testset the safe case. Why this is
+        # permitted is in the `Gibbs` docstring.
         @model function absorb()
             b ~ Bernoulli(0.5)
             if b == 1

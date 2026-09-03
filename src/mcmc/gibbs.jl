@@ -299,7 +299,7 @@ built on, nor `externalsampler`, whose wrapped state is opaque.
 function _reshape_description(r::ReshapedBlock)
     r.change === :joined && return "$(r.variable) joined it"
     r.change === :left && return "$(r.variable) left it"
-    return "$(r.variable) is now drawn from a distribution that links differently"
+    return "$(r.variable) is now drawn from a distribution that links to a different width"
 end
 
 function gibbs_update_state!!(
@@ -407,19 +407,18 @@ end
 #
 
 """
-    Snapshot(values, supports)
+    Snapshot(values, layouts)
 
-The values Gibbs threads through a sweep, with the support signature of each tilde statement
-that produced them.
+The values Gibbs threads through a sweep, with the linked layout of each tilde statement that
+produced them.
 
 Both halves come from one model evaluation and [`reached_values`](@ref) is the only thing that
-builds one, which is what lets [`check_variable_set`](@ref) compare the supports either side of
-a step without evaluating the model again: it needs the supports from before the step as well
-as after, and the evaluation that produced the previous snapshot had already computed them.
+builds one, so [`block_fingerprint`](@ref) can compare a block's layout either side of a step
+without evaluating the model again.
 """
 struct Snapshot{V<:DynamicPPL.VarNamedTuple,S<:DynamicPPL.VarNamedTuple}
     values::V
-    supports::S
+    layouts::S
 end
 
 """
@@ -451,10 +450,10 @@ function reached_values(rng, model, proposed::DynamicPPL.VarNamedTuple)
     return _snapshot(accs)
 end
 
-# Raw values, plus the support signature of each tilde statement that produced them.
+# Raw values, plus the linked layout of each tilde statement that produced them.
 function _snapshot_accs()
     return DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.RawValueAccumulator(false), LayoutSignatureAccumulator()
+        DynamicPPL.RawValueAccumulator(false), LayoutAccumulator()
     )
 end
 
@@ -466,49 +465,27 @@ function _snapshot(accs)
 end
 
 """
-    _layout_signature(dist)
+    _layout_signature(dist, val)
 
-A value that differs whenever a variable's parameter layout can differ.
+The linked layout of one tilde statement: how many numbers `val` occupies in a sampler's
+unconstrained parameter vector.
 
-The snapshot Gibbs threads holds raw values, which say nothing about how many numbers a variable
-occupies once linked, so this has to come from the tilde's own distribution during the
-evaluation. Two parts, both needed by [`block_fingerprint`](@ref):
+Measured by linking `val`, not inferred from the distribution. The family and the bijector's
+type are proxies for the layout and part company with it: `Normal()` and `TDist(3)` are
+different families with the same scalar linked layout, and keying on the family refused an
+adapting `NUTS` whose block had not moved at all.
 
-  - the type name, for the distributional form;
-  - the *type* of `Bijectors.bijector`, for the transform. A change of transform type is what can
-    move the linked dimension -- `x ~ Dirichlet(3)` occupies two numbers and
-    `x ~ MvNormal(zeros(3), I)` three -- while a change *within* one type cannot, so a
-    `truncated(Normal(); lower=a)` whose bound moves every sweep is not a change of layout.
-
-The type rather than the transform itself, deliberately. A bijector is an ordinary struct, and
-one whose type defines no `==` falls back to `===`, which compares an immutable struct's fields
-by identity: `ProductBijector`'s only field is a freshly allocated `Vector`, so two bijectors
-built from the same distribution compare unequal. Comparing types sidesteps that, and is the
-right granularity here anyway.
-
-`bijector` is not part of what a model must provide -- a distribution implementing only
-`Bijectors.VectorBijectors.to_linked_vec` samples correctly under every sampler, while the
-generic univariate `bijector` reaches for `minimum`/`maximum`, which such a distribution need
-not define. Asking for it anyway made Gibbs the one sampler that could not take the model, so a
-`MethodError` falls back to the form alone.
+`to_linked_vec` rather than `bijector`: the former is what a distribution must provide to be
+sampled, while the generic univariate `bijector` reaches for `minimum`/`maximum`, which a
+distribution defining only the vector interface need not have.
 """
-function _layout_signature(d::Distributions.Distribution)
-    return (nameof(typeof(d)), _transform_type(d))
-end
-_layout_signature(d) = (nameof(typeof(d)), nothing)
-
-function _transform_type(d)
-    return try
-        typeof(Bijectors.bijector(d))
-    catch e
-        e isa MethodError || rethrow()
-        nothing
-    end
+function _layout_signature(dist, val)
+    return length(Bijectors.VectorBijectors.to_linked_vec(dist)(val))
 end
 
-const LAYOUT_ACC_NAME = :GibbsLayoutSignatures
-_store_layout(val, tval, logjac, vn, dist) = _layout_signature(dist)
-function LayoutSignatureAccumulator()
+const LAYOUT_ACC_NAME = :GibbsLayouts
+_store_layout(val, tval, logjac, vn, dist) = _layout_signature(dist, val)
+function LayoutAccumulator()
     return DynamicPPL.VNTAccumulator{LAYOUT_ACC_NAME}(_store_layout)
 end
 
@@ -857,7 +834,7 @@ end
 """
     block_fingerprint(snapshot, varnames)
 
-The shape of a component's block: the leaves it holds, and the linking transform of each tilde
+The shape of a component's block: the leaves it holds, and the linked width of each tilde
 statement that produced them.
 
 Leaves alone are not enough. A tilde statement that changes which distribution it draws from can
@@ -865,13 +842,9 @@ keep its leaf count and still move the block's *linked* dimension -- `x ~ Dirich
 two numbers and `x ~ MvNormal(zeros(3), I)` three, both with three leaves -- and a component
 holding a parameter layout has to be told.
 
-What is compared is the transform's *type*, not the transform. A change of type is what can move
-the linked dimension; a change within a type cannot. That distinction is the whole of the
-difference between this and [`check_variable_set`](@ref)'s support test, which compares the
-transform itself: with `a` and `x` in one block and `x ~ truncated(Normal(); lower=a)` in
-another that shares `x`, the bound moves every sweep and the support test is right to see it,
-while the layout never changes and a gate that fired here would refuse a partition that samples
-perfectly well.
+Only the width, so a block whose distributions change without moving it is not a reshape:
+`x ~ truncated(Normal(); lower=a)` with `a` in another block is relinked every sweep and still
+occupies one number, and refusing that would rule out a partition that samples perfectly well.
 """
 function block_fingerprint(snapshot::Snapshot, varnames)
     # Pairs rather than a `VarNamedTuple`: this is an internal fingerprint, compared and never
@@ -879,19 +852,16 @@ function block_fingerprint(snapshot::Snapshot, varnames)
     # `VarNamedTuple` with a template giving the array's shape, which there is nothing here to
     # supply. The order is the evaluation's, so it is stable between sweeps.
     layout = Pair{VarName,Any}[]
-    for vn in keys(snapshot.supports)
+    for vn in keys(snapshot.layouts)
         # Either direction: a component may name a variable the model writes in one tilde by
         # its elements (`x[1], x[2], x[3]` for an `x ~`), and then no declared name subsumes the
         # tilde key. Asking one way only left the layout empty for such a block, so the half of
         # the fingerprint that exists to see a relinking saw nothing at all.
         _claims(varnames, vn) || continue
-        push!(layout, vn => snapshot.supports[vn])
+        push!(layout, vn => snapshot.layouts[vn])
     end
     return (leaves=block_leaves(snapshot.values, varnames), layout=layout)
 end
-
-# The part of a support signature that can move the linked dimension: the distributional form,
-# and the transform's type rather than the transform. See `block_fingerprint`.
 
 # `nothing` if the block has the shape the component last saw, otherwise the variable that
 # changed it. Which one is reported only shapes the error message, so any of them will do.
@@ -1092,10 +1062,6 @@ model evaluation reached (see [`reached_values`](@ref)), so a leaf in one and no
 or went during this step, and nothing else can have caused it -- every variable outside the
 component's block was conditioned.
 
-A variable can also change while coming and going neither way, if another component's step
-decided which distribution its tilde statement draws from. That is checked from the support
-signatures the two snapshots carry, and against ownership alone: see the comment at the loop.
-
 Taking both sets from the model, rather than from what the component reported, is what makes
 the verdict independent of the draw Gibbs initialises with and of the component's own
 bookkeeping. A component is free to keep a value for a variable it is not currently sampling;
@@ -1124,12 +1090,10 @@ function check_variable_set(
         end
     end
     # A variable can also change without coming or going, if another component's step decided
-    # which distribution its tilde statement draws from. That is NOT refused here -- see the
-    # warning in the `Gibbs` docstring for why it is the caller's to get right, and for the
-    # example that shows what it costs when they do not. The signatures are still recorded,
-    # because `block_fingerprint` needs them: a change of transform can move a block's linked
-    # dimension, which is a bookkeeping matter and is refused for a component that cannot
-    # rebuild.
+    # which distribution its tilde statement draws from. That is NOT refused here; see the
+    # warning in the `Gibbs` docstring. Layouts are still recorded, because `block_fingerprint`
+    # needs them: such a change can move a block's linked dimension, which is bookkeeping and
+    # is refused only for a component that cannot rebuild.
     # Anything the model reaches that the component did not report was drawn from the prior by
     # `reached_values`, just to let the evaluation finish. The loops above have already ruled
     # on whether the variable may come or go, so what is left is a component that sampled a
