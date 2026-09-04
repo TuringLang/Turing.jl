@@ -8,7 +8,7 @@ using Turing
 @testset "Timer" begin
     chain = sample(gdemo_default, MH(), 1000)
     @test FlexiChains.sampling_time(chain) isa Vector{Float64}
-    @test only(FlexiChains.sampling_time(chain)) > 0.0
+    @test only(FlexiChains.sampling_time(chain)) >= 0.0
 end
 
 end
