@@ -351,11 +351,12 @@ end
 gibbs_get_stats(state::TuringState) = AbstractMCMC.getstats(state.state)
 
 function gibbs_update_state!!(
-    ::ExternalSampler,
+    sampler::ExternalSampler,
     state::TuringState,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
+    _check_external_sampler_setparams_for_gibbs(sampler, state)
     new_ldf, new_params, _ = gibbs_recompute_ldf_and_params(state.ldf, model, global_vals)
     # Update the inner sampler's state with the new parameters.
     new_inner_state = AbstractMCMC.setparams!!(

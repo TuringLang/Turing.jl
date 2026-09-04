@@ -151,6 +151,13 @@ using Turing.Inference: AdvancedHMC
     @testset "Gibbs requires model-aware state updates" begin
         spl = Gibbs(@varname(a) => externalsampler(MySampler()), @varname(b) => MH())
         @test_throws "Turing.jl/issues/2875" AbstractMCMC.step(StableRNG(42), model, spl)
+
+        repeated = Turing.Inference.RepeatSampler(externalsampler(MySampler()), 2)
+        spl = Gibbs(@varname(a) => repeated, @varname(b) => MH())
+        _, state = AbstractMCMC.step(StableRNG(42), model, spl)
+        @test_throws "Turing.jl/issues/2875" AbstractMCMC.step(
+            StableRNG(43), model, spl, state
+        )
     end
 
     @testset "warmup steps reach the external sampler" begin
