@@ -153,12 +153,6 @@ end
     )
     # Invalid samplers
     @test_throws ArgumentError Gibbs(@varname(s) => Emcee(10, 2.0))
-    @test_throws ArgumentError Gibbs(
-        @varname(s) => SGHMC(; learning_rate=0.01, momentum_decay=0.1)
-    )
-    @test_throws ArgumentError Gibbs(
-        @varname(s) => SGLD(; stepsize=PolynomialStepsize(0.25))
-    )
     # Values that we don't know how to convert to VarNames.
     @test_throws MethodError Gibbs(1 => NUTS())
     @test_throws MethodError Gibbs("x" => NUTS())

@@ -57,25 +57,22 @@ even though [`Prior()`](@ref) is actually defined in the `Turing.Inference` modu
 
 ### Samplers
 
-| Exported symbol      | Documentation                                 | Description                                                         |
-|:-------------------- |:--------------------------------------------- |:------------------------------------------------------------------- |
-| `Prior`              | [`Turing.Inference.Prior`](@ref)              | Sample from the prior distribution                                  |
-| `MH`                 | [`Turing.Inference.MH`](@ref)                 | Metropolis–Hastings                                                 |
-| `Emcee`              | [`Turing.Inference.Emcee`](@ref)              | Affine-invariant ensemble sampler                                   |
-| `ESS`                | [`Turing.Inference.ESS`](@ref)                | Elliptical slice sampling                                           |
-| `Gibbs`              | [`Turing.Inference.Gibbs`](@ref)              | Gibbs sampling                                                      |
-| `GibbsConditional`   | [`Turing.Inference.GibbsConditional`](@ref)   | Gibbs sampling with analytical conditional posterior distributions  |
-| `HMC`                | [`Turing.Inference.HMC`](@ref)                | Hamiltonian Monte Carlo                                             |
-| `SGLD`               | [`Turing.Inference.SGLD`](@ref)               | Stochastic gradient Langevin dynamics                               |
-| `SGHMC`              | [`Turing.Inference.SGHMC`](@ref)              | Stochastic gradient Hamiltonian Monte Carlo                         |
-| `PolynomialStepsize` | [`Turing.Inference.PolynomialStepsize`](@ref) | Returns a function which generates polynomially decaying step sizes |
-| `HMCDA`              | [`Turing.Inference.HMCDA`](@ref)              | Hamiltonian Monte Carlo with dual averaging                         |
-| `NUTS`               | [`Turing.Inference.NUTS`](@ref)               | No-U-Turn Sampler                                                   |
-| `SMC`                | [`Turing.Inference.SMC`](@ref)                | Sequential Monte Carlo                                              |
-| `PG`                 | [`Turing.Inference.PG`](@ref)                 | Particle Gibbs                                                      |
-| `CSMC`               | [`Turing.Inference.CSMC`](@ref)               | The same as PG                                                      |
-| `RepeatSampler`      | [`Turing.Inference.RepeatSampler`](@ref)      | A sampler that runs multiple times on the same variable             |
-| `externalsampler`    | [`Turing.Inference.externalsampler`](@ref)    | Wrap an external sampler for use in Turing                          |
+| Exported symbol    | Documentation                               | Description                                                        |
+|:------------------ |:------------------------------------------- |:------------------------------------------------------------------ |
+| `Prior`            | [`Turing.Inference.Prior`](@ref)            | Sample from the prior distribution                                 |
+| `MH`               | [`Turing.Inference.MH`](@ref)               | Metropolis–Hastings                                                |
+| `Emcee`            | [`Turing.Inference.Emcee`](@ref)            | Affine-invariant ensemble sampler                                  |
+| `ESS`              | [`Turing.Inference.ESS`](@ref)              | Elliptical slice sampling                                          |
+| `Gibbs`            | [`Turing.Inference.Gibbs`](@ref)            | Gibbs sampling                                                     |
+| `GibbsConditional` | [`Turing.Inference.GibbsConditional`](@ref) | Gibbs sampling with analytical conditional posterior distributions |
+| `HMC`              | [`Turing.Inference.HMC`](@ref)              | Hamiltonian Monte Carlo                                            |
+| `HMCDA`            | [`Turing.Inference.HMCDA`](@ref)            | Hamiltonian Monte Carlo with dual averaging                        |
+| `NUTS`             | [`Turing.Inference.NUTS`](@ref)             | No-U-Turn Sampler                                                  |
+| `SMC`              | [`Turing.Inference.SMC`](@ref)              | Sequential Monte Carlo                                             |
+| `PG`               | [`Turing.Inference.PG`](@ref)               | Particle Gibbs                                                     |
+| `CSMC`             | [`Turing.Inference.CSMC`](@ref)             | The same as PG                                                     |
+| `RepeatSampler`    | [`Turing.Inference.RepeatSampler`](@ref)    | A sampler that runs multiple times on the same variable            |
+| `externalsampler`  | [`Turing.Inference.externalsampler`](@ref)  | Wrap an external sampler for use in Turing                         |
 
 ### Data structures
 

@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+The `SGLD` and `SGHMC` samplers, which did not support minibatching, have been removed along with `PolynomialStepsize`.
+
 `MH(var => proposal, ...)` and `LinkedRW` have been removed. Use `MH()` for prior
 proposals, or `MH(cov_matrix)` for a Gaussian random walk over the complete linked
 parameter vector. In `Gibbs`, assign `MH(cov_matrix)` to the target variable block

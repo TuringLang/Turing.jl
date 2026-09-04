@@ -51,8 +51,6 @@ supports_gibbs(spl::RepeatSampler) = supports_gibbs(spl.sampler)
 supports_gibbs(spl::ExternalSampler) = supports_gibbs(spl.sampler)
 supports_gibbs(::Prior) = false
 supports_gibbs(::Emcee) = false
-supports_gibbs(::SGLD) = false
-supports_gibbs(::SGHMC) = false
 supports_gibbs(::SMC) = false
 
 """
