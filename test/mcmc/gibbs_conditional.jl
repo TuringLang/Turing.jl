@@ -9,10 +9,9 @@ using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "GibbsConditional" begin
-    @testset "a ranged site is one variable, not several" begin
+    @testset "single conditional distribution" begin
         # `theta[:] ~ MvNormal(...)` is one tilde statement stored under `theta[1], theta[2]`,
-        # so counting keys refused the single-distribution form it is meant to support. The
-        # conditional is stored at `theta` and each tilde key resolves to it by subsumption.
+        # so counting stored keys refused the single-distribution form it is meant to support.
         @model function ranged(n)
             theta = Vector{Float64}(undef, n)
             theta[:] ~ MvNormal(zeros(n), LinearAlgebra.I)
@@ -27,13 +26,24 @@ using Turing
                 Xoshiro(1), ranged(n), spl, 20; check_model=false, progress=false
             ) isa VNChain
         end
+        # Separate tilde statements under the same top-level symbol are separate variables.
+        @model function elementwise()
+            x = Vector{Float64}(undef, 2)
+            x[1] ~ Normal()
+            return x[2] ~ Normal()
+        end
+        conditional = GibbsConditional(_ -> Normal())
+        spl = Gibbs(@varname(x) => conditional)
+        @test_throws "more than one tilde statement" sample(
+            Xoshiro(1), elementwise(), spl, 2; check_model=false, progress=false
+        )
         # Two genuine variables under one distribution are still refused.
         @model function two()
             a ~ Normal()
             b ~ Normal()
             return 1.0 ~ Normal(a + b, 1)
         end
-        @test_throws "multiple variables" sample(
+        @test_throws "more than one tilde statement" sample(
             Xoshiro(1),
             two(),
             Gibbs((@varname(a), @varname(b)) => GibbsConditional(_ -> Normal())),

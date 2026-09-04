@@ -134,11 +134,9 @@ function build_values_vnt(model::DynamicPPL.Model)
     return vals
 end
 
-@inline _to_varnamedtuple(dists::NamedTuple, ::DynamicPPL.VarNamedTuple) =
-    DynamicPPL.VarNamedTuple(dists)
-@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple, ::DynamicPPL.VarNamedTuple) =
-    dists
-function _to_varnamedtuple(dists::AbstractDict{<:VarName}, ::DynamicPPL.VarNamedTuple)
+@inline _to_varnamedtuple(dists::NamedTuple) = DynamicPPL.VarNamedTuple(dists)
+@inline _to_varnamedtuple(dists::DynamicPPL.VarNamedTuple) = dists
+function _to_varnamedtuple(dists::AbstractDict{<:VarName})
     vnt = DynamicPPL.VarNamedTuple()
     for (vn, dist) in dists
         vnt = DynamicPPL.templated_setindex!!(vnt, dist, vn, _shape_template(dist))
@@ -166,31 +164,33 @@ one at an indexed `VarName` does not, and does not need it.
 _shape_template(::Distributions.UnivariateDistribution) = DynamicPPL.NoTemplate()
 _shape_template(d::Distributions.Distribution) = Array{eltype(d)}(undef, size(d))
 _shape_template(_) = DynamicPPL.NoTemplate()
-function _to_varnamedtuple(dist::Distribution, raw_values::DynamicPPL.VarNamedTuple)
-    vns = collect(keys(raw_values))
-    # Distinct variables, not distinct keys. One tilde statement can leave several: a
-    # `theta[:] ~ MvNormal(...)` site stores `theta[1], theta[2]`, so counting keys refused
-    # the very form this method exists to support.
-    syms = unique(AbstractPPL.getsym(vn) for vn in vns)
-    if length(syms) > 1
-        msg = (
-            "In GibbsConditional, `get_cond_dists` returned a single distribution," *
-            " but multiple variables ($syms) are being sampled. Please return a" *
-            " VarNamedTuple mapping variable names to distributions instead."
-        )
-        throw(ArgumentError(msg))
-    end
-    top_sym = only(syms)
-    # Key the conditional at the variable even when it currently has one leaf: a ranged site
-    # of length one is stored as `theta[1]` but is evaluated as `theta[:]`.
-    vn = VarName{top_sym}()
-    template = get(raw_values.data, top_sym, DynamicPPL.NoTemplate())
-    return DynamicPPL.templated_setindex!!(DynamicPPL.VarNamedTuple(), dist, vn, template)
-end
 
 struct InitFromCondDists{V<:DynamicPPL.VarNamedTuple} <: DynamicPPL.AbstractInitStrategy
     cond_dists::V
 end
+
+mutable struct InitFromSingleCondDist{D<:Distribution} <: DynamicPPL.AbstractInitStrategy
+    dist::D
+    used::Bool
+end
+InitFromSingleCondDist(dist::Distribution) = InitFromSingleCondDist(dist, false)
+
+function DynamicPPL.init(
+    rng::Random.AbstractRNG, ::VarName, ::Distribution, init_strat::InitFromSingleCondDist
+)
+    if init_strat.used
+        throw(
+            ArgumentError(
+                "In GibbsConditional, `get_cond_dists` returned a single distribution, " *
+                "but the model requested it for more than one tilde statement. Return a " *
+                "VarNamedTuple mapping variable names to distributions instead.",
+            ),
+        )
+    end
+    init_strat.used = true
+    return DynamicPPL.TransformedValue(rand(rng, init_strat.dist), DynamicPPL.NoTransform())
+end
+
 """
     _cond_dist_for(cond_dists, vn)
 
@@ -264,10 +264,12 @@ function AbstractMCMC.step(
     #   - a VarNamedTuple of distributions
     #   - a NamedTuple of distributions
     #   - an AbstractDict mapping VarNames to distributions
-    raw_values = DynamicPPL.get_raw_values(state)
-    conddists = _to_varnamedtuple(sampler.get_cond_dists(condvals), raw_values)
-
-    init_strategy = InitFromCondDists(conddists)
+    dists = sampler.get_cond_dists(condvals)
+    init_strategy = if dists isa Distribution
+        InitFromSingleCondDist(dists)
+    else
+        InitFromCondDists(_to_varnamedtuple(dists))
+    end
     _, new_state = DynamicPPL.init!!(
         rng, model, state, init_strategy, DynamicPPL.UnlinkAll()
     )
