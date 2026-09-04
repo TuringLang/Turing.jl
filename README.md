@@ -15,19 +15,12 @@
 
 `Turing.jl` is a general-purpose probabilistic programming package for Bayesian and
 likelihood-based inference. Implemented in Julia, it is designed to interoperate with the
-language's scientific computing ecosystem. Models defined with `@model` specify joint
-distributions and support Markov chain Monte Carlo, variational inference, maximum
-likelihood and maximum a posteriori estimation, and customised inference through Turing's
+language's scientific computing ecosystem. Models can be written with
+[`@model`](https://github.com/TuringLang/DynamicPPL.jl), in BUGS syntax via
+[JuliaBUGS.jl](https://github.com/TuringLang/JuliaBUGS.jl), or graphically with
+[DoodlePPL](https://turinglang.org/JuliaBUGS.jl/DoodlePPL/), and support MCMC, variational
+inference, maximum likelihood and MAP estimation, and customised inference through Turing's
 log-density and gradient interface.
-
-Turing is the user-facing entry point to the TuringLang ecosystem. Models can be written
-as Julia programs with [DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl) or in
-BUGS syntax with [JuliaBUGS.jl](https://github.com/TuringLang/JuliaBUGS.jl).
-[DoodlePPL](https://turinglang.org/JuliaBUGS.jl/DoodlePPL/) provides a browser-based
-graphical editor. Turing connects probabilistic models to inference algorithms provided by
-[AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl),
-[AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl),
-[AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl), and others.
 
 Turing's preferred automatic differentiation backends for gradient-based algorithms
 are [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and
