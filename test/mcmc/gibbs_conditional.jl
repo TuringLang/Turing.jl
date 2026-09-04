@@ -32,7 +32,7 @@ using Turing
             x[1] ~ Normal()
             return x[2] ~ Normal()
         end
-        conditional = GibbsConditional(_ -> MvNormal(zeros(2), LinearAlgebra.I))
+        conditional = GibbsConditional(_ -> Normal())
         spl = Gibbs(@varname(x) => conditional)
         @test_throws "more than one tilde statement" sample(
             Xoshiro(1), elementwise(), spl, 2; check_model=false, progress=false

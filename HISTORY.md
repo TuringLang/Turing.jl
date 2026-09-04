@@ -41,7 +41,10 @@ Gibbs chains now include component-sampler statistics
 `Prior()` now warns that `initial_params` has no effect instead of discarding it silently ([#2881](https://github.com/TuringLang/Turing.jl/pull/2881)).
 
 `Gibbs` now rejects an external sampler whose state inherits AbstractMCMC's model-dropping
-three-argument `setparams!!` fallback, rather than running with stale model-dependent caches.
+three-argument `setparams!!` fallback, rather than running with stale model-dependent caches
+([#2891](https://github.com/TuringLang/Turing.jl/pull/2891)).
+
+`GibbsConditional` now distinguishes a ranged tilde statement from multiple element-wise statements when given one conditional distribution ([#2891](https://github.com/TuringLang/Turing.jl/pull/2891)).
 
 # 0.47.4
 
