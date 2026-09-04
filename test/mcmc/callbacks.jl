@@ -16,7 +16,6 @@ end
         ("MH", MH()),
         ("ESS", ESS()),
         ("Gibbs", Gibbs(:x => HMC(0.1, 5), :y => MH())),
-        ("SGHMC", SGHMC(; learning_rate=0.01, momentum_decay=1e-2)),
         ("PG", PG(10)),
     ]
 

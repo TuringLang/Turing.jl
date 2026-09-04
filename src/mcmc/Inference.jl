@@ -46,9 +46,6 @@ export Hamiltonian,
     Gibbs,
     GibbsConditional,
     HMC,
-    SGLD,
-    PolynomialStepsize,
-    SGHMC,
     HMCDA,
     NUTS,
     SMC,
@@ -108,7 +105,6 @@ include("hmc.jl")
 include("mh.jl")
 include("is.jl")
 include("particle_mcmc.jl")
-include("sghmc.jl")
 include("emcee.jl")
 include("prior.jl")
 
