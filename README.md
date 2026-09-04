@@ -13,25 +13,27 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
-`Turing.jl` is a Julia probabilistic programming package for Bayesian and
-likelihood-based inference. A Turing model specifies a joint probability distribution
-as executable Julia code. The same model can then be used for Markov chain Monte Carlo,
-variational inference, maximum likelihood estimation, or maximum a posteriori
-estimation.
+`Turing.jl` is a general-purpose probabilistic programming package for Bayesian and
+likelihood-based inference. Implemented in Julia, it is designed to interoperate with the
+language's scientific computing ecosystem. Models defined with `@model` specify joint
+distributions and support Markov chain Monte Carlo, variational inference, maximum
+likelihood and maximum a posteriori estimation, and customised inference through Turing's
+log-density and gradient interface.
 
-Turing is the user-facing entry point to the TuringLang ecosystem.
-[DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl) represents and evaluates
-models, while Turing connects them to inference algorithms. Markov chain Monte Carlo
-uses [AbstractMCMC.jl](https://github.com/TuringLang/AbstractMCMC.jl) and samplers such as
-[AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl) and
-[AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl). Variational inference
-uses [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl), and mode estimation
-uses [Optimization.jl](https://github.com/SciML/Optimization.jl).
+Turing is the user-facing entry point to the TuringLang ecosystem. Models can be written
+as Julia programs with [DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl) or in
+BUGS syntax with [JuliaBUGS.jl](https://github.com/TuringLang/JuliaBUGS.jl).
+[DoodlePPL](https://turinglang.org/JuliaBUGS.jl/DoodlePPL/) provides a browser-based
+graphical editor. Turing connects probabilistic models to inference algorithms provided by
+[AdvancedHMC.jl](https://github.com/TuringLang/AdvancedHMC.jl),
+[AdvancedMH.jl](https://github.com/TuringLang/AdvancedMH.jl),
+[AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl), and others.
 
-Gradient-based algorithms require derivatives of the model's log density. Turing's
-preferred automatic differentiation backends are `ForwardDiff.jl` and `Mooncake.jl`,
-which are integrated through their public APIs. Further backends are available through
-`DifferentiationInterface.jl`.
+Turing's preferred automatic differentiation backends for gradient-based algorithms
+are [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and
+[Mooncake.jl](https://github.com/chalk-lab/Mooncake.jl). Other backends, such as
+[Enzyme.jl](https://github.com/EnzymeAD/Enzyme.jl), are available through
+[DifferentiationInterface.jl](https://github.com/JuliaDiff/DifferentiationInterface.jl).
 
 ## Get started
 
@@ -43,7 +45,7 @@ julia> using Pkg; Pkg.add("Turing")
 ```
 
 The following example places priors on an intercept, slope, and residual scale, then
-samples their posterior distribution:
+samples the posterior distribution of these parameters:
 
 ```julia
 julia> using Random, Turing
@@ -70,40 +72,37 @@ julia> posterior = linear_regression(x) | (; y = y)
 julia> chain = sample(rng, posterior, NUTS(), 1000)
 ```
 
-The example first generates synthetic observations with intercept 1, slope 2, and noise
-standard deviation 0.2. The `| (; y = y)` expression then conditions the model on those
-observations. `NUTS()` selects the No-U-Turn sampler, and `chain` contains 1,000
-posterior draws of `α`, `β`, and `σ`.
+The example generates synthetic observations, conditions the model on them with
+`| (; y = y)`, and draws 1,000 posterior samples of `α`, `β`, and `σ` using the
+No-U-Turn sampler.
 
 ## Documentation and discussion
 
-The [TuringLang documentation](https://turinglang.org/) provides tutorials, while the
-[Turing.jl documentation](https://turinglang.org/Turing.jl/stable) is the API reference.
-The [TuringLang newsletter](https://turinglang.org/news/) reports work across the
-ecosystem. Changes to Turing.jl are recorded in
-[`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md) and the
-[GitHub releases](https://github.com/TuringLang/Turing.jl/releases).
+See the [TuringLang tutorials](https://turinglang.org/),
+[Turing.jl API reference](https://turinglang.org/Turing.jl/stable), and
+[TuringLang newsletter](https://turinglang.org/news/). Changes are recorded in
+[`HISTORY.md`](https://github.com/TuringLang/Turing.jl/blob/main/HISTORY.md); published
+releases are available on the [GitHub releases
+page](https://github.com/TuringLang/Turing.jl/releases).
 
-Technical discussion takes place in the [`#turing` channel of Julia
-Slack](https://julialang.slack.com/archives/CCYDC34A0) and under the [`turing` tag on Julia
-Discourse](https://discourse.julialang.org/tag/turing). The Julia website provides
-[Slack invitations](https://julialang.org/slack/).
+For technical discussion, use the [`#turing` channel on Julia
+Slack](https://julialang.slack.com/archives/CCYDC34A0) ([request an
+invitation](https://julialang.org/slack/)) or the [`turing` tag on Julia
+Discourse](https://discourse.julialang.org/tag/turing).
 
 ## Project scope
 
-Turing is maintained as grant-funded research software. It prioritises correctness and
-stability over broad feature coverage.
-
-Reproducible cases of incorrect results or unexpected failures within the documented
-scope guide further work. Capacity for maintenance and review is necessarily limited.
+Turing is grant-funded research software that prioritises correctness and stability
+over broad feature coverage. New features are often developed through research projects
+or collaborations. Reproducible reports of incorrect results or unexpected failures in
+documented functionality guide further work.
 
 ## Contributing
 
 Discuss proposed features in an [issue](https://github.com/TuringLang/Turing.jl/issues)
-before implementation so that their fit can be assessed. Focused bug fixes and small
-changes may be submitted directly as pull requests. Bug reports need not identify the
-correct TuringLang repository in advance; maintainers can transfer issues when
-necessary.
+before implementation. Focused bug fixes and small changes may be submitted directly
+as pull requests. Maintainers can transfer bug reports filed in the wrong TuringLang
+repository.
 
 Pull requests for non-breaking changes target `main`; breaking changes target
 `breaking`. Reviewer privileges are reserved for sustained, substantive contributors
