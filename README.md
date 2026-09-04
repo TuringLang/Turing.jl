@@ -13,11 +13,12 @@
 <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
 </p>
 
-`Turing.jl` is a Julia probabilistic programming package for Bayesian and
-likelihood-based inference. A model defined with `@model` specifies a joint probability
-distribution in Julia code and can be used for Markov chain Monte Carlo, variational
-inference, maximum likelihood estimation, maximum a posteriori estimation, or customised
-inference through Turing's log-density and gradient interface.
+`Turing.jl` is a general-purpose probabilistic programming package for Bayesian and
+likelihood-based inference. Implemented in Julia, it is designed to interoperate with the
+language's scientific computing ecosystem. Models defined with `@model` specify joint
+distributions and support Markov chain Monte Carlo, variational inference, maximum
+likelihood and maximum a posteriori estimation, and customised inference through Turing's
+log-density and gradient interface.
 
 Turing is the user-facing entry point to the TuringLang ecosystem. Models can be written
 as Julia programs with [DynamicPPL.jl](https://github.com/TuringLang/DynamicPPL.jl) or in
@@ -29,8 +30,10 @@ graphical editor. Turing connects probabilistic models to inference algorithms p
 [AdvancedVI.jl](https://github.com/TuringLang/AdvancedVI.jl), and others.
 
 Turing's preferred automatic differentiation backends for gradient-based algorithms
-are `ForwardDiff.jl` and `Mooncake.jl`. Other backends, such as `Enzyme.jl`, are available
-through `DifferentiationInterface.jl`.
+are [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) and
+[Mooncake.jl](https://github.com/chalk-lab/Mooncake.jl). Other backends, such as
+[Enzyme.jl](https://github.com/EnzymeAD/Enzyme.jl), are available through
+[DifferentiationInterface.jl](https://github.com/JuliaDiff/DifferentiationInterface.jl).
 
 ## Get started
 
