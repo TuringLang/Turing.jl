@@ -1,3 +1,12 @@
+# 0.49.0
+
+## Breaking changes
+
+`NamedDist` is no longer re-exported, following its removal from DynamicPPL.
+Replace `x ~ NamedDist(dist, :y)` with `y ~ dist`, followed by `x = y` if a local alias is needed.
+
+DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again.
+
 # 0.48.0
 
 ## Breaking changes
