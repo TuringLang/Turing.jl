@@ -1,3 +1,9 @@
+# 0.48.1
+
+DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
+
+`NamedDist` is no longer re-exported. DynamicPPL removed it in 0.42.13, so the name already resolves to nothing at this minimum. Replace `x ~ NamedDist(dist, :y)` with `y ~ dist`, followed by `x = y` if a local alias is needed ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
+
 # 0.48.0
 
 ## Breaking changes
