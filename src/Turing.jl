@@ -9,7 +9,7 @@ using Compat: pkgversion
 
 using AdvancedVI: AdvancedVI
 using DynamicPPL: DynamicPPL
-import DynamicPPL: NoDist, NamedDist
+import DynamicPPL: NoDist
 using LogDensityProblems: LogDensityProblems
 using StatsAPI: StatsAPI
 using StatsBase: StatsBase
@@ -137,7 +137,6 @@ export
     I,  # LinearAlgebra
     filldist, # DynamicPPL
     arraydist, # DynamicPPL
-    NamedDist,  # DynamicPPL
     # Predictions - DynamicPPL
     predict,
     # Querying model probabilities - DynamicPPL
