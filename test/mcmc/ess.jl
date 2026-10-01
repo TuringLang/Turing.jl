@@ -7,7 +7,7 @@ using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "ESS" begin
@@ -128,6 +128,28 @@ using Turing
         @test mean(chn1[@varname(z)]) ≈ mean(zdist) atol = 0.05
         @test mean(chn1[@varname(x)]) ≈ mean(zdist) atol = 0.05
         @test mean(chn1[@varname(y)]) ≈ mean(ydist) atol = 0.1
+    end
+
+    # The elliptical move is only valid for a Gaussian prior, and `Gibbs` lets another
+    # component move this block's distributional form, so the first step's check is not
+    # enough on its own.
+    @testset "non-Gaussian prior from another Gibbs component" begin
+        @model function switcher()
+            s ~ Bernoulli(0.5)
+            x ~ (s ? Normal(0.0, 1.0) : Gamma(2.0, 1.0))
+            return 0.5 ~ Normal(x, 1.0)
+        end
+
+        spl = Gibbs(@varname(s) => MH(), @varname(x) => ESS())
+        # `s = true` keeps the first step's prior Gaussian, so this can only be caught once
+        # `MH` has flipped `s`.
+        @test_throws "ESS only supports Gaussian prior distributions" sample(
+            StableRNG(23),
+            switcher(),
+            spl,
+            100;
+            initial_params=InitFromParams((s=true, x=0.5)),
+        )
     end
 end
 

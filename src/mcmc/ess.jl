@@ -34,6 +34,23 @@ struct TuringESSState{
     priors::V
 end
 
+"""
+    check_gaussian_priors(priors)
+
+Error unless every distribution in `priors` is Gaussian, which the elliptical move requires.
+
+Checked at every point where this block's priors are derived, not once at the start: under
+`Gibbs` another component may move this block's distributional form, so a prior that was
+Gaussian in the first step need not stay Gaussian.
+"""
+function check_gaussian_priors(priors::DynamicPPL.VarNamedTuple)
+    for dist in values(priors)
+        EllipticalSliceSampling.isgaussian(typeof(dist)) ||
+            error("ESS only supports Gaussian prior distributions")
+    end
+    return nothing
+end
+
 # always accept in the first step
 function AbstractMCMC.step(
     rng::AbstractRNG,
@@ -65,11 +82,7 @@ function AbstractMCMC.step(
     vector_params = DynamicPPL.get_vector_params(accs)
     loglike = DynamicPPL.getloglikelihood(accs)
 
-    # Check that priors are all Gaussian
-    for dist in values(priors)
-        EllipticalSliceSampling.isgaussian(typeof(dist)) ||
-            error("ESS only supports Gaussian prior distributions")
-    end
+    check_gaussian_priors(priors)
 
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(accs)
     state = TuringESSState(loglike_ldf, vector_params, loglike, priors)
@@ -135,7 +148,7 @@ struct ESSPrior{L<:DynamicPPL.LogDensityFunction,T<:AbstractVector{<:Real}}
     end
 end
 
-# Ensure that the prior is a Gaussian distribution (checked in the constructor)
+# Ensure that the prior is a Gaussian distribution (see `check_gaussian_priors`)
 EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
@@ -198,7 +211,8 @@ function gibbs_update_state!!(
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
 )
-    # Another component can change the parameters of this block's conditional priors.
+    # Another component can change the parameters, or the distributional form, of this
+    # block's conditional priors.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
         state.ldf,
         model,
@@ -207,5 +221,6 @@ function gibbs_update_state!!(
     )
     new_loglike = DynamicPPL.getloglikelihood(accs)
     new_priors = DynamicPPL.get_priors(accs)
+    check_gaussian_priors(new_priors)
     return TuringESSState(new_ldf, new_params, new_loglike, new_priors)
 end

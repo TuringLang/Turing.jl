@@ -7,6 +7,10 @@ DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `T
 `NamedDist` is no longer re-exported, following its removal from DynamicPPL.
 Replace `x ~ NamedDist(dist, :y)` with `y ~ dist`, followed by `x = y` if a local alias is needed ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
 
+## Other changes
+
+An `ESS` Gibbs component now raises `ESS only supports Gaussian prior distributions` when another component makes its conditional prior non-Gaussian, instead of sampling on ([#2900](https://github.com/TuringLang/Turing.jl/pull/2900)).
+
 # 0.48.0
 
 ## Breaking changes
