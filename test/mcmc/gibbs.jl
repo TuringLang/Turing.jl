@@ -678,9 +678,10 @@ end
         end
         model = gdemo_copy()
 
-        @nospecialize function AbstractMCMC.bundle_samples(
+        function AbstractMCMC.bundle_samples(
             samples::Vector, ::typeof(model), ::Gibbs, state, ::Type{VNChain}; kwargs...
         )
+            @nospecialize
             samples isa Vector{<:DynamicPPL.ParamsWithStats} ||
                 error("incorrect transitions")
             return nothing
@@ -692,7 +693,7 @@ end
         end
 
         alg = Gibbs(:s => MH(), :m => HMC(0.2, 4))
-        sample(model, alg, 100; callback=callback)
+        @test sample(model, alg, 100; callback=callback) === nothing
     end
 
     @testset "dynamic model needs a sampler built for varying dimension" begin
