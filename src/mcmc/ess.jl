@@ -26,12 +26,12 @@ struct TuringESSState{
     L<:DynamicPPL.LogDensityFunction,
     P<:AbstractVector{<:Real},
     R<:Real,
-    V<:DynamicPPL.VarNamedTuple,
+    M<:AbstractVector{<:Real},
 }
     ldf::L
     params::P
     loglikelihood::R
-    priors::V
+    prior_means::M
 end
 
 # always accept in the first step
@@ -72,7 +72,8 @@ function AbstractMCMC.step(
     end
 
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(accs)
-    state = TuringESSState(loglike_ldf, vector_params, loglike, priors)
+    means = prior_means(rng, model, loglike_ldf)
+    state = TuringESSState(loglike_ldf, vector_params, loglike, means)
     return transition, state
 end
 
@@ -94,7 +95,7 @@ function AbstractMCMC.step(
     sample, new_wrapped_state = AbstractMCMC.step(
         rng,
         EllipticalSliceSampling.ESSModel(
-            ESSPrior(state.ldf, state.priors), ESSLikelihood(state.ldf)
+            ESSPrior(state.ldf, state.prior_means), ESSLikelihood(state.ldf)
         ),
         EllipticalSliceSampling.ESS(),
         wrapped_state,
@@ -102,40 +103,52 @@ function AbstractMCMC.step(
 
     transition = discard_sample ? nothing : DynamicPPL.ParamsWithStats(sample, state.ldf)
     new_state = TuringESSState(
-        state.ldf, sample, new_wrapped_state.loglikelihood, state.priors
+        state.ldf, sample, new_wrapped_state.loglikelihood, state.prior_means
     )
     return transition, new_state
 end
 
-# NOTE: This is a quick and easy definition but it assumes that _vec(x) is the same as
-# Bijectors.VectorBijectors.from_vec(dist) for all distributions we care about in the
-# priors. If that ever becomes untrue, then this could silently cause bugs.
-_vec(x::Real) = [x]
-_vec(x::AbstractArray) = vec(x)
+"""
+    InitFromPriorMean()
+
+Set each variable to the mean of its prior, evaluated with the variables it depends on already
+set to theirs.
+"""
+struct InitFromPriorMean <: DynamicPPL.AbstractInitStrategy end
+function DynamicPPL.init(
+    ::Random.AbstractRNG, ::VarName, dist::Distribution, ::InitFromPriorMean
+)
+    return DynamicPPL.TransformedValue(mean(dist), DynamicPPL.NoTransform())
+end
+
+"""
+    prior_means(rng, model, ldf)
+
+The mean of the joint prior over the variables `ldf` samples, laid out as `ldf`'s vector.
+
+ESS needs the mean of the joint prior, not of each variable's prior given the current values
+of the others: `m ~ Normal(); x ~ Normal(m, 1)` has a joint prior with mean zero for `x`
+whatever `m` is. The joint prior is Gaussian only if each variable's mean is linear in the
+variables it depends on and its covariance does not depend on them, and then setting every
+variable to its mean in evaluation order gives the joint mean exactly.
+"""
+function prior_means(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, ldf::DynamicPPL.LogDensityFunction
+)
+    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorParamAccumulator(ldf))
+    _, accs = DynamicPPL.init!!(
+        rng, model, accs, InitFromPriorMean(), DynamicPPL.UnlinkAll()
+    )
+    return DynamicPPL.get_vector_params(accs)
+end
 
 # Prior distribution of considered random variable
 struct ESSPrior{L<:DynamicPPL.LogDensityFunction,T<:AbstractVector{<:Real}}
     ldf::L
     means::T
-
-    function ESSPrior(ldf::DynamicPPL.LogDensityFunction, priors::DynamicPPL.VarNamedTuple)
-        # Calculate means from priors.
-        means = fill(NaN, LogDensityProblems.dimension(ldf))
-        for (vn, dist) in pairs(priors)
-            range = DynamicPPL.get_range_and_transform(ldf, vn).range
-            this_mean = _vec(mean(dist))
-            means[range] .= this_mean
-        end
-        if any(isnan, means)
-            error(
-                "Some means were not filled in when constructing ESSPrior. This is likely a bug in Turing.jl, please report it.",
-            )
-        end
-        return new{typeof(ldf),typeof(means)}(ldf, means)
-    end
 end
 
-# Ensure that the prior is a Gaussian distribution (checked in the constructor)
+# Ensure that the prior is a Gaussian distribution (checked in the first step)
 EllipticalSliceSampling.isgaussian(::Type{<:ESSPrior}) = true
 
 # Only define out-of-place sampling
@@ -200,12 +213,11 @@ function gibbs_update_state!!(
 )
     # Another component can change the parameters of this block's conditional priors.
     new_ldf, new_params, accs = gibbs_recompute_ldf_and_params(
-        state.ldf,
-        model,
-        global_vals,
-        (DynamicPPL.LogLikelihoodAccumulator(), DynamicPPL.PriorDistributionAccumulator()),
+        state.ldf, model, global_vals, (DynamicPPL.LogLikelihoodAccumulator(),)
     )
     new_loglike = DynamicPPL.getloglikelihood(accs)
-    new_priors = DynamicPPL.get_priors(accs)
-    return TuringESSState(new_ldf, new_params, new_loglike, new_priors)
+    # `model` is conditioned on every variable outside this block, so only the block's own
+    # variables are set to their means. Setting them draws nothing, so any RNG will do.
+    new_means = prior_means(Random.default_rng(), model, new_ldf)
+    return TuringESSState(new_ldf, new_params, new_loglike, new_means)
 end

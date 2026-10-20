@@ -129,6 +129,28 @@ using Turing
         @test mean(chn1[@varname(x)]) ≈ mean(zdist) atol = 0.05
         @test mean(chn1[@varname(y)]) ≈ mean(ydist) atol = 0.1
     end
+
+    # The ellipse has to be centred on the mean of the joint prior. Taking each variable's
+    # prior mean at the initial values centred it on the initial `m` for `x`, and the chain
+    # then converged to the wrong posterior.
+    @testset "Prior depending on another ESS variable" begin
+        @model function dependent(y)
+            z ~ Normal()
+            m ~ Normal()
+            x ~ Normal(m, 1)
+            return y ~ Normal(x, 1)
+        end
+        y = 1.5
+        # `m`, `x` and `y` are jointly Gaussian, so these are the exact posterior means.
+        m_mean, x_mean = y / 3, 2y / 3
+        initial_params = InitFromParams((z=0.0, m=3.0, x=3.0))
+
+        for spl in (ESS(), Gibbs(@varname(z) => MH(), (@varname(m), @varname(x)) => ESS()))
+            chn = sample(StableRNG(468), dependent(y), spl, 10_000; initial_params)
+            @test mean(chn[@varname(m)]) ≈ m_mean atol = 0.05
+            @test mean(chn[@varname(x)]) ≈ x_mean atol = 0.05
+        end
+    end
 end
 
 end
