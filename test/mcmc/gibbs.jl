@@ -821,6 +821,32 @@ end
             @test !occursin("links to a different width", sprint(showerror, err))
         end
 
+        # The order the block's tilde statements run in is not part of its layout, so an
+        # adapting `NUTS`, which refuses a reshaped block, samples a block whose tildes `b`
+        # reorders. The layouts are compared position by position first, and a reordering
+        # is what falls through to looking each key up.
+        @model function reordered()
+            b ~ Bernoulli(0.5)
+            x = Vector{Float64}(undef, 2)
+            if b
+                x[1] ~ Normal(1, 1)
+                x[2] ~ Normal(-1, 1)
+            else
+                x[2] ~ Normal(-1, 1)
+                x[1] ~ Normal(1, 1)
+            end
+        end
+        chn = sample(
+            StableRNG(42),
+            reordered(),
+            Gibbs(@varname(b) => MH(), @varname(x) => NUTS()),
+            2000;
+            discard_initial=500,
+            progress=false,
+        )
+        @test mean(chn[@varname(x[1])]) ≈ 1 atol = 0.15
+        @test mean(chn[@varname(x[2])]) ≈ -1 atol = 0.15
+
         # `externalsampler` answers from the wrapper's own space, not the sampler inside: with
         # `unconstrained=false` the wrapper works in unlinked space, so its block must not be
         # compared in linked space it never uses.
