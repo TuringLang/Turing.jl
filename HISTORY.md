@@ -1,3 +1,7 @@
+# 0.49.1
+
+`Gibbs` now stores each component's variable names as a `Tuple`, so its per-sweep ownership checks no longer dispatch dynamically for a component that samples variables under several symbols ([#2908](https://github.com/TuringLang/Turing.jl/pull/2908)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
