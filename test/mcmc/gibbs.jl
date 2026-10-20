@@ -598,6 +598,10 @@ end
         @test sample(gdemo_default, s4, N) isa VNChain
         @test sample(gdemo_default, s5, N) isa VNChain
         @test sample(gdemo_default, s6, N) isa VNChain
+        # The names given as a `Vector` rather than a tuple.
+        s7 = Gibbs([@varname(s), @varname(m)] => HMC(0.1, 5))
+        @test s7.varnames == s1.varnames
+        @test sample(gdemo_default, s7, N) isa VNChain
     end
 
     # Test various combinations of samplers against models for which we know the analytical
