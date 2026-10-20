@@ -7,7 +7,7 @@ using Distributions: Normal, sample
 using DynamicPPL: DynamicPPL
 using Random: Random
 using StableRNGs: StableRNG
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 using Turing
 
 @testset "ESS" begin
@@ -150,6 +150,25 @@ using Turing
             @test mean(chn[@varname(m)]) ≈ m_mean atol = 0.05
             @test mean(chn[@varname(x)]) ≈ x_mean atol = 0.05
         end
+
+        # Finding the joint mean evaluates the model there, and `Beta(abs(x), 1)` throws at
+        # `x = 0`. With no dependence inside the block each prior's own mean is the joint
+        # mean, so sampling goes ahead; with dependence there is no way to centre the ellipse
+        # correctly, which is refused rather than sampled with the wrong centre.
+        @model function throws_at_mean(y)
+            x ~ Normal()
+            return y ~ Beta(abs(x), 1)
+        end
+        chn = sample(StableRNG(468), throws_at_mean(0.3), ESS(), 1_000)
+        @test all(isfinite, chn[@varname(x)])
+        @model function dependent_throws_at_mean(y)
+            m ~ Normal()
+            x ~ Normal(m, 1)
+            return y ~ Beta(abs(x), 1)
+        end
+        @test_throws "depend on one another" sample(
+            StableRNG(468), dependent_throws_at_mean(0.3), ESS(), 10
+        )
     end
 end
 
