@@ -1,3 +1,7 @@
+# 0.49.1
+
+`ESS` now centres its proposals on the mean of the joint prior over the variables it samples, rather than on each variable's prior mean at the initial values, which biased the chain when one of those priors depended on another ([#2906](https://github.com/TuringLang/Turing.jl/pull/2906)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
