@@ -9,4 +9,5 @@ Turing = {path = "../../"}
 
 [compat]
 DynamicPPL = "0.42.2"
-FlexiChains = "0.6.31"
+FlexiChains = "0.6.31, 0.7"
+Test = "<0.0.1, 1"
