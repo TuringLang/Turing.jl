@@ -1,3 +1,7 @@
+# 0.49.1
+
+`NUTS` and `HMCDA` with `discard_adapt=true` now discard the last adaptation transition too, which was kept as the first sample of the chain ([#2912](https://github.com/TuringLang/Turing.jl/pull/2912)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).

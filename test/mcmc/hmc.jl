@@ -151,6 +151,23 @@ using Turing
         @test size(c2, 1) == 500
     end
 
+    @testset "discard_adapt drops every adaptation transition" begin
+        # The chain opens with the initial parameters, so the last adaptation transition
+        # is entry `n_adapts + 1`, and the first one drawn with the final step size is
+        # entry `n_adapts + 2`.
+        n_adapts = 100
+        @testset "$(nameof(typeof(alg)))" for alg in (
+            NUTS(n_adapts, 0.65), HMCDA(n_adapts, 0.65, 0.3)
+        )
+            kept = sample(StableRNG(seed), gdemo_default, alg, 50)
+            full = sample(
+                StableRNG(seed), gdemo_default, alg, n_adapts + 51; discard_adapt=false
+            )
+            @test allequal(vec(kept[:step_size]))
+            @test vec(kept[:m]) == vec(full[:m])[(n_adapts + 2):end]
+        end
+    end
+
     @testset "AHMC resize" begin
         alg1 = Gibbs(:m => PG(10), :s => NUTS(100, 0.65))
         alg2 = Gibbs(:m => PG(10), :s => HMC(0.1, 3))
