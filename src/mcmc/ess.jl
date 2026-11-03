@@ -118,7 +118,9 @@ struct InitFromPriorMean <: DynamicPPL.AbstractInitStrategy end
 function DynamicPPL.init(
     ::Random.AbstractRNG, ::VarName, dist::Distribution, ::InitFromPriorMean
 )
-    return DynamicPPL.TransformedValue(mean(dist), DynamicPPL.NoTransform())
+    # `mean` may return the distribution's own parameter array (e.g. `MvNormal`'s `μ`), which
+    # the model could then mutate.
+    return DynamicPPL.TransformedValue(copy(mean(dist)), DynamicPPL.NoTransform())
 end
 
 """
