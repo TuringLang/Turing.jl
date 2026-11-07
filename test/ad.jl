@@ -22,7 +22,6 @@ eltypes_by_adtype = Dict{Type,Tuple}(
         ReverseDiff.TrackedMatrix,
         ReverseDiff.TrackedReal,
         ReverseDiff.TrackedStyle,
-        ReverseDiff.TrackedType,
         ReverseDiff.TrackedVecOrMat,
         ReverseDiff.TrackedVector,
     ),
