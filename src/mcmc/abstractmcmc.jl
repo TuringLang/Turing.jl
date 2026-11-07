@@ -124,6 +124,53 @@ arguments may be passed here.
 """
 post_sample_hook(chain, ::AbstractSampler; kwargs...) = nothing
 
+# Custom bundlers may use the final state even when it is not saved.
+sampling_type(chain_type) = chain_type
+sampling_type(::Type{<:SamplingOutput}) = SamplingOutput
+sampling_type(::Type{VNChain}) = SamplingOutput
+sampling_type(::Type{<:AbstractVector}) = SamplingOutput
+sampling_type(::Type{Any}) = SamplingOutput
+
+convert_chain(chain_type, chain, model, sampler; kwargs...) = chain
+
+function convert_chain(
+    ::Type{C}, output::SamplingOutput, model, sampler; n_chains=nothing, kwargs...
+) where {C}
+    C <: SamplingOutput && output isa C && return output
+    if C <: SamplingOutput
+        return AbstractMCMC.from_samples(
+            C,
+            output.samples;
+            iterations=output.iterations,
+            sampling_stats=output.sampling_stats,
+            sampler_states=output.sampler_states,
+        )
+    end
+    nruns = something(n_chains, 1)
+    ncolumns = size(output, 2) ÷ nruns
+    chains = map(1:nruns) do run
+        columns = ((run - 1) * ncolumns + 1):(run * ncolumns)
+        column = first(columns)
+        state = output.sampler_states[column]
+        draws = raw_samples(view(output.samples, :, columns), sampler)
+        bundle_smc_samples(
+            draws,
+            model,
+            sampler,
+            ismissing(state) ? nothing : state,
+            C;
+            kwargs...,
+            save_state=!ismissing(state),
+            stats=output.sampling_stats[column],
+            discard_initial=first(output.iterations) - 1,
+            thinning=Base.step(output.iterations),
+        )
+    end
+    return n_chains === nothing ? only(chains) : AbstractMCMC.chainsstack(chains)
+end
+
+raw_samples(draws, sampler) = vec(collect(draws))
+
 #########################################
 # Default definitions for the interface #
 #########################################
@@ -152,12 +199,12 @@ function AbstractMCMC.sample(
         spl,
         N;
         initial_params=Turing._convert_initial_params(initial_params),
-        chain_type,
+        chain_type=sampling_type(chain_type),
         verbose,
         kwargs...,
     )
     post_sample_hook(chain, spl; verbose)
-    return chain
+    return convert_chain(chain_type, chain, model, spl; kwargs...)
 end
 
 function AbstractMCMC.sample(
@@ -198,14 +245,14 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
-        chain_type,
+        chain_type=sampling_type(chain_type),
         check_model=false, # no need to check again
         initial_params=map(Turing._convert_initial_params, initial_params),
         verbose,
         kwargs...,
     )
     post_sample_hook(chain, spl; verbose)
-    return chain
+    return convert_chain(chain_type, chain, model, spl; n_chains, kwargs...)
 end
 
 # TODO(penelopeysm): Remove initialstep and generalise MCMC sampling procedures

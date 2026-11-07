@@ -7,6 +7,8 @@ using MCMCChains: MCMCChains
 
 import Turing.Inference: bundle_smc_samples, post_sample_hook
 
+Turing.Inference.sampling_type(::Type{MCMCChains.Chains}) = AbstractMCMC.SamplingOutput
+
 """
     loadstate(chain::MCMCChains.Chains)
 
@@ -30,7 +32,7 @@ function AbstractMCMC.bundle_samples(
     samples::Vector{<:Vector},
     model::DynamicPPL.Model,
     spl::Emcee,
-    state::EmceeState,
+    state::Union{EmceeState,Nothing},
     ::Type{MCMCChains.Chains};
     kwargs...,
 )
