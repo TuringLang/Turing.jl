@@ -138,8 +138,9 @@ function AbstractMCMC.sample(
             verbose=verbose,
             kwargs...,
         )
+        chn = convert_chain(chain_type, chn, model, sampler; kwargs...)
         post_sample_hook(chn, sampler; verbose)
-        return convert_chain(chain_type, chn, model, sampler; kwargs...)
+        return chn
     else
         chn = AbstractMCMC.mcmcsample(
             rng,
@@ -156,8 +157,9 @@ function AbstractMCMC.sample(
             verbose=verbose,
             kwargs...,
         )
+        chn = convert_chain(chain_type, chn, model, sampler; kwargs...)
         post_sample_hook(chn, sampler; verbose)
-        return convert_chain(chain_type, chn, model, sampler; kwargs...)
+        return chn
     end
 end
 
@@ -479,6 +481,23 @@ end
 
 function AHMCAdaptor(::Hamiltonian, ::AHMC.AbstractMetric, nadapts::Int; kwargs...)
     return AHMC.Adaptation.NoAdaptation()
+end
+
+"""
+    post_sample_hook(chain::FlexiChains.VNChain, sampler::Union{HMC,NUTS,HMCDA}; kwargs...)
+
+Emit a warning message if there are divergent transitions in the chain.
+"""
+function post_sample_hook(
+    chain::FlexiChains.VNChain, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
+)
+    n_divergent = round(
+        Int, sum(skipmissing(vec(chain[FlexiChains.Extra(:numerical_error)])))
+    )
+    if verbose && n_divergent > 0
+        @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
+    end
+    return nothing
 end
 
 """

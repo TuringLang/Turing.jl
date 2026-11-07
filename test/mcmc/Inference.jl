@@ -757,6 +757,7 @@ end
         )
         @test size(output) == (12, sampler isa Emcee ? 4 : 1)
         @test eltype(output.samples) <: DynamicPPL.ParamsWithStats
+        @test all(ismissing, output.sampler_states)
         chain = sample(Xoshiro(5), model, sampler, 12; progress=false, verbose=false)
         @test chain isa VNChain
         actual = collect(AbstractMCMC.to_samples(DynamicPPL.ParamsWithStats, chain, model))
@@ -808,6 +809,251 @@ end
     @test map(draw -> draw.params, resumed.samples) == map(draw -> draw.params, actual)
     @test map(draw -> draw.stats.logjoint, resumed.samples) ==
         map(draw -> draw.stats.logjoint, actual)
+end
+
+struct StatefulVector{T,S} <: AbstractVector{T}
+    draws::Vector{T}
+    state::S
+end
+Base.size(chain::StatefulVector) = size(chain.draws)
+Base.getindex(chain::StatefulVector, i::Int) = chain.draws[i]
+function AbstractMCMC.bundle_samples(
+    draws::Vector,
+    model::AbstractMCMC.AbstractModel,
+    sampler::AbstractMCMC.AbstractSampler,
+    state,
+    ::Type{StatefulVector};
+    kwargs...,
+)
+    return StatefulVector(draws, state)
+end
+
+struct HookSampler <: AbstractMCMC.AbstractSampler end
+struct HookCheckpoint{S}
+    state::S
+end
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, ::HookSampler; kwargs...
+)
+    return AbstractMCMC.step(rng, model, MH(); kwargs...)
+end
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, ::HookSampler, state; kwargs...
+)
+    return AbstractMCMC.step(rng, model, MH(), state; kwargs...)
+end
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::DynamicPPL.Model,
+    ::HookSampler,
+    state::HookCheckpoint;
+    kwargs...,
+)
+    return AbstractMCMC.step(rng, model, MH(), state.state; kwargs...)
+end
+function AbstractMCMC.bundle_samples(
+    draws::Vector,
+    model::DynamicPPL.Model,
+    sampler::HookSampler,
+    state,
+    ::Type{AbstractMCMC.SamplingOutput};
+    kwargs...,
+)
+    output = invoke(
+        AbstractMCMC.bundle_samples,
+        Tuple{
+            Any,
+            AbstractMCMC.AbstractModel,
+            AbstractMCMC.AbstractSampler,
+            Any,
+            Type{AbstractMCMC.SamplingOutput},
+        },
+        draws,
+        model,
+        sampler,
+        state,
+        AbstractMCMC.SamplingOutput;
+        kwargs...,
+    )
+    states = map(s -> ismissing(s) ? missing : HookCheckpoint(s), output.sampler_states)
+    return AbstractMCMC.SamplingOutput(
+        output.samples;
+        iterations=output.iterations,
+        sampling_stats=output.sampling_stats,
+        sampler_states=states,
+    )
+end
+const hook_calls = Threads.Atomic{Int}(0)
+const bundle_states = Threads.Atomic{Int}(0)
+const bundle_saved = Threads.Atomic{Int}(0)
+function AbstractMCMC.bundle_samples(
+    draws::Vector,
+    model::DynamicPPL.Model,
+    sampler::HookSampler,
+    state,
+    ::Type{Vector};
+    save_state=false,
+    kwargs...,
+)
+    state isa Turing.Inference.MHState && Threads.atomic_add!(bundle_states, 1)
+    save_state && Threads.atomic_add!(bundle_saved, 1)
+    return draws
+end
+function Turing.Inference.post_sample_hook(
+    ::Union{VNChain,Vector}, ::HookSampler; kwargs...
+)
+    Threads.atomic_add!(hook_calls, 1)
+    return nothing
+end
+
+@testset "Custom output extensions" begin
+    @model extension_model() = x ~ Normal()
+    model = extension_model()
+    for save_state in (false, true)
+        chain = sample(
+            Xoshiro(5),
+            model,
+            MH(),
+            3;
+            chain_type=StatefulVector,
+            save_state,
+            progress=false,
+        )
+        @test chain.state isa Turing.Inference.MHState
+    end
+    for chain_type in (VNChain, Vector),
+        ensemble in (nothing, MCMCSerial(), MCMCThreads()),
+        save_state in (false, true)
+
+        hook_calls[] = 0
+        bundle_states[] = 0
+        bundle_saved[] = 0
+        chain = if ensemble === nothing
+            sample(Xoshiro(5), model, HookSampler(), 3; chain_type, save_state, progress=false)
+        else
+            sample(
+                Xoshiro(5),
+                model,
+                HookSampler(),
+                ensemble,
+                3,
+                2;
+                chain_type,
+                save_state,
+                progress=false,
+            )
+        end
+        @test chain isa chain_type
+        @test hook_calls[] == (ensemble === nothing ? 1 : 3)
+        nbundles = chain_type === Vector ? (ensemble === nothing ? 1 : 2) : 0
+        @test bundle_states[] == nbundles
+        @test bundle_saved[] == (save_state ? nbundles : 0)
+        if save_state && chain_type === VNChain
+            @test all(s -> s isa Turing.Inference.MHState, loadstate(chain))
+        end
+    end
+    for save_state in (false, true)
+        seen = Bool[]
+        function callback(
+            rng, model, sampler, draw, state, iteration; save_state, kwargs...
+        )
+            return push!(seen, save_state)
+        end
+        sample(
+            Xoshiro(5),
+            model,
+            MH(),
+            3;
+            chain_type=Vector,
+            callback,
+            save_state,
+            progress=false,
+        )
+        @test seen == fill(save_state, 3)
+    end
+    saved = sample(
+        Xoshiro(5),
+        model,
+        HookSampler(),
+        3;
+        chain_type=AbstractMCMC.SamplingOutput,
+        save_state=true,
+        progress=false,
+    )
+    @test only(saved.sampler_states) isa HookCheckpoint
+    checkpoint_state = only(saved.sampler_states)
+    a = sample(
+        Xoshiro(7),
+        model,
+        HookSampler(),
+        2;
+        initial_state=deepcopy(checkpoint_state),
+        chain_type=AbstractMCMC.SamplingOutput,
+        progress=false,
+    )
+    b = sample(
+        Xoshiro(7),
+        model,
+        HookSampler(),
+        2;
+        initial_state=deepcopy(checkpoint_state.state),
+        chain_type=AbstractMCMC.SamplingOutput,
+        progress=false,
+    )
+    @test isequal(a.samples, b.samples)
+end
+
+@testset "Typed SamplingOutput workflow" begin
+    @model function typed_output_model(y)
+        x ~ Normal()
+        return y ~ Normal(x, 1)
+    end
+    model = typed_output_model(1.0)
+    for save_state in (false, true)
+        opts = (; discard_initial=2, thinning=3, save_state, progress=false, verbose=false)
+        typed = sample(
+            Xoshiro(5),
+            model,
+            Emcee(4),
+            3;
+            chain_type=AbstractMCMC.SamplingOutput{DynamicPPL.ParamsWithStats},
+            opts...,
+        )
+        raw = sample(
+            Xoshiro(5), model, Emcee(4), 3; chain_type=AbstractMCMC.SamplingOutput, opts...
+        )
+        @test typed isa AbstractMCMC.SamplingOutput{DynamicPPL.ParamsWithStats}
+        @test isequal(typed.samples, raw.samples)
+        @test typed.iterations == raw.iterations
+        @test all(ismissing, typed.sampler_states) == !save_state
+        @test isequal(
+            predict(Xoshiro(11), typed_output_model(missing), typed).samples,
+            predict(Xoshiro(11), typed_output_model(missing), raw).samples,
+        )
+        if save_state
+            resumed_typed = sample(
+                Xoshiro(7),
+                model,
+                Emcee(4),
+                3;
+                initial_state=first(typed.sampler_states),
+                chain_type=AbstractMCMC.SamplingOutput,
+                progress=false,
+                verbose=false,
+            )
+            resumed_raw = sample(
+                Xoshiro(7),
+                model,
+                Emcee(4),
+                3;
+                initial_state=first(raw.sampler_states),
+                chain_type=AbstractMCMC.SamplingOutput,
+                progress=false,
+                verbose=false,
+            )
+            @test isequal(resumed_typed.samples, resumed_raw.samples)
+        end
+    end
 end
 
 end

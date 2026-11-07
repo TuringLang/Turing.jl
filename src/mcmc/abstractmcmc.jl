@@ -125,48 +125,62 @@ arguments may be passed here.
 post_sample_hook(chain, ::AbstractSampler; kwargs...) = nothing
 
 # Custom bundlers may use the final state even when it is not saved.
+struct SampleBuffer{O<:SamplingOutput} <: AbstractMCMC.AbstractChains
+    output::O
+    state::Any
+end
+
+function AbstractMCMC.bundle_samples(
+    samples,
+    model::DynamicPPL.Model,
+    sampler::AbstractSampler,
+    state,
+    ::Type{SampleBuffer};
+    kwargs...,
+)
+    output = AbstractMCMC.bundle_samples(
+        samples, model, sampler, state, SamplingOutput; kwargs...
+    )
+    return SampleBuffer(output, state)
+end
+
 sampling_type(chain_type) = chain_type
 sampling_type(::Type{<:SamplingOutput}) = SamplingOutput
-sampling_type(::Type{VNChain}) = SamplingOutput
-sampling_type(::Type{<:AbstractVector}) = SamplingOutput
-sampling_type(::Type{Any}) = SamplingOutput
+sampling_type(::Type{VNChain}) = SampleBuffer
+sampling_type(::Type{<:Vector}) = SampleBuffer
+sampling_type(::Type{AbstractVector}) = SampleBuffer
+sampling_type(::Type{AbstractVector{T}}) where {T} = SampleBuffer
+sampling_type(::Type{Any}) = SampleBuffer
 
 convert_chain(chain_type, chain, model, sampler; kwargs...) = chain
 
 function convert_chain(
-    ::Type{C}, output::SamplingOutput, model, sampler; n_chains=nothing, kwargs...
-) where {C}
-    C <: SamplingOutput && output isa C && return output
-    if C <: SamplingOutput
-        return AbstractMCMC.from_samples(
-            C,
-            output.samples;
-            iterations=output.iterations,
-            sampling_stats=output.sampling_stats,
-            sampler_states=output.sampler_states,
-        )
-    end
-    nruns = something(n_chains, 1)
-    ncolumns = size(output, 2) ÷ nruns
-    chains = map(1:nruns) do run
-        columns = ((run - 1) * ncolumns + 1):(run * ncolumns)
-        column = first(columns)
-        state = output.sampler_states[column]
-        draws = raw_samples(view(output.samples, :, columns), sampler)
-        bundle_smc_samples(
-            draws,
-            model,
-            sampler,
-            ismissing(state) ? nothing : state,
-            C;
-            kwargs...,
-            save_state=!ismissing(state),
-            stats=output.sampling_stats[column],
-            discard_initial=first(output.iterations) - 1,
-            thinning=Base.step(output.iterations),
-        )
-    end
-    return n_chains === nothing ? only(chains) : AbstractMCMC.chainsstack(chains)
+    ::Type{C}, output::SamplingOutput, model, sampler; kwargs...
+) where {C<:SamplingOutput}
+    output isa C && return output
+    return AbstractMCMC.from_samples(
+        C,
+        output.samples;
+        iterations=output.iterations,
+        sampling_stats=output.sampling_stats,
+        sampler_states=output.sampler_states,
+    )
+end
+
+function convert_chain(::Type{C}, buffer::SampleBuffer, model, sampler; kwargs...) where {C}
+    output = buffer.output
+    state = buffer.state
+    return bundle_smc_samples(
+        raw_samples(output.samples, sampler),
+        model,
+        sampler,
+        state,
+        C;
+        kwargs...,
+        stats=first(output.sampling_stats),
+        discard_initial=first(output.iterations) - 1,
+        thinning=Base.step(output.iterations),
+    )
 end
 
 raw_samples(draws, sampler) = vec(collect(draws))
@@ -203,8 +217,9 @@ function AbstractMCMC.sample(
         verbose,
         kwargs...,
     )
+    chain = convert_chain(chain_type, chain, model, spl; kwargs...)
     post_sample_hook(chain, spl; verbose)
-    return convert_chain(chain_type, chain, model, spl; kwargs...)
+    return chain
 end
 
 function AbstractMCMC.sample(
@@ -245,14 +260,14 @@ function AbstractMCMC.sample(
         ensemble,
         N,
         n_chains;
-        chain_type=sampling_type(chain_type),
+        chain_type,
         check_model=false, # no need to check again
         initial_params=map(Turing._convert_initial_params, initial_params),
         verbose,
         kwargs...,
     )
     post_sample_hook(chain, spl; verbose)
-    return convert_chain(chain_type, chain, model, spl; n_chains, kwargs...)
+    return chain
 end
 
 # TODO(penelopeysm): Remove initialstep and generalise MCMC sampling procedures

@@ -742,8 +742,9 @@ function AbstractMCMC.sample(
     chain = bundle_smc_samples(
         transitions, model, sampler, nothing, sampling_type(chain_type); kwargs...
     )
+    chain = convert_chain(chain_type, chain, model, sampler; kwargs...)
     post_sample_hook(chain, sampler; verbose)
-    return convert_chain(chain_type, chain, model, sampler; kwargs...)
+    return chain
 end
 
 #

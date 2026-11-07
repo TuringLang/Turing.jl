@@ -7,7 +7,7 @@ using MCMCChains: MCMCChains
 
 import Turing.Inference: bundle_smc_samples, post_sample_hook
 
-Turing.Inference.sampling_type(::Type{MCMCChains.Chains}) = AbstractMCMC.SamplingOutput
+Turing.Inference.sampling_type(::Type{MCMCChains.Chains}) = Turing.Inference.SampleBuffer
 
 """
     loadstate(chain::MCMCChains.Chains)
