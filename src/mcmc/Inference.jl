@@ -21,7 +21,7 @@ using LinearAlgebra
 using ..Turing: Turing
 using StatsFuns: logsumexp
 using Random: AbstractRNG
-using AbstractMCMC: AbstractModel, AbstractSampler
+using AbstractMCMC: AbstractModel, AbstractSampler, SamplingOutput
 using DocStringExtensions: FIELDS, TYPEDEF, TYPEDFIELDS
 using DataStructures: OrderedSet, OrderedDict
 

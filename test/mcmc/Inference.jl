@@ -711,4 +711,103 @@ using Turing
     end
 end
 
+struct StatefulChain{D,S} <: AbstractMCMC.AbstractChains
+    draws::D
+    state::S
+end
+function AbstractMCMC.bundle_samples(
+    draws,
+    model::AbstractMCMC.AbstractModel,
+    sampler::AbstractMCMC.AbstractSampler,
+    state,
+    ::Type{StatefulChain};
+    kwargs...,
+)
+    return StatefulChain(draws, state)
+end
+
+function Turing.Inference.bundle_smc_samples(
+    draws, model, sampler::SMC, state, ::Type{StatefulChain}; kwargs...
+)
+    return StatefulChain(draws, :smc_bundle)
+end
+
+@testset "SamplingOutput inside sample" begin
+    @model function output_model(y)
+        x ~ Normal()
+        return y ~ Normal(x, 1)
+    end
+    model = output_model(1.0)
+    custom = sample(Xoshiro(5), model, MH(), 3; chain_type=StatefulChain, progress=false)
+    @test custom.state !== nothing
+    @test length(custom.draws) == 3
+    custom_smc = sample(
+        Xoshiro(5), model, SMC(), 3; chain_type=StatefulChain, progress=false
+    )
+    @test custom_smc.state === :smc_bundle
+    for sampler in (MH(), NUTS(5, 0.65), Emcee(4), SMC(), PG(3))
+        output = sample(
+            Xoshiro(5),
+            model,
+            sampler,
+            12;
+            chain_type=AbstractMCMC.SamplingOutput,
+            progress=false,
+            verbose=false,
+        )
+        @test size(output) == (12, sampler isa Emcee ? 4 : 1)
+        @test eltype(output.samples) <: DynamicPPL.ParamsWithStats
+        chain = sample(Xoshiro(5), model, sampler, 12; progress=false, verbose=false)
+        @test chain isa VNChain
+        actual = collect(AbstractMCMC.to_samples(DynamicPPL.ParamsWithStats, chain, model))
+        @test map(draw -> draw.params, actual) == map(draw -> draw.params, output.samples)
+        same_stats = all(zip(actual, output.samples)) do (a, b)
+            all(union(keys(a.stats), keys(b.stats))) do key
+                isequal(get(a.stats, key, missing), get(b.stats, key, missing))
+            end
+        end
+        @test same_stats
+    end
+    output = sample(
+        Xoshiro(5),
+        model,
+        MH(),
+        12;
+        chain_type=AbstractMCMC.SamplingOutput,
+        discard_initial=2,
+        thinning=3,
+        save_state=true,
+        progress=false,
+    )
+    @test output.iterations == 3:3:36
+    chain = sample(
+        Xoshiro(5),
+        model,
+        MH(),
+        12;
+        discard_initial=2,
+        thinning=3,
+        save_state=true,
+        progress=false,
+    )
+    resumed = sample(
+        Xoshiro(7),
+        model,
+        MH(),
+        5;
+        initial_state=only(output.sampler_states),
+        chain_type=AbstractMCMC.SamplingOutput,
+        progress=false,
+    )
+    resumed_default = sample(
+        Xoshiro(7), model, MH(), 5; initial_state=only(loadstate(chain)), progress=false
+    )
+    actual = collect(
+        AbstractMCMC.to_samples(DynamicPPL.ParamsWithStats, resumed_default, model)
+    )
+    @test map(draw -> draw.params, resumed.samples) == map(draw -> draw.params, actual)
+    @test map(draw -> draw.stats.logjoint, resumed.samples) ==
+        map(draw -> draw.stats.logjoint, actual)
+end
+
 end

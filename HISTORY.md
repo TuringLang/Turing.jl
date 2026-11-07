@@ -1,3 +1,7 @@
+# Unreleased
+
+  - `Emcee` did not return one column per walker with `chain_type=SamplingOutput` ([#2914](https://github.com/TuringLang/Turing.jl/pull/2914)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
