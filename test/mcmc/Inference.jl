@@ -91,7 +91,25 @@ using Turing
             return t, t
         end
 
+        function AbstractMCMC.bundle_samples(
+            draws,
+            model::DynamicPPL.Model,
+            ::StaticSampler,
+            state,
+            ::Type{Vector};
+            kwargs...,
+        )
+            return Any[state]
+        end
+        Turing.Inference.post_sample_hook(chain::Vector, ::StaticSampler; kwargs...) =
+            push!(chain, first(chain))
+
         @model demo() = x ~ Normal()
+        for chain_type in (Vector, AbstractMCMC.AbstractChains)
+            raw = sample(demo(), StaticSampler(), 1; chain_type, save_state=false)
+            @test first(raw) isa DynamicPPL.ParamsWithStats
+            @test length(raw) == 2
+        end
 
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)

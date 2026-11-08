@@ -129,7 +129,7 @@ function AbstractMCMC.sample(
             model,
             sampler,
             N;
-            chain_type=chain_type,
+            chain_type=sampling_type(chain_type),
             initial_state=initial_state,
             progress=progress,
             nadapts=_nadapts,
@@ -138,6 +138,7 @@ function AbstractMCMC.sample(
             verbose=verbose,
             kwargs...,
         )
+        chn = convert_chain(chain_type, chn, model, sampler; kwargs...)
         post_sample_hook(chn, sampler; verbose)
         return chn
     else
@@ -146,7 +147,7 @@ function AbstractMCMC.sample(
             model,
             sampler,
             N;
-            chain_type=chain_type,
+            chain_type=sampling_type(chain_type),
             initial_state=initial_state,
             progress=progress,
             nadapts=0,
@@ -156,6 +157,7 @@ function AbstractMCMC.sample(
             verbose=verbose,
             kwargs...,
         )
+        chn = convert_chain(chain_type, chn, model, sampler; kwargs...)
         post_sample_hook(chn, sampler; verbose)
         return chn
     end
@@ -491,6 +493,23 @@ function post_sample_hook(
 )
     n_divergent = round(
         Int, sum(skipmissing(vec(chain[FlexiChains.Extra(:numerical_error)])))
+    )
+    if verbose && n_divergent > 0
+        @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."
+    end
+    return nothing
+end
+
+"""
+    post_sample_hook(chain::SamplingOutput, sampler::Union{HMC,NUTS,HMCDA}; kwargs...)
+
+Emit a warning message if there are divergent transitions in the chain.
+"""
+function post_sample_hook(
+    chain::SamplingOutput, ::Union{HMC,NUTS,HMCDA}; verbose::Bool=true, kwargs...
+)
+    n_divergent = count(
+        draw -> get(draw.stats, :numerical_error, false) === true, chain.samples
     )
     if verbose && n_divergent > 0
         @warn "There were $n_divergent divergent transitions. Consider reparameterising your model or using a smaller step size. For adaptive samplers such as NUTS and HMCDA, consider increasing `target_accept`."

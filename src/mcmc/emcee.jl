@@ -170,20 +170,24 @@ function AbstractMCMC.step(
     return transition, newstate
 end
 
-function AbstractMCMC.bundle_samples(
-    samples::Vector{<:AbstractVector},
-    model::DynamicPPL.Model,
-    spl::Emcee,
-    state::EmceeState,
-    chain_type::Type{VNChain};
-    kwargs...,
-)
-    n_walkers = _get_n_walkers(spl)
-    chains = map(1:n_walkers) do i
-        this_walker_samples = [s[i] for s in samples]
-        AbstractMCMC.bundle_samples(
-            this_walker_samples, model, spl, state, VNChain; kwargs...
-        )
+for Chain in (VNChain, SamplingOutput)
+    @eval function AbstractMCMC.bundle_samples(
+        samples::Vector{<:AbstractVector},
+        model::DynamicPPL.Model,
+        spl::Emcee,
+        state::Union{EmceeState,Nothing},
+        chain_type::Type{$Chain};
+        kwargs...,
+    )
+        n_walkers = _get_n_walkers(spl)
+        chains = map(1:n_walkers) do i
+            this_walker_samples = [s[i] for s in samples]
+            AbstractMCMC.bundle_samples(
+                this_walker_samples, model, spl, state, chain_type; kwargs...
+            )
+        end
+        return AbstractMCMC.chainscat(chains...)
     end
-    return AbstractMCMC.chainscat(chains...)
 end
+
+raw_samples(draws, ::Emcee) = [collect(row) for row in eachrow(draws)]
