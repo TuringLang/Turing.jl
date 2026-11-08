@@ -102,12 +102,14 @@ using Turing
             return Any[state]
         end
         Turing.Inference.post_sample_hook(chain::Vector, ::StaticSampler; kwargs...) =
-            push!(chain, :hook)
+            push!(chain, first(chain))
 
         @model demo() = x ~ Normal()
-        raw = sample(demo(), StaticSampler(), 2; chain_type=Vector, save_state=false)
-        @test first(raw) isa DynamicPPL.ParamsWithStats
-        @test last(raw) === :hook
+        for chain_type in (Vector, AbstractMCMC.AbstractChains)
+            raw = sample(demo(), StaticSampler(), 1; chain_type, save_state=false)
+            @test first(raw) isa DynamicPPL.ParamsWithStats
+            @test length(raw) == 2
+        end
 
         @testset "single-chain" begin
             chn1 = sample(demo(), StaticSampler(), 10; save_state=true)
