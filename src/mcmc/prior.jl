@@ -46,7 +46,7 @@ function _prior_step(rng::Random.AbstractRNG, model::DynamicPPL.Model, discard_s
         DynamicPPL.LogPriorAccumulator(),
         DynamicPPL.LogLikelihoodAccumulator(),
     ))
-    vi = DynamicPPL.OnlyAccsVarInfo(accs)
+    vi = DynamicPPL.VarInfo(accs)
     _, vi = DynamicPPL.init!!(
         rng, model, vi, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
     )

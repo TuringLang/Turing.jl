@@ -24,7 +24,7 @@ function vector_names_and_params(m::ModeResult)
     vns = Vector{VarName}(undef, LogDensityProblems.dimension(ldf))
 
     # Evaluate the model to get the vectorised parameters in the right order.
-    accs = DynamicPPL.OnlyAccsVarInfo(
+    accs = DynamicPPL.VarInfo(
         DynamicPPL.PriorDistributionAccumulator(), DynamicPPL.VectorParamAccumulator(ldf)
     )
     _, accs = DynamicPPL.init!!(

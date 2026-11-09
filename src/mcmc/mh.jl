@@ -36,9 +36,7 @@ struct MHState{V<:DynamicPPL.AbstractVarInfo}
 end
 
 function mh_varinfo()
-    return DynamicPPL.setacc!!(
-        DynamicPPL.OnlyAccsVarInfo(), DynamicPPL.RawValueAccumulator(true)
-    )
+    return DynamicPPL.setacc!!(DynamicPPL.VarInfo(), DynamicPPL.RawValueAccumulator(true))
 end
 
 function AbstractMCMC.step(

@@ -82,11 +82,14 @@ rebuilds (`HMC`, `NUTS(0, δ)`, `HMCDA(0, δ, λ)`). An adapting `NUTS` or `HMCD
 
 ## Review Guidelines
 
-### Use `OnlyAccsVarInfo`, not `VarInfo`
+### Collect sampler state in accumulators
 
-Sampler state should use `OnlyAccsVarInfo` (with appropriate accumulators), not `VarInfo`. `VarInfo` is being phased out across the ecosystem.
+Sampler state should use `VarInfo` with the accumulators it needs.
+DynamicPPL 0.43 removed `OnlyAccsVarInfo` and made `VarInfo` an accumulator collection.
 
-Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction. `LogDensityFunction` works well when the model structure is static (the set of variables is fixed across evaluations) and the sampler only needs a scalar log-density value. However, LDF is hard to use when the sampler needs extra accumulators beyond log-probability. `MH()` works directly with `OnlyAccsVarInfo` + `init!!` because it draws proposals from the model prior; `MH(cov_matrix)` delegates to an external sampler and uses `LogDensityFunction`. Either approach is fine; the key constraint is no `VarInfo`.
+Most gradient-based samplers (HMC, NUTS, external samplers) go through `LogDensityFunction`, which handles the model interaction.
+`MH()` uses `VarInfo` with a `RawValueAccumulator` because it draws proposals from the model prior.
+Add a `VectorValueAccumulator` when an algorithm needs vectorised values.
 
 Say "linked" and "unlinked", not "unconstrained" and "constrained": linking is what the API is named after (`to_linked_vec`, `UnlinkAll`, `LinkAll`), so the two vocabularies cannot both track it. Linking transforms parameters to unconstrained (Euclidean) space for gradient-based sampling.
 
