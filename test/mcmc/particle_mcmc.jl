@@ -759,7 +759,7 @@ end
         particle = Particle(test(), particle_rng(Xoshiro(23)))
         run_to_end!(particle)
 
-        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.VarInfo()
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.LogLikelihoodAccumulator())
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
         _, accs = DynamicPPL.init!!(

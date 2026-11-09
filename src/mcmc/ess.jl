@@ -51,7 +51,7 @@ function AbstractMCMC.step(
 
     # Run the model using the specified initialisation strategy and extract all necessary
     # information.
-    accs = DynamicPPL.OnlyAccsVarInfo(
+    accs = DynamicPPL.VarInfo(
         # no transforms so no need for LogJacobianAccumulator
         DynamicPPL.LogPriorAccumulator(),
         DynamicPPL.LogLikelihoodAccumulator(),

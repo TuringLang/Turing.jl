@@ -395,7 +395,7 @@ function gibbs_recompute_ldf_and_params(
     # `InitFromParams` with no fallback draws nothing, so this consumes no randomness -- unlike
     # building the layout through the `transform_strategy` constructor, which draws from the
     # prior with whatever the default rng happens to be.
-    probe = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.VectorValueAccumulator())
+    probe = DynamicPPL.VarInfo(DynamicPPL.VectorValueAccumulator())
     _, probe = DynamicPPL.init!!(model, probe, init_strategy, old_ldf.transform_strategy)
     # A new variable falls through a frozen transform strategy's fallback. Mixing linked and
     # unlinked variables is valid because each density is evaluated in its chosen space.
@@ -403,9 +403,7 @@ function gibbs_recompute_ldf_and_params(
     new_ldf = DynamicPPL.LogDensityFunction(
         model, DynamicPPL.get_logdensity_callable(old_ldf), probe; adtype=nothing
     )
-    accs = DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...
-    )
+    accs = DynamicPPL.VarInfo(DynamicPPL.VectorParamAccumulator(new_ldf), extra_accs...)
     _, accs = DynamicPPL.init!!(
         new_ldf.model, accs, init_strategy, new_ldf.transform_strategy
     )
@@ -473,9 +471,7 @@ end
 
 # Raw values, plus the linked layout of each tilde statement that produced them.
 function _snapshot_accs()
-    return DynamicPPL.OnlyAccsVarInfo(
-        DynamicPPL.RawValueAccumulator(false), LayoutAccumulator()
-    )
+    return DynamicPPL.VarInfo(DynamicPPL.RawValueAccumulator(false), LayoutAccumulator())
 end
 
 function _snapshot(accs)

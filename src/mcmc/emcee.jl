@@ -85,7 +85,11 @@ function AbstractMCMC.step(
     state = EmceeState(
         DynamicPPL.LogDensityFunction(model, getlogjoint_internal, linked_vis[1]),
         map(linked_vis) do vi
-            AMH.Transition(vi[:], DynamicPPL.getlogjoint_internal(vi), false)
+            AMH.Transition(
+                DynamicPPL.internal_values_as_vector(vi),
+                DynamicPPL.getlogjoint_internal(vi),
+                false,
+            )
         end,
     )
 

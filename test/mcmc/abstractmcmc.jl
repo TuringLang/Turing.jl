@@ -91,7 +91,7 @@ end
         initial_params::DynamicPPL.AbstractInitStrategy,
         kwargs...,
     )
-        accs = DynamicPPL.OnlyAccsVarInfo()
+        accs = DynamicPPL.VarInfo()
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(false))
         _, accs = DynamicPPL.init!!(
             rng, model, accs, initial_params, DynamicPPL.UnlinkAll()

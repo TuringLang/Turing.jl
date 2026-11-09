@@ -41,7 +41,7 @@ function _constraint_pairs(constraints::ModelConstraints)
 end
 
 function _optimisation_layout_varinfo(model, transform_strategy)
-    vi = DynamicPPL.OnlyAccsVarInfo((
+    vi = DynamicPPL.VarInfo((
         DynamicPPL.VectorValueAccumulator(), DynamicPPL.RawValueAccumulator(false)
     ))
     _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior(), transform_strategy)
@@ -389,7 +389,7 @@ function _make_optim_bounds_and_init!(
     # ConstraintAccumulator only needs the raw value so we can use UnlinkAll() as the
     # transform strategy for this
     init_strategy = InitWithConstraintCheck(lb, ub, initial_params)
-    vi = DynamicPPL.OnlyAccsVarInfo((
+    vi = DynamicPPL.VarInfo((
         ConstraintAccumulator(ldf.transform_strategy, deepcopy(lb), deepcopy(ub)),
     ))
     _, vi = DynamicPPL.init!!(rng, ldf.model, vi, init_strategy, DynamicPPL.UnlinkAll())
