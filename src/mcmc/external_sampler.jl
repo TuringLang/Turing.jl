@@ -1,5 +1,5 @@
 """
-    ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType}
+    ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:Union{ADTypes.AbstractADType,Nothing}}
 
 Represents a sampler that does not have a custom implementation of `AbstractMCMC.step(rng,
 ::DynamicPPL.Model, spl)`.
@@ -110,25 +110,28 @@ One method the wrapper cannot implement for you:
   `setparams!!(state, params)`, which cannot recompute anything, and a state that caches a
   log-density would then start each step from the previous conditioning's value.
 """
-struct ExternalSampler{Unconstrained,S<:AbstractSampler,AD<:ADTypes.AbstractADType} <:
-       AbstractSampler
+struct ExternalSampler{
+    Unconstrained,S<:AbstractSampler,AD<:Union{ADTypes.AbstractADType,Nothing}
+} <: AbstractSampler
     "the sampler to wrap"
     sampler::S
-    "the automatic differentiation (AD) backend to use"
+    "the AD backend, or nothing to disable AD"
     adtype::AD
 
     """
-        ExternalSampler(sampler::AbstractSampler, adtype::ADTypes.AbstractADType, ::Val{unconstrained})
+        ExternalSampler(sampler::AbstractSampler, adtype::Union{ADTypes.AbstractADType,Nothing}, ::Val{unconstrained})
 
     Wrap a sampler so it can be used as an inference algorithm.
 
     # Arguments
     - `sampler::AbstractSampler`: The sampler to wrap.
-    - `adtype::ADTypes.AbstractADType`: The automatic differentiation (AD) backend to use.
+    - `adtype::Union{ADTypes.AbstractADType,Nothing}`: The AD backend, or `nothing` for a sampler that does not need gradients.
     - `unconstrained::Val`: Value type containing a boolean indicating whether the sampler requires unconstrained space.
     """
     function ExternalSampler(
-        sampler::AbstractSampler, adtype::ADTypes.AbstractADType, ::Val{unconstrained}
+        sampler::AbstractSampler,
+        adtype::Union{ADTypes.AbstractADType,Nothing},
+        ::Val{unconstrained},
     ) where {unconstrained}
         if !(unconstrained isa Bool)
             throw(
@@ -152,8 +155,8 @@ Wrap a sampler so it can be used as an inference algorithm.
 - `sampler::AbstractSampler`: The sampler to wrap.
 
 # Keyword Arguments
-- `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation
-  (AD) backend to use.
+- `adtype::Union{ADTypes.AbstractADType,Nothing}=ADTypes.AutoForwardDiff()`: The AD backend to use.
+  Set `adtype=nothing` for samplers that do not need gradients.
 - `unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler)`: Whether the
   sampler requires unconstrained space.
 """

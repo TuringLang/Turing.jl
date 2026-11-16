@@ -327,6 +327,23 @@ end
     end
 
     @testset "AdvancedMH.jl" begin
+        @testset "sampling without AD" begin
+            only_float64(x::Float64) = x
+            @model function nondifferentiable()
+                x ~ Normal()
+                return 1.0 ~ Normal(only_float64(x), 1)
+            end
+            for unconstrained in (false, true)
+                sampler = AdvancedMH.RWMH(MvNormal([0.1;;]))
+                @test sample(
+                    nondifferentiable(),
+                    externalsampler(sampler; adtype=nothing, unconstrained),
+                    10;
+                    progress=false,
+                ) isa VNChain
+            end
+        end
+
         @testset "RWMH" begin
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.

@@ -106,7 +106,9 @@ end
 # RWMH can be delegated to AdvancedMH. The type bound is intentionally lax because we just
 # let the MvNormal constructor handle it.
 function MH(cov_matrix::Any)
-    return externalsampler(AMH.RWMH(MvNormal(cov_matrix)); unconstrained=true)
+    return externalsampler(
+        AMH.RWMH(MvNormal(cov_matrix)); adtype=nothing, unconstrained=true
+    )
 end
 
 ####
