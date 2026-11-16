@@ -8,6 +8,7 @@ Construct a Metropolis-Hastings sampler that draws proposals from the model prio
 Construct a Metropolis-Hastings sampler that performs random-walk sampling in linked
 space, with proposals drawn from a multivariate normal distribution with the given
 covariance matrix. Its dimension must match the complete linked parameter vector.
+The sampled variables must be continuous.
 """
 struct MH <: AbstractSampler end
 
@@ -109,6 +110,12 @@ function MH(cov_matrix::Any)
     return externalsampler(
         AMH.RWMH(MvNormal(cov_matrix)); adtype=nothing, unconstrained=true
     )
+end
+
+function allow_discrete_variables(
+    ::AMH.MetropolisHastings{<:AMH.RandomWalkProposal{S,<:MvNormal}}
+) where {S}
+    return false
 end
 
 ####
