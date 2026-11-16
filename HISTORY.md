@@ -1,6 +1,6 @@
 # 0.49.1 (unreleased)
 
-  - `MH(cov_matrix)` no longer checks gradients at initialization, and gradient-free external samplers can use `adtype=nothing` ([#2919](https://github.com/TuringLang/Turing.jl/pull/2919)).
+  - `MH(cov_matrix)` no longer checks gradients at initialization, and gradient-free external samplers can use `adtype=nothing` ([#2920](https://github.com/TuringLang/Turing.jl/pull/2920)).
 
 # 0.49.0
 
