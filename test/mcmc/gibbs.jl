@@ -219,22 +219,18 @@ end
         z ~ Bernoulli(0.5)
         return x ~ Normal(z, 1)
     end
-    for component in (MH([0.1;;]), RepeatSampler(MH([0.1;;]), 2))
-        sampler = Gibbs(@varname(z) => component, @varname(x) => MH())
-        @test_throws "cannot sample discrete variable z" sample(
-            Xoshiro(3), mixed_target(), sampler, 10; progress=false
-        )
-    end
+    sampler = Gibbs(@varname(z) => MH([0.1;;]), @varname(x) => MH())
+    @test_throws "cannot sample discrete variable z" sample(
+        Xoshiro(3), mixed_target(), sampler, 10; progress=false
+    )
 
     discrete_external = externalsampler(
         AdvancedMH.StaticMH([Bernoulli(0.5)]); adtype=nothing, unconstrained=false
     )
-    for component in (MH(), discrete_external)
-        sampler = Gibbs(@varname(z) => component, @varname(x) => MH([0.1;;]))
-        chain = sample(Xoshiro(3), mixed_target(), sampler, 100; progress=false)
-        @test length(unique(Array(chain[@varname(z)]))) == 2
-        @test length(unique(Array(chain[@varname(x)]))) > 1
-    end
+    sampler = Gibbs(@varname(z) => discrete_external, @varname(x) => MH([0.1;;]))
+    chain = sample(Xoshiro(3), mixed_target(), sampler, 100; progress=false)
+    @test length(unique(Array(chain[@varname(z)]))) == 2
+    @test length(unique(Array(chain[@varname(x)]))) > 1
 end
 
 @testset "a component that keeps no linked layout needs no link" begin

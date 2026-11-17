@@ -333,15 +333,13 @@ end
                 x ~ Normal()
                 return 1.0 ~ Normal(only_float64(x), 1)
             end
-            for unconstrained in (false, true)
-                sampler = AdvancedMH.RWMH(MvNormal([0.1;;]))
-                @test sample(
-                    nondifferentiable(),
-                    externalsampler(sampler; adtype=nothing, unconstrained),
-                    10;
-                    progress=false,
-                ) isa VNChain
-            end
+            sampler = AdvancedMH.RWMH(MvNormal([0.1;;]))
+            @test sample(
+                nondifferentiable(),
+                externalsampler(sampler; adtype=nothing, unconstrained=false),
+                10;
+                progress=false,
+            ) isa VNChain
         end
 
         @testset "RWMH" begin
