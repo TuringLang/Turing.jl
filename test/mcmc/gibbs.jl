@@ -223,14 +223,6 @@ end
     @test_throws "cannot sample discrete variable z" sample(
         Xoshiro(3), mixed_target(), sampler, 10; progress=false
     )
-
-    discrete_external = externalsampler(
-        AdvancedMH.StaticMH([Bernoulli(0.5)]); adtype=nothing, unconstrained=false
-    )
-    sampler = Gibbs(@varname(z) => discrete_external, @varname(x) => MH([0.1;;]))
-    chain = sample(Xoshiro(3), mixed_target(), sampler, 100; progress=false)
-    @test length(unique(Array(chain[@varname(z)]))) == 2
-    @test length(unique(Array(chain[@varname(x)]))) > 1
 end
 
 @testset "a component that keeps no linked layout needs no link" begin

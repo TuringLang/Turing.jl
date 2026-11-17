@@ -33,7 +33,7 @@ using ..NumericalTests: check_MoGtest_default, check_gdemo
                 z ~ Bernoulli(0.2)
                 return 1.0 ~ Normal(z, 0.5)
             end
-            @test_throws ArgumentError sample(
+            @test_throws "has one or more issues that may cause inference to fail" sample(
                 StableRNG(3), discrete_target(), MH([0.1;;]), 10; progress=false
             )
         end

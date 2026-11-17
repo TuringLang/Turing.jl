@@ -12,10 +12,8 @@ init_strategy(::AbstractSampler) = DynamicPPL.InitFromPrior()
 
 Whether `spl` can sample a model with discrete variables.
 
-Defaults to `true`.
-Samplers requiring continuous variables override it to `false`.
-`sample` checks the model before starting.
-`Gibbs` checks each component's block before stepping it.
+Defaults to `true`. Gradient-based samplers override it to `false`, and `sample` checks the
+model against it before starting.
 """
 allow_discrete_variables(::AbstractSampler) = true
 
