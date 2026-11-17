@@ -108,7 +108,7 @@ end
 # let the MvNormal constructor handle it.
 function MH(cov_matrix::Any)
     return externalsampler(
-        AMH.RWMH(MvNormal(cov_matrix)); adtype=nothing, unconstrained=true
+        AMH.RWMH(MvNormal(cov_matrix)); adtype=ADTypes.NoAutoDiff(), unconstrained=true
     )
 end
 

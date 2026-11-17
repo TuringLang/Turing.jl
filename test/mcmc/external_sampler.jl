@@ -2,6 +2,7 @@ module ExternalSamplerTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_sampler_analytical
+using ADTypes: ADTypes
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
@@ -336,7 +337,7 @@ end
             sampler = AdvancedMH.RWMH(MvNormal([0.1;;]))
             @test sample(
                 nondifferentiable(),
-                externalsampler(sampler; adtype=nothing, unconstrained=false),
+                externalsampler(sampler; adtype=ADTypes.NoAutoDiff(), unconstrained=false),
                 10;
                 progress=false,
             ) isa VNChain
