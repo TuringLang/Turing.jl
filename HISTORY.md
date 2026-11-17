@@ -1,6 +1,6 @@
 # 0.49.1 (unreleased)
 
-  - `MH(cov_matrix)` rejects discrete variables, and `Gibbs` checks each component's support for discrete variables.
+  - `MH(cov_matrix)` rejects discrete variables, and `Gibbs` checks each component's support for discrete variables ([#2921](https://github.com/TuringLang/Turing.jl/pull/2921)).
 
 # 0.49.0
 
