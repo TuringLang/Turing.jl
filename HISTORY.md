@@ -1,3 +1,7 @@
+# Unreleased
+
+DynamicHMC now honors the configured NUTS sampler during warmup and the first draw ([#2922](https://github.com/TuringLang/Turing.jl/pull/2922)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
