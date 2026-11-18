@@ -70,7 +70,12 @@ function AbstractMCMC.step(
 
     # Perform initial step.
     results = DynamicHMC.mcmc_keep_warmup(
-        rng, ldf, 0; initialization=(q=x,), reporter=DynamicHMC.NoProgressReport()
+        rng,
+        ldf,
+        0;
+        algorithm=spl.sampler,
+        initialization=(q=x,),
+        reporter=DynamicHMC.NoProgressReport(),
     )
     steps = DynamicHMC.mcmc_steps(results.sampling_logdensity, results.final_warmup_state)
     Q, _ = DynamicHMC.mcmc_next_step(steps, results.final_warmup_state.Q)
