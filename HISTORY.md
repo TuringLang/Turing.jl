@@ -1,3 +1,7 @@
+# Unreleased
+
+  - DynamicPPL 0.43 is now the minimum. ([#2915](https://github.com/TuringLang/Turing.jl/pull/2915))
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).

@@ -137,7 +137,7 @@ Inference.init_strategy(spl::KeepsValues) = Inference.init_strategy(spl.inner)
 
             # Check that init!! is type stable.
             conditioned_model = DynamicPPL.condition(model, conditioned)
-            accs = DynamicPPL.OnlyAccsVarInfo()
+            accs = DynamicPPL.VarInfo()
             _, accs = @inferred DynamicPPL.init!!(
                 conditioned_model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
             )
@@ -495,7 +495,7 @@ end
     # one draw is made and then reused rather than re-evaluating the model every step.
     function _counter_values(rng, model, state)
         state === nothing || return state.values
-        accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+        accs = DynamicPPL.VarInfo(DynamicPPL.RawValueAccumulator(false))
         _, accs = DynamicPPL.init!!(
             rng, model, accs, DynamicPPL.InitFromPrior(), DynamicPPL.UnlinkAll()
         )

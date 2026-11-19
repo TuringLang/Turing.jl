@@ -238,7 +238,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     error_if_outside_gibbs(discard_sample)
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    accs = DynamicPPL.VarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
     # transition.
@@ -249,7 +249,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo;
+    state::DynamicPPL.VarInfo;
     discard_sample::Bool=false,
     kwargs...,
 )
@@ -280,7 +280,7 @@ end
 
 function gibbs_update_state!!(
     ::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo,
+    state::DynamicPPL.VarInfo,
     ::DynamicPPL.Model,
     ::DynamicPPL.VarNamedTuple,
 )
@@ -293,7 +293,7 @@ end
 # special, for the same reason the four-argument form is a no-op.
 function gibbs_update_state!!(
     spl::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo,
+    state::DynamicPPL.VarInfo,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
     ::ReshapedBlock,

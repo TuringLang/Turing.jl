@@ -59,7 +59,7 @@ retained trajectory's value at that address -- and `tilde_observe!!` scores the 
 """
 struct SMCContext <: DynamicPPL.AbstractContext end
 
-# `OnlyAccsVarInfo` needs a parameter eltype; `Any` is fine here since particle MCMC never
+# `VarInfo` needs a parameter eltype; `Any` is fine here since particle MCMC never
 # involves AD or tracer types (see the `get_param_eltype` docstring in DynamicPPL).
 DynamicPPL.get_param_eltype(::DynamicPPL.AbstractVarInfo, ::SMCContext) = Any
 
@@ -257,9 +257,9 @@ end
 #
 # `:=` is dispatched on the context, so its method below takes `SMCContext`. `@addlogprob!` has no
 # such hook, so the accumulator methods extend DynamicPPL's own. They dispatch on
-# `OnlyAccsVarInfo`, which every sampler uses, so their non-particle behaviour must stay identical
+# `VarInfo`, which every sampler uses, so their non-particle behaviour must stay identical
 # to DynamicPPL's; they belong there once it offers a context-dispatched entry point.
-function is_particle_varinfo(vi::DynamicPPL.OnlyAccsVarInfo)
+function is_particle_varinfo(vi::DynamicPPL.VarInfo)
     acc_name = Val(:LogLikelihood)
     return DynamicPPL.hasacc(vi, acc_name) &&
            DynamicPPL.getacc(vi, acc_name) isa ProduceLogLikelihoodAccumulator
@@ -275,7 +275,7 @@ function acclogp_and_mirror!!(vi, acc_name, logp, ignore_missing_accumulator)
 end
 
 function DynamicPPL.accloglikelihood!!(
-    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+    vi::DynamicPPL.VarInfo, logp; ignore_missing_accumulator=false
 )
     return acclogp_and_mirror!!(vi, Val(:LogLikelihood), logp, ignore_missing_accumulator)
 end
@@ -292,7 +292,7 @@ end
 # instruments: a keyword argument on `acclogp_and_mirror!!` would route the call through
 # `Core.kwcall`, which `@might_produce` does not name.
 function DynamicPPL.acclogprior!!(
-    vi::DynamicPPL.OnlyAccsVarInfo, logp; ignore_missing_accumulator=false
+    vi::DynamicPPL.VarInfo, logp; ignore_missing_accumulator=false
 )
     acc_name = Val(:LogPrior)
     if ignore_missing_accumulator && !DynamicPPL.hasacc(vi, acc_name)
@@ -335,13 +335,11 @@ Libtask.@might_produce(DynamicPPL.acclogp!!)
 Libtask.might_produce_if_sig_contains(::Type{<:DynamicPPL.Model}) = true
 
 # Add the raw sampled values (`:=` included, so a chain reports them as under any other sampler;
-# they take no part in a sweep). `OnlyAccsVarInfo`'s default `LogPrior` and `LogJacobian` are kept
+# they take no part in a sweep). `VarInfo`'s default `LogPrior` and `LogJacobian` are kept
 # on purpose: `ParamsWithStats` reads them off this varinfo to fill a chain's `logprior` and
 # `logjoint` columns, and dropping them would silently omit those columns rather than error.
 function trajectory_varinfo()
-    return DynamicPPL.setacc!!(
-        DynamicPPL.OnlyAccsVarInfo(), DynamicPPL.RawValueAccumulator(true)
-    )
+    return DynamicPPL.setacc!!(DynamicPPL.VarInfo(), DynamicPPL.RawValueAccumulator(true))
 end
 
 # A particle's varinfo is the same set with the produce-aware likelihood accumulator in place of the
