@@ -46,7 +46,7 @@ TuringDynamicHMCExt = "DynamicHMC"
 TuringMCMCChainsExt = "MCMCChains"
 
 [compat]
-ADTypes = "1.9"
+ADTypes = "1.18"
 AbstractMCMC = "5.13"
 AbstractPPL = "0.15"
 Accessors = "0.1"
