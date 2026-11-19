@@ -118,8 +118,11 @@ function AbstractMCMC.sample(
         end
 
         # If `discard_initial` is `-1`, then users did not specify the keyword argument.
+        # The chain starts with the initial parameters, and only then come the `_nadapts`
+        # adaptation transitions, so `_nadapts + 1` entries have to go for every retained
+        # sample to come from the adapted kernel.
         if discard_initial == -1
-            _discard_initial = discard_adapt ? _nadapts : 0
+            _discard_initial = (discard_adapt && _nadapts > 0) ? _nadapts + 1 : 0
         else
             _discard_initial = discard_initial
         end
