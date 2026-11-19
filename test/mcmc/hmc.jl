@@ -14,7 +14,7 @@ using LinearAlgebra: I, dot, vec
 import Random
 using StableRNGs: StableRNG
 using StatsFuns: logistic
-using Test: @test, @testset, @test_throws
+using Test: @test, @testset, @test_throws, @test_logs
 using Turing
 
 @testset verbose = true "Testing hmc.jl" begin
@@ -139,6 +139,11 @@ using Turing
         alg = NUTS(1000, 0.8)
         res = sample(StableRNG(seed), gdemo_default, alg, 5_000)
         check_gdemo(res)
+        draw = DynamicPPL.ParamsWithStats(
+            DynamicPPL.VarNamedTuple(), (; numerical_error=true)
+        )
+        output = AbstractMCMC.SamplingOutput(fill(draw, 1, 1))
+        @test_logs (:warn, r"1 divergent") Turing.Inference.post_sample_hook(output, alg)
     end
 
     @testset "check discard" begin

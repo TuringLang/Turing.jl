@@ -739,7 +739,10 @@ function AbstractMCMC.sample(
             particles[a].varinfo, (; log_normalizing_constant=logZ, ess_per_step)
         )
     end
-    chain = bundle_smc_samples(transitions, model, sampler, nothing, chain_type; kwargs...)
+    chain = bundle_smc_samples(
+        transitions, model, sampler, nothing, sampling_type(chain_type); kwargs...
+    )
+    chain = convert_chain(chain_type, chain, model, sampler; kwargs...)
     post_sample_hook(chain, sampler; verbose)
     return chain
 end

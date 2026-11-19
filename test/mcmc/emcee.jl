@@ -2,6 +2,7 @@ module EmceeTests
 
 using ..Models: gdemo_default
 using ..NumericalTests: check_gdemo
+using AbstractMCMC: SamplingOutput
 using Distributions: sample
 using DynamicPPL: DynamicPPL
 using Random: Random, Xoshiro
@@ -61,6 +62,11 @@ using Turing
             StableRNG(7), gdemo_default, Emcee(4), 5; chain_type=MCMCChains.Chains
         )
         @test chain isa MCMCChains.Chains
+        for chain_type in (SamplingOutput, SamplingOutput{DynamicPPL.ParamsWithStats})
+            output = sample(StableRNG(7), gdemo_default, Emcee(4), 5; chain_type)
+            @test output isa chain_type
+            @test size(output) == (5, 4)
+        end
     end
 
     @testset "model whose dimension depends on its own draws" begin

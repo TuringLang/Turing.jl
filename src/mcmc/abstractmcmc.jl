@@ -124,6 +124,67 @@ arguments may be passed here.
 """
 post_sample_hook(chain, ::AbstractSampler; kwargs...) = nothing
 
+# Custom bundlers may use the final state even when it is not saved.
+struct SampleBuffer{O<:SamplingOutput} <: AbstractMCMC.AbstractChains
+    output::O
+    state::Any
+end
+
+function AbstractMCMC.bundle_samples(
+    samples,
+    model::DynamicPPL.Model,
+    sampler::AbstractSampler,
+    state,
+    ::Type{SampleBuffer};
+    kwargs...,
+)
+    output = AbstractMCMC.bundle_samples(
+        samples, model, sampler, state, SamplingOutput; kwargs...
+    )
+    return SampleBuffer(output, state)
+end
+
+sampling_type(chain_type) = chain_type
+sampling_type(::Type{<:SamplingOutput}) = SamplingOutput
+sampling_type(::Type{VNChain}) = SampleBuffer
+sampling_type(::Type{<:Vector}) = SampleBuffer
+sampling_type(::Type{AbstractVector}) = SampleBuffer
+sampling_type(::Type{AbstractVector{T}}) where {T} = SampleBuffer
+sampling_type(::Type{Any}) = SampleBuffer
+
+convert_chain(chain_type, chain, model, sampler; kwargs...) = chain
+
+function convert_chain(
+    ::Type{C}, output::SamplingOutput, model, sampler; kwargs...
+) where {C<:SamplingOutput}
+    output isa C && return output
+    return AbstractMCMC.from_samples(
+        C,
+        output.samples;
+        iterations=output.iterations,
+        sampling_stats=output.sampling_stats,
+        sampler_states=output.sampler_states,
+    )
+end
+
+function convert_chain(::Type{C}, buffer::SampleBuffer, model, sampler; kwargs...) where {C}
+    output = buffer.output
+    state = buffer.state
+    return bundle_smc_samples(
+        raw_samples(output.samples, sampler),
+        model,
+        sampler,
+        state,
+        C;
+        kwargs...,
+        stats=first(output.sampling_stats),
+        discard_initial=first(output.iterations) - 1,
+        thinning=Base.step(output.iterations),
+    )
+end
+
+raw_samples(draws, sampler) = vec(collect(draws))
+
 #########################################
 # Default definitions for the interface #
 #########################################
@@ -152,10 +213,11 @@ function AbstractMCMC.sample(
         spl,
         N;
         initial_params=Turing._convert_initial_params(initial_params),
-        chain_type,
+        chain_type=sampling_type(chain_type),
         verbose,
         kwargs...,
     )
+    chain = convert_chain(chain_type, chain, model, spl; kwargs...)
     post_sample_hook(chain, spl; verbose)
     return chain
 end

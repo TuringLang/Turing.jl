@@ -47,7 +47,7 @@ TuringMCMCChainsExt = "MCMCChains"
 
 [compat]
 ADTypes = "1.9"
-AbstractMCMC = "5.13"
+AbstractMCMC = "5.17"
 AbstractPPL = "0.15"
 Accessors = "0.1"
 AdvancedHMC = "0.8.3"
