@@ -841,14 +841,31 @@ function block_reshaped(before, now, linked::Bool)
     # `x[i]` in three gives identical leaves and two DISJOINT layouts, so a loop that skipped a
     # key the other side lacked saw nothing while the linked dimension moved from two to three.
     # A key on one side only is itself proof the layout changed.
-    for (vn, rec) in now.layout
-        i = findfirst(p -> p.first == vn, before.layout)
+    #
+    # The order is the evaluation's, so the two sides almost always line up position by
+    # position. Searching `before` for every key instead made a block of B tildes cost B^2
+    # comparisons per sweep, which dominated sampling once B reached the thousands.
+    before_index = nothing
+    for (k, (vn, rec)) in enumerate(now.layout)
+        i = if k <= length(before.layout) && before.layout[k].first == vn
+            k
+        else
+            if before_index === nothing
+                before_index = Dict(p.first => j for (j, p) in enumerate(before.layout))
+            end
+            get(before_index, vn, nothing)
+        end
         i === nothing && return ReshapedBlock(vn, _BLOCK_REKEYED)
         _same_layout(before.layout[i].second, rec, linked) ||
             return ReshapedBlock(vn, _BLOCK_RESPECIFIED)
     end
-    for (vn, _) in before.layout
-        any(p -> p.first == vn, now.layout) || return ReshapedBlock(vn, _BLOCK_REKEYED)
+    # Every key of `now` is in `before`, and the keys on each side are distinct, so `before`
+    # can hold another key only if it is longer.
+    if length(before.layout) > length(now.layout)
+        now_keys = Set(p.first for p in now.layout)
+        for (vn, _) in before.layout
+            vn in now_keys || return ReshapedBlock(vn, _BLOCK_REKEYED)
+        end
     end
     return nothing
 end

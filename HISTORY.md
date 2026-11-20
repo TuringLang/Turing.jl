@@ -1,3 +1,7 @@
+# 0.49.1
+
+`Gibbs` no longer spends time quadratic in the size of a block checking whether its layout changed between sweeps ([#2907](https://github.com/TuringLang/Turing.jl/pull/2907)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
