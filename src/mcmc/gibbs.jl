@@ -540,7 +540,8 @@ depends on must reweight the sweep, and one it does not contributes the same inc
 every particle, which ESS-gated resampling ignores.
 """
 function conditioned_values(
-    global_vnt::DynamicPPL.VarNamedTuple, target_variables::AbstractVector{<:VarName}
+    global_vnt::DynamicPPL.VarNamedTuple,
+    target_variables::Union{AbstractVector{<:VarName},Tuple{Vararg{VarName}}},
 )
     is_target(vn) = any(t -> AbstractPPL.subsumes(t, vn), target_variables)
     conditioned = VarName[]
@@ -569,9 +570,12 @@ end
 
 to_varname(x::VarName) = x
 to_varname(x::Symbol) = VarName{x}()
-to_varname_list(x::Union{VarName,Symbol}) = [to_varname(x)]
+# A `Tuple` rather than a `Vector`: a component naming variables under different symbols, such
+# as `(:mu, :tau)`, would get a `Vector` with an abstract element type, and every ownership check
+# over it, run per variable per sweep, would then dispatch dynamically on both arguments.
+to_varname_list(x::Union{VarName,Symbol}) = (to_varname(x),)
 # Any other value is assumed to be an iterable of VarNames and Symbols.
-to_varname_list(t) = collect(map(to_varname, t))
+to_varname_list(t) = Tuple(map(to_varname, t))
 
 """
     Gibbs
@@ -708,7 +712,7 @@ applies to the model as a whole; it cannot yet be set per component.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Gibbs{N,V<:NTuple{N,AbstractVector{<:VarName}},A<:NTuple{N,Any}} <: AbstractSampler
+struct Gibbs{N,V<:NTuple{N,Tuple{Vararg{VarName}}},A<:NTuple{N,Any}} <: AbstractSampler
     # TODO(mhauru) Revisit whether A should have a fixed element type.
     "varnames representing variables for each sampler"
     varnames::V
