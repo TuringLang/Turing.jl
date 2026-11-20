@@ -113,8 +113,8 @@ function MH(cov_matrix::Any)
 end
 
 function allow_discrete_variables(
-    ::AMH.MetropolisHastings{<:AMH.RandomWalkProposal{S,<:MvNormal}}
-) where {S}
+    ::AMH.MetropolisHastings{<:AMH.RandomWalkProposal{<:Any,<:MvNormal}}
+)
     return false
 end
 

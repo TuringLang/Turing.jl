@@ -798,13 +798,9 @@ end
 function check_block_discrete(sampler, block)
     allow_discrete_variables(sampler) && return nothing
     for (vn, (dist, _)) in block.layout
-        if dist isa DiscreteDistribution
-            throw(
-                ArgumentError(
-                    "The $(_component_name(sampler)) component cannot sample discrete variable $(vn).",
-                ),
-            )
-        end
+        dist isa DiscreteDistribution || continue
+        msg = "The $(_component_name(sampler)) component cannot sample discrete variable $(vn)."
+        throw(ArgumentError(msg))
     end
     return nothing
 end
