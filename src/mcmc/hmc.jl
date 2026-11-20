@@ -90,7 +90,9 @@ Turing.Inference.init_strategy(::Hamiltonian) = DynamicPPL.InitFromUniform()
 
 Draw `N` samples from `model` using [`NUTS`](@ref) or [`HMCDA`](@ref).
 
-For a new chain, the following keywords control adaptation and discarding:
+# Keyword Arguments
+
+For a new chain:
 
 - `nadapts=sampler.n_adapts`: Maximum number of adaptation steps.
 
@@ -98,7 +100,7 @@ For a new chain, the following keywords control adaptation and discarding:
 
   Set `nadapts=0` to disable adaptation.
 
-  Constructing the sampler with `n_adapts=0` also disables adaptation.
+  The constructors `NUTS(0, δ)` and `HMCDA(0, δ, λ)` also disable adaptation.
 
 - `discard_adapt=true`: Discard the first `nadapts` samples by default.
 
@@ -108,7 +110,7 @@ For a new chain, the following keywords control adaptation and discarding:
 
   A nonnegative value overrides `discard_adapt`.
 
-  The returned chain still contains `N` samples.
+The returned chain still contains `N` samples.
 
 When resuming from `initial_state`, adaptation is disabled and no initial samples are discarded, regardless of these three keywords.
 
