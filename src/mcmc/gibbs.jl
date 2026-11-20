@@ -736,8 +736,6 @@ end
 # `GibbsState`, which do not exist; without this, nesting fails with a `MethodError` several
 # steps in rather than at construction.
 supports_gibbs(::Gibbs) = false
-# TODO(penelopeysm): `allow_discrete_variables(::Gibbs)` could be smarter, since a component
-# may not allow discrete variables even though Gibbs itself does.
 
 function Gibbs(algs::Pair...)
     return Gibbs(map(first, algs), map(last, algs))
@@ -795,6 +793,16 @@ function check_block_nonempty(varnames, block)
             "block, sampled by a component that can handle a varying set, such as `PG`.",
         ),
     )
+end
+
+function check_block_discrete(sampler, block)
+    allow_discrete_variables(sampler) && return nothing
+    for (vn, (dist, _)) in block.layout
+        dist isa DiscreteDistribution || continue
+        msg = "The $(_component_name(sampler)) component cannot sample discrete variable $(vn)."
+        throw(ArgumentError(msg))
+    end
+    return nothing
 end
 
 """
@@ -1307,7 +1315,9 @@ function gibbs_initialstep_recursive(
     sampler, samplers_tail... = samplers
 
     # Construct the conditioned model.
-    check_block_nonempty(varnames, block_leaves(snapshot.values, varnames))
+    current_block = block_fingerprint(snapshot, varnames)
+    check_block_nonempty(varnames, current_block.leaves)
+    check_block_discrete(sampler, current_block)
     conditioned = conditioned_values(snapshot.values, varnames)
     conditioned_model = DynamicPPL.condition(model, conditioned)
 
@@ -1438,6 +1448,7 @@ function gibbs_step_recursive(
     # goes to the `ReshapedBlock` method, which throws unless the sampler implements it.
     current_block = block_fingerprint(snapshot, varnames)
     check_block_nonempty(varnames, current_block.leaves)
+    check_block_discrete(sampler, current_block)
     reshaped = block_reshaped(block, current_block, keeps_linked_layout(sampler))
     state = if reshaped === nothing
         gibbs_update_state!!(sampler, state, conditioned_model, snapshot.values)

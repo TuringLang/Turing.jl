@@ -1,3 +1,8 @@
+# 0.49.1 (unreleased)
+
+  - `MH(cov_matrix)` no longer checks gradients at initialization, and gradient-free external samplers can use `adtype=ADTypes.NoAutoDiff()` ([#2920](https://github.com/TuringLang/Turing.jl/pull/2920)).
+  - `MH(cov_matrix)` rejects discrete variables, and `Gibbs` checks each component's support for discrete variables ([#2921](https://github.com/TuringLang/Turing.jl/pull/2921)).
+
 # 0.49.0
 
 DynamicPPL 0.42.13 is now the minimum, so that `SMC`, `PG` and `CSMC` build a `TapedTask` again ([#2895](https://github.com/TuringLang/Turing.jl/pull/2895)).
