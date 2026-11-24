@@ -93,20 +93,15 @@ For these samplers, `nadapts` controls adaptation rather than `num_warmup`.
 
 # Keyword Arguments
 
-For a new chain:
+- `nadapts=sampler.n_adapts`: Maximum number of adaptation steps. `-1`, which constructors
+    set when not given `n_adapts`, selects `min(1000, N ÷ 2)`. `0` disables adaptation.
+    `NUTS(0, δ)` and `HMCDA(0, δ, λ)` never adapt, regardless of `nadapts`.
+- `discard_adapt=true`: Whether to discard the first `nadapts` samples.
+- `discard_initial=discard_adapt ? nadapts : 0`: Number of initial samples to discard, drawn
+    in addition to the `N` returned.
 
-- `nadapts=sampler.n_adapts`: Maximum number of adaptation steps.
-    A value of `-1` selects `min(1000, N ÷ 2)`.
-    Set `nadapts=0` to disable adaptation.
-    The constructors `NUTS(0, δ)` and `HMCDA(0, δ, λ)` also disable adaptation.
-- `discard_adapt=true`: Discard the first `nadapts` samples by default.
-    Set this to `false` to disable this initial discard.
-- `discard_initial=-1`: Use `discard_adapt` to determine how many initial samples to discard.
-    A nonnegative value overrides `discard_adapt`.
-
-The returned chain still contains `N` samples.
-
-When resuming from `initial_state`, adaptation is disabled and no initial samples are discarded, regardless of these three keywords.
+When resuming from `initial_state`, these keywords are ignored: adaptation is disabled and
+no samples are discarded.
 
 See [Sampling Options](https://turinglang.org/docs/usage/sampling-options/) for shared keyword arguments.
 """
