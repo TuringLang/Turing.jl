@@ -85,7 +85,26 @@ end
 
 Turing.Inference.init_strategy(::Hamiltonian) = DynamicPPL.InitFromUniform()
 
-# Handle setting `nadapts` and `discard_initial`
+"""
+    sample([rng,] model, sampler::Union{NUTS,HMCDA}, N; kwargs...)
+
+Draw `N` samples from `model` using [`NUTS`](@ref) or [`HMCDA`](@ref).
+For these samplers, `nadapts` controls adaptation rather than `num_warmup`.
+
+# Keyword Arguments
+
+- `nadapts=sampler.n_adapts`: Maximum number of adaptation steps. `-1`, which constructors
+    set when not given `n_adapts`, selects `min(1000, N ÷ 2)`. `0` disables adaptation.
+    `NUTS(0, δ)` and `HMCDA(0, δ, λ)` never adapt, regardless of `nadapts`.
+- `discard_adapt=true`: Whether to discard the first `nadapts` samples.
+- `discard_initial=discard_adapt ? nadapts : 0`: Number of initial samples to discard, drawn
+    in addition to the `N` returned.
+
+When resuming from `initial_state`, these keywords are ignored: adaptation is disabled and
+no samples are discarded.
+
+See [Sampling Options](https://turinglang.org/docs/usage/sampling-options/) for shared keyword arguments.
+"""
 function AbstractMCMC.sample(
     rng::AbstractRNG,
     model::DynamicPPL.Model,
