@@ -442,6 +442,7 @@ end
             check_success(m4)
             check_success(m5)
             check_success(m6)
+            @test StatsBase.loglikelihood(m2) ≈ loglikelihood(GDEMO_DEFAULT, m2.params)
 
             @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
             if hasstats(m6) && hasstats(m5)
@@ -495,6 +496,7 @@ end
             check_success(m4)
             check_success(m5)
             check_success(m6)
+            @test StatsBase.loglikelihood(m2) ≈ loglikelihood(GDEMO_DEFAULT, m2.params)
 
             @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
             if hasstats(m6) && hasstats(m5)
