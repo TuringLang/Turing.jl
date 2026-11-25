@@ -2,6 +2,7 @@ module ExternalSamplerTests
 
 using ..Models: gdemo_default
 using ..SamplerTestUtils: test_sampler_analytical
+using ADTypes: ADTypes
 using AbstractMCMC: AbstractMCMC
 using AdvancedMH: AdvancedMH
 using Distributions: sample
@@ -327,6 +328,21 @@ end
     end
 
     @testset "AdvancedMH.jl" begin
+        @testset "sampling without AD" begin
+            only_float64(x::Float64) = x
+            @model function nondifferentiable()
+                x ~ Normal()
+                return 1.0 ~ Normal(only_float64(x), 1)
+            end
+            sampler = AdvancedMH.RWMH(MvNormal([0.1;;]))
+            @test sample(
+                nondifferentiable(),
+                externalsampler(sampler; adtype=ADTypes.NoAutoDiff(), unconstrained=false),
+                10;
+                progress=false,
+            ) isa VNChain
+        end
+
         @testset "RWMH" begin
             @testset "$(model.f)" for model in DynamicPPL.TestUtils.DEMO_MODELS
                 # Need some functionality to initialize the sampler.

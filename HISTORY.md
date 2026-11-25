@@ -1,6 +1,8 @@
-# Unreleased
+# 0.49.1 (unreleased)
 
-DynamicHMC now honors the configured NUTS sampler during warmup and the first draw ([#2922](https://github.com/TuringLang/Turing.jl/pull/2922)).
+  - `MH(cov_matrix)` no longer checks gradients at initialization, and gradient-free external samplers can use `adtype=ADTypes.NoAutoDiff()` ([#2920](https://github.com/TuringLang/Turing.jl/pull/2920)).
+  - `MH(cov_matrix)` rejects discrete variables, and `Gibbs` checks each component's support for discrete variables ([#2921](https://github.com/TuringLang/Turing.jl/pull/2921)).
+  - DynamicHMC now honors the configured NUTS sampler during warmup and the first draw ([#2922](https://github.com/TuringLang/Turing.jl/pull/2922)).
 
 # 0.49.0
 
