@@ -65,7 +65,8 @@ LogDensityProblems = "2"
 LogDensityProblemsAD = "1.4"
 MCMCChains = "7"
 Mooncake = "0.4.182, 0.5"
-# 0.4.13 breaks ReverseDiff through `destructure` of a matrix, as in full-rank VI
+# Indirect test dependency, listed only for this cap: 0.4.13 breaks ReverseDiff
+# through `destructure` of a matrix, as in full-rank VI. Drop once fixed upstream.
 Optimisers = "< 0.4.13"
 Optimization = "3, 4, 5"
 OptimizationBBO = "0.1, 0.2, 0.3, 0.4"
