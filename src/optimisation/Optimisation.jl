@@ -76,10 +76,8 @@ struct ModeResult{
     "Dictionary of parameter values. These values are always provided in unlinked space,
     even if the optimisation was run in linked space."
     params::P
-    "The final log likelihood or log joint, depending on whether `MAP` or `MLE` was run.
-    Note that this is the actual log probability of the parameters, i.e., not negated;
-    we do need a negated log probability to run the optimisation itself (since it is a
-    maximisation), but this is handled in a way that is entirely transparent to the user."
+    "The log likelihood for `MLE` or the log joint for `MAP`, evaluated at the fitted
+    parameters."
     lp::LP
     "Whether the optimisation was done in a transformed space."
     linked::Bool

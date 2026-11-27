@@ -179,7 +179,7 @@ StatsBase.coef(m::ModeResult) = last(vector_names_and_params(m))
 StatsBase.coefnames(m::ModeResult) = first(vector_names_and_params(m))
 StatsBase.params(m::ModeResult) = StatsBase.coefnames(m)
 StatsBase.vcov(m::ModeResult) = inv(StatsBase.informationmatrix(m))
-StatsBase.loglikelihood(m::ModeResult) = m.lp
-function StatsBase.loglikelihood(m::ModeResult{MAP})
+StatsBase.loglikelihood(m::ModeResult{MLE}) = m.lp
+function StatsBase.loglikelihood(m::ModeResult)
     return DynamicPPL.loglikelihood(m.ldf.model, m.params)
 end
