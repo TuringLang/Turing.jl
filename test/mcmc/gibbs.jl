@@ -214,6 +214,17 @@ end
     end
 end
 
+@testset "components respect discrete-variable support" begin
+    @model function mixed_target()
+        z ~ Bernoulli(0.5)
+        return x ~ Normal(z, 1)
+    end
+    sampler = Gibbs(@varname(z) => MH([0.1;;]), @varname(x) => MH())
+    @test_throws "cannot sample discrete variable z" sample(
+        Xoshiro(3), mixed_target(), sampler, 10; progress=false
+    )
+end
+
 @testset "a component that keeps no linked layout needs no link" begin
     # `MH` rebuilds from the conditioned values each step, so `Gibbs` compares its block at the
     # values' own shape and never derives a linking transform for it. The distribution has to

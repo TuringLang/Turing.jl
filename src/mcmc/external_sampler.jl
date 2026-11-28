@@ -154,6 +154,8 @@ Wrap a sampler so it can be used as an inference algorithm.
 # Keyword Arguments
 - `adtype::ADTypes.AbstractADType=ADTypes.AutoForwardDiff()`: The automatic differentiation
   (AD) backend to use.
+
+  Use `ADTypes.NoAutoDiff()` for samplers that do not need gradients.
 - `unconstrained::Bool=AbstractMCMC.requires_unconstrained_space(sampler)`: Whether the
   sampler requires unconstrained space.
 """
@@ -246,7 +248,11 @@ function _external_first_step(
         model,
         DynamicPPL.getlogjoint_internal,
         tfm_strategy;
-        adtype=sampler_wrapper.adtype,
+        adtype=if sampler_wrapper.adtype isa ADTypes.NoAutoDiff
+            nothing
+        else
+            sampler_wrapper.adtype
+        end,
         fix_transforms=fix_transforms,
     )
     x = find_initial_params_ldf(rng, f, initial_params)

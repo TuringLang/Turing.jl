@@ -28,6 +28,25 @@ using ..NumericalTests: check_MoGtest_default, check_gdemo
     end
 
     @testset "basic accuracy tests" begin
+        @testset "random walk rejects discrete variables" begin
+            @model function discrete_target()
+                z ~ Bernoulli(0.2)
+                return 1.0 ~ Normal(z, 0.5)
+            end
+            @test_throws "has one or more issues that may cause inference to fail" sample(
+                StableRNG(3), discrete_target(), MH([0.1;;]), 10; progress=false
+            )
+        end
+
+        @testset "random walk does not require gradients" begin
+            only_float64(x::Float64) = x
+            @model function nondifferentiable()
+                x ~ Normal()
+                return 1.0 ~ Normal(only_float64(x), 1)
+            end
+            @test sample(nondifferentiable(), MH([0.1;;]), 10; progress=false) isa VNChain
+        end
+
         @testset "linking and Jacobian" begin
             # This model has no likelihood, it's mainly here to test that linking and
             # Jacobians work fine.
