@@ -108,7 +108,9 @@ function Particle(
     varinfo = particle_varinfo()
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
     particle = Particle(varinfo, rng, reference)
-    particle.task = Libtask.TapedTask(particle, evaluate_particle!, model.f, args...; kwargs...)
+    particle.task = Libtask.TapedTask(
+        particle, evaluate_particle!, model.f, args...; kwargs...
+    )
     return particle
 end
 
