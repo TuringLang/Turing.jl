@@ -785,10 +785,14 @@ end
         particle = Particle(test(), particle_rng(Xoshiro(23)))
         advance!(particle)
         child = fork(particle, Xoshiro(1))
-        # Independent continuations: advancing one does not touch the other.
         @test advance!(child) ≈ -log(2)
-        @test particle.varinfo !== child.varinfo
         @test advance!(particle) ≈ -log(2)
+        @test advance!(child) === nothing
+        @test advance!(particle) === nothing
+        parent_values = get_raw_values(particle.varinfo)
+        child_values = get_raw_values(child.varinfo)
+        @test parent_values[@varname(a)] == child_values[@varname(a)]
+        @test parent_values[@varname(c)] != child_values[@varname(c)]
     end
 
     @testset "both fields of a named addlogprob are weighted" begin
