@@ -679,7 +679,7 @@ end
     end
 
     @testset "submodels without kwargs" begin
-        @model function inner(y, x)
+        @model function inner(x)
             # Mark as noinline explicitly to make sure that behaviour is not reliant on the
             # Julia compiler inlining it.
             # See https://github.com/TuringLang/Turing.jl/issues/2772
@@ -688,7 +688,7 @@ end
         end
         @model function nested(y)
             x ~ Normal()
-            return a ~ to_submodel(inner(y, x))
+            return a ~ to_submodel(condition(inner(x); y))
         end
         m1 = nested(1.0)
         chn = sample(StableRNG(468), m1, PG(10), 1000)
@@ -696,20 +696,20 @@ end
     end
 
     @testset "submodels with kwargs" begin
-        @model function inner_kwarg(y; n=0.0)
+        @model function inner_kwarg(; n=0.0)
             @noinline # See above
             x ~ Normal(n)
             return y ~ Normal(x)
         end
         @model function outer_kwarg1()
-            return a ~ to_submodel(inner_kwarg(5.0))
+            return a ~ to_submodel(condition(inner_kwarg(); y=5.0))
         end
         m1 = outer_kwarg1()
         chn1 = sample(StableRNG(468), m1, PG(10), 1000)
         @test mean(chn1[Symbol("a.x")]) ≈ 2.5 atol = 0.3
 
         @model function outer_kwarg2(n)
-            return a ~ to_submodel(inner_kwarg(5.0; n=n))
+            return a ~ to_submodel(condition(inner_kwarg(; n); y=5.0))
         end
         m2 = outer_kwarg2(10.0)
         chn2 = sample(StableRNG(468), m2, PG(10), 2000)
@@ -756,7 +756,14 @@ end
         # A particle advanced without resampling draws from its RNG continuously, so it must
         # produce exactly the same values and log-likelihood as a plain DynamicPPL evaluation
         # seeded identically.
-        particle = Particle(test(), particle_rng(Xoshiro(23)))
+        @model function tracked(y)
+            x ~ Normal()
+            y ~ Normal(x, 1)
+            twice_x := 2x
+            return x
+        end
+        model = tracked(2.0)
+        particle = Particle(model, particle_rng(Xoshiro(23)))
         run_to_end!(particle)
 
         accs = DynamicPPL.VarInfo()
@@ -764,7 +771,7 @@ end
         accs = DynamicPPL.setacc!!(accs, DynamicPPL.RawValueAccumulator(true))
         _, accs = DynamicPPL.init!!(
             particle_rng(Xoshiro(23)),
-            test(),
+            model,
             accs,
             DynamicPPL.InitFromPrior(),
             DynamicPPL.UnlinkAll(),
