@@ -108,12 +108,15 @@ function Particle(
     varinfo = particle_varinfo()
     args, kwargs = DynamicPPL.make_evaluate_args_and_kwargs(model, varinfo)
     particle = Particle(varinfo, rng, reference)
-    particle.task = Libtask.TapedTask(particle, evaluate_particle!, args...; kwargs...)
+    particle.task = Libtask.TapedTask(particle, evaluate_particle!, model.f, args...; kwargs...)
     return particle
 end
 
-function evaluate_particle!(model::DynamicPPL.Model, args...; kwargs...)
-    _, vi = model.f(model, args...; kwargs...)
+# Specialise on the evaluator and argument count so Libtask can tape local models too.
+function evaluate_particle!(
+    evaluator::F, model::DynamicPPL.Model, args::Vararg{Any,N}; kwargs...
+) where {F,N}
+    _, vi = evaluator(model, args...; kwargs...)
     # consume reports produced weights and discards the evaluator's return value.
     Libtask.get_taped_globals(Particle).varinfo = vi
     return nothing
@@ -281,9 +284,7 @@ function trajectory_varinfo()
     return DynamicPPL.setacc!!(DynamicPPL.VarInfo(), DynamicPPL.RawValueAccumulator(true))
 end
 
-# A particle's varinfo is the same set with the produce-aware likelihood accumulator in place of the
-# default one. Outside a sweep use `trajectory_varinfo`: there a `produce` has no task to suspend,
-# and the mirroring keyed on that accumulator would write onto an unrelated particle.
+# Replay outside a sweep uses `trajectory_varinfo` because there is no task to suspend.
 function particle_varinfo()
     return DynamicPPL.setacc!!(trajectory_varinfo(), ProduceLogLikelihoodAccumulator())
 end
