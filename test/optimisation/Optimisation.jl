@@ -495,6 +495,9 @@ end
             check_success(m4)
             check_success(m5)
             check_success(m6)
+            @test isapprox(
+                loglikelihood(m2), loglikelihood(GDEMO_DEFAULT, true_value), atol=0.01
+            )
 
             @test !hasstats(m2) || m2.optim_result.stats.iterations <= 1
             if hasstats(m6) && hasstats(m5)
