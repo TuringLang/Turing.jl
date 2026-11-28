@@ -152,10 +152,6 @@ function check_adtype(context::ADTypeCheckContext, vi::DynamicPPL.AbstractVarInf
     end
 end
 
-# A bunch of tilde_assume/tilde_observe methods that just call the same method on the child
-# context, and then call check_adtype on the result before returning the results from the
-# child context.
-
 function DynamicPPL.tilde_assume!!(
     context::ADTypeCheckContext,
     right::Distribution,
@@ -168,21 +164,6 @@ function DynamicPPL.tilde_assume!!(
     )
     check_adtype(context, vi)
     return value, vi
-end
-
-function DynamicPPL.tilde_observe!!(
-    context::ADTypeCheckContext,
-    right::Distribution,
-    left,
-    vn::Union{VarName,Nothing},
-    template::Any,
-    vi::AbstractVarInfo,
-)
-    left, vi = DynamicPPL.tilde_observe!!(
-        DynamicPPL.childcontext(context), right, left, vn, template, vi
-    )
-    check_adtype(context, vi)
-    return left, vi
 end
 
 """
