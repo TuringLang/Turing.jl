@@ -2,6 +2,7 @@
 
   - `MH(cov_matrix)` no longer checks gradients at initialization, and gradient-free external samplers can use `adtype=ADTypes.NoAutoDiff()` ([#2920](https://github.com/TuringLang/Turing.jl/pull/2920)).
   - `MH(cov_matrix)` rejects discrete variables, and `Gibbs` checks each component's support for discrete variables ([#2921](https://github.com/TuringLang/Turing.jl/pull/2921)).
+  - `sample`, `maximum_a_posteriori` and `maximum_likelihood` draw their model check and parameter layout from the given `rng`, not the task RNG ([#2929](https://github.com/TuringLang/Turing.jl/pull/2929)).
   - `loglikelihood` of a MAP result now returns the log likelihood at the fitted parameters. It previously returned the log joint ([#2926](https://github.com/TuringLang/Turing.jl/pull/2926)).
 
 # 0.49.0

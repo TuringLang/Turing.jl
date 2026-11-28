@@ -261,7 +261,8 @@ call Optimization.jl directly on it.
 # Arguments
 
 - `rng::Random.AbstractRNG`: an optional random number generator. This is used only for
-  parameter initialisation; it does not affect the actual optimisation process.
+  the model check and parameter initialisation; it does not affect the actual optimisation
+  process.
 
 - `model::DynamicPPL.Model`: The model for which to estimate the mode.
 
@@ -331,12 +332,12 @@ function estimate_mode(
     fix_transforms::Bool=false,
     solve_kwargs...,
 )
-    check_model && Turing._check_model(model)
+    check_model && Turing._check_model(rng, model)
     tfm_strategy = link ? DynamicPPL.LinkAll() : DynamicPPL.UnlinkAll()
     getlogdensity = logprob_func(estimator)
 
     # Capture model shapes before representing indexed bounds.
-    layout_varinfo = _optimisation_layout_varinfo(model, tfm_strategy)
+    layout_varinfo = _optimisation_layout_varinfo(rng, model, tfm_strategy)
     parameter_template = DynamicPPL.get_raw_values(layout_varinfo)
     lb = ModelConstraints(lb, parameter_template)
     ub = ModelConstraints(ub, parameter_template)

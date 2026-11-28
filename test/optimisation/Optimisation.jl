@@ -401,6 +401,15 @@ end
         @test_throws ArgumentError maximum_a_posteriori(m)
     end
 
+    @testset "draws only from the given rng" begin
+        # The model check and the parameter layout draw from `rng`, not the task RNG.
+        Random.seed!(468)
+        before = copy(Random.default_rng())
+        maximum_a_posteriori(StableRNG(468), GDEMO_DEFAULT)
+        maximum_likelihood(StableRNG(468), GDEMO_DEFAULT)
+        @test rand(Random.default_rng(), UInt64, 4) == rand(before, UInt64, 4)
+    end
+
     @testset "gdemo" begin
         @testset "MLE" begin
             true_value = Dict(@varname(s) => 0.0625, @varname(m) => 1.75)

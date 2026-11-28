@@ -17,8 +17,10 @@ model against it before starting.
 """
 allow_discrete_variables(::AbstractSampler) = true
 
-function Turing._check_model(model::DynamicPPL.Model, sampler::AbstractSampler)
-    return Turing._check_model(model, !allow_discrete_variables(sampler))
+function Turing._check_model(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::AbstractSampler
+)
+    return Turing._check_model(rng, model, !allow_discrete_variables(sampler))
 end
 
 @enum _BlockChange begin
@@ -145,7 +147,7 @@ function AbstractMCMC.sample(
     verbose::Bool=true,
     kwargs...,
 )
-    check_model && Turing._check_model(model, spl)
+    check_model && Turing._check_model(rng, model, spl)
     chain = AbstractMCMC.mcmcsample(
         rng,
         model,
@@ -186,7 +188,7 @@ function AbstractMCMC.sample(
     initial_params=fill(init_strategy(spl), n_chains),
     kwargs...,
 )
-    check_model && Turing._check_model(model, spl)
+    check_model && Turing._check_model(rng, model, spl)
     if !(initial_params isa AbstractVector) || length(initial_params) != n_chains
         errmsg = "`initial_params` must be an AbstractVector of length `n_chains`; one element per chain"
         throw(ArgumentError(errmsg))
