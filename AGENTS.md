@@ -144,17 +144,12 @@ executes at all.
 block's linked dimension while its values keep their shape; a component that cannot rebuild is
 refused with a `ReshapedBlock`. Layout, not chain correctness.
 
-### Gibbs refuses a `missing` model argument
+### Gibbs uses model bindings for argument observations
 
-Conditioning cannot reach a variable that is a model argument: the compiler reads the argument
-directly for such a tilde, so the `missing` arrives at the likelihood and throws. This is a
-capability `GibbsContext` had and conditioning does not, so Gibbs refuses instead —
-`check_no_missing_arguments`, over `model.args` AND `model.defaults`, whole arguments and array
-elements alike. Do not narrow it on the strength of a `GibbsConditional` test: that sampler
-evaluates without a log-likelihood accumulator and masks the failure. Restoring the capability
-needs DynamicPPL.jl#1462 (unmerged), and `missing` as a latent marker is due for deprecation
-anyway (DynamicPPL.jl#1464). Keep the check in Gibbs and out of `_check_model`: other samplers
-take these models.
+DynamicPPL 0.43 lets Gibbs condition an argument on another component's draw. Keep the storage
+when subsetting the values used to condition a component, since partially bound arrays need it.
+`GibbsConditional` reads argument observations from the model's bindings and covariates from
+its arguments.
 
 ### Conditioned variables are observations
 

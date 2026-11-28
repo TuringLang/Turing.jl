@@ -236,87 +236,22 @@ end
     ) isa Any
 end
 
-@testset "latent declared as a missing model argument" begin
-    # Gibbs conditions every non-target variable, and conditioning cannot override an argument
-    # bound to `missing`: the `missing` reaches the likelihood. Refused with the argument named,
-    # rather than left to throw `MethodError` from inside `loglikelihood`.
+@testset "latent model argument matches a local variable" begin
     @model function impute(x)
-        m ~ Normal(0, 1)
-        x ~ Normal(m, 1)
-        return 2.0 ~ Normal(x, 1)
-    end
-    @test_throws "is or holds `missing`" sample(
-        StableRNG(468),
-        impute(missing),
-        Gibbs(@varname(m) => MH(), @varname(x) => MH()),
-        10;
-        progress=false,
-    )
-    # An element of an array argument goes the same way as a whole one, and a keyword argument
-    # lands in `model.defaults` rather than `model.args`. Both reached the likelihood.
-    @model function partly(x)
-        mu ~ Normal()
-        for i in eachindex(x)
-            x[i] ~ Normal(mu, 1)
-        end
-    end
-    @test_throws "is or holds `missing`" sample(
-        StableRNG(468),
-        partly([1.5, missing]),
-        Gibbs(@varname(mu) => MH(), @varname(x[2]) => MH()),
-        10;
-        check_model=false,
-        progress=false,
-    )
-    # A nested container hides a `missing` from a check that reads `eltype` alone, since the
-    # outer element type is the inner array, never `>: Missing`.
-    @model function nested(x)
-        mu ~ Normal()
-        for v in x, e in v
-            e ~ Normal(mu, 1)
-        end
-    end
-    @test_throws "is or holds `missing`" sample(
-        StableRNG(468),
-        nested([[1.5, missing]]),
-        Gibbs(@varname(mu) => MH()),
-        10;
-        check_model=false,
-        progress=false,
-    )
-    @model function bykeyword(a; b=missing)
         m ~ Normal()
-        a ~ Normal(m, 1)
-        return b ~ Normal(m, 1)
-    end
-    @test_throws "is or holds `missing`" sample(
-        StableRNG(468),
-        bykeyword(1.0),
-        Gibbs(@varname(m) => MH(), @varname(b) => MH()),
-        10;
-        check_model=false,
-        progress=false,
-    )
-    # Gibbs's restriction, not the model's: another sampler takes it, and so does Gibbs once
-    # the variable is declared in the model rather than taken as an argument.
-    @test mean(
-        sample(StableRNG(468), impute(missing), MH(), 2000; progress=false)[@varname(m)]
-    ) ≈ 2 / 3 atol = 0.15
-    @model function impute_inner()
-        m ~ Normal(0, 1)
         x ~ Normal(m, 1)
         return 2.0 ~ Normal(x, 1)
     end
-    chn = sample(
-        StableRNG(468),
-        impute_inner(),
-        Gibbs(@varname(m) => MH(), @varname(x) => MH()),
-        2000;
-        progress=false,
-    )
-    # Conjugate posterior: E[m] = 2/3, E[x] = 4/3.
-    @test mean(chn[@varname(m)]) ≈ 2 / 3 atol = 0.15
-    @test mean(chn[@varname(x)]) ≈ 4 / 3 atol = 0.15
+    @model function impute_inner()
+        m ~ Normal()
+        x ~ Normal(m, 1)
+        return 2.0 ~ Normal(x, 1)
+    end
+    sampler = Gibbs(@varname(m) => MH(), @varname(x) => MH())
+    argument = sample(StableRNG(468), impute(missing), sampler, 10)
+    local_variable = sample(StableRNG(468), impute_inner(), sampler, 10)
+    @test argument[@varname(m)] == local_variable[@varname(m)]
+    @test argument[@varname(x)] == local_variable[@varname(x)]
 end
 
 @testset "Missing Gibbs samplers throw error" begin
@@ -375,10 +310,7 @@ end
         args...;
         kwargs...,
     )
-        push!(
-            conditioned_and_algs,
-            (keys(DynamicPPL.conditioned(model.context)), sampler.inner),
-        )
+        push!(conditioned_and_algs, (keys(DynamicPPL.conditioned(model)), sampler.inner))
         return AbstractMCMC.step(rng, model, sampler.inner, args...; kwargs...)
     end
 

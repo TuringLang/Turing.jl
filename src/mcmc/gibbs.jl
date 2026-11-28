@@ -1167,58 +1167,11 @@ invisible to two separate callers, so both ask here.
 model_argument_values(model::DynamicPPL.Model) = merge(model.args, model.defaults)
 
 """
-    check_no_missing_arguments(model)
-
-Refuse a model with an argument bound to `missing`, or holding one.
-
-Gibbs conditions every component on the variables it does not sample, and conditioning cannot
-reach a variable that is a model argument: the compiler reads the argument directly for such a
-tilde and never consults the condition context, so the `missing` arrives at the likelihood and
-throws `MethodError: no method matching loglikelihood(::Normal{Float64}, ::Missing)`. An element
-of an array argument goes the same way as a whole one.
-
-This is a capability `GibbsContext` had and conditioning does not: it made the variable an
-assumption and supplied the value itself. Restoring it needs `condition` to take precedence over
-a model argument (DynamicPPL.jl#1462, unmerged), and `missing` as a latent marker is due for
-deprecation anyway (DynamicPPL.jl#1464), so Gibbs refuses instead of failing inside the
-likelihood. Other samplers are unaffected.
-
-Deliberately coarse: an argument that is `missing` but never the left-hand side of a tilde is
-refused too, though it would sample. Telling the two apart needs an evaluation, and a false
-refusal that names the argument is easier to act on than a `MethodError` from inside DynamicPPL.
-"""
-function check_no_missing_arguments(model::DynamicPPL.Model)
-    for (name, arg) in pairs(model_argument_values(model))
-        _holds_missing(arg) || continue
-        throw(
-            ArgumentError(
-                "`Gibbs` cannot sample this model: its argument `$(name)` is or holds " *
-                "`missing`. Gibbs conditions each component on the variables it does not " *
-                "sample, and conditioning cannot reach a variable that is a model argument, " *
-                "so the `missing` reaches the likelihood. Declare `$(name)` inside the model " *
-                "instead of taking it as an argument, and condition on your observations.",
-            ),
-        )
-    end
-end
-
-_holds_missing(x) = ismissing(x)
-# Both halves of the gate are load-bearing. An array of bits types can hold no `missing` and
-# nest none either, which keeps this O(1) for ordinary data; but `Missing` is itself a bits
-# type, so a `Vector{Missing}` needs the first half, and a nested container's `eltype` is never
-# `>: Missing`, so it needs the second. Anything past the gate has its elements asked.
-function _holds_missing(x::AbstractArray)
-    (eltype(x) >: Missing || !isbitstype(eltype(x))) || return false
-    return any(_holds_missing, x)
-end
-
-"""
     gibbs_initial_values(rng, model, spl, initial_params)
 
 Return the values the sweep starts from, and check that every one of them has a component.
 """
 function gibbs_initial_values(rng, model, spl::Gibbs, initial_params)
-    check_no_missing_arguments(model)
     _, accs = DynamicPPL.init!!(
         rng, model, _snapshot_accs(), initial_params, DynamicPPL.UnlinkAll()
     )

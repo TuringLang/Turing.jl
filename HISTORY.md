@@ -1,6 +1,8 @@
 # Unreleased
 
-  - DynamicPPL 0.43 is now the minimum. ([#2915](https://github.com/TuringLang/Turing.jl/pull/2915))
+DynamicPPL 0.43 is now the minimum ([#2915](https://github.com/TuringLang/Turing.jl/pull/2915)).
+
+Gibbs again supports latent variables passed as `missing` in model arguments ([#2915](https://github.com/TuringLang/Turing.jl/pull/2915)).
 
 # 0.49.0
 
