@@ -12,7 +12,7 @@ Turing = {path = "../../../"}
 
 [compat]
 ADTypes = "1.22.2"
-DynamicPPL = "0.42.2"
+DynamicPPL = "0.43"
 Enzyme = "0.13.186"
 ForwardDiff = "1.4.1"
 StableRNGs = "1.0.4"

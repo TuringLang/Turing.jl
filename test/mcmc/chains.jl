@@ -21,7 +21,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     # generate raw values according to requested initialisation strategy
-    vi = DynamicPPL.OnlyAccsVarInfo((DynamicPPL.RawValueAccumulator(false),))
+    vi = DynamicPPL.VarInfo((DynamicPPL.RawValueAccumulator(false),))
     vi = last(DynamicPPL.init!!(rng, model, vi, initial_params, DynamicPPL.UnlinkAll()))
     vnt = DynamicPPL.get_raw_values(vi)
     return DynamicPPL.ParamsWithStats(vnt, (;)), vnt

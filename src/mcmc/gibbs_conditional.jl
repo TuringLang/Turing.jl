@@ -102,36 +102,14 @@ keeps_linked_layout(::GibbsConditional) = false
 """
     build_values_vnt(model::DynamicPPL.Model)
 
-Build a `VarNamedTuple` of the values of every variable this component conditions on: those
-supplied as model arguments, and those Gibbs, the user, or `fix` conditioned.
-
-`merge` is right-biased and replaces a whole key, so an array argument with a `missing`
-element -- whose other elements are observations and whose `missing` one Gibbs conditions on
-the current draw -- loses its observations to the partially-set conditioned value. Those
-elements are put back afterwards, rather than merging leaf by leaf throughout, so that a value
-stored under one key stays under one key: `get_cond_dists` sees these keys.
-
-A `missing` in the context is put back the same way. `condition(model; y=missing)` leaves `y`
-absent as far as model execution is concerned, so the model uses the argument it was given, and
-`get_cond_dists` must see that argument rather than the `missing` the merge would otherwise
-leave in its place.
+Build the values visible to the conditional, including covariates, observations and fixed values.
 """
 function build_values_vnt(model::DynamicPPL.Model)
-    context = model.context
-    # Keyword arguments too: `model.args` alone left `f(; y = 2.0)` invisible here.
-    args = DynamicPPL.VarNamedTuple(model_argument_values(model))
-    vals = merge(args, DynamicPPL.conditioned(context), DynamicPPL.fixed(context))
-    for vn in keys(args), leaf in AbstractPPL.varname_leaves(vn, args[vn])
-        arg_value = DynamicPPL.getvalue(args, leaf)
-        arg_value === missing && continue
-        # Restore the argument both when the merge dropped the leaf and when it replaced it
-        # with a `missing`, which model execution would have ignored.
-        if DynamicPPL.hasvalue(vals, leaf)
-            DynamicPPL.getvalue(vals, leaf) === missing || continue
-        end
-        vals = DynamicPPL.setindex!!(vals, arg_value, leaf)
-    end
-    return vals
+    arguments = model_argument_values(model)
+    lhs = DynamicPPL._lhs_arguments(model)
+    names = Tuple(name for name in keys(arguments) if DynamicPPL.unsplat_symbol(name) ∉ lhs)
+    covariates = DynamicPPL.VarNamedTuple(NamedTuple{names}(arguments))
+    return merge(covariates, DynamicPPL.conditioned(model), DynamicPPL.fixed(model))
 end
 
 @inline _to_varnamedtuple(dists::NamedTuple) = DynamicPPL.VarNamedTuple(dists)
@@ -238,7 +216,7 @@ function AbstractMCMC.step(
     kwargs...,
 )
     error_if_outside_gibbs(discard_sample)
-    accs = DynamicPPL.OnlyAccsVarInfo(DynamicPPL.RawValueAccumulator(false))
+    accs = DynamicPPL.VarInfo(DynamicPPL.RawValueAccumulator(false))
     _, accs = DynamicPPL.init!!(rng, model, accs, initial_params, DynamicPPL.UnlinkAll())
     # Since GibbsConditional is only used within Gibbs, it does not need to return a
     # transition.
@@ -249,7 +227,7 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::DynamicPPL.Model,
     sampler::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo;
+    state::DynamicPPL.VarInfo;
     discard_sample::Bool=false,
     kwargs...,
 )
@@ -280,7 +258,7 @@ end
 
 function gibbs_update_state!!(
     ::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo,
+    state::DynamicPPL.VarInfo,
     ::DynamicPPL.Model,
     ::DynamicPPL.VarNamedTuple,
 )
@@ -293,7 +271,7 @@ end
 # special, for the same reason the four-argument form is a no-op.
 function gibbs_update_state!!(
     spl::GibbsConditional,
-    state::DynamicPPL.OnlyAccsVarInfo,
+    state::DynamicPPL.VarInfo,
     model::DynamicPPL.Model,
     global_vals::DynamicPPL.VarNamedTuple,
     ::ReshapedBlock,
