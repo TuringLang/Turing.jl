@@ -703,7 +703,7 @@ function AbstractMCMC.sample(
     kwargs...,
 )
     require_positive_particle_count(nparticles)
-    check_model && Turing._check_model(model, sampler)
+    check_model && Turing._check_model(rng, model, sampler)
     error_if_threadsafe_eval(model)
     if discard_initial > 0 || thinning > 1
         @warn "SMC does not support `discard_initial` or `thinning`; they are ignored."

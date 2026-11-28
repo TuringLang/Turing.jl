@@ -40,11 +40,13 @@ function _constraint_pairs(constraints::ModelConstraints)
     return Iterators.flatten((pairs(constraints.values), constraints.unmatched))
 end
 
-function _optimisation_layout_varinfo(model, transform_strategy)
+function _optimisation_layout_varinfo(rng::Random.AbstractRNG, model, transform_strategy)
     vi = DynamicPPL.OnlyAccsVarInfo((
         DynamicPPL.VectorValueAccumulator(), DynamicPPL.RawValueAccumulator(false)
     ))
-    _, vi = DynamicPPL.init!!(model, vi, DynamicPPL.InitFromPrior(), transform_strategy)
+    _, vi = DynamicPPL.init!!(
+        rng, model, vi, DynamicPPL.InitFromPrior(), transform_strategy
+    )
     return vi
 end
 
@@ -363,7 +365,7 @@ function make_optim_bounds_and_init(
     lb::VarNamedTuple,
     ub::VarNamedTuple,
 )
-    layout_varinfo = _optimisation_layout_varinfo(ldf.model, ldf.transform_strategy)
+    layout_varinfo = _optimisation_layout_varinfo(rng, ldf.model, ldf.transform_strategy)
     parameter_template = DynamicPPL.get_raw_values(layout_varinfo)
     return _make_optim_bounds_and_init!(
         rng,

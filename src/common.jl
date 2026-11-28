@@ -27,9 +27,11 @@ function _convert_initial_params(@nospecialize(_::Any))
     throw(ArgumentError(errmsg))
 end
 
-function _check_model(model::DynamicPPL.Model, fail_if_discrete::Bool)
+function _check_model(
+    rng::Random.AbstractRNG, model::DynamicPPL.Model, fail_if_discrete::Bool
+)
     result = DynamicPPL.check_model(
-        model; error_on_failure=false, fail_if_discrete=fail_if_discrete
+        rng, model; error_on_failure=false, fail_if_discrete=fail_if_discrete
     )
     if !result
         throw(
@@ -39,10 +41,10 @@ function _check_model(model::DynamicPPL.Model, fail_if_discrete::Bool)
         )
     end
 end
-function _check_model(model::DynamicPPL.Model)
+function _check_model(rng::Random.AbstractRNG, model::DynamicPPL.Model)
     # Optimisation hits this. TODO: We allow discrete variables now, but that does depend on
     # the optimisation algorithm, surely?
-    return _check_model(model, false)
+    return _check_model(rng, model, false)
 end
 
 # Similar to InitFromParams, this is just for convenience

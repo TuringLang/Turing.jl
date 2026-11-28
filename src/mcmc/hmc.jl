@@ -121,7 +121,7 @@ function AbstractMCMC.sample(
     verbose=true,
     kwargs...,
 )
-    check_model && Turing._check_model(model, sampler)
+    check_model && Turing._check_model(rng, model, sampler)
     # The generic `sample` in `abstractmcmc.jl` converts a `NamedTuple`/`Dict` here; this
     # method exists only to resolve `nadapts` and `discard_initial`, so it has to do the same
     # or `NUTS`/`HMCDA` reject an `initial_params` that `HMC` accepts.

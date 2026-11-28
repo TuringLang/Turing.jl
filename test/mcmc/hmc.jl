@@ -328,7 +328,9 @@ using Turing
         end
 
         for spl in (HMC(0.1, 10), NUTS())
-            @test_throws ArgumentError Turing._check_model(discrete_model(), spl)
+            @test_throws ArgumentError Turing._check_model(
+                Random.Xoshiro(1), discrete_model(), spl
+            )
             @test_throws ArgumentError sample(discrete_model(), spl, 10)
         end
     end

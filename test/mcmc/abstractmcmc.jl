@@ -13,7 +13,7 @@ using Logging
     @model f() = x ~ Normal()
     model = f()
     spl = NUTS()
-    Turing._check_model(::typeof(model), ::typeof(spl)) = error("nope")
+    Turing._check_model(::AbstractRNG, ::typeof(model), ::typeof(spl)) = error("nope")
     # Make sure that default sampling does throw the error.
     @test_throws "nope" sample(model, spl, 10)
     @test_throws "nope" sample(model, spl, MCMCThreads(), 10, 2)
@@ -24,6 +24,14 @@ using Logging
     @test sample(model, spl, MCMCThreads(), 10, 2; check_model=false) isa Any
     @test sample(model, spl, MCMCSerial(), 10, 2; check_model=false) isa Any
     @test sample(model, spl, MCMCDistributed(), 10, 2; check_model=false) isa Any
+end
+
+@testset "check_model draws only from the given rng" begin
+    @model f() = x ~ Normal()
+    Random.seed!(468)
+    before = copy(Random.default_rng())
+    sample(Xoshiro(468), f(), MH(), 10; progress=false)
+    @test rand(Random.default_rng(), UInt64, 4) == rand(before, UInt64, 4)
 end
 
 @testset "find_initial_params_ldf" begin
